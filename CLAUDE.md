@@ -20,6 +20,7 @@ Multi-tenant salon management platform with real-time booking, staff scheduling,
 
 - **Frontend:** Next.js 16, React 19, React Compiler, Tailwind CSS v4, shadcn/ui (New York)
 - **Backend:** Convex (database, functions, real-time), convex-helpers (RLS, triggers)
+- **Auth:** Better Auth (@convex-dev/better-auth) with Convex adapter
 - **Payments:** Polar (@convex-dev/polar for subscriptions, @polar-sh/sdk for one-time payments)
 - **Forms:** TanStack Form + Zod validation
 - **Tools:** Bun (package manager), Biome (linter/formatter)
@@ -29,13 +30,18 @@ Multi-tenant salon management platform with real-time booking, staff scheduling,
 ```
 convex/              # Backend functions and schema
 ├── _generated/      # Auto-generated types (don't edit)
+├── betterAuth/      # Better Auth component (schema, auth config)
+├── auth.ts          # Auth instance and options
+├── http.ts          # HTTP router with auth routes
 └── *.ts             # Queries, mutations, actions
 src/
 ├── app/             # Next.js App Router pages
 ├── components/ui/   # shadcn/ui components (56)
 ├── hooks/           # Custom React hooks
 ├── lib/             # Utilities (cn())
-└── modules/convex/  # ConvexClientProvider
+└── modules/
+    ├── convex/      # ConvexClientProvider
+    └── auth/        # Auth components, layouts, views
 docs/
 └── prd/             # Product requirements documentation
 ```
@@ -45,6 +51,10 @@ docs/
 | File | Purpose |
 |------|---------|
 | `convex/schema.ts` | Database schema (creates types after `bunx convex dev`) |
+| `convex/betterAuth/auth.ts` | Better Auth instance and options |
+| `convex/http.ts` | HTTP router with auth routes |
+| `src/lib/auth-client.ts` | Client-side auth hooks (authClient) |
+| `src/lib/auth-server.ts` | Server-side auth helpers (isAuthenticated, getToken) |
 | `src/app/layout.tsx` | Root layout with ConvexClientProvider |
 | `src/lib/utils.ts` | `cn()` utility for className merging |
 | `components.json` | shadcn/ui configuration |
@@ -62,10 +72,18 @@ docs/
 ```bash
 CONVEX_DEPLOYMENT=dev:...        # Auto-set by Convex CLI
 NEXT_PUBLIC_CONVEX_URL=https://... # Required
-NEXT_PUBLIC_CONVEX_SITE_URL=...  # Optional
+NEXT_PUBLIC_CONVEX_SITE_URL=...  # Required for Better Auth
+SITE_URL=http://localhost:3000   # Better Auth base URL
+BETTER_AUTH_SECRET=...           # Better Auth secret key
 ```
 
 ## Gotchas
+
+**Better Auth:**
+- Schema auto-generated: `npx @better-auth/cli generate --output ./convex/betterAuth/schema.ts -y`
+- Auth routes registered in `convex/http.ts` via `authComponent.registerRoutes()`
+- Client: `authClient` from `@/lib/auth-client` — Server: helpers from `@/lib/auth-server`
+- Convex component installed at `convex/betterAuth/` — don't edit `schema.ts` directly
 
 **React Compiler:**
 - Don't use `useMemo`, `useCallback`, `React.memo` — Compiler handles optimization
