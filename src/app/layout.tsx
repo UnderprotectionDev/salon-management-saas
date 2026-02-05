@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { JetBrains_Mono, Playfair_Display, Poppins } from "next/font/google";
 import { getToken } from "@/lib/auth-server";
 import { ConvexClientProvider } from "@/modules/convex/providers/ConvexClientProvider";
+import { OrganizationProvider } from "@/modules/organization";
 import "./globals.css";
 
 const poppins = Poppins({
@@ -39,7 +40,7 @@ export default async function RootLayout({
         className={`${poppins.variable} ${jetbrainsMono.variable} ${playfair.variable} font-sans antialiased`}
       >
         <ConvexClientProvider initialToken={token}>
-          {children}
+          <OrganizationProvider>{children}</OrganizationProvider>
         </ConvexClientProvider>
       </body>
     </html>

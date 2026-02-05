@@ -1,6 +1,6 @@
 # 06 - Implementation Roadmap
 
-> **Version:** 1.0.0
+> **Version:** 1.1.0
 > **Last Updated:** 2026-02-05
 > **Status:** Active Development
 > **Scope:** MVP (P0 + P1)
@@ -11,7 +11,7 @@ Bu dokuman, Google Auth entegrasyonu sonrasi kalan gorevlerin detayli uygulama y
 
 ## Mevcut Durum
 
-### Tamamlanan (Pre-Sprint)
+### Tamamlanan
 
 | Kategori | Durum | Detay |
 |----------|-------|-------|
@@ -19,22 +19,27 @@ Bu dokuman, Google Auth entegrasyonu sonrasi kalan gorevlerin detayli uygulama y
 | **Convex Setup** | ✅ Done | HTTP router, client provider |
 | **Auth UI** | ✅ Done | Sign-in view, auth components |
 | **UI Library** | ✅ Done | 56 shadcn/ui component |
-| **Temel Sayfalar** | ✅ Done | Landing, sign-in, dashboard (bos) |
+| **Temel Sayfalar** | ✅ Done | Landing, sign-in, dashboard |
+| **Database Schema** | ✅ Done | Sprint 1 - Full schema implemented |
+| **Multi-Tenant Setup** | ✅ Done | Sprint 1 - Organizations, members, RLS |
+| **Onboarding Wizard** | ✅ Done | Sprint 1 - Salon creation flow |
+| **Business Hours Editor** | ✅ Done | Sprint 1 - Settings page |
+| **Staff Invitation System** | ✅ Done | Sprint 1 - Email invitations |
 
 ### Eksik (Sprint'lerde Yapilacak)
 
-| Kategori | Oncelik | Sprint |
-|----------|---------|--------|
-| Database Schema | P0 | Sprint 1 |
-| Multi-Tenant Setup | P0 | Sprint 1 |
-| Service Catalog | P0 | Sprint 2 |
-| Staff Management | P0 | Sprint 2 |
-| Booking Engine | P0 | Sprint 3-4 |
-| Admin Dashboard | P0 | Sprint 5 |
-| SaaS Billing (Polar) | P0 | Sprint 6 |
-| Email (Resend) | P1 | Sprint 7 |
-| Reports & Analytics | P1 | Sprint 8 |
-| Customer Portal | P1 | Sprint 9 |
+| Kategori | Oncelik | Sprint | Durum |
+|----------|---------|--------|-------|
+| ~~Database Schema~~ | ~~P0~~ | ~~Sprint 1~~ | ✅ Done |
+| ~~Multi-Tenant Setup~~ | ~~P0~~ | ~~Sprint 1~~ | ✅ Done |
+| Service Catalog | P0 | Sprint 2 | Pending |
+| Staff Management | P0 | Sprint 2 | Pending |
+| Booking Engine | P0 | Sprint 3-4 | Pending |
+| Admin Dashboard | P0 | Sprint 5 | Pending |
+| SaaS Billing (Polar) | P0 | Sprint 6 | Pending |
+| Email (Resend) | P1 | Sprint 7 | Pending |
+| Reports & Analytics | P1 | Sprint 8 | Pending |
+| Customer Portal | P1 | Sprint 9 | Pending |
 
 ---
 
@@ -47,7 +52,7 @@ Bu dokuman, Google Auth entegrasyonu sonrasi kalan gorevlerin detayli uygulama y
                         └──────────┬──────────┘
                                    │
                         ┌──────────▼──────────┐
-                        │   SPRINT 1          │
+                        │ SPRINT 1 (✅ Done)  │
                         │   Multi-Tenant      │
                         │   Organizations     │
                         │   + Database Schema │
@@ -93,59 +98,71 @@ Bu dokuman, Google Auth entegrasyonu sonrasi kalan gorevlerin detayli uygulama y
 
 ---
 
-## Sprint 1: Multi-Tenant Foundation
+## Sprint 1: Multi-Tenant Foundation ✅ COMPLETED
 
 > **Hedef:** Organizasyon yapisi ve database schema'nin kurulmasi
-> **Bagimlili:** Auth (✅ Done)
+> **Bagimlilik:** Auth (✅ Done)
 > **User Stories:** US-001, US-030
+> **Tamamlanma Tarihi:** 2026-02-05
 
 ### Gorevler
 
 #### Backend (Convex)
 
-| Gorev | Dosya | Oncelik |
-|-------|-------|---------|
-| Tam database schema olustur | `convex/schema.ts` | P0 |
-| Organization CRUD mutations | `convex/organizations.ts` | P0 |
-| Organization queries | `convex/organizations.ts` | P0 |
-| RLS (Row-Level Security) setup | `convex/lib/rls.ts` | P0 |
-| Onboarding mutation | `convex/onboarding.ts` | P0 |
+| Gorev | Dosya | Durum |
+|-------|-------|-------|
+| Tam database schema olustur | `convex/schema.ts` | ✅ Done |
+| Organization CRUD mutations | `convex/organizations.ts` | ✅ Done |
+| Organization queries | `convex/organizations.ts` | ✅ Done |
+| RLS (Row-Level Security) setup | `convex/lib/functions.ts` | ✅ Done |
+| Member management | `convex/members.ts` | ✅ Done |
+| Invitation system | `convex/invitations.ts` | ✅ Done |
+| Staff management | `convex/staff.ts` | ✅ Done |
 
 #### Frontend (Next.js)
 
-| Gorev | Dosya | Oncelik |
-|-------|-------|---------|
-| Onboarding wizard page | `src/app/onboarding/page.tsx` | P0 |
-| Organization setup form | `src/modules/onboarding/` | P0 |
-| Business hours selector | `src/components/business-hours/` | P0 |
-| Protected route middleware | `src/middleware.ts` | P0 |
-| Organization context provider | `src/modules/organization/` | P0 |
+| Gorev | Dosya | Durum |
+|-------|-------|-------|
+| Onboarding wizard page | `src/app/onboarding/page.tsx` | ✅ Done |
+| Organization setup form | `src/modules/onboarding/` | ✅ Done |
+| Business hours selector | `src/components/business-hours/` | ✅ Done |
+| Protected route middleware | `src/middleware.ts` | ✅ Done |
+| Organization context provider | `src/modules/organization/` | ✅ Done |
+| Settings page with business hours | `src/app/[slug]/settings/page.tsx` | ✅ Done |
+| Staff list page | `src/app/[slug]/staff/page.tsx` | ✅ Done |
+| Invitation banner | `src/modules/organization/components/InvitationBanner.tsx` | ✅ Done |
 
 ### Schema Tables (Sprint 1)
 
 ```typescript
-// Bu sprint'te olusturulacak tablolar:
-- organizations
-- staff (owner record)
-- serviceCategories
-- bookingSettings (org icinde)
+// Olusturulan tablolar:
+- organization ✅
+- organizationSettings ✅ (business hours, booking settings)
+- member ✅
+- invitation ✅
+- staff ✅
+- user ✅ (Better Auth)
 ```
 
 ### Deliverables
 
-- [ ] Yeni kullanici kayit oldugunda onboarding'e yonlendirme
-- [ ] Salon bilgileri formu (isim, adres, iletisim)
-- [ ] Calisma saatleri secimi
-- [ ] Owner olarak staff kaydinin otomatik olusturulmasi
-- [ ] Dashboard'a yonlendirme
+- [x] Yeni kullanici kayit oldugunda onboarding'e yonlendirme
+- [x] Salon bilgileri formu (isim, adres, iletisim)
+- [x] Calisma saatleri secimi
+- [x] Calisma saatlerini ayarlayabiliyor (Settings page)
+- [x] Owner olarak staff kaydinin otomatik olusturulmasi
+- [x] Dashboard'a yonlendirme
+- [x] Staff invitation system (email-based)
+- [x] Organization switcher
+- [x] All UI text in English
 
-### Definition of Done
+### Definition of Done ✅
 
-1. Kullanici sign-in sonrasi onboarding wizard'i goruyor
-2. Salon bilgilerini girebiliyor
-3. Calisma saatlerini ayarlayabiliyor
-4. Tamamladiktan sonra dashboard'a gidiyor
-5. Organization data Convex'te saklanmis oluyor
+1. ✅ Kullanici sign-in sonrasi onboarding wizard'i goruyor
+2. ✅ Salon bilgilerini girebiliyor
+3. ✅ Calisma saatlerini ayarlayabiliyor
+4. ✅ Tamamladiktan sonra dashboard'a gidiyor
+5. ✅ Organization data Convex'te saklanmis oluyor
 
 ---
 
@@ -603,17 +620,17 @@ Portal Ana Sayfa
 
 ## Sprint Ozet Tablosu
 
-| Sprint | Hedef | User Stories | Tahmini Complexity |
-|--------|-------|--------------|-------------------|
-| 1 | Multi-Tenant Foundation | US-001, US-030 | Medium |
-| 2 | Services, Staff, Customers | US-002, US-003, US-006 | High |
-| 3 | Booking Engine Core | US-020-022, US-031 | High |
-| 4 | Booking Operations | US-010-015, US-025 | High |
-| 5 | Dashboard & Calendar | US-004, US-010 | High |
-| 6 | SaaS Billing | US-040-045 | Medium |
-| 7 | Email Notifications | US-023, US-024 | Low |
-| 8 | Reports & Analytics | US-005, US-032 | Medium |
-| 9 | Customer Portal | US-026, US-027 | Medium |
+| Sprint | Hedef | User Stories | Complexity | Durum |
+|--------|-------|--------------|------------|-------|
+| 1 | Multi-Tenant Foundation | US-001, US-030 | Medium | ✅ Done |
+| 2 | Services, Staff, Customers | US-002, US-003, US-006 | High | Pending |
+| 3 | Booking Engine Core | US-020-022, US-031 | High | Pending |
+| 4 | Booking Operations | US-010-015, US-025 | High | Pending |
+| 5 | Dashboard & Calendar | US-004, US-010 | High | Pending |
+| 6 | SaaS Billing | US-040-045 | Medium | Pending |
+| 7 | Email Notifications | US-023, US-024 | Low | Pending |
+| 8 | Reports & Analytics | US-005, US-032 | Medium | Pending |
+| 9 | Customer Portal | US-026, US-027 | Medium | Pending |
 
 ---
 
@@ -667,11 +684,14 @@ Portal Ana Sayfa
 
 ## Sonraki Adimlar
 
-Sprint 1'e baslamak icin:
+~~Sprint 1'e baslamak icin:~~ ✅ TAMAMLANDI
 
-1. `convex/schema.ts` dosyasini olustur
-2. `bunx convex dev` ile type generation
-3. Organization mutations/queries
-4. Onboarding UI
+Sprint 2'ye baslamak icin:
+
+1. Service category CRUD (`convex/serviceCategories.ts`)
+2. Service CRUD (`convex/services.ts`)
+3. Services list page (`src/app/[slug]/services/page.tsx`)
+4. Service form component
+5. Price formatter (TRY currency)
 
 > **Not:** Her sprint sonunda code review ve test yapilmali.

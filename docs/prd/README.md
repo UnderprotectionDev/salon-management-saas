@@ -1,8 +1,8 @@
 # Salon Management SaaS - Product Requirements Document
 
-> **Version:** 1.0.0
-> **Last Updated:** 2026-02-04
-> **Status:** Active Development
+> **Version:** 1.1.0
+> **Last Updated:** 2026-02-05
+> **Status:** Active Development (Sprint 1 ✅ Complete)
 
 ## Executive Overview
 
@@ -158,3 +158,23 @@ All code examples use TypeScript and follow the project's conventions:
 - Convex functions with complete type definitions
 - React components with proper typing
 - API contracts with input/output schemas
+
+---
+
+## Current Progress
+
+| Sprint | Status | Completion Date |
+|--------|--------|-----------------|
+| Pre-Sprint (Auth, UI) | ✅ Done | 2026-02-04 |
+| Sprint 1 (Multi-Tenant) | ✅ Done | 2026-02-05 |
+| Sprint 2 (Services, Staff) | 🔄 Next | - |
+
+### Sprint 1 Deliverables
+
+- ✅ Database schema (organization, member, invitation, staff, settings)
+- ✅ Onboarding wizard with auto-redirect
+- ✅ Business hours editor (Settings page)
+- ✅ Staff invitation system
+- ✅ Organization switcher
+- ✅ Protected routes & RLS
+- ✅ UI standardization (English)
