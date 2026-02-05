@@ -11,7 +11,7 @@ interface SignInViewProps {
   callbackUrl?: string;
 }
 
-export function SignInView({ callbackUrl = "/dashboard" }: SignInViewProps) {
+export function SignInView({ callbackUrl }: SignInViewProps) {
   const [isGoogleLoading, setIsGoogleLoading] = useState(false);
 
   const handleGoogleSignIn = async () => {
@@ -42,16 +42,6 @@ export function SignInView({ callbackUrl = "/dashboard" }: SignInViewProps) {
             onClick={handleGoogleSignIn}
             isLoading={isGoogleLoading}
           />
-
-          <p className="text-center text-sm text-black/50">
-            Don't have an account?{" "}
-            <a
-              href="/sign-up"
-              className="font-medium underline underline-offset-4 text-black hover:text-primary transition-colors"
-            >
-              Sign up
-            </a>
-          </p>
         </div>
 
         <AuthFooter />
