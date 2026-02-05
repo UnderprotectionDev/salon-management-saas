@@ -41,7 +41,9 @@ src/
 ├── lib/             # Utilities (cn())
 └── modules/
     ├── convex/      # ConvexClientProvider
-    └── auth/        # Auth components, layouts, views
+    ├── auth/        # Auth components, layouts, views
+    ├── organization/ # OrganizationProvider, OrganizationSwitcher
+    └── staff/       # Staff management components
 docs/
 └── prd/             # Product requirements documentation
 ```
@@ -58,6 +60,11 @@ docs/
 | `src/app/layout.tsx` | Root layout with ConvexClientProvider |
 | `src/lib/utils.ts` | `cn()` utility for className merging |
 | `components.json` | shadcn/ui configuration |
+| `src/middleware.ts` | Auth middleware for protected routes |
+| `convex/lib/functions.ts` | Custom Convex function wrappers |
+| `convex/organizations.ts` | Organization CRUD operations |
+| `convex/members.ts` | Member management |
+| `convex/invitations.ts` | Staff invitation system |
 
 ## Code Style
 
@@ -93,6 +100,11 @@ BETTER_AUTH_SECRET=...           # Better Auth secret key
 - Run `bunx convex dev` after schema changes (types won't update otherwise)
 - Use `ctx.db` in queries/mutations only, not in actions
 - Import from `"./_generated/server"` for `query()`, `mutation()`, `action()`
+- Use custom function wrappers from `convex/lib/functions.ts`:
+  - `publicQuery` — No auth required
+  - `authedQuery/authedMutation` — Requires authentication
+  - `orgQuery/orgMutation` — Requires org membership (auto-injects `ctx.organizationId`)
+  - `adminMutation` — Requires owner/admin role
 
 **Tailwind v4:**
 - No `tailwind.config.js` — all config in CSS (`@theme`, `@utility`)
