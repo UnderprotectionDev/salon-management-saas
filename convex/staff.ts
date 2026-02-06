@@ -130,7 +130,7 @@ export const createProfile = authedMutation({
     imageUrl: v.optional(v.string()),
     bio: v.optional(v.string()),
     status: v.optional(staffStatusValidator),
-    serviceIds: v.optional(v.array(v.string())),
+    serviceIds: v.optional(v.array(v.id("services"))),
     defaultSchedule: staffScheduleValidator,
   },
   returns: v.id("staff"),

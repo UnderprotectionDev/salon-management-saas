@@ -61,7 +61,6 @@ const menuItems = [
     title: "Services",
     icon: Scissors,
     href: "/services",
-    disabled: true,
   },
   {
     title: "Settings",

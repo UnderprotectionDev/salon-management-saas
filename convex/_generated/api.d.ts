@@ -19,7 +19,10 @@ import type * as lib_rls from "../lib/rls.js";
 import type * as lib_validators from "../lib/validators.js";
 import type * as members from "../members.js";
 import type * as organizations from "../organizations.js";
+import type * as serviceCategories from "../serviceCategories.js";
+import type * as services from "../services.js";
 import type * as staff from "../staff.js";
+import type * as users from "../users.js";
 
 import type {
   ApiFromModules,
@@ -39,7 +42,10 @@ declare const fullApi: ApiFromModules<{
   "lib/validators": typeof lib_validators;
   members: typeof members;
   organizations: typeof organizations;
+  serviceCategories: typeof serviceCategories;
+  services: typeof services;
   staff: typeof staff;
+  users: typeof users;
 }>;
 
 /**

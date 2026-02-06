@@ -187,7 +187,7 @@ export const staffDocValidator = v.object({
   imageUrl: v.optional(v.string()),
   bio: v.optional(v.string()),
   status: staffStatusValidator,
-  serviceIds: v.optional(v.array(v.string())),
+  serviceIds: v.optional(v.array(v.id("services"))),
   defaultSchedule: staffScheduleValidator,
   createdAt: v.number(),
   updatedAt: v.number(),
@@ -209,6 +209,86 @@ export const organizationWithRoleValidator = v.object({
   updatedAt: v.number(),
   role: memberRoleValidator,
   memberId: v.id("member"),
+});
+
+/** Service price type: fixed | starting_from | variable */
+export const servicePriceTypeValidator = v.union(
+  v.literal("fixed"),
+  v.literal("starting_from"),
+  v.literal("variable"),
+);
+
+/** Service status: active | inactive */
+export const serviceStatusValidator = v.union(
+  v.literal("active"),
+  v.literal("inactive"),
+);
+
+/** Service category document validator */
+export const serviceCategoryDocValidator = v.object({
+  _id: v.id("serviceCategories"),
+  _creationTime: v.number(),
+  organizationId: v.id("organization"),
+  name: v.string(),
+  description: v.optional(v.string()),
+  sortOrder: v.number(),
+  createdAt: v.number(),
+  updatedAt: v.optional(v.number()),
+});
+
+/** Service document validator */
+export const serviceDocValidator = v.object({
+  _id: v.id("services"),
+  _creationTime: v.number(),
+  organizationId: v.id("organization"),
+  categoryId: v.optional(v.id("serviceCategories")),
+  name: v.string(),
+  description: v.optional(v.string()),
+  duration: v.number(),
+  bufferTime: v.optional(v.number()),
+  price: v.number(),
+  priceType: servicePriceTypeValidator,
+  imageUrl: v.optional(v.string()),
+  sortOrder: v.number(),
+  isPopular: v.boolean(),
+  status: serviceStatusValidator,
+  showOnline: v.boolean(),
+  createdAt: v.number(),
+  updatedAt: v.number(),
+});
+
+/** Service with category name (enriched query result) */
+export const serviceWithCategoryValidator = v.object({
+  _id: v.id("services"),
+  _creationTime: v.number(),
+  organizationId: v.id("organization"),
+  categoryId: v.optional(v.id("serviceCategories")),
+  name: v.string(),
+  description: v.optional(v.string()),
+  duration: v.number(),
+  bufferTime: v.optional(v.number()),
+  price: v.number(),
+  priceType: servicePriceTypeValidator,
+  imageUrl: v.optional(v.string()),
+  sortOrder: v.number(),
+  isPopular: v.boolean(),
+  status: serviceStatusValidator,
+  showOnline: v.boolean(),
+  createdAt: v.number(),
+  updatedAt: v.number(),
+  categoryName: v.optional(v.string()),
+});
+
+/** Service category with service count */
+export const serviceCategoryWithCountValidator = v.object({
+  _id: v.id("serviceCategories"),
+  _creationTime: v.number(),
+  organizationId: v.id("organization"),
+  name: v.string(),
+  description: v.optional(v.string()),
+  sortOrder: v.number(),
+  createdAt: v.number(),
+  serviceCount: v.number(),
 });
 
 /** Invitation with organization info (for getPendingForCurrentUser) */

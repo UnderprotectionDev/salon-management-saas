@@ -1,8 +1,8 @@
 # Salon Management SaaS - Product Requirements Document
 
-> **Version:** 1.2.0
+> **Version:** 1.3.0
 > **Last Updated:** 2026-02-06
-> **Status:** Active Development (Sprint 1.5 🔄 In Progress)
+> **Status:** Active Development (Sprint 2A ✅ Done, Sprint 2B 📋 Next)
 
 ## Executive Overview
 
@@ -165,32 +165,69 @@ All code examples use TypeScript and follow the project's conventions:
 
 ## Current Progress
 
-| Sprint                                 | Status         | Completion Date |
-| -------------------------------------- | -------------- | --------------- |
-| Pre-Sprint (Auth, UI)                  | ✅ Done        | 2026-02-04      |
-| Sprint 1 (Multi-Tenant)                | ✅ Done        | 2026-02-05      |
-| Sprint 1.5 (Multi-Tenant Enhancements) | 🔄 In Progress | -               |
-| Sprint 2 (Services, Staff, Customers)  | 📋 Next        | -               |
+| Sprint                                | Status      | Completion Date |
+| ------------------------------------- | ----------- | --------------- |
+| Pre-Sprint (Auth, UI)                 | ✅ Done     | 2026-02-04      |
+| Sprint 1 (Multi-Tenant Complete)      | ✅ Done     | 2026-02-06      |
+| Sprint 2A (Service Catalog)           | ✅ Done     | 2026-02-06      |
+| Sprint 2B (Staff Management)          | 📋 Next     | -               |
+| Sprint 2C (Customer Base)             | 📋 Next     | -               |
+| Sprint 3 (Booking Engine Core)        | 📋 Pending  | -               |
+| Sprint 4 (Booking Operations)         | 📋 Pending  | -               |
+| Sprint 5 (Dashboard & Calendar)       | 📋 Pending  | -               |
+| Sprint 6 (SaaS Billing)              | 📋 Pending  | -               |
+| Sprint 7 (Email Notifications)        | 📋 Pending  | -               |
+| Sprint 8 (Reports & Analytics)        | 📋 Pending  | -               |
+| Sprint 9 (Customer Portal)            | 📋 Pending  | -               |
 
-### Sprint 1 Deliverables
+### Completed Sprints
 
-- ✅ Database schema (organization, member, invitation, staff, organizationSettings)
+**Sprint 1 (Multi-Tenant Foundation - Complete):**
+
+*Foundation Phase (Sprint 1.0):*
+- ✅ Database schema (organization, member, invitation, staff, organizationSettings, files)
 - ✅ Onboarding wizard with auto-redirect
 - ✅ Business hours editor (Settings page)
-- ✅ Staff invitation system (separate invitation table with full lifecycle)
+- ✅ Staff invitation system (backend)
 - ✅ Organization switcher
 - ✅ Protected routes & custom function wrappers (RLS)
 - ✅ UI standardization (English)
-- ✅ Rate limiting infrastructure
-- ✅ Return validators (convex/lib/validators.ts)
 
-### Sprint 1.5 Deliverables (In Progress)
-
+*Enhancement Phase (Sprint 1.5):*
 - ✅ Staff profile detail page & edit form
 - ✅ Staff schedule editor
-- ✅ File storage / logo upload
-- ✅ Audit logging infrastructure
-- ✅ Members & invitations management (backend)
-- ✅ Ownership transfer
-- 🔄 Settings sub-forms (address, contact, general info)
-- 🔄 Members management UI
+- ✅ File storage system (253 lines)
+- ✅ Logo upload component
+- ✅ Members & invitations management UI
+- ✅ Ownership transfer with 2-step confirmation
+- ✅ Settings sub-forms (General, Contact, Address)
+- ✅ Return validators infrastructure (309 lines)
+- ✅ Rate limiting configuration (118 lines)
+
+**Sprint 2A (Service Catalog):**
+- ✅ Service categories CRUD with inline sidebar management
+- ✅ Services CRUD with category filtering (353 lines backend)
+- ✅ Service image upload
+- ✅ Staff-service assignment
+- ✅ Pricing in kuruş (₺) with formatPrice utility
+- ✅ Role-based UI (admin/owner CRUD, member read-only)
+- ✅ 9 frontend components + currency utility
+- ✅ Circular dependency fix (users.ts extracted from auth.ts)
+
+### Sprint PRDs (Detailed Documentation)
+
+For detailed user stories, acceptance criteria, and implementation tasks, see:
+
+**Completed Sprints:**
+- [Sprint 1: Multi-Tenant Foundation (Complete)](../tasks/sprint-01-multi-tenant-foundation.md) ✅
+- [Sprint 2A: Service Catalog (Complete)](../tasks/sprint-02-services-staff-customers.md) ✅
+
+**Pending Sprints:**
+- [Sprint 2B/2C: Staff & Customers](../tasks/sprint-02-services-staff-customers.md)
+- [Sprint 3: Booking Engine - Core](../tasks/sprint-03-booking-engine-core.md)
+- [Sprint 4: Booking Engine - Operations](../tasks/sprint-04-booking-operations.md)
+- [Sprint 5: Admin Dashboard & Calendar](../tasks/sprint-05-dashboard-calendar.md)
+- [Sprint 6: SaaS Billing (Polar.sh)](../tasks/sprint-06-saas-billing.md)
+- [Sprint 7: Email Notifications (Resend)](../tasks/sprint-07-email-notifications.md)
+- [Sprint 8: Reports & Analytics](../tasks/sprint-08-reports-analytics.md)
+- [Sprint 9: Customer Portal](../tasks/sprint-09-customer-portal.md)

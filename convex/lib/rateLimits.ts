@@ -74,6 +74,21 @@ export const rateLimiter = new RateLimiter(components.rateLimiter, {
   },
 
   // ==========================================================================
+  // Service Limits
+  // ==========================================================================
+
+  /**
+   * Service creation limit (per organization)
+   * 50 services per day, burst capacity of 60
+   */
+  createService: {
+    kind: "token bucket",
+    rate: 50,
+    period: DAY,
+    capacity: 60,
+  },
+
+  // ==========================================================================
   // Future: Booking Limits (ileride kullanılacak)
   // ==========================================================================
 

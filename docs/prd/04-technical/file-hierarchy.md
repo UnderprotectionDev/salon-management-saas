@@ -1,7 +1,7 @@
 # File Hierarchy & Project Structure
 
-> **Document Version:** 1.0.0  
-> **Last Updated:** 2025-02-06  
+> **Document Version:** 1.1.0
+> **Last Updated:** 2026-02-06
 > **Status:** Active Development
 
 ## Overview
@@ -66,26 +66,33 @@ convex/
 ├── auth.config.ts         # Better Auth configuration
 ├── auth.ts                # Auth instance & options
 ├── convex.config.ts       # Convex deployment config
-├── files.ts               # File storage queries/mutations
+├── files.ts               # File storage queries/mutations (logos, staff, services)
 ├── http.ts                # HTTP routes (auth endpoints)
 ├── invitations.ts         # Staff invitation management
 ├── members.ts             # Organization member management
 ├── organizations.ts       # Organization CRUD operations
 ├── schema.ts              # Database schema definition
-└── staff.ts               # Staff profile queries/mutations
+├── serviceCategories.ts   # Service category CRUD
+├── services.ts            # Service CRUD + staff assignment
+├── staff.ts               # Staff profile queries/mutations
+└── users.ts               # User queries (getCurrentUser)
 ```
 
 ### Key Files
 
 | File | Purpose |
 |------|---------|
-| `schema.ts` | Defines all database tables (organizations, staff, members, etc.) |
+| `schema.ts` | Defines all database tables (organizations, staff, members, services, etc.) |
 | `lib/functions.ts` | Custom wrappers: `orgQuery`, `adminMutation`, etc. |
 | `auth.ts` | Better Auth configuration & Convex adapter |
 | `http.ts` | HTTP router with auth route registration |
-| `lib/validators.ts` | Reusable return type validators |
+| `lib/validators.ts` | Reusable return type validators (309 lines) |
 | `lib/audit.ts` | Audit trail creation helpers |
 | `lib/rls.ts` | Row-level security enforcement |
+| `services.ts` | Service CRUD + staff assignment (353 lines) |
+| `serviceCategories.ts` | Service category management (188 lines) |
+| `users.ts` | User queries (getCurrentUser) |
+| `files.ts` | File uploads: logos, staff images, service images (253 lines) |
 
 ---
 
@@ -104,6 +111,8 @@ src/
 │   ├── [slug]/            # Multi-tenant routes (org slug in URL)
 │   │   ├── dashboard/     # Dashboard page
 │   │   │   └── page.tsx
+│   │   ├── services/      # Service catalog
+│   │   │   └── page.tsx   # Services list with category sidebar
 │   │   ├── settings/      # Organization settings
 │   │   │   └── page.tsx
 │   │   ├── staff/         # Staff management
@@ -165,6 +174,11 @@ src/
 │   ├── settings/          # Settings module
 │   │   ├── components/    # Settings forms & sub-pages
 │   │   └── index.ts
+│   │
+│   ├── services/          # Service catalog module
+│   │   ├── components/    # ServicesList, AddServiceDialog, CategorySidebar, etc.
+│   │   ├── lib/           # Currency utilities (formatPrice, kurusToLira)
+│   │   └── index.ts       # Public exports
 │   │
 │   └── staff/             # Staff management module
 │       ├── components/    # AddStaffDialog, StaffTable, etc.
@@ -294,6 +308,7 @@ public/
 | `/onboarding` | `src/app/onboarding/page.tsx` | Org creation wizard |
 | `/dashboard` | `src/app/dashboard/page.tsx` | Redirects to active org |
 | `/:slug/dashboard` | `src/app/[slug]/dashboard/page.tsx` | Org dashboard |
+| `/:slug/services` | `src/app/[slug]/services/page.tsx` | Service catalog |
 | `/:slug/settings` | `src/app/[slug]/settings/page.tsx` | Org settings |
 | `/:slug/staff` | `src/app/[slug]/staff/page.tsx` | Staff list |
 | `/:slug/staff/:id` | `src/app/[slug]/staff/[id]/page.tsx` | Staff detail/edit |
@@ -327,6 +342,7 @@ modules/[feature]/
 | `auth/` | Authentication UI, layouts, views |
 | `convex/` | Convex client provider & setup |
 | `organization/` | Org context, switcher, invitation handling |
+| `services/` | Service catalog, categories, pricing, staff assignment |
 | `settings/` | Settings forms & sub-pages |
 | `staff/` | Staff management components & dialogs |
 
@@ -519,7 +535,8 @@ bun run format    # Auto-fix formatting
 | Version | Date | Changes |
 |---------|------|---------|
 | 1.0.0 | 2025-02-06 | Initial file hierarchy documentation |
+| 1.1.0 | 2026-02-06 | Added Sprint 2A: services module, serviceCategories.ts, services.ts, users.ts, services page |
 
 ---
 
-**Note:** This document is auto-updated as the project structure evolves. Last sync: Sprint 1.5 (In Progress).
+**Note:** This document is auto-updated as the project structure evolves. Last sync: Sprint 2A (Complete).

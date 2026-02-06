@@ -1,6 +1,6 @@
 # 06 - Implementation Roadmap
 
-> **Version:** 1.1.0
+> **Version:** 1.2.0
 > **Last Updated:** 2026-02-06
 > **Status:** Active Development
 > **Scope:** MVP (P0 + P1)
@@ -32,8 +32,9 @@ This document contains the detailed implementation roadmap for remaining tasks a
 |----------|----------|--------|--------|
 | ~~Database Schema~~ | ~~P0~~ | ~~Sprint 1~~ | ✅ Done |
 | ~~Multi-Tenant Setup~~ | ~~P0~~ | ~~Sprint 1~~ | ✅ Done |
-| Service Catalog | P0 | Sprint 2 | Pending |
-| Staff Management | P0 | Sprint 2 | Pending |
+| ~~Service Catalog~~ | ~~P0~~ | ~~Sprint 2A~~ | ✅ Done |
+| Staff Management | P0 | Sprint 2B | Pending |
+| Customer Base | P0 | Sprint 2C | Pending |
 | Booking Engine | P0 | Sprint 3-4 | Pending |
 | Admin Dashboard | P0 | Sprint 5 | Pending |
 | SaaS Billing (Polar) | P0 | Sprint 6 | Pending |
@@ -61,7 +62,7 @@ This document contains the detailed implementation roadmap for remaining tasks a
               ┌────────────────────┼────────────────────┐
               │                    │                    │
      ┌────────▼────────┐  ┌────────▼────────┐  ┌───────▼────────┐
-     │   SPRINT 2A     │  │   SPRINT 2B     │  │   SPRINT 2C    │
+     │   SPRINT 2A ✅  │  │   SPRINT 2B     │  │   SPRINT 2C    │
      │   Services      │  │   Staff         │  │   Customers    │
      │   Catalog       │  │   Management    │  │   Base         │
      └────────┬────────┘  └────────┬────────┘  └───────┬────────┘
@@ -166,11 +167,12 @@ This document contains the detailed implementation roadmap for remaining tasks a
 
 ---
 
-## Sprint 1.5: Multi-Tenant Enhancements (IN PROGRESS)
+## Sprint 1.5: Multi-Tenant Enhancements ✅ COMPLETED
 
 > **Goal:** Complete multi-tenant core features
 > **Dependency:** Sprint 1 (✅ Done)
-> **Status:** In Progress
+> **Status:** ✅ Completed
+> **Completion Date:** 2026-02-06
 
 ### Staff Profile Management
 
@@ -185,38 +187,38 @@ This document contains the detailed implementation roadmap for remaining tasks a
 
 | Task | File | Status |
 |------|------|--------|
-| Invitations list component | `src/modules/settings/components/InvitationsList.tsx` | ✅ Done (untracked) |
-| Cancel invitation button | Uses `api.invitations.cancel` | Pending |
-| Resend invitation button | Uses `api.invitations.resend` | Pending |
-| Invitation status badges | `src/components/InvitationStatus.tsx` | Pending |
-| Add to settings or staff page | `src/app/[slug]/settings/page.tsx` | Pending |
+| Invitations list component | `src/modules/settings/components/InvitationsList.tsx` | ✅ Done |
+| Cancel invitation button | Uses `api.invitations.cancel` | ✅ Done |
+| Resend invitation button | Uses `api.invitations.resend` | ✅ Done |
+| Invitation status badges | Inline in InvitationsList | ✅ Done |
+| Add to settings or staff page | `src/app/[slug]/settings/page.tsx` | ✅ Done |
 
 ### Members Management
 
 | Task | File | Status |
 |------|------|--------|
-| Members list component | `src/modules/settings/components/MembersList.tsx` | ✅ Done (untracked) |
-| Member card component | `src/modules/members/components/MemberCard.tsx` | Pending |
-| Role change dropdown | `src/modules/members/components/RoleSelect.tsx` | Pending |
-| Remove member button | Uses `api.members.remove` | Pending |
-| Leave organization button | Uses `api.members.leave` | Pending |
+| Members list component | `src/modules/settings/components/MembersList.tsx` | ✅ Done |
+| Member card component | Inline in MembersList | ✅ Done |
+| Role change dropdown | Inline in MembersList | ✅ Done |
+| Remove member button | Uses `api.members.remove` | ✅ Done |
+| Leave organization button | Uses `api.members.leave` | ✅ Done |
 
 ### Transfer Ownership
 
 | Task | File | Status |
 |------|------|--------|
 | Transfer ownership mutation | `convex/members.ts` | ✅ Done |
-| Transfer ownership dialog | `src/modules/settings/components/TransferOwnershipDialog.tsx` | ✅ Done (untracked) |
-| Confirmation dialog | Requires 2-step confirmation | Pending |
+| Transfer ownership dialog | `src/modules/settings/components/TransferOwnershipDialog.tsx` | ✅ Done |
+| Confirmation dialog | 2-step flow implemented | ✅ Done |
 
 ### Settings Sub-Forms
 
 | Task | File | Status |
 |------|------|--------|
-| General info form | `src/modules/settings/components/GeneralInfoForm.tsx` | ✅ Done (untracked) |
-| Contact info form | `src/modules/settings/components/ContactInfoForm.tsx` | ✅ Done (untracked) |
-| Address form | `src/modules/settings/components/AddressForm.tsx` | ✅ Done (untracked) |
-| Logo upload component | `src/components/logo-upload/LogoUpload.tsx` | ✅ Done (untracked) |
+| General info form | `src/modules/settings/components/GeneralInfoForm.tsx` | ✅ Done |
+| Contact info form | `src/modules/settings/components/ContactInfoForm.tsx` | ✅ Done |
+| Address form | `src/modules/settings/components/AddressForm.tsx` | ✅ Done |
+| Logo upload component | `src/components/logo-upload/LogoUpload.tsx` | ✅ Done |
 
 ### Backend Infrastructure
 
@@ -245,467 +247,330 @@ This document contains the detailed implementation roadmap for remaining tasks a
 
 ### Deliverables
 
-- [x] Staff profile detail page (`/[slug]/staff/[id]`) (untracked)
-- [x] Staff profile edit form (untracked)
-- [x] Staff schedule editor (untracked)
-- [ ] Pending invitations list
-- [ ] Invitation cancel/resend buttons
-- [x] Members list component (untracked)
-- [ ] Member role change dropdown
-- [ ] Member removal button
-- [x] Transfer ownership feature (backend done, frontend untracked)
+- [x] Staff profile detail page (`/[slug]/staff/[id]`)
+- [x] Staff profile edit form
+- [x] Staff schedule editor
+- [x] Pending invitations list
+- [x] Invitation cancel/resend buttons
+- [x] Members list component
+- [x] Member role change dropdown
+- [x] Member removal button
+- [x] Transfer ownership feature
 
 ---
 
-## Sprint 2: Services, Staff & Customers
+## Sprint 2A: Service Catalog ✅ COMPLETED
 
-> **Goal:** Core entity management
-> **Dependency:** Sprint 1 (Organizations)
-> **User Stories:** US-002, US-003, US-006
+> **Goal:** Build the service catalog with categories, pricing, staff assignment, and image uploads
+> **Dependency:** Sprint 1 + 1.5 (✅ Done)
+> **User Stories:** US-002
+> **Completion Date:** 2026-02-06
 
-### 2A: Service Catalog
+### Tasks
 
-#### Backend
+#### Backend (Convex)
 
-| Task | File |
-|------|------|
-| Service CRUD mutations | `convex/services.ts` |
-| Category CRUD mutations | `convex/serviceCategories.ts` |
-| Service queries (by org, by category) | `convex/services.ts` |
+| Task | File | Lines | Status |
+|------|------|-------|--------|
+| Service categories CRUD | `convex/serviceCategories.ts` | 188 | ✅ Done |
+| Services CRUD + staff assignment | `convex/services.ts` | 353 | ✅ Done |
+| Service image upload mutation | `convex/files.ts` (saveServiceImage) | 253 | ✅ Done |
+| Service/category validators | `convex/lib/validators.ts` | 309 | ✅ Done |
+| createService rate limit | `convex/lib/rateLimits.ts` | 118 | ✅ Done |
+| Schema: serviceCategories + services tables | `convex/schema.ts` | — | ✅ Done |
+| Schema: staff.serviceIds typed as v.id("services") | `convex/schema.ts` | — | ✅ Done |
+| Move getCurrentUser to separate file | `convex/users.ts` | 10 | ✅ Done |
 
-#### Frontend
+#### Frontend (Next.js)
 
-| Task | File |
-|------|------|
-| Services list page | `src/app/[slug]/services/page.tsx` |
-| Service form (add/edit) | `src/modules/services/` |
-| Category management | `src/modules/services/categories/` |
-| Price formatter (TRY) | `src/lib/currency.ts` |
+| Task | File | Lines | Status |
+|------|------|-------|--------|
+| Services page | `src/app/[slug]/services/page.tsx` | — | ✅ Done |
+| Services list table | `src/modules/services/components/ServicesList.tsx` | 199 | ✅ Done |
+| Add service dialog | `src/modules/services/components/AddServiceDialog.tsx` | 369 | ✅ Done |
+| Edit service dialog | `src/modules/services/components/EditServiceDialog.tsx` | 389 | ✅ Done |
+| Delete service dialog | `src/modules/services/components/DeleteServiceDialog.tsx` | 71 | ✅ Done |
+| Category sidebar | `src/modules/services/components/CategorySidebar.tsx` | 239 | ✅ Done |
+| Add category popover | `src/modules/services/components/AddCategoryPopover.tsx` | 89 | ✅ Done |
+| Service image upload | `src/modules/services/components/ServiceImageUpload.tsx` | 183 | ✅ Done |
+| Staff assignment select | `src/modules/services/components/StaffAssignmentSelect.tsx` | 83 | ✅ Done |
+| Price display component | `src/modules/services/components/PriceDisplay.tsx` | 21 | ✅ Done |
+| Currency utilities | `src/modules/services/lib/currency.ts` | 15 | ✅ Done |
+| Module exports | `src/modules/services/index.ts` | 9 | ✅ Done |
+| Enable services nav item | `src/app/[slug]/layout.tsx` | — | ✅ Done |
 
-### 2B: Staff Management
+### Schema Tables (Sprint 2A)
 
-#### Backend
+```typescript
+// Created tables:
+- serviceCategories ✅ (name, description, sortOrder, indexes)
+- services ✅ (name, duration, price, priceType, categoryId, status, showOnline, etc.)
 
-| Task | File |
-|------|------|
-| Staff CRUD mutations | `convex/staff.ts` |
-| Invitation mutation | `convex/staff.ts` |
-| Role permission helpers | `convex/lib/permissions.ts` |
-| Schedule queries | `convex/schedules.ts` |
+// Modified:
+- staff.serviceIds: v.array(v.string()) → v.array(v.id("services")) ✅
+```
 
-#### Frontend
+### Backend APIs (Implemented)
 
-| Task | File |
-|------|------|
-| Staff list page | `src/app/[slug]/staff/page.tsx` |
-| Staff profile page | `src/app/[slug]/staff/[id]/page.tsx` |
-| Invite staff modal | `src/modules/staff/InviteModal.tsx` |
-| Schedule editor | `src/modules/staff/ScheduleEditor.tsx` |
-| Role badge component | `src/components/RoleBadge.tsx` |
+```typescript
+// Service Categories:
+- api.serviceCategories.list ✅ (orgQuery - with service counts)
+- api.serviceCategories.create ✅ (adminMutation - duplicate name check)
+- api.serviceCategories.update ✅ (adminMutation - rename with validation)
+- api.serviceCategories.remove ✅ (adminMutation - reassigns services)
 
-### 2C: Customer Base
+// Services:
+- api.services.list ✅ (orgQuery - filter by category/status, enriched with categoryName)
+- api.services.get ✅ (orgQuery - single service with category)
+- api.services.create ✅ (adminMutation - rate limited, auto sortOrder)
+- api.services.update ✅ (adminMutation - partial update)
+- api.services.remove ✅ (adminMutation - soft-delete, removes from staff)
+- api.services.assignStaff ✅ (adminMutation - toggle staff assignment)
+- api.services.getStaffForService ✅ (orgQuery - active staff with service)
 
-#### Backend
+// Files:
+- api.files.saveServiceImage ✅ (adminMutation - 2MB, JPEG/PNG/WebP)
 
-| Task | File |
-|------|------|
-| Customer CRUD mutations | `convex/customers.ts` |
-| Customer search query | `convex/customers.ts` |
-| Phone validation helper | `convex/lib/phone.ts` |
+// Users:
+- api.users.getCurrentUser ✅ (maybeAuthedQuery - moved from auth.ts)
+```
 
-#### Frontend
+### Key Design Decisions
 
-| Task | File |
-|------|------|
-| Customer list page | `src/app/[slug]/customers/page.tsx` |
-| Customer profile page | `src/app/[slug]/customers/[id]/page.tsx` |
-| Customer search component | `src/modules/customers/Search.tsx` |
+- **Pricing:** Stored as kuruş integers (15000 = ₺150.00), converted at UI boundary
+- **Soft-delete:** Services set to `status: "inactive"` (never hard deleted for booking history)
+- **Staff assignment:** Via `staff.serviceIds` array (add/remove service IDs)
+- **Category removal:** Reassigns services to uncategorized (categoryId = undefined)
+- **Rate limiting:** 50 service creates/day per organization
 
 ### Deliverables
 
-- [ ] Service catalog CRUD (category, service, price, duration)
-- [ ] Staff invitation system (email)
-- [ ] Staff role management (owner, admin, member)
-- [ ] Staff schedule settings
-- [ ] Customer list and search
-- [ ] Customer profile page
+- [x] Service categories CRUD with inline management sidebar
+- [x] Service CRUD with category filtering
+- [x] Pricing display (fixed, starting_from, variable)
+- [x] Staff-service assignment (checkbox in edit dialog)
+- [x] Service image upload
+- [x] Soft-delete for services
+- [x] Role-based UI (admin/owner: CRUD, member: read-only)
+- [x] Services navigation enabled in sidebar
+
+### Definition of Done ✅
+
+1. ✅ Admin can create/edit/delete service categories
+2. ✅ Admin can create/edit/deactivate services
+3. ✅ Services display with category filter
+4. ✅ Staff can be assigned to services
+5. ✅ Service images can be uploaded
+6. ✅ Pricing displayed in TRY (₺)
+
+### Bug Fixes During Sprint
+
+- **Circular dependency fix:** Moved `getCurrentUser` from `convex/auth.ts` to `convex/users.ts` to break circular import between `auth.ts` ↔ `lib/functions.ts`
+- **Edit dialog bug:** Fixed wrong service data appearing in edit dialog by adding `key={editTarget?._id}` to force form remount
+
+---
+
+## Sprint 2B: Staff Management Enhancements
+
+> **Status:** 📋 Pending
+> **Dependencies:** Sprint 2A (✅ Done)
+> **User Stories:** US-003, US-030
+
+### High-Level Goals
+- Schedule overrides and time-off requests
+- Enhanced staff management with service assignments view
+
+### Key Deliverables
+- [ ] Staff schedule override management
+- [ ] Time-off request/approval workflow
+- [ ] Staff overtime management
+
+---
+
+## Sprint 2C: Customer Base
+
+> **Status:** 📋 Pending
+> **Dependencies:** Sprint 2A (✅ Done)
+> **User Stories:** US-006
+
+### High-Level Goals
+- Customer database with search and phone validation
+- Customer profiles with visit history
+
+### Key Deliverables
+- [ ] Customer CRUD with Turkish phone validation
+- [ ] Customer search and filtering
+- [ ] Customer profile with stats
+
+For detailed user stories, acceptance criteria, and implementation tasks, see the [detailed Sprint 2 PRD](../tasks/sprint-02-services-staff-customers.md).
 
 ---
 
 ## Sprint 3: Booking Engine - Core
 
-> **Goal:** Appointment creation and slot management
-> **Dependency:** Sprint 2 (Services, Staff, Customers)
+> **Status:** 📋 Pending
+> **Dependencies:** Sprint 2 (Services, Staff, Customers)
 > **User Stories:** US-020, US-021, US-022, US-031
+> **Detailed PRD:** [../tasks/sprint-03-booking-engine-core.md](../tasks/sprint-03-booking-engine-core.md)
 
-### Backend
+### High-Level Goals
+- Implement slot availability calculation algorithm
+- Create slot locking mechanism for concurrent booking prevention
+- Build appointment CRUD with multi-service support
+- Enable real-time slot updates
 
-| Task | File | Priority |
-|------|------|----------|
-| Slot availability algorithm | `convex/slots.ts` | P0 |
-| Slot lock mechanism | `convex/slotLocks.ts` | P0 |
-| Appointment CRUD | `convex/appointments.ts` | P0 |
-| Appointment services junction | `convex/appointmentServices.ts` | P0 |
-| Lock cleanup cron job | `convex/crons.ts` | P0 |
-| Confirmation code generator | `convex/lib/confirmation.ts` | P0 |
+### Key Deliverables
+- [ ] Slot availability algorithm (considers staff schedules, existing bookings, locks)
+- [ ] Slot locking with 2-minute TTL
+- [ ] Appointment creation with confirmation codes
+- [ ] Real-time updates via Convex subscriptions
 
-### Frontend
-
-| Task | File | Priority |
-|------|------|----------|
-| Service selector component | `src/modules/booking/ServiceSelector.tsx` | P0 |
-| Staff selector component | `src/modules/booking/StaffSelector.tsx` | P0 |
-| Date picker component | `src/modules/booking/DatePicker.tsx` | P0 |
-| Time slot grid | `src/modules/booking/TimeSlotGrid.tsx` | P0 |
-| Booking summary | `src/modules/booking/Summary.tsx` | P0 |
-| useAvailableSlots hook | `src/modules/booking/hooks/` | P0 |
-
-### Slot Availability Logic
-
-```typescript
-// Algorithm summary:
-1. Calculate total duration of selected services
-2. Find available staff for the selected day
-3. For each staff member:
-   - Get working hours
-   - Subtract existing appointments
-   - Subtract active locks
-   - Calculate available gaps
-4. Return as 15-minute slots
-5. Real-time subscription for concurrent updates
-```
-
-### Deliverables
-
-- [ ] Service selection (multi-select support)
-- [ ] Staff selection (or "any available")
-- [ ] Date selection (30 days ahead)
-- [ ] Available slot display
-- [ ] Slot locking (2-minute TTL)
-- [ ] Real-time slot updates
+For detailed algorithm logic, technical specifications, and implementation order, see the [detailed Sprint 3 PRD](../tasks/sprint-03-booking-engine-core.md).
 
 ---
 
 ## Sprint 4: Booking Engine - Operations
 
-> **Goal:** Appointment management and operations
-> **Dependency:** Sprint 3 (Booking Core)
+> **Status:** 📋 Pending
+> **Dependencies:** Sprint 3 (Booking Core)
 > **User Stories:** US-010, US-011, US-012, US-014, US-015, US-025
+> **Detailed PRD:** [../tasks/sprint-04-booking-operations.md](../tasks/sprint-04-booking-operations.md)
 
-### Backend
+### High-Level Goals
+- Complete 7-step online booking wizard with OTP verification
+- Build walk-in quick booking for staff
+- Implement appointment lifecycle operations (check-in, checkout, cancel, no-show)
+- Add rescheduling with 2-hour policy enforcement
 
-| Task | File |
-|------|------|
-| Check-in mutation | `convex/appointments.ts` |
-| Checkout mutation | `convex/appointments.ts` |
-| Cancel mutation | `convex/appointments.ts` |
-| No-show mutation | `convex/appointments.ts` |
-| Walk-in quick booking | `convex/appointments.ts` |
-| OTP verification | `convex/otp.ts` |
-| Reschedule mutation | `convex/appointments.ts` |
+### Key Deliverables
+- [ ] Multi-step booking wizard with customer info collection
+- [ ] OTP verification (mock for MVP, console log)
+- [ ] Walk-in quick booking form
+- [ ] Status transitions: pending → confirmed → checked_in → completed
+- [ ] Cancellation and rescheduling (2-hour policy)
 
-### Frontend
-
-| Task | File |
-|------|------|
-| Booking flow wizard | `src/app/[slug]/book/page.tsx` |
-| Customer info form | `src/modules/booking/CustomerForm.tsx` |
-| OTP input component | `src/modules/booking/OTPInput.tsx` |
-| Confirmation page | `src/app/[slug]/book/confirmation/[id]/page.tsx` |
-| Walk-in quick form | `src/modules/booking/WalkInForm.tsx` |
-| Appointment detail modal | `src/modules/appointments/DetailModal.tsx` |
-| Status badges | `src/components/AppointmentStatus.tsx` |
-
-### Appointment States
-
-```
-pending -> confirmed -> checked_in -> completed
-                    \-> cancelled
-                    \-> no_show
-```
-
-### Deliverables
-
-- [ ] Online booking wizard (7 steps)
-- [ ] OTP verification
-- [ ] Booking confirmation page
-- [ ] Walk-in quick form
-- [ ] Check-in operation
-- [ ] Checkout operation
-- [ ] Cancellation (2-hour rule)
-- [ ] No-show marking
-- [ ] Rescheduling
+For detailed status flow, OTP implementation, and wizard steps, see the [detailed Sprint 4 PRD](../tasks/sprint-04-booking-operations.md).
 
 ---
 
 ## Sprint 5: Admin Dashboard & Calendar
 
-> **Goal:** Admin panel and calendar views
-> **Dependency:** Sprint 4 (Booking Operations)
+> **Status:** 📋 Pending
+> **Dependencies:** Sprint 4 (Booking Operations)
 > **User Stories:** US-004, US-010
+> **Detailed PRD:** [../tasks/sprint-05-dashboard-calendar.md](../tasks/sprint-05-dashboard-calendar.md)
 
-### Backend
+### High-Level Goals
+- Create admin dashboard with real-time metrics
+- Build calendar views (day/week) with appointment visualization
+- Implement drag-and-drop rescheduling
+- Add notification system with bell icon
 
-| Task | File |
-|------|------|
-| Dashboard metrics query | `convex/analytics.ts` |
-| Calendar appointments query | `convex/appointments.ts` |
-| Notifications queries | `convex/notifications.ts` |
-| Real-time subscriptions | All relevant files |
+### Key Deliverables
+- [ ] Dashboard with KPI cards (today/week/month metrics)
+- [ ] Today's appointments widget
+- [ ] Calendar day and week views
+- [ ] Drag-drop rescheduling with validation
+- [ ] Real-time notification panel
 
-### Frontend
-
-| Task | File |
-|------|------|
-| Dashboard layout | `src/app/[slug]/layout.tsx` |
-| Sidebar navigation | `src/components/Sidebar.tsx` |
-| Metrics cards | `src/modules/dashboard/MetricsCard.tsx` |
-| Today's schedule widget | `src/modules/dashboard/TodaySchedule.tsx` |
-| Quick actions | `src/modules/dashboard/QuickActions.tsx` |
-| Notification bell | `src/components/NotificationBell.tsx` |
-| Calendar day view | `src/modules/calendar/DayView.tsx` |
-| Calendar week view | `src/modules/calendar/WeekView.tsx` |
-| Drag-drop rescheduling | `src/modules/calendar/DragDrop.tsx` |
-
-### Dashboard Metrics
-
-```typescript
-interface DashboardMetrics {
-  today: {
-    totalAppointments: number;
-    completed: number;
-    upcoming: number;
-    noShows: number;
-    walkIns: number;
-  };
-  thisWeek: {
-    totalBookings: number;
-    percentChange: number;
-  };
-  thisMonth: {
-    revenue: number;
-    percentChange: number;
-    averageTicket: number;
-  };
-}
-```
-
-### Deliverables
-
-- [ ] Dashboard home page
-- [ ] Sidebar navigation
-- [ ] Daily metrics
-- [ ] Today's appointments list
-- [ ] Quick actions (new appointment, walk-in, block)
-- [ ] Notification panel
-- [ ] Calendar day view
-- [ ] Calendar week view
-- [ ] Drag-drop rescheduling
-- [ ] Appointment detail modal
+For detailed metrics calculations, calendar implementation, and drag-drop logic, see the [detailed Sprint 5 PRD](../tasks/sprint-05-dashboard-calendar.md).
 
 ---
 
 ## Sprint 6: SaaS Billing (Polar.sh)
 
-> **Goal:** Subscription system integration
-> **Dependency:** Sprint 5 (Dashboard)
+> **Status:** 📋 Pending
+> **Dependencies:** Sprint 5 (Dashboard)
 > **User Stories:** US-040, US-041, US-042, US-043, US-044, US-045
+> **Detailed PRD:** [../tasks/sprint-06-saas-billing.md](../tasks/sprint-06-saas-billing.md)
 
-### Backend
+### High-Level Goals
+- Integrate Polar.sh for subscription billing
+- Handle subscription webhooks (created, updated, cancelled, payment failed)
+- Implement 7-day grace period for payment failures
+- Build billing UI with subscription management
 
-| Task | File |
-|------|------|
-| Polar webhook handler | `convex/http.ts` |
-| Subscription mutations | `convex/subscriptions.ts` |
-| Subscription queries | `convex/subscriptions.ts` |
-| Grace period logic | `convex/subscriptions.ts` |
-| Checkout URL action | `convex/polar.ts` |
-| Portal URL action | `convex/polar.ts` |
+### Key Deliverables
+- [ ] Polar checkout flow (Monthly ₺299, Yearly ₺2,990)
+- [ ] Webhook handler with signature validation
+- [ ] Grace period management (7 days)
+- [ ] Billing page with status, history, and cancellation
+- [ ] Subscription middleware (suspend access if expired)
 
-### Frontend
-
-| Task | File |
-|------|------|
-| Billing page | `src/app/[slug]/billing/page.tsx` |
-| Subscription status widget | `src/modules/billing/StatusWidget.tsx` |
-| Payment warning banner | `src/modules/billing/WarningBanner.tsx` |
-| Billing history table | `src/modules/billing/HistoryTable.tsx` |
-| Subscription middleware | `src/middleware.ts` |
-
-### Polar.sh Integration
-
-```typescript
-// Webhook events:
-- checkout.completed -> subscription.created
-- subscription.updated
-- subscription.cancelled
-- payment.succeeded
-- payment.failed -> starts grace period
-
-// Grace period: 7 days
-// Day 1, 3, 5, 7: Reminder emails
-// After Day 7: Account suspended
-```
-
-### Deliverables
-
-- [ ] Checkout flow (monthly/yearly selection)
-- [ ] Subscription status widget
-- [ ] Payment failure banner
-- [ ] Grace period management
-- [ ] Billing history
-- [ ] Polar portal redirect
-- [ ] Subscription cancellation
-- [ ] Suspended state management (billing page access only)
+For detailed webhook events, grace period logic, and subscription states, see the [detailed Sprint 6 PRD](../tasks/sprint-06-saas-billing.md).
 
 ---
 
 ## Sprint 7: Email Notifications (Resend)
 
-> **Goal:** Email notification system
-> **Dependency:** Sprint 4 (Booking), Sprint 6 (Billing)
+> **Status:** 📋 Pending
+> **Dependencies:** Sprint 4 (Booking), Sprint 6 (Billing)
 > **User Stories:** US-023, US-024
+> **Detailed PRD:** [../tasks/sprint-07-email-notifications.md](../tasks/sprint-07-email-notifications.md)
 
-### Backend
+### High-Level Goals
+- Integrate Resend for email delivery
+- Create React Email templates for all notification types
+- Schedule 24-hour advance reminders
+- Send transactional emails (booking, cancellation, payment failures)
 
-| Task | File |
-|------|------|
-| Resend action | `convex/email.ts` |
-| Email templates | `convex/emailTemplates.ts` |
-| Reminder scheduler | `convex/schedulers.ts` |
-| Reminder cron job | `convex/crons.ts` |
+### Key Deliverables
+- [ ] Resend integration with domain verification
+- [ ] React Email templates (BookingConfirmation, Reminder, Cancellation, StaffInvitation, PaymentFailed)
+- [ ] ICS calendar attachments
+- [ ] Reminder scheduler (daily cron at 09:00 UTC)
+- [ ] Email retry logic (3 attempts)
 
-### Frontend (React Email Templates)
-
-| Task | File |
-|------|------|
-| Booking confirmation email | `src/emails/BookingConfirmation.tsx` |
-| Reminder email | `src/emails/Reminder.tsx` |
-| Cancellation email | `src/emails/Cancellation.tsx` |
-| Staff invitation email | `src/emails/StaffInvitation.tsx` |
-| Payment failed email | `src/emails/PaymentFailed.tsx` |
-
-### Email Types
-
-| Email | Trigger | Timing |
-|-------|---------|--------|
-| Booking Confirmation | Appointment created | Immediately |
-| Reminder | Scheduler | 24 hours before |
-| Cancellation | Appointment cancelled | Immediately |
-| Staff Invitation | Invitation sent | Immediately |
-| Payment Failed | Payment unsuccessful | Immediately |
-| Grace Period Reminders | Cron | Day 1, 3, 5, 7 |
-
-### Deliverables
-
-- [ ] Resend integration
-- [ ] React Email templates
-- [ ] Booking confirmation email
-- [ ] 24-hour advance reminder
-- [ ] Cancellation notification
-- [ ] Staff invitation email
-- [ ] Payment failure emails
-- [ ] ICS calendar attachment
+For detailed email template specifications, ICS format, and scheduler logic, see the [detailed Sprint 7 PRD](../tasks/sprint-07-email-notifications.md).
 
 ---
 
 ## Sprint 8: Reports & Analytics (P1)
 
-> **Goal:** Detailed reporting system
-> **Dependency:** Sprint 5 (Dashboard)
+> **Status:** 📋 Pending
+> **Dependencies:** Sprint 5 (Dashboard), Sprint 4 (Completed appointments)
 > **User Stories:** US-005, US-032
+> **Detailed PRD:** [../tasks/sprint-08-reports-analytics.md](../tasks/sprint-08-reports-analytics.md)
 
-### Backend
+### High-Level Goals
+- Build revenue reporting with trends and breakdowns
+- Create staff performance analytics (utilization, no-show rate)
+- Build customer analytics (new vs returning, retention)
+- Add date range filtering and CSV export
 
-| Task | File |
-|------|------|
-| Revenue report query | `convex/reports.ts` |
-| Staff performance query | `convex/reports.ts` |
-| Customer analytics query | `convex/reports.ts` |
-| Audit log mutations | `convex/auditLogs.ts` |
-| CSV export action | `convex/exports.ts` |
+### Key Deliverables
+- [ ] Revenue report (total, by service, by staff, trend chart)
+- [ ] Staff performance report (appointments, revenue, utilization %)
+- [ ] Customer analytics (new vs returning, top customers)
+- [ ] Date range picker with presets
+- [ ] CSV export functionality
 
-### Frontend
-
-| Task | File |
-|------|------|
-| Reports layout | `src/app/[slug]/reports/layout.tsx` |
-| Revenue report page | `src/app/[slug]/reports/revenue/page.tsx` |
-| Staff report page | `src/app/[slug]/reports/staff/page.tsx` |
-| Customer report page | `src/app/[slug]/reports/customers/page.tsx` |
-| Chart components | `src/modules/reports/charts/` |
-| Date range picker | `src/components/DateRangePicker.tsx` |
-| Export button | `src/components/ExportButton.tsx` |
-
-### Report Types
-
-| Report | Metrics |
-|--------|---------|
-| Revenue | Daily/weekly/monthly revenue, by service, by staff |
-| Staff Performance | Appointment count, revenue, utilization %, no-show rate |
-| Customer Analytics | New vs returning, retention, top customers |
-
-### Deliverables
-
-- [ ] Revenue report (chart + table)
-- [ ] Staff performance report
-- [ ] Customer analytics report
-- [ ] Date range picker
-- [ ] CSV export
-- [ ] Audit logging
+For detailed metrics calculations, utilization formulas, and export implementation, see the [detailed Sprint 8 PRD](../tasks/sprint-08-reports-analytics.md).
 
 ---
 
 ## Sprint 9: Customer Portal (P1)
 
-> **Goal:** Customer self-service portal
-> **Dependency:** Sprint 4 (Booking), Sprint 7 (Email)
+> **Status:** 📋 Pending
+> **Dependencies:** Sprint 4 (Booking), Sprint 7 (Email - magic link)
 > **User Stories:** US-026, US-027
+> **Detailed PRD:** [../tasks/sprint-09-customer-portal.md](../tasks/sprint-09-customer-portal.md)
 
-### Backend
+### High-Level Goals
+- Implement passwordless magic link authentication for customers
+- Build customer appointment history view
+- Enable self-service rescheduling and cancellation
+- Add "Book again" functionality
 
-| Task | File |
-|------|------|
-| Customer auth (magic link) | `convex/customerAuth.ts` |
-| Customer booking history | `convex/customers.ts` |
-| Reschedule mutation | `convex/appointments.ts` |
-| Cancel (customer) mutation | `convex/appointments.ts` |
+### Key Deliverables
+- [ ] Magic link authentication (15-minute TTL)
+- [ ] Appointment history (active and past)
+- [ ] Self-service rescheduling (respects 2-hour policy)
+- [ ] Self-service cancellation (respects 2-hour policy)
+- [ ] "Book again" with pre-filled services
+- [ ] Customer profile settings
 
-### Frontend
-
-| Task | File |
-|------|------|
-| Customer portal layout | `src/app/[slug]/portal/layout.tsx` |
-| Login page (magic link) | `src/app/[slug]/portal/login/page.tsx` |
-| My appointments page | `src/app/[slug]/portal/appointments/page.tsx` |
-| Booking history | `src/app/[slug]/portal/history/page.tsx` |
-| Reschedule flow | `src/app/[slug]/portal/reschedule/[id]/page.tsx` |
-| Cancel confirmation | `src/modules/portal/CancelModal.tsx` |
-
-### Customer Portal Features
-
-```
-Portal Home
-├── Active Appointments
-│   ├── View Details
-│   ├── Reschedule
-│   └── Cancel
-├── Past Appointments
-│   └── Book Again
-└── Profile Settings
-    ├── Contact Information
-    └── Notification Preferences
-```
-
-### Deliverables
-
-- [ ] Magic link authentication
-- [ ] Active appointments list
-- [ ] Past appointments
-- [ ] Self-service rescheduling
-- [ ] Self-service cancellation (2-hour rule)
-- [ ] "Book again" button
-- [ ] Notification preferences
+For detailed magic link implementation, authentication architecture, and security considerations, see the [detailed Sprint 9 PRD](../tasks/sprint-09-customer-portal.md).
 
 ---
 
@@ -714,8 +579,10 @@ Portal Home
 | Sprint | Goal | User Stories | Complexity | Status |
 |--------|------|-------------|------------|--------|
 | 1 | Multi-Tenant Foundation | US-001, US-030 | Medium | ✅ Done |
-| 1.5 | Multi-Tenant Enhancements | US-001, US-030 | Medium | In Progress |
-| 2 | Services, Staff, Customers | US-002, US-003, US-006 | High | Pending |
+| 1.5 | Multi-Tenant Enhancements | US-001, US-030 | Medium | ✅ Done |
+| 2A | Service Catalog | US-002 | Medium | ✅ Done |
+| 2B | Staff Management | US-003, US-030 | Medium | Pending |
+| 2C | Customer Base | US-006 | Medium | Pending |
 | 3 | Booking Engine Core | US-020-022, US-031 | High | Pending |
 | 4 | Booking Operations | US-010-015, US-025 | High | Pending |
 | 5 | Dashboard & Calendar | US-004, US-010 | High | Pending |
@@ -774,25 +641,42 @@ Portal Home
 
 ---
 
-## Next Steps
+## Working with Sprint PRDs
 
-~~Start Sprint 1:~~ ✅ COMPLETED
+### For Developers
 
-To complete Sprint 1.5:
+Each sprint has a detailed PRD in `docs/tasks/` that can be used with ralph-tui or read directly:
 
-1. Wire up cancel/resend buttons in InvitationsList component
-2. Add invitation status badges
-3. Wire up role change dropdown in MembersList component
-4. Add member removal and leave organization buttons
-5. Add 2-step confirmation to TransferOwnershipDialog
-6. Commit untracked frontend files (staff profile, settings sub-forms, logo upload)
+```bash
+# View all sprint PRDs
+ls docs/tasks/
 
-To start Sprint 2:
+# Read a specific sprint PRD
+cat docs/tasks/sprint-02-services-staff-customers.md
+```
 
-1. Service category CRUD (`convex/serviceCategories.ts`)
-2. Service CRUD (`convex/services.ts`)
-3. Services list page (`src/app/[slug]/services/page.tsx`)
-4. Service form component
-5. Price formatter (TRY currency)
+### For Ralph-TUI
 
-> **Note:** Code review and testing should be performed at the end of each sprint.
+Sprint PRDs are wrapped in `[PRD]...[/PRD]` markers for ralph-tui compatibility:
+
+```bash
+# Generate tasks from a sprint PRD
+ralph-tui-create-json docs/tasks/sprint-02-services-staff-customers.md
+
+# Create GitHub/Linear issues
+ralph-tui-create-beads docs/tasks/sprint-02-services-staff-customers.md
+```
+
+### Next Sprint to Start
+
+**Sprint 2B: Staff Management Enhancements**
+- See: [docs/tasks/sprint-02-services-staff-customers.md](../tasks/sprint-02-services-staff-customers.md)
+- Start with: Schedule overrides and time-off requests
+- Then: Staff overtime management
+- Finally: Enhanced staff views with service assignments
+
+**Sprint 2C: Customer Base**
+- Customer CRUD with Turkish phone validation
+- Customer profiles with visit stats
+
+> **Note:** Code review and testing should be performed at the end of each sprint. Use the quality gates defined in each sprint PRD.

@@ -106,7 +106,7 @@ function DashboardSkeleton() {
 
 export default function DashboardPage() {
   const router = useRouter();
-  const user = useQuery(api.auth.getCurrentUser);
+  const user = useQuery(api.users.getCurrentUser);
   const organizations = useOrganizations();
 
   // Handle redirects in useEffect to avoid side effects during render

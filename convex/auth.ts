@@ -4,7 +4,6 @@ import { betterAuth } from "better-auth/minimal";
 import { components } from "./_generated/api";
 import type { DataModel } from "./_generated/dataModel";
 import authConfig from "./auth.config";
-import { maybeAuthedQuery } from "./lib/functions";
 
 const siteUrl = process.env.SITE_URL!;
 
@@ -34,12 +33,3 @@ export const createAuth = (ctx: GenericCtx<DataModel>) => {
     ],
   });
 };
-
-// Returns the current user if authenticated, null otherwise
-// Does NOT throw if user is not authenticated
-export const getCurrentUser = maybeAuthedQuery({
-  args: {},
-  handler: async (ctx) => {
-    return ctx.user;
-  },
-});
