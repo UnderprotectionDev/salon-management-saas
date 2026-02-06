@@ -1,59 +1,21 @@
-import { v } from "convex/values";
+import { ConvexError, v } from "convex/values";
 import {
   adminMutation,
   authedMutation,
+  ErrorCode,
   maybeAuthedQuery,
   orgQuery,
   publicQuery,
 } from "./lib/functions";
 import { rateLimiter } from "./lib/rateLimits";
-
-// =============================================================================
-// Validators
-// =============================================================================
-
-const businessHoursDayValidator = v.optional(
-  v.object({
-    open: v.string(),
-    close: v.string(),
-    closed: v.boolean(),
-  }),
-);
-
-const businessHoursValidator = v.optional(
-  v.object({
-    monday: businessHoursDayValidator,
-    tuesday: businessHoursDayValidator,
-    wednesday: businessHoursDayValidator,
-    thursday: businessHoursDayValidator,
-    friday: businessHoursDayValidator,
-    saturday: businessHoursDayValidator,
-    sunday: businessHoursDayValidator,
-  }),
-);
-
-const bookingSettingsValidator = v.optional(
-  v.object({
-    minAdvanceBookingMinutes: v.optional(v.number()),
-    maxAdvanceBookingDays: v.optional(v.number()),
-    slotDurationMinutes: v.optional(v.number()),
-    bufferBetweenBookingsMinutes: v.optional(v.number()),
-    allowOnlineBooking: v.optional(v.boolean()),
-    requireDeposit: v.optional(v.boolean()),
-    depositAmount: v.optional(v.number()),
-    cancellationPolicyHours: v.optional(v.number()),
-  }),
-);
-
-const addressValidator = v.optional(
-  v.object({
-    street: v.optional(v.string()),
-    city: v.optional(v.string()),
-    state: v.optional(v.string()),
-    postalCode: v.optional(v.string()),
-    country: v.optional(v.string()),
-  }),
-);
+import {
+  addressValidator,
+  bookingSettingsValidator,
+  businessHoursValidator,
+  organizationDocValidator,
+  organizationSettingsDocValidator,
+  organizationWithRoleValidator,
+} from "./lib/validators";
 
 // =============================================================================
 // Public Queries
@@ -65,6 +27,7 @@ const addressValidator = v.optional(
  */
 export const getBySlug = publicQuery({
   args: { slug: v.string() },
+  returns: v.union(organizationDocValidator, v.null()),
   handler: async (ctx, args) => {
     return await ctx.db
       .query("organization")
@@ -79,6 +42,7 @@ export const getBySlug = publicQuery({
  */
 export const get = publicQuery({
   args: { id: v.id("organization") },
+  returns: v.union(organizationDocValidator, v.null()),
   handler: async (ctx, args) => {
     return ctx.db.get(args.id);
   },
@@ -94,16 +58,19 @@ export const get = publicQuery({
  */
 export const listForUser = maybeAuthedQuery({
   args: {},
+  returns: v.array(organizationWithRoleValidator),
   handler: async (ctx) => {
     // Return empty array if not authenticated
     if (!ctx.user) {
       return [];
     }
 
+    const user = ctx.user;
+
     // Get all memberships for this user
     const memberships = await ctx.db
       .query("member")
-      .withIndex("userId", (q) => q.eq("userId", ctx.user._id))
+      .withIndex("userId", (q) => q.eq("userId", user._id))
       .collect();
 
     // Get organization details for each membership
@@ -132,15 +99,18 @@ export const listForUser = maybeAuthedQuery({
  */
 export const hasOrganization = maybeAuthedQuery({
   args: {},
+  returns: v.boolean(),
   handler: async (ctx) => {
     // Return false if not authenticated
     if (!ctx.user) {
       return false;
     }
 
+    const user = ctx.user;
+
     const membership = await ctx.db
       .query("member")
-      .withIndex("userId", (q) => q.eq("userId", ctx.user._id))
+      .withIndex("userId", (q) => q.eq("userId", user._id))
       .first();
 
     return !!membership;
@@ -152,6 +122,7 @@ export const hasOrganization = maybeAuthedQuery({
  */
 export const getSettings = orgQuery({
   args: {},
+  returns: v.union(organizationSettingsDocValidator, v.null()),
   handler: async (ctx) => {
     return await ctx.db
       .query("organizationSettings")
@@ -183,6 +154,11 @@ export const create = authedMutation({
     email: v.optional(v.string()),
     phone: v.optional(v.string()),
   },
+  returns: v.object({
+    organizationId: v.id("organization"),
+    memberId: v.id("member"),
+    slug: v.string(),
+  }),
   handler: async (ctx, args) => {
     // Rate limit check (per user)
     const { ok, retryAfter } = await rateLimiter.limit(
@@ -193,9 +169,10 @@ export const create = authedMutation({
       },
     );
     if (!ok) {
-      throw new Error(
-        `Organizasyon oluşturma limiti aşıldı. ${Math.ceil(retryAfter! / 1000 / 60 / 60)} saat sonra tekrar deneyin.`,
-      );
+      throw new ConvexError({
+        code: ErrorCode.RATE_LIMITED,
+        message: `Organization creation limit exceeded. Try again in ${Math.ceil(retryAfter! / 1000 / 60 / 60)} hours.`,
+      });
     }
 
     const now = Date.now();
@@ -207,7 +184,10 @@ export const create = authedMutation({
       .first();
 
     if (existingOrg) {
-      throw new Error("This URL slug is already taken");
+      throw new ConvexError({
+        code: ErrorCode.ALREADY_EXISTS,
+        message: "This URL slug is already taken",
+      });
     }
 
     // Create organization
@@ -297,14 +277,18 @@ export const create = authedMutation({
 export const update = adminMutation({
   args: {
     name: v.optional(v.string()),
+    description: v.optional(v.string()),
     logo: v.optional(v.string()),
   },
+  returns: v.id("organization"),
   handler: async (ctx, args) => {
     const updates: Record<string, unknown> = { updatedAt: Date.now() };
     if (args.name !== undefined) updates.name = args.name;
+    if (args.description !== undefined) updates.description = args.description;
     if (args.logo !== undefined) updates.logo = args.logo;
 
     await ctx.db.patch(ctx.organizationId, updates);
+
     return ctx.organizationId;
   },
 });
@@ -324,6 +308,7 @@ export const updateSettings = adminMutation({
     businessHours: businessHoursValidator,
     bookingSettings: bookingSettingsValidator,
   },
+  returns: v.id("organizationSettings"),
   handler: async (ctx, args) => {
     const settings = await ctx.db
       .query("organizationSettings")
@@ -333,7 +318,10 @@ export const updateSettings = adminMutation({
       .first();
 
     if (!settings) {
-      throw new Error("Organization settings not found");
+      throw new ConvexError({
+        code: ErrorCode.NOT_FOUND,
+        message: "Organization settings not found",
+      });
     }
 
     const updates: Record<string, unknown> = { updatedAt: Date.now() };
@@ -344,6 +332,7 @@ export const updateSettings = adminMutation({
     }
 
     await ctx.db.patch(settings._id, updates);
+
     return settings._id;
   },
 });

@@ -1,20 +1,13 @@
-import { v } from "convex/values";
+import { ConvexError, v } from "convex/values";
 import {
   adminMutation,
   authedMutation,
   authedQuery,
+  ErrorCode,
   orgQuery,
+  ownerMutation,
 } from "./lib/functions";
-
-// =============================================================================
-// Validators
-// =============================================================================
-
-const roleValidator = v.union(
-  v.literal("owner"),
-  v.literal("admin"),
-  v.literal("member"),
-);
+import { memberDocValidator, memberRoleValidator } from "./lib/validators";
 
 // =============================================================================
 // Queries
@@ -25,6 +18,7 @@ const roleValidator = v.union(
  */
 export const list = orgQuery({
   args: {},
+  returns: v.array(memberDocValidator),
   handler: async (ctx) => {
     return await ctx.db
       .query("member")
@@ -40,6 +34,7 @@ export const list = orgQuery({
  */
 export const getCurrent = authedQuery({
   args: { organizationId: v.id("organization") },
+  returns: v.union(memberDocValidator, v.null()),
   handler: async (ctx, args) => {
     return await ctx.db
       .query("member")
@@ -61,12 +56,16 @@ export const getCurrent = authedQuery({
 export const add = adminMutation({
   args: {
     userId: v.string(), // Better Auth user ID
-    role: roleValidator,
+    role: memberRoleValidator,
   },
+  returns: v.id("member"),
   handler: async (ctx, args) => {
     // Cannot add another owner
     if (args.role === "owner") {
-      throw new Error("Cannot add another owner");
+      throw new ConvexError({
+        code: ErrorCode.VALIDATION_ERROR,
+        message: "Cannot add another owner",
+      });
     }
 
     // Check if user is already a member
@@ -78,18 +77,23 @@ export const add = adminMutation({
       .first();
 
     if (existingMembership) {
-      throw new Error("User is already a member of this organization");
+      throw new ConvexError({
+        code: ErrorCode.ALREADY_EXISTS,
+        message: "User is already a member of this organization",
+      });
     }
 
     const now = Date.now();
 
-    return await ctx.db.insert("member", {
+    const memberId = await ctx.db.insert("member", {
       organizationId: ctx.organizationId,
       userId: args.userId,
       role: args.role,
       createdAt: now,
       updatedAt: now,
     });
+
+    return memberId;
   },
 });
 
@@ -101,12 +105,16 @@ export const add = adminMutation({
 export const updateRole = authedMutation({
   args: {
     memberId: v.id("member"),
-    role: roleValidator,
+    role: memberRoleValidator,
   },
+  returns: v.id("member"),
   handler: async (ctx, args) => {
     const member = await ctx.db.get(args.memberId);
     if (!member) {
-      throw new Error("Member not found");
+      throw new ConvexError({
+        code: ErrorCode.NOT_FOUND,
+        message: "Member not found",
+      });
     }
 
     // Check if current user is owner
@@ -120,17 +128,26 @@ export const updateRole = authedMutation({
       .first();
 
     if (!currentMembership || currentMembership.role !== "owner") {
-      throw new Error("Only owner can change member roles");
+      throw new ConvexError({
+        code: ErrorCode.OWNER_REQUIRED,
+        message: "Only owner can change member roles",
+      });
     }
 
     // Cannot change owner role
     if (member.role === "owner") {
-      throw new Error("Cannot change owner role");
+      throw new ConvexError({
+        code: ErrorCode.VALIDATION_ERROR,
+        message: "Cannot change owner role",
+      });
     }
 
     // Cannot make someone else owner
     if (args.role === "owner") {
-      throw new Error("Cannot assign owner role");
+      throw new ConvexError({
+        code: ErrorCode.VALIDATION_ERROR,
+        message: "Cannot assign owner role",
+      });
     }
 
     await ctx.db.patch(args.memberId, {
@@ -149,10 +166,14 @@ export const updateRole = authedMutation({
  */
 export const remove = authedMutation({
   args: { memberId: v.id("member") },
+  returns: v.boolean(),
   handler: async (ctx, args) => {
     const member = await ctx.db.get(args.memberId);
     if (!member) {
-      throw new Error("Member not found");
+      throw new ConvexError({
+        code: ErrorCode.NOT_FOUND,
+        message: "Member not found",
+      });
     }
 
     // Check if current user has permission
@@ -169,17 +190,26 @@ export const remove = authedMutation({
       !currentMembership ||
       !["owner", "admin"].includes(currentMembership.role)
     ) {
-      throw new Error("You don't have permission to remove members");
+      throw new ConvexError({
+        code: ErrorCode.FORBIDDEN,
+        message: "You don't have permission to remove members",
+      });
     }
 
     // Cannot remove owner
     if (member.role === "owner") {
-      throw new Error("Cannot remove the owner");
+      throw new ConvexError({
+        code: ErrorCode.VALIDATION_ERROR,
+        message: "Cannot remove the owner",
+      });
     }
 
     // Cannot remove self (use leave instead)
     if (member.userId === ctx.user._id) {
-      throw new Error("Cannot remove yourself, use leave instead");
+      throw new ConvexError({
+        code: ErrorCode.VALIDATION_ERROR,
+        message: "Cannot remove yourself, use leave instead",
+      });
     }
 
     // Cascading: Also remove staff profile
@@ -199,11 +229,72 @@ export const remove = authedMutation({
 });
 
 /**
+ * Transfer organization ownership to another member
+ * Only owner can transfer ownership
+ */
+export const transferOwnership = ownerMutation({
+  args: {
+    newOwnerId: v.id("member"),
+  },
+  returns: v.boolean(),
+  handler: async (ctx, args) => {
+    const newOwner = await ctx.db.get(args.newOwnerId);
+    if (!newOwner) {
+      throw new ConvexError({
+        code: ErrorCode.NOT_FOUND,
+        message: "Member not found",
+      });
+    }
+
+    // Must be in the same organization
+    if (newOwner.organizationId !== ctx.organizationId) {
+      throw new ConvexError({
+        code: ErrorCode.VALIDATION_ERROR,
+        message: "Member does not belong to this organization",
+      });
+    }
+
+    // Cannot transfer to self
+    if (newOwner.userId === ctx.user._id) {
+      throw new ConvexError({
+        code: ErrorCode.VALIDATION_ERROR,
+        message: "Cannot transfer ownership to yourself",
+      });
+    }
+
+    // Cannot transfer to someone already owner
+    if (newOwner.role === "owner") {
+      throw new ConvexError({
+        code: ErrorCode.VALIDATION_ERROR,
+        message: "Member is already the owner",
+      });
+    }
+
+    const now = Date.now();
+
+    // Demote current owner to admin
+    await ctx.db.patch(ctx.member._id, {
+      role: "admin",
+      updatedAt: now,
+    });
+
+    // Promote new owner
+    await ctx.db.patch(args.newOwnerId, {
+      role: "owner",
+      updatedAt: now,
+    });
+
+    return true;
+  },
+});
+
+/**
  * Leave an organization
  * Any member can leave except owner
  */
 export const leave = authedMutation({
   args: { organizationId: v.id("organization") },
+  returns: v.boolean(),
   handler: async (ctx, args) => {
     const membership = await ctx.db
       .query("member")
@@ -213,11 +304,17 @@ export const leave = authedMutation({
       .first();
 
     if (!membership) {
-      throw new Error("You are not a member of this organization");
+      throw new ConvexError({
+        code: ErrorCode.NOT_FOUND,
+        message: "You are not a member of this organization",
+      });
     }
 
     if (membership.role === "owner") {
-      throw new Error("Owner cannot leave the organization");
+      throw new ConvexError({
+        code: ErrorCode.VALIDATION_ERROR,
+        message: "Owner cannot leave the organization",
+      });
     }
 
     // Cascading: Remove staff profile

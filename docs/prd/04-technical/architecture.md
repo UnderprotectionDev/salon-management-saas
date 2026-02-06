@@ -15,7 +15,6 @@ The Salon Management SaaS is built on a modern, real-time architecture optimized
 flowchart TB
     subgraph Client["Client Layer"]
         NextJS["Next.js 16 App<br/>(React 19 + Compiler)"]
-        PWA["PWA Support"]
     end
 
     subgraph Convex["Convex Platform"]
@@ -81,12 +80,12 @@ flowchart TB
 
 ### Authentication
 
-| Technology     | Purpose                         |
-| -------------- | ------------------------------- |
-| Better Auth    | Auth framework                  |
-| Convex Adapter | Session storage in Convex       |
-| Magic Link     | Passwordless email login        |
-| OTP            | Phone verification for bookings |
+| Technology              | Purpose                                      |
+| ----------------------- | -------------------------------------------- |
+| Better Auth             | Auth framework                               |
+| @convex-dev/better-auth | Convex adapter (session/user storage)        |
+| Google OAuth            | Primary social login                         |
+| Email/Password          | Fallback authentication                      |
 
 ### External Services
 
@@ -109,6 +108,8 @@ flowchart TB
 ---
 
 ## Multi-Tenancy Architecture
+
+> **Terminology Note:** This document uses "tenant" and "organization" interchangeably when discussing architecture. In code and database schema, we use `organization` (e.g., `organizationId`). See [Glossary - Organization](../appendix/glossary.md#organization) for full terminology guidelines.
 
 ### Tenant Isolation Strategy
 
@@ -139,26 +140,37 @@ flowchart LR
     Functions --> Tenant2
 ```
 
+### Data Model
+
+The schema uses **singular table names** and separates concerns across dedicated tables:
+
+| Table | Purpose |
+| --- | --- |
+| `organization` | Core salon identity (name, slug) |
+| `organizationSettings` | Salon configuration (hours, booking settings, contact) |
+| `member` | Organization membership + role (owner/admin/member) |
+| `staff` | Staff profiles (schedule, services, bio) |
+| `invitation` | Pending staff invitations |
+| `auditLogs` | Operation audit trail |
+
 ### Implementation Pattern
 
 ```typescript
-// Every table includes organizationId
+// Every table includes organizationId (singular table name)
 appointments: defineTable({
-  organizationId: v.id("organizations"), // Tenant identifier
+  organizationId: v.id("organization"), // Tenant identifier
   // ... other fields
-}).index("by_organization", ["organizationId"]);
+}).index("organizationId", ["organizationId"]);
 
-// Every query filters by organization
-export const getAppointments = query({
-  args: { organizationId: v.id("organizations") },
-  handler: async (ctx, args) => {
-    // Verify user has access to this organization
-    await assertOrgAccess(ctx, args.organizationId);
-
+// Use orgQuery wrapper — organizationId is auto-injected, membership is verified
+export const getAppointments = orgQuery({
+  args: {},
+  handler: async (ctx) => {
+    // ctx.organizationId, ctx.member, ctx.staff are available
     return ctx.db
       .query("appointments")
-      .withIndex("by_organization", (q) =>
-        q.eq("organizationId", args.organizationId),
+      .withIndex("organizationId", (q) =>
+        q.eq("organizationId", ctx.organizationId),
       )
       .collect();
   },
@@ -175,6 +187,137 @@ Examples:
 - /glamour-salon/calendar
 - /glamour-salon/book (public booking)
 ```
+
+---
+
+## Rate Limiting
+
+> **File:** `convex/lib/rateLimits.ts` (104 lines)
+> **Status:** ✅ Implemented
+> **Purpose:** Prevents abuse and ensures fair resource usage via configurable rate limits
+
+The system uses the `@convex-dev/rate-limiter` component with two strategies:
+
+### Rate Limiting Strategies
+
+| Strategy | Behavior | Use Case |
+|----------|----------|----------|
+| **Token Bucket** | Allows bursts, refills gradually | User-facing actions that may come in bursts |
+| **Fixed Window** | Hard limit per time window | Critical operations that must have strict limits |
+
+### Rate Limit Configuration
+
+All rate limits are defined in a centralized configuration file and applied via the `rateLimiter` instance.
+
+#### Invitation Limits
+
+| Operation | Strategy | Rate | Period | Capacity | Reason |
+|-----------|----------|------|--------|----------|--------|
+| `createInvitation` | Token Bucket | 20 | 1 day | 25 | Prevents invitation spam, allows burst when setting up team |
+| `resendInvitation` | Token Bucket | 3 | 1 hour | 3 | Prevents email bombardment of invitee |
+
+#### Organization Limits
+
+| Operation | Strategy | Rate | Period | Capacity | Reason |
+|-----------|----------|------|--------|----------|--------|
+| `createOrganization` | Fixed Window | 3 | 1 day | 3 | Prevents abuse of free trials |
+
+#### Member Limits
+
+| Operation | Strategy | Rate | Period | Capacity | Reason |
+|-----------|----------|------|--------|----------|--------|
+| `addMember` | Token Bucket | 10 | 1 hour | 15 | Prevents mass member addition attacks |
+
+#### Future: Booking Limits (Planned)
+
+| Operation | Strategy | Rate | Period | Capacity | Reason |
+|-----------|----------|------|--------|----------|--------|
+| `createBooking` | Token Bucket | 5 | 1 minute | 10 | Prevents booking spam |
+| `cancelBooking` | Token Bucket | 3 | 1 hour | 3 | Prevents abuse of cancellation |
+
+### Token Bucket vs Fixed Window
+
+```typescript
+// Token Bucket: Allows burst, then throttles
+{
+  kind: "token bucket",
+  rate: 20,        // 20 tokens per day
+  period: DAY,
+  capacity: 25,    // Can accumulate 25 tokens (allows burst of 5 extra)
+}
+
+// Fixed Window: Hard limit, resets at window boundary
+{
+  kind: "fixed window",
+  rate: 3,         // Exactly 3 per day
+  period: DAY,
+}
+```
+
+### Usage Example
+
+```typescript
+// File: convex/invitations.ts
+import { rateLimiter } from "./lib/rateLimits";
+
+export const create = adminMutation({
+  args: { /* ... */ },
+  handler: async (ctx, args) => {
+    // Check rate limit (key: organizationId)
+    await rateLimiter.limit(ctx, "createInvitation", {
+      key: ctx.organizationId,
+    });
+
+    // Create invitation if limit not exceeded
+    // ...
+  },
+});
+```
+
+**How it works:**
+1. Function calls `rateLimiter.limit()` with a unique key (e.g., organizationId)
+2. Rate limiter checks if key has exceeded limit
+3. If exceeded: throws `ConvexError` with `RATE_LIMITED` code
+4. If allowed: consumes a token and proceeds
+
+### Rate Limit Response
+
+When rate limited, mutations throw:
+
+```typescript
+throw new ConvexError({
+  code: ErrorCode.RATE_LIMITED,
+  message: "Too many invitations. Please try again later.",
+  retryAfter: 3600, // Seconds until limit resets
+});
+```
+
+**Frontend handling:**
+
+```typescript
+try {
+  await createInvitation({ email, name, role });
+} catch (error) {
+  if (error.code === "RATE_LIMITED") {
+    toast.error(error.message);
+    // Optionally: disable button for error.retryAfter seconds
+  }
+}
+```
+
+### Time Constants
+
+```typescript
+// Exported from convex/lib/rateLimits.ts
+export const SECOND = 1000;
+export const MINUTE = 60 * SECOND;
+export const HOUR = 60 * MINUTE;
+export const DAY = 24 * HOUR;
+```
+
+**See also:**
+- [Rate Limiter Component Documentation](https://stack.convex.dev/rate-limiting) for implementation details
+- [Error Handling](./api-contracts.md#error-handling) for rate limit error responses
 
 ---
 
@@ -240,50 +383,98 @@ flowchart TB
     User[User] --> Login[Login Page]
     Login --> BetterAuth[Better Auth]
     BetterAuth --> Method{Method?}
-    Method -->|Email| MagicLink[Magic Link]
-    Method -->|Phone| OTP[OTP Verification]
-    MagicLink --> Session[Create Session]
-    OTP --> Session
-    Session --> Convex[Store in Convex]
+    Method -->|Social| Google[Google OAuth]
+    Method -->|Credentials| EmailPw[Email/Password]
+    Google --> Session[Create Session]
+    EmailPw --> Session
+    Session --> Convex[Store in Convex via @convex-dev/better-auth]
     Convex --> JWT[Return JWT]
     JWT --> Client[Client Stores Token]
 ```
 
 ### Authorization Model
 
+Authorization is enforced via **custom function wrappers** (defined in `convex/lib/functions.ts`) built on `convex-helpers/server/customFunctions`. Each wrapper adds progressively stricter checks and injects context:
+
 ```typescript
 // Role-based access control
-type Role = "owner" | "admin" | "staff";
+type Role = "owner" | "admin" | "member";
 
-// Permission checks in every mutation
-async function assertPermission(
-  ctx: MutationCtx,
-  organizationId: Id<"organizations">,
-  requiredRole: Role,
-) {
-  const user = await getCurrentUser(ctx);
-  const membership = await ctx.db
-    .query("staff")
-    .withIndex("by_user", (q) => q.eq("userId", user._id))
-    .filter((q) => q.eq(q.field("organizationId"), organizationId))
-    .first();
+// Structured error codes (ErrorCode enum in convex/lib/functions.ts)
+const ErrorCode = {
+  UNAUTHENTICATED: "UNAUTHENTICATED",
+  FORBIDDEN: "FORBIDDEN",
+  ADMIN_REQUIRED: "ADMIN_REQUIRED",
+  OWNER_REQUIRED: "OWNER_REQUIRED",
+  NOT_FOUND: "NOT_FOUND",
+  ALREADY_EXISTS: "ALREADY_EXISTS",
+  VALIDATION_ERROR: "VALIDATION_ERROR",
+  INVALID_INPUT: "INVALID_INPUT",
+  RATE_LIMITED: "RATE_LIMITED",
+  INTERNAL_ERROR: "INTERNAL_ERROR",
+} as const;
+```
 
-  if (!membership) {
-    throw new ConvexError("Not a member of this organization");
+#### Custom Function Wrappers
+
+| Wrapper | Auth | Context Added | Use Case |
+| --- | --- | --- | --- |
+| `publicQuery` | None | — | Public data (org info by slug) |
+| `maybeAuthedQuery` | Optional | `ctx.user` (or `null`) | Works for both authed/unauthed users |
+| `authedQuery/Mutation` | Required | `ctx.user` | User-scoped data (profile, orgs list) |
+| `orgQuery/Mutation` | Required + org membership | `ctx.user`, `ctx.organizationId`, `ctx.member`, `ctx.staff` | All org-scoped operations |
+| `adminQuery/Mutation` | Required + admin/owner role | Same as org + `ctx.role` | Staff management, settings |
+| `ownerQuery/Mutation` | Required + owner role only | Same as org + `ctx.role` | Billing, org deletion |
+
+```typescript
+// User resolution via Better Auth component
+import { authComponent } from "../auth";
+
+async function getAuthUser(ctx) {
+  const user = await authComponent.getAuthUser(ctx);
+  if (!user) {
+    throw new ConvexError({
+      code: ErrorCode.UNAUTHENTICATED,
+      message: "Authentication required",
+    });
   }
-
-  const roleHierarchy: Record<Role, number> = {
-    owner: 3,
-    admin: 2,
-    staff: 1,
-  };
-
-  if (roleHierarchy[membership.role] < roleHierarchy[requiredRole]) {
-    throw new ConvexError("Insufficient permissions");
-  }
-
-  return membership;
+  return user;
 }
+
+// orgQuery/orgMutation auto-inject organizationId from args
+// and check membership via the "member" table
+export const orgQuery = customQuery(baseQuery, {
+  args: { organizationId: v.id("organization") },
+  input: async (ctx, args) => {
+    const user = await getAuthUser(ctx);
+
+    const member = await ctx.db
+      .query("member")
+      .withIndex("organizationId_userId", (q) =>
+        q.eq("organizationId", args.organizationId).eq("userId", user._id),
+      )
+      .first();
+
+    if (!member) {
+      throw new ConvexError({
+        code: ErrorCode.FORBIDDEN,
+        message: "You don't have access to this organization",
+      });
+    }
+
+    const staff = await ctx.db
+      .query("staff")
+      .withIndex("organizationId_userId", (q) =>
+        q.eq("organizationId", args.organizationId).eq("userId", user._id),
+      )
+      .first();
+
+    return {
+      ctx: { user, organizationId: args.organizationId, member, staff },
+      args: {},
+    };
+  },
+});
 ```
 
 ### Data Protection
@@ -358,13 +549,16 @@ function AppointmentsList() {
 ### Backend (Convex)
 
 ```typescript
-// Structured errors
-export const createAppointment = mutation({
+import { ErrorCode } from "./lib/functions";
+
+// Structured errors using ErrorCode enum
+export const createAppointment = orgMutation({
+  args: { serviceIds: v.array(v.string()), /* ... */ },
   handler: async (ctx, args) => {
     // Validation errors
     if (!args.serviceIds.length) {
       throw new ConvexError({
-        code: "VALIDATION_ERROR",
+        code: ErrorCode.VALIDATION_ERROR,
         message: "At least one service is required",
         field: "serviceIds",
       });
@@ -374,12 +568,13 @@ export const createAppointment = mutation({
     const conflict = await checkConflict(ctx, args);
     if (conflict) {
       throw new ConvexError({
-        code: "SLOT_UNAVAILABLE",
+        code: ErrorCode.VALIDATION_ERROR,
         message: "This time slot is no longer available",
         suggestedSlots: await getAlternatives(ctx, args),
       });
     }
 
+    // ctx.organizationId auto-injected by orgMutation
     // ... create appointment
   },
 });
@@ -577,3 +772,26 @@ If scaling beyond Convex limits becomes necessary:
 4. **Storage:** Migrate to S3/Cloud Storage
 
 Current architecture is designed for easy extraction of individual components if needed.
+
+---
+
+## See Also
+
+**Related Documentation:**
+- [Convex Schema](./convex-schema.md) - Database tables and indexes
+- [API Contracts](./api-contracts.md) - Function signatures and API surface
+- [Security](./security.md) - Authentication and authorization details
+- [Glossary - Organization](../appendix/glossary.md#organization) - Terminology guidelines
+
+**Key Sections in This Document:**
+- [Multi-Tenancy Architecture](#multi-tenancy-architecture) - Tenant isolation strategy
+- [Authorization Model](#authorization-model) - Custom function wrappers and RBAC
+- [Rate Limiting](#rate-limiting) - Rate limit configuration
+- [Subscription Billing Architecture](#subscription-billing-architecture) - Polar.sh integration
+
+**Implementation Files:**
+- `convex/lib/functions.ts` - Custom function wrappers (publicQuery, authedQuery, orgQuery, etc.)
+- `convex/lib/rateLimits.ts` - Rate limit configuration
+- `convex/auth.ts` - Better Auth configuration
+- `convex/http.ts` - HTTP routes and webhook handlers
+- `src/middleware.ts` - Next.js auth middleware

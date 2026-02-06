@@ -1,18 +1,18 @@
-import { v } from "convex/values";
+import { ConvexError, v } from "convex/values";
 import {
   adminMutation,
   authedMutation,
   authedQuery,
+  ErrorCode,
   orgQuery,
   publicQuery,
 } from "./lib/functions";
 import { rateLimiter } from "./lib/rateLimits";
-
-// =============================================================================
-// Validators
-// =============================================================================
-
-const roleValidator = v.union(v.literal("admin"), v.literal("member"));
+import {
+  invitationDocValidator,
+  invitationRoleValidator,
+  invitationWithOrgValidator,
+} from "./lib/validators";
 
 // =============================================================================
 // Queries
@@ -23,6 +23,7 @@ const roleValidator = v.union(v.literal("admin"), v.literal("member"));
  */
 export const list = orgQuery({
   args: {},
+  returns: v.array(invitationDocValidator),
   handler: async (ctx) => {
     return await ctx.db
       .query("invitation")
@@ -39,6 +40,7 @@ export const list = orgQuery({
  */
 export const hasPendingInvitations = publicQuery({
   args: { email: v.string() },
+  returns: v.boolean(),
   handler: async (ctx, args) => {
     const invitation = await ctx.db
       .query("invitation")
@@ -60,6 +62,7 @@ export const hasPendingInvitations = publicQuery({
  */
 export const getPendingForCurrentUser = authedQuery({
   args: {},
+  returns: v.array(invitationWithOrgValidator),
   handler: async (ctx) => {
     if (!ctx.user.email) return [];
 
@@ -104,9 +107,10 @@ export const create = adminMutation({
   args: {
     email: v.string(),
     name: v.string(),
-    role: roleValidator,
+    role: invitationRoleValidator,
     phone: v.optional(v.string()),
   },
+  returns: v.id("invitation"),
   handler: async (ctx, args) => {
     // Rate limit check (per organization)
     const { ok, retryAfter } = await rateLimiter.limit(
@@ -117,9 +121,10 @@ export const create = adminMutation({
       },
     );
     if (!ok) {
-      throw new Error(
-        `Invitation limit exceeded. Try again in ${Math.ceil(retryAfter! / 1000 / 60)} minutes.`,
-      );
+      throw new ConvexError({
+        code: ErrorCode.RATE_LIMITED,
+        message: `Invitation limit exceeded. Try again in ${Math.ceil(retryAfter! / 1000 / 60)} minutes.`,
+      });
     }
 
     // Normalize email for consistent comparisons
@@ -134,29 +139,32 @@ export const create = adminMutation({
       .first();
 
     if (existingInvitation && existingInvitation.status === "pending") {
-      throw new Error("An invitation is already pending for this email");
+      throw new ConvexError({
+        code: ErrorCode.ALREADY_EXISTS,
+        message: "An invitation is already pending for this email",
+      });
     }
 
-    // Check if user is already a member
+    // Check if user is already a member (using index instead of filter)
     const existingStaff = await ctx.db
       .query("staff")
-      .filter((q) =>
-        q.and(
-          q.eq(q.field("organizationId"), ctx.organizationId),
-          q.eq(q.field("email"), normalizedEmail),
-        ),
+      .withIndex("organizationId_email", (q) =>
+        q.eq("organizationId", ctx.organizationId).eq("email", normalizedEmail),
       )
       .first();
 
     if (existingStaff) {
-      throw new Error("A staff member with this email already exists");
+      throw new ConvexError({
+        code: ErrorCode.ALREADY_EXISTS,
+        message: "A staff member with this email already exists",
+      });
     }
 
     const now = Date.now();
     // Invitation expires in 7 days
     const expiresAt = now + 7 * 24 * 60 * 60 * 1000;
 
-    return await ctx.db.insert("invitation", {
+    const invitationId = await ctx.db.insert("invitation", {
       organizationId: ctx.organizationId,
       email: normalizedEmail,
       name: args.name,
@@ -168,6 +176,8 @@ export const create = adminMutation({
       createdAt: now,
       updatedAt: now,
     });
+
+    return invitationId;
   },
 });
 
@@ -176,14 +186,25 @@ export const create = adminMutation({
  */
 export const accept = authedMutation({
   args: { invitationId: v.id("invitation") },
+  returns: v.object({
+    memberId: v.id("member"),
+    organizationId: v.id("organization"),
+    organizationSlug: v.union(v.string(), v.null()),
+  }),
   handler: async (ctx, args) => {
     const invitation = await ctx.db.get(args.invitationId);
     if (!invitation) {
-      throw new Error("Invitation not found");
+      throw new ConvexError({
+        code: ErrorCode.NOT_FOUND,
+        message: "Invitation not found",
+      });
     }
 
     if (invitation.status !== "pending") {
-      throw new Error("Invitation is no longer valid");
+      throw new ConvexError({
+        code: ErrorCode.VALIDATION_ERROR,
+        message: "Invitation is no longer valid",
+      });
     }
 
     // Check if invitation has expired
@@ -192,12 +213,18 @@ export const accept = authedMutation({
         status: "expired",
         updatedAt: Date.now(),
       });
-      throw new Error("Invitation has expired");
+      throw new ConvexError({
+        code: ErrorCode.VALIDATION_ERROR,
+        message: "Invitation has expired",
+      });
     }
 
     // Verify the user's email matches the invitation
     if (!ctx.user.email || ctx.user.email.toLowerCase() !== invitation.email) {
-      throw new Error("This invitation was sent to a different email address");
+      throw new ConvexError({
+        code: ErrorCode.FORBIDDEN,
+        message: "This invitation was sent to a different email address",
+      });
     }
 
     // Check if user is already a member of this organization
@@ -211,7 +238,10 @@ export const accept = authedMutation({
       .first();
 
     if (existingMembership) {
-      throw new Error("You are already a member of this organization");
+      throw new ConvexError({
+        code: ErrorCode.ALREADY_EXISTS,
+        message: "You are already a member of this organization",
+      });
     }
 
     const now = Date.now();
@@ -269,19 +299,29 @@ export const accept = authedMutation({
  */
 export const reject = authedMutation({
   args: { invitationId: v.id("invitation") },
+  returns: v.boolean(),
   handler: async (ctx, args) => {
     const invitation = await ctx.db.get(args.invitationId);
     if (!invitation) {
-      throw new Error("Invitation not found");
+      throw new ConvexError({
+        code: ErrorCode.NOT_FOUND,
+        message: "Invitation not found",
+      });
     }
 
     if (invitation.status !== "pending") {
-      throw new Error("Invitation is no longer valid");
+      throw new ConvexError({
+        code: ErrorCode.VALIDATION_ERROR,
+        message: "Invitation is no longer valid",
+      });
     }
 
     // Verify the user's email matches the invitation
     if (!ctx.user.email || ctx.user.email.toLowerCase() !== invitation.email) {
-      throw new Error("This invitation was sent to a different email address");
+      throw new ConvexError({
+        code: ErrorCode.FORBIDDEN,
+        message: "This invitation was sent to a different email address",
+      });
     }
 
     await ctx.db.patch(args.invitationId, {
@@ -299,10 +339,14 @@ export const reject = authedMutation({
  */
 export const cancel = authedMutation({
   args: { invitationId: v.id("invitation") },
+  returns: v.boolean(),
   handler: async (ctx, args) => {
     const invitation = await ctx.db.get(args.invitationId);
     if (!invitation) {
-      throw new Error("Invitation not found");
+      throw new ConvexError({
+        code: ErrorCode.NOT_FOUND,
+        message: "Invitation not found",
+      });
     }
 
     // Manual permission check
@@ -316,11 +360,17 @@ export const cancel = authedMutation({
       .first();
 
     if (!membership || !["owner", "admin"].includes(membership.role)) {
-      throw new Error("You don't have permission to cancel invitations");
+      throw new ConvexError({
+        code: ErrorCode.FORBIDDEN,
+        message: "You don't have permission to cancel invitations",
+      });
     }
 
     if (invitation.status !== "pending") {
-      throw new Error("Can only cancel pending invitations");
+      throw new ConvexError({
+        code: ErrorCode.VALIDATION_ERROR,
+        message: "Can only cancel pending invitations",
+      });
     }
 
     await ctx.db.patch(args.invitationId, {
@@ -338,10 +388,14 @@ export const cancel = authedMutation({
  */
 export const resend = authedMutation({
   args: { invitationId: v.id("invitation") },
+  returns: v.boolean(),
   handler: async (ctx, args) => {
     const invitation = await ctx.db.get(args.invitationId);
     if (!invitation) {
-      throw new Error("Invitation not found");
+      throw new ConvexError({
+        code: ErrorCode.NOT_FOUND,
+        message: "Invitation not found",
+      });
     }
 
     // Permission check FIRST to avoid rate limit exhaustion by unauthorized users
@@ -355,7 +409,10 @@ export const resend = authedMutation({
       .first();
 
     if (!membership || !["owner", "admin"].includes(membership.role)) {
-      throw new Error("You don't have permission to resend invitations");
+      throw new ConvexError({
+        code: ErrorCode.FORBIDDEN,
+        message: "You don't have permission to resend invitations",
+      });
     }
 
     // Rate limit check (per invitation) - after permission check
@@ -367,13 +424,17 @@ export const resend = authedMutation({
       },
     );
     if (!ok) {
-      throw new Error(
-        `Rate limit exceeded. Try again in ${Math.ceil(retryAfter! / 1000 / 60)} minutes.`,
-      );
+      throw new ConvexError({
+        code: ErrorCode.RATE_LIMITED,
+        message: `Rate limit exceeded. Try again in ${Math.ceil(retryAfter! / 1000 / 60)} minutes.`,
+      });
     }
 
     if (invitation.status !== "pending" && invitation.status !== "expired") {
-      throw new Error("Can only resend pending or expired invitations");
+      throw new ConvexError({
+        code: ErrorCode.VALIDATION_ERROR,
+        message: "Can only resend pending or expired invitations",
+      });
     }
 
     const now = Date.now();

@@ -2,6 +2,8 @@
 
 import { useQuery } from "convex/react";
 import { Mail, Phone, Users } from "lucide-react";
+import Link from "next/link";
+import { useParams } from "next/navigation";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
@@ -35,6 +37,8 @@ function getStatusColor(
 }
 
 export default function StaffPage() {
+  const params = useParams();
+  const slug = params.slug as string;
   const { activeOrganization } = useOrganization();
 
   const staffList = useQuery(
@@ -95,36 +99,38 @@ export default function StaffPage() {
       ) : (
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
           {staffList.map((staff) => (
-            <Card key={staff._id}>
-              <CardContent className="p-6">
-                <div className="flex items-start gap-4">
-                  <Avatar className="size-12">
-                    <AvatarImage src={staff.imageUrl ?? undefined} />
-                    <AvatarFallback>{getInitials(staff.name)}</AvatarFallback>
-                  </Avatar>
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2">
-                      <h3 className="font-medium truncate">{staff.name}</h3>
-                      <Badge variant={getStatusColor(staff.status)}>
-                        {staff.status}
-                      </Badge>
-                    </div>
-                    <div className="mt-2 space-y-1">
-                      <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                        <Mail className="size-3.5" />
-                        <span className="truncate">{staff.email}</span>
+            <Link key={staff._id} href={`/${slug}/staff/${staff._id}`}>
+              <Card className="cursor-pointer hover:shadow-md transition-shadow">
+                <CardContent className="p-6">
+                  <div className="flex items-start gap-4">
+                    <Avatar className="size-12">
+                      <AvatarImage src={staff.imageUrl ?? undefined} />
+                      <AvatarFallback>{getInitials(staff.name)}</AvatarFallback>
+                    </Avatar>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2">
+                        <h3 className="font-medium truncate">{staff.name}</h3>
+                        <Badge variant={getStatusColor(staff.status)}>
+                          {staff.status}
+                        </Badge>
                       </div>
-                      {staff.phone && (
+                      <div className="mt-2 space-y-1">
                         <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                          <Phone className="size-3.5" />
-                          <span>{staff.phone}</span>
+                          <Mail className="size-3.5" />
+                          <span className="truncate">{staff.email}</span>
                         </div>
-                      )}
+                        {staff.phone && (
+                          <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                            <Phone className="size-3.5" />
+                            <span>{staff.phone}</span>
+                          </div>
+                        )}
+                      </div>
                     </div>
                   </div>
-                </div>
-              </CardContent>
-            </Card>
+                </CardContent>
+              </Card>
+            </Link>
           ))}
         </div>
       )}

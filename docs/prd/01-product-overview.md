@@ -41,7 +41,7 @@ Turkish beauty salons face several operational challenges:
 
 ## User Personas
 
-### Persona 1: Salon Owner - Ahmet (Super Admin)
+### Persona 1: Salon Owner - Ahmet (Owner)
 
 | Attribute | Details |
 |-----------|---------|
@@ -67,7 +67,7 @@ Turkish beauty salons face several operational challenges:
 
 **Quote:** *"I need to handle walk-ins and phone calls while keeping everyone's schedule organized - I can't afford mistakes."*
 
-> **Note:** The system has 3 roles: **Owner** (full access), **Admin** (manages bookings & staff schedules), **Staff** (views own schedule only). There is no separate "Receptionist" role - front desk duties are handled by Admin or Owner.
+> **Note:** The system has 3 membership roles (stored in the `member` table): **Owner** (full access including billing), **Admin** (manages bookings, staff, & settings), **Member** (views own schedule, basic access). Authentication is via Google OAuth. There is no separate "Receptionist" role - front desk duties are handled by Admin or Owner.
 
 ### Persona 3: Customer - Mehmet (End User)
 
@@ -354,7 +354,7 @@ Salon data belongs to the salon. Clear export options and no vendor lock-in prac
 ### Role Hierarchy
 
 ```
-Owner (Super Admin)
+Owner (Owner)
   └── Full access to everything
   └── Billing, settings, data export
 

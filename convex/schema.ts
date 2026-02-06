@@ -9,6 +9,7 @@ export default defineSchema({
   organization: defineTable({
     name: v.string(),
     slug: v.string(),
+    description: v.optional(v.string()),
     logo: v.optional(v.string()),
     createdAt: v.number(),
     updatedAt: v.number(),
@@ -238,5 +239,6 @@ export default defineSchema({
     .index("userId", ["userId"])
     .index("memberId", ["memberId"])
     .index("organizationId_userId", ["organizationId", "userId"])
-    .index("organizationId_status", ["organizationId", "status"]),
+    .index("organizationId_status", ["organizationId", "status"])
+    .index("organizationId_email", ["organizationId", "email"]),
 });

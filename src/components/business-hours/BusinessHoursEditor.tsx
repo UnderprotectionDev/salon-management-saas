@@ -2,7 +2,7 @@
 
 import { useMutation } from "convex/react";
 import { Clock } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
@@ -23,7 +23,7 @@ type DayHours = {
   closed: boolean;
 };
 
-type BusinessHours = {
+export type BusinessHours = {
   monday?: DayHours;
   tuesday?: DayHours;
   wednesday?: DayHours;
@@ -33,11 +33,25 @@ type BusinessHours = {
   sunday?: DayHours;
 };
 
-type BusinessHoursEditorProps = {
+// Uncontrolled mode: saves directly to organization settings
+type UncontrolledProps = {
   organizationId: Id<"organization">;
   initialHours?: BusinessHours;
   onSave?: () => void;
+  onChange?: never;
+  value?: never;
 };
+
+// Controlled mode: parent manages state via onChange
+type ControlledProps = {
+  organizationId?: never;
+  initialHours?: never;
+  onSave?: never;
+  onChange: (hours: BusinessHours) => void;
+  value: BusinessHours;
+};
+
+type BusinessHoursEditorProps = UncontrolledProps | ControlledProps;
 
 const DAYS = [
   "monday",
@@ -64,6 +78,21 @@ const DEFAULT_HOURS: DayHours = {
   close: "18:00",
   closed: false,
 };
+
+/**
+ * Get default business hours for all days
+ * Sunday is closed by default
+ */
+export function getDefaultBusinessHours(): BusinessHours {
+  const hours: BusinessHours = {};
+  for (const day of DAYS) {
+    hours[day] = {
+      ...DEFAULT_HOURS,
+      closed: day === "sunday",
+    };
+  }
+  return hours;
+}
 
 /**
  * Convert time string (HH:MM) to minutes for comparison
@@ -128,37 +157,59 @@ const TIME_OPTIONS = [
   "23:00",
 ];
 
-export function BusinessHoursEditor({
-  organizationId,
-  initialHours,
-  onSave,
-}: BusinessHoursEditorProps) {
+export function BusinessHoursEditor(props: BusinessHoursEditorProps) {
+  // Determine mode based on props
+  const isControlled = "onChange" in props && props.onChange !== undefined;
+
   const updateSettings = useMutation(api.organizations.updateSettings);
   const [isSaving, setIsSaving] = useState(false);
 
-  const [hours, setHours] = useState<BusinessHours>(() => {
+  // Internal state for uncontrolled mode
+  const [internalHours, setInternalHours] = useState<BusinessHours>(() => {
+    if (isControlled) {
+      return props.value;
+    }
     const defaultHours: BusinessHours = {};
     for (const day of DAYS) {
-      defaultHours[day] = initialHours?.[day] ?? { ...DEFAULT_HOURS };
+      defaultHours[day] = props.initialHours?.[day] ?? { ...DEFAULT_HOURS };
     }
     return defaultHours;
   });
+
+  // Use controlled value or internal state
+  const hours = isControlled ? props.value : internalHours;
+
+  // Sync internal state with controlled value when it changes
+  useEffect(() => {
+    if (isControlled) {
+      setInternalHours(props.value);
+    }
+  }, [isControlled, props.value]);
 
   const updateDay = (
     day: (typeof DAYS)[number],
     field: keyof DayHours,
     value: string | boolean,
   ) => {
-    setHours((prev) => ({
-      ...prev,
+    const newHours = {
+      ...hours,
       [day]: {
-        ...prev[day],
+        ...hours[day],
         [field]: value,
       },
-    }));
+    };
+
+    if (isControlled) {
+      props.onChange(newHours);
+    } else {
+      setInternalHours(newHours);
+    }
   };
 
   const handleSave = async () => {
+    // Controlled mode doesn't have a save button
+    if (isControlled) return;
+
     // Validate times before saving
     const validationError = validateBusinessHours(hours);
     if (validationError) {
@@ -169,11 +220,11 @@ export function BusinessHoursEditor({
     setIsSaving(true);
     try {
       await updateSettings({
-        organizationId,
+        organizationId: props.organizationId,
         businessHours: hours,
       });
       toast.success("Business hours saved successfully");
-      onSave?.();
+      props.onSave?.();
     } catch (error) {
       const message =
         error instanceof Error
@@ -197,9 +248,7 @@ export function BusinessHoursEditor({
               className="flex flex-col sm:flex-row sm:items-center gap-4 py-3 border-b last:border-b-0"
             >
               <div className="flex items-center justify-between sm:w-32">
-                <Label htmlFor={`${day}-switch`} className="font-medium">
-                  {DAY_LABELS[day]}
-                </Label>
+                <Label className="font-medium">{DAY_LABELS[day]}</Label>
                 <Switch
                   id={`${day}-switch-mobile`}
                   checked={!dayHours.closed}
@@ -273,13 +322,16 @@ export function BusinessHoursEditor({
         })}
       </div>
 
-      <Button
-        onClick={handleSave}
-        disabled={isSaving}
-        className="w-full sm:w-auto"
-      >
-        {isSaving ? "Saving..." : "Save Changes"}
-      </Button>
+      {/* Only show save button in uncontrolled mode */}
+      {!isControlled && (
+        <Button
+          onClick={handleSave}
+          disabled={isSaving}
+          className="w-full sm:w-auto"
+        >
+          {isSaving ? "Saving..." : "Save Changes"}
+        </Button>
+      )}
     </div>
   );
 }

@@ -1,33 +1,15 @@
-import { v } from "convex/values";
-import { authedMutation, authedQuery, orgQuery } from "./lib/functions";
-
-// =============================================================================
-// Validators
-// =============================================================================
-
-const dayScheduleValidator = v.optional(
-  v.object({
-    start: v.string(),
-    end: v.string(),
-    available: v.boolean(),
-  }),
-);
-
-const scheduleValidator = v.optional(
-  v.object({
-    monday: dayScheduleValidator,
-    tuesday: dayScheduleValidator,
-    wednesday: dayScheduleValidator,
-    thursday: dayScheduleValidator,
-    friday: dayScheduleValidator,
-    saturday: dayScheduleValidator,
-    sunday: dayScheduleValidator,
-  }),
-);
-
-const statusValidator = v.optional(
-  v.union(v.literal("active"), v.literal("inactive"), v.literal("pending")),
-);
+import { ConvexError, v } from "convex/values";
+import {
+  authedMutation,
+  authedQuery,
+  ErrorCode,
+  orgQuery,
+} from "./lib/functions";
+import {
+  staffDocValidator,
+  staffScheduleValidator,
+  staffStatusValidator,
+} from "./lib/validators";
 
 // =============================================================================
 // Queries
@@ -38,6 +20,7 @@ const statusValidator = v.optional(
  */
 export const list = orgQuery({
   args: {},
+  returns: v.array(staffDocValidator),
   handler: async (ctx) => {
     return await ctx.db
       .query("staff")
@@ -53,6 +36,7 @@ export const list = orgQuery({
  */
 export const listActive = orgQuery({
   args: {},
+  returns: v.array(staffDocValidator),
   handler: async (ctx) => {
     return await ctx.db
       .query("staff")
@@ -68,6 +52,7 @@ export const listActive = orgQuery({
  */
 export const getByUser = orgQuery({
   args: { userId: v.string() },
+  returns: v.union(staffDocValidator, v.null()),
   handler: async (ctx, args) => {
     return await ctx.db
       .query("staff")
@@ -83,6 +68,7 @@ export const getByUser = orgQuery({
  */
 export const getCurrentStaff = authedQuery({
   args: { organizationId: v.id("organization") },
+  returns: v.union(staffDocValidator, v.null()),
   handler: async (ctx, args) => {
     return await ctx.db
       .query("staff")
@@ -99,6 +85,7 @@ export const getCurrentStaff = authedQuery({
  */
 export const get = authedQuery({
   args: { staffId: v.id("staff") },
+  returns: v.union(staffDocValidator, v.null()),
   handler: async (ctx, args) => {
     const staff = await ctx.db.get(args.staffId);
     if (!staff) {
@@ -114,7 +101,10 @@ export const get = authedQuery({
       .first();
 
     if (!member) {
-      throw new Error("You don't have access to this staff member");
+      throw new ConvexError({
+        code: ErrorCode.FORBIDDEN,
+        message: "You don't have access to this staff member",
+      });
     }
 
     return staff;
@@ -139,10 +129,11 @@ export const createProfile = authedMutation({
     phone: v.optional(v.string()),
     imageUrl: v.optional(v.string()),
     bio: v.optional(v.string()),
-    status: statusValidator,
+    status: v.optional(staffStatusValidator),
     serviceIds: v.optional(v.array(v.string())),
-    defaultSchedule: scheduleValidator,
+    defaultSchedule: staffScheduleValidator,
   },
+  returns: v.id("staff"),
   handler: async (ctx, args) => {
     // Security check: user can only create their own staff profile
     // OR must have existing org access (for admin adding staff)
@@ -161,7 +152,11 @@ export const createProfile = authedMutation({
         !currentMembership ||
         !["owner", "admin"].includes(currentMembership.role)
       ) {
-        throw new Error("You don't have permission to add staff to this organization");
+        throw new ConvexError({
+          code: ErrorCode.FORBIDDEN,
+          message:
+            "You don't have permission to add staff to this organization",
+        });
       }
     } else {
       // User is creating their own profile - verify they have a valid member record
@@ -171,7 +166,10 @@ export const createProfile = authedMutation({
         membership.userId !== ctx.user._id ||
         membership.organizationId !== args.organizationId
       ) {
-        throw new Error("Invalid membership record");
+        throw new ConvexError({
+          code: ErrorCode.VALIDATION_ERROR,
+          message: "Invalid membership record",
+        });
       }
     }
 
@@ -184,23 +182,15 @@ export const createProfile = authedMutation({
       .first();
 
     if (existing) {
-      throw new Error("Staff profile already exists for this user");
+      throw new ConvexError({
+        code: ErrorCode.ALREADY_EXISTS,
+        message: "Staff profile already exists for this user",
+      });
     }
 
     const now = Date.now();
 
-    // Default schedule (9 AM - 6 PM, available Mon-Sat)
-    const defaultSchedule = args.defaultSchedule ?? {
-      monday: { start: "09:00", end: "18:00", available: true },
-      tuesday: { start: "09:00", end: "18:00", available: true },
-      wednesday: { start: "09:00", end: "18:00", available: true },
-      thursday: { start: "09:00", end: "18:00", available: true },
-      friday: { start: "09:00", end: "18:00", available: true },
-      saturday: { start: "09:00", end: "18:00", available: true },
-      sunday: { start: "09:00", end: "18:00", available: false },
-    };
-
-    return await ctx.db.insert("staff", {
+    const staffId = await ctx.db.insert("staff", {
       userId: args.userId,
       organizationId: args.organizationId,
       memberId: args.memberId,
@@ -211,10 +201,12 @@ export const createProfile = authedMutation({
       bio: args.bio,
       status: args.status ?? "active",
       serviceIds: args.serviceIds ?? [],
-      defaultSchedule,
+      defaultSchedule: args.defaultSchedule,
       createdAt: now,
       updatedAt: now,
     });
+
+    return staffId;
   },
 });
 
@@ -229,14 +221,18 @@ export const updateProfile = authedMutation({
     phone: v.optional(v.string()),
     imageUrl: v.optional(v.string()),
     bio: v.optional(v.string()),
-    status: statusValidator,
+    status: v.optional(staffStatusValidator),
     serviceIds: v.optional(v.array(v.string())),
-    defaultSchedule: scheduleValidator,
+    defaultSchedule: staffScheduleValidator,
   },
+  returns: v.id("staff"),
   handler: async (ctx, args) => {
     const staff = await ctx.db.get(args.staffId);
     if (!staff) {
-      throw new Error("Staff not found");
+      throw new ConvexError({
+        code: ErrorCode.NOT_FOUND,
+        message: "Staff not found",
+      });
     }
 
     // Manual org access check
@@ -248,7 +244,10 @@ export const updateProfile = authedMutation({
       .first();
 
     if (!member) {
-      throw new Error("You don't have access to this organization");
+      throw new ConvexError({
+        code: ErrorCode.FORBIDDEN,
+        message: "You don't have access to this organization",
+      });
     }
 
     // Authorization: only allow self-update or admin/owner
@@ -256,7 +255,10 @@ export const updateProfile = authedMutation({
       staff.userId !== ctx.user._id &&
       !["owner", "admin"].includes(member.role)
     ) {
-      throw new Error("You don't have permission to update this staff profile");
+      throw new ConvexError({
+        code: ErrorCode.FORBIDDEN,
+        message: "You don't have permission to update this staff profile",
+      });
     }
 
     const { staffId, ...updateFields } = args;

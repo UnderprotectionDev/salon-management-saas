@@ -4,6 +4,7 @@ import { useMutation, useQuery } from "convex/react";
 import { Building2, Mail, X } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
+import { toast } from "sonner";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -53,6 +54,7 @@ export function InvitationBanner() {
       }
     } catch (error) {
       console.error("Failed to accept invitation:", error);
+      toast.error("Failed to accept invitation. Please try again.");
     } finally {
       setLoadingId(null);
     }
@@ -66,6 +68,7 @@ export function InvitationBanner() {
       await rejectMutation({ invitationId });
     } catch (error) {
       console.error("Failed to reject invitation:", error);
+      toast.error("Failed to decline invitation. Please try again.");
       // Revert optimistic update on error
       setDismissedIds((prev) => {
         const next = new Set(prev);

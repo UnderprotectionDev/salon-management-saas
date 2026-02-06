@@ -3,7 +3,7 @@
 > **Priority:** P0 (MVP Must-Have)
 > **Owner:** Frontend Team
 > **Dependencies:** Multi-tenancy, Authentication, All Feature Modules
-> **Last Updated:** 2026-02-04
+> **Last Updated:** 2026-02-06
 
 ## Overview
 
@@ -194,8 +194,8 @@ A compact widget on the main dashboard showing subscription health:
 | Active | Green | ● |
 | Past Due | Orange | ⚠️ |
 | Grace Period | Red | ⚠️ |
-| Suspended | Red | ✗ |
-| Cancelled | Gray | — |
+| Unpaid | Red | ✗ |
+| Canceled | Gray | — |
 
 ### Subscription Warning Banner
 
@@ -210,7 +210,7 @@ When subscription is in trouble, a prominent banner appears:
 └─────────────────────────────────────────────────────────────────────────┘
 ```
 
-### Billing Page (`/[org]/billing`)
+### Billing Page (`/[slug]/billing`)
 
 **Layout:**
 
@@ -252,7 +252,7 @@ When subscription is in trouble, a prominent banner appears:
 
 ```typescript
 interface SubscriptionStatus {
-  status: "active" | "past_due" | "suspended" | "cancelled" | "trial";
+  status: "active" | "trialing" | "past_due" | "canceled" | "unpaid";
   plan: "standard_monthly" | "standard_yearly";
   currentPeriodStart: number;
   currentPeriodEnd: number;
@@ -266,7 +266,7 @@ interface SubscriptionStatus {
 
 ## Calendar Views
 
-### Day View (`/[org]/calendar?view=day`)
+### Day View (`/[slug]/calendar?view=day`)
 
 ```
 ┌─────────────────────────────────────────────────────────────────────┐
@@ -397,12 +397,12 @@ Clicking an empty time slot opens a quick booking form:
 
 ---
 
-### Week View (`/[org]/calendar?view=week`)
+### Week View (`/[slug]/calendar?view=week`)
 
 **Layout:** 7 columns (days), rows for each staff
 **Features:** Summary counts per day, click to drill down
 
-### Month View (`/[org]/calendar?view=month`)
+### Month View (`/[slug]/calendar?view=month`)
 
 **Layout:** Traditional calendar grid
 **Features:** Day cells show appointment count, busy indicator
@@ -562,9 +562,9 @@ The dashboard displays **all** key business metrics at a glance:
 ### Customer Search API
 
 ```typescript
-export const searchCustomers = query({
+// Uses orgQuery wrapper (auto-injects organizationId, requires org membership)
+export const searchCustomers = orgQuery({
   args: {
-    organizationId: v.id("organizations"),
     query: v.optional(v.string()), // Name, phone, or email
     filters: v.optional(v.object({
       lastVisit: v.optional(v.union(
@@ -629,7 +629,7 @@ export const searchCustomers = query({
 
 ## Settings Pages
 
-### Business Info (`/[org]/settings`)
+### Business Info (`/[slug]/settings`)
 
 **Fields:**
 - Salon name
@@ -640,11 +640,11 @@ export const searchCustomers = query({
 - Address
 - Social media links
 
-### Working Hours (`/[org]/settings/hours`)
+### Working Hours (`/[slug]/settings/hours`)
 
 **Interface:** Same as staff schedule editor, but for business-wide defaults
 
-### Booking Settings (`/[org]/settings/booking`)
+### Booking Settings (`/[slug]/settings/booking`)
 
 | Setting | Type | Default | Description |
 |---------|------|---------|-------------|
@@ -655,7 +655,7 @@ export const searchCustomers = query({
 | Allow staff selection | Boolean | true | Let customers choose staff |
 | Require phone verification | Boolean | true | OTP for online bookings |
 
-### Team & Permissions (`/[org]/settings/team`)
+### Team & Permissions (`/[slug]/settings/team`)
 
 **Features:**
 - View all team members
@@ -700,10 +700,9 @@ const metrics = useQuery(api.analytics.getDashboardMetrics, {
 ### Query: Dashboard Metrics
 
 ```typescript
-export const getDashboardMetrics = query({
-  args: {
-    organizationId: v.id("organizations"),
-  },
+// Uses orgQuery wrapper (auto-injects organizationId, requires org membership)
+export const getDashboardMetrics = orgQuery({
+  args: {},
   returns: v.object({
     today: v.object({
       totalAppointments: v.number(),
@@ -730,9 +729,9 @@ export const getDashboardMetrics = query({
 ### Query: Calendar Appointments
 
 ```typescript
-export const getCalendarAppointments = query({
+// Uses orgQuery wrapper (auto-injects organizationId, requires org membership)
+export const getCalendarAppointments = orgQuery({
   args: {
-    organizationId: v.id("organizations"),
     startDate: v.string(),
     endDate: v.string(),
     staffId: v.optional(v.id("staff")),
@@ -764,9 +763,9 @@ export const getCalendarAppointments = query({
 ### Query: Revenue Report
 
 ```typescript
-export const getRevenueReport = query({
+// Uses orgQuery wrapper (auto-injects organizationId, requires org membership)
+export const getRevenueReport = orgQuery({
   args: {
-    organizationId: v.id("organizations"),
     startDate: v.string(),
     endDate: v.string(),
     staffId: v.optional(v.id("staff")),
@@ -805,34 +804,36 @@ export const getRevenueReport = query({
 
 ### Backend (Convex)
 
-- [ ] Query: `getDashboardMetrics`
-- [ ] Query: `getCalendarAppointments`
-- [ ] Query: `getNotifications`
-- [ ] Query: `getRevenueReport`
-- [ ] Query: `getStaffPerformance`
-- [ ] Query: `getCustomerAnalytics`
-- [ ] Query: `subscriptions.getCurrent`
-- [ ] Query: `subscriptions.getBillingHistory`
-- [ ] Mutation: `markNotificationRead`
-- [ ] Mutation: `updateBusinessSettings`
-- [ ] Mutation: `updateBookingSettings`
-- [ ] Mutation: `subscriptions.createCheckout`
+> **Note:** Use custom function wrappers from `convex/lib/functions.ts` (orgQuery, orgMutation, adminMutation, ownerMutation) instead of plain `query()`/`mutation()`. These auto-inject `organizationId` and enforce role-based access.
+
+- [ ] Query: `getDashboardMetrics` (orgQuery)
+- [ ] Query: `getCalendarAppointments` (orgQuery)
+- [ ] Query: `getNotifications` (orgQuery)
+- [ ] Query: `getRevenueReport` (orgQuery)
+- [ ] Query: `getStaffPerformance` (orgQuery)
+- [ ] Query: `getCustomerAnalytics` (orgQuery)
+- [ ] Query: `subscriptions.getCurrent` (orgQuery)
+- [ ] Query: `subscriptions.getBillingHistory` (ownerQuery)
+- [ ] Mutation: `markNotificationRead` (orgMutation)
+- [ ] Mutation: `updateBusinessSettings` (adminMutation)
+- [ ] Mutation: `updateBookingSettings` (adminMutation)
+- [ ] Mutation: `subscriptions.createCheckout` (ownerMutation)
 - [ ] Action: `subscriptions.getPortalUrl`
 
 ### Frontend (Next.js)
 
 - [ ] Layout: `DashboardLayout` with sidebar
-- [ ] Page: `/[org]/dashboard`
-- [ ] Page: `/[org]/calendar`
-- [ ] Page: `/[org]/reports`
-- [ ] Page: `/[org]/reports/revenue`
-- [ ] Page: `/[org]/reports/staff`
-- [ ] Page: `/[org]/reports/customers`
-- [ ] Page: `/[org]/billing`
-- [ ] Page: `/[org]/settings`
-- [ ] Page: `/[org]/settings/hours`
-- [ ] Page: `/[org]/settings/booking`
-- [ ] Page: `/[org]/settings/team`
+- [ ] Page: `/[slug]/dashboard`
+- [ ] Page: `/[slug]/calendar`
+- [ ] Page: `/[slug]/reports`
+- [ ] Page: `/[slug]/reports/revenue`
+- [ ] Page: `/[slug]/reports/staff`
+- [ ] Page: `/[slug]/reports/customers`
+- [ ] Page: `/[slug]/billing`
+- [ ] Page: `/[slug]/settings`
+- [ ] Page: `/[slug]/settings/hours`
+- [ ] Page: `/[slug]/settings/booking`
+- [ ] Page: `/[slug]/settings/team`
 - [ ] Component: `MetricsCard`
 - [ ] Component: `TodaySchedule`
 - [ ] Component: `QuickActions`

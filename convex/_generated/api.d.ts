@@ -9,12 +9,14 @@
  */
 
 import type * as auth from "../auth.js";
+import type * as files from "../files.js";
 import type * as http from "../http.js";
 import type * as invitations from "../invitations.js";
 import type * as lib_functions from "../lib/functions.js";
 import type * as lib_rateLimits from "../lib/rateLimits.js";
 import type * as lib_relationships from "../lib/relationships.js";
 import type * as lib_rls from "../lib/rls.js";
+import type * as lib_validators from "../lib/validators.js";
 import type * as members from "../members.js";
 import type * as organizations from "../organizations.js";
 import type * as staff from "../staff.js";
@@ -27,12 +29,14 @@ import type {
 
 declare const fullApi: ApiFromModules<{
   auth: typeof auth;
+  files: typeof files;
   http: typeof http;
   invitations: typeof invitations;
   "lib/functions": typeof lib_functions;
   "lib/rateLimits": typeof lib_rateLimits;
   "lib/relationships": typeof lib_relationships;
   "lib/rls": typeof lib_rls;
+  "lib/validators": typeof lib_validators;
   members: typeof members;
   organizations: typeof organizations;
   staff: typeof staff;
