@@ -1,4 +1,4 @@
-import { v } from "convex/values";
+import { ConvexError, v } from "convex/values";
 import {
   customMutation,
   customQuery,
@@ -9,6 +9,31 @@ import {
   query as baseQuery,
 } from "../_generated/server";
 import { authComponent } from "../auth";
+
+// =============================================================================
+// Error Codes
+// =============================================================================
+
+export const ErrorCode = {
+  // Authentication errors
+  UNAUTHENTICATED: "UNAUTHENTICATED",
+  // Authorization errors
+  FORBIDDEN: "FORBIDDEN",
+  ADMIN_REQUIRED: "ADMIN_REQUIRED",
+  OWNER_REQUIRED: "OWNER_REQUIRED",
+  // Resource errors
+  NOT_FOUND: "NOT_FOUND",
+  ALREADY_EXISTS: "ALREADY_EXISTS",
+  // Validation errors
+  VALIDATION_ERROR: "VALIDATION_ERROR",
+  INVALID_INPUT: "INVALID_INPUT",
+  // Rate limiting
+  RATE_LIMITED: "RATE_LIMITED",
+  // General errors
+  INTERNAL_ERROR: "INTERNAL_ERROR",
+} as const;
+
+export type ErrorCode = (typeof ErrorCode)[keyof typeof ErrorCode];
 
 // =============================================================================
 // Types
@@ -47,7 +72,10 @@ async function getAuthUser(ctx: { db: unknown; auth: unknown }) {
     ctx as Parameters<typeof authComponent.getAuthUser>[0],
   );
   if (!user) {
-    throw new Error("Authentication required");
+    throw new ConvexError({
+      code: ErrorCode.UNAUTHENTICATED,
+      message: "Authentication required",
+    });
   }
   return user;
 }
@@ -106,10 +134,10 @@ export const maybeAuthedQuery = customQuery(baseQuery, {
       const user = await authComponent.getAuthUser(
         ctx as Parameters<typeof authComponent.getAuthUser>[0],
       );
-      return { ctx: { user }, args: {} };
+      return { ctx: { user: user as AuthUser | null }, args: {} };
     } catch {
       // User not authenticated - return null
-      return { ctx: { user: null }, args: {} };
+      return { ctx: { user: null as AuthUser | null }, args: {} };
     }
   },
 });
@@ -186,7 +214,10 @@ export const orgQuery = customQuery(baseQuery, {
       .first();
 
     if (!member) {
-      throw new Error("You don't have access to this organization");
+      throw new ConvexError({
+        code: ErrorCode.FORBIDDEN,
+        message: "You don't have access to this organization",
+      });
     }
 
     // Also get staff profile if exists
@@ -226,7 +257,10 @@ export const orgMutation = customMutation(baseMutation, {
       .first();
 
     if (!member) {
-      throw new Error("You don't have access to this organization");
+      throw new ConvexError({
+        code: ErrorCode.FORBIDDEN,
+        message: "You don't have access to this organization",
+      });
     }
 
     const staff = await ctx.db
@@ -281,11 +315,17 @@ export const adminQuery = customQuery(baseQuery, {
       .first();
 
     if (!member) {
-      throw new Error("You don't have access to this organization");
+      throw new ConvexError({
+        code: ErrorCode.FORBIDDEN,
+        message: "You don't have access to this organization",
+      });
     }
 
     if (!["owner", "admin"].includes(member.role)) {
-      throw new Error("Admin access required");
+      throw new ConvexError({
+        code: ErrorCode.ADMIN_REQUIRED,
+        message: "Admin access required",
+      });
     }
 
     const staff = await ctx.db
@@ -325,11 +365,17 @@ export const adminMutation = customMutation(baseMutation, {
       .first();
 
     if (!member) {
-      throw new Error("You don't have access to this organization");
+      throw new ConvexError({
+        code: ErrorCode.FORBIDDEN,
+        message: "You don't have access to this organization",
+      });
     }
 
     if (!["owner", "admin"].includes(member.role)) {
-      throw new Error("Admin access required");
+      throw new ConvexError({
+        code: ErrorCode.ADMIN_REQUIRED,
+        message: "Admin access required",
+      });
     }
 
     const staff = await ctx.db
@@ -374,11 +420,17 @@ export const ownerQuery = customQuery(baseQuery, {
       .first();
 
     if (!member) {
-      throw new Error("You don't have access to this organization");
+      throw new ConvexError({
+        code: ErrorCode.FORBIDDEN,
+        message: "You don't have access to this organization",
+      });
     }
 
     if (member.role !== "owner") {
-      throw new Error("Owner access required");
+      throw new ConvexError({
+        code: ErrorCode.OWNER_REQUIRED,
+        message: "Owner access required",
+      });
     }
 
     const staff = await ctx.db
@@ -418,11 +470,17 @@ export const ownerMutation = customMutation(baseMutation, {
       .first();
 
     if (!member) {
-      throw new Error("You don't have access to this organization");
+      throw new ConvexError({
+        code: ErrorCode.FORBIDDEN,
+        message: "You don't have access to this organization",
+      });
     }
 
     if (member.role !== "owner") {
-      throw new Error("Owner access required");
+      throw new ConvexError({
+        code: ErrorCode.OWNER_REQUIRED,
+        message: "Owner access required",
+      });
     }
 
     const staff = await ctx.db

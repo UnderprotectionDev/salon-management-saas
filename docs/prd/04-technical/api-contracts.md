@@ -1,9 +1,11 @@
 # API Contracts
 
-> **Last Updated:** 2026-02-04
+> **Last Updated:** 2026-02-06
 > **Status:** Active
 
 This document defines the Convex function signatures (queries, mutations, actions) that form the API surface of the Salon Management SaaS.
+
+> **Terminology Note:** Function signatures use `organization` and `organizationId` to match database schema. Custom function wrappers (`orgQuery`, `orgMutation`) auto-inject `organizationId` from args. See [Glossary - Organization](../appendix/glossary.md#organization) for terminology guidelines.
 
 ---
 
@@ -20,8 +22,9 @@ This document defines the Convex function signatures (queries, mutations, action
 All functions return typed responses. Errors throw `ConvexError` with structured data:
 
 ```typescript
+// import { ErrorCode } from "./lib/validators"
 throw new ConvexError({
-  code: "SLOT_UNAVAILABLE",
+  code: ErrorCode.VALIDATION_ERROR,
   message: "This time slot is no longer available",
   details: { suggestedSlots: [...] }
 });
@@ -50,18 +53,100 @@ const timestampFields = {
 
 ---
 
+## Shared Validators (convex/lib/validators.ts)
+
+> **File:** `convex/lib/validators.ts` (231 lines)
+> **Status:** ✅ Implemented
+> **Purpose:** Centralized validator library for consistent type checking and return value validation across all Convex functions
+
+All queries and mutations use return validators from this shared library. This ensures type safety and consistent data shapes across the API.
+
+### Sub-Validators (Reusable Building Blocks)
+
+Small, focused validators that are composed into larger validators:
+
+| Validator | Type | Values | Usage |
+|-----------|------|--------|-------|
+| `memberRoleValidator` | Union | `owner` \| `admin` \| `member` | Member role in `member` table |
+| `invitationRoleValidator` | Union | `admin` \| `member` | Invitation role (no owner invitations) |
+| `invitationStatusValidator` | Union | `pending` \| `accepted` \| `expired` \| `cancelled` \| `rejected` | Invitation lifecycle status |
+| `staffStatusValidator` | Union | `active` \| `inactive` \| `pending` | Staff employment status |
+| `subscriptionStatusValidator` | Union | `active` \| `trialing` \| `past_due` \| `canceled` \| `unpaid` | Subscription billing status |
+| `addressValidator` | Object | Optional street, city, state, postalCode, country | Physical address |
+| `businessHoursValidator` | Object | Weekly schedule with open/close/closed fields | Organization operating hours |
+| `businessHoursDayValidator` | Object | Single day: `{ open, close, closed }` | One day's business hours |
+| `bookingSettingsValidator` | Object | Booking rules (advance time, slots, deposit, etc.) | Booking configuration |
+| `staffScheduleValidator` | Object | Weekly schedule with start/end/available fields | Staff availability |
+| `staffDayScheduleValidator` | Object | Single day: `{ start, end, available }` | One day's staff availability |
+
+### Document Validators (With System Fields)
+
+These validators include Convex system fields (`_id`, `_creationTime`) for returning complete database documents:
+
+| Validator | Purpose | System Fields |
+|-----------|---------|---------------|
+| `organizationDocValidator` | Organization document | `_id: v.id("organization")`, `_creationTime: v.number()` |
+| `memberDocValidator` | Member document | `_id: v.id("member")`, `_creationTime: v.number()` |
+| `invitationDocValidator` | Invitation document | `_id: v.id("invitation")`, `_creationTime: v.number()` |
+| `organizationSettingsDocValidator` | Settings document | `_id: v.id("organizationSettings")`, `_creationTime: v.number()` |
+| `staffDocValidator` | Staff profile document | `_id: v.id("staff")`, `_creationTime: v.number()` |
+
+**Key difference:** Arguments use bare validators (e.g., `v.optional(staffStatusValidator)`), but document validators always include required system fields.
+
+### Composite Validators (Enriched Return Types)
+
+Validators for enriched query results that combine data from multiple tables:
+
+| Validator | Purpose | Additional Fields |
+|-----------|---------|------------------|
+| `organizationWithRoleValidator` | Organization + user's role/membership | Adds `role: memberRoleValidator` and `memberId: v.id("member")` |
+| `invitationWithOrgValidator` | Invitation + organization info | Adds `organizationName: v.string()` and `organizationSlug: v.string()` |
+
+### Usage Example
+
+```typescript
+// File: convex/staff.ts
+import { staffDocValidator, staffStatusValidator } from "./lib/validators";
+
+export const list = orgQuery({
+  args: {
+    status: v.optional(staffStatusValidator), // Optional in args
+  },
+  returns: v.array(staffDocValidator), // Returns full documents with system fields
+  handler: async (ctx, args) => {
+    return await ctx.db
+      .query("staff")
+      .withIndex("organizationId_status", (q) =>
+        q.eq("organizationId", ctx.organizationId)
+         .eq("status", args.status ?? "active")
+      )
+      .collect();
+  },
+});
+```
+
+**Why this matters:**
+- All return types are validated at runtime
+- TypeScript types are automatically generated from validators
+- Prevents accidental shape mismatches between backend and frontend
+- Single source of truth for data structures
+
+**See also:** [Convex Schema](./convex-schema.md) for database table definitions
+
+---
+
 ## Organization APIs
 
 ### `organizations.getBySlug`
 
 ```typescript
-export const getBySlug = query({
+export const getBySlug = publicQuery({
   args: {
     slug: v.string(),
   },
   returns: v.union(
     v.object({
-      _id: v.id("organizations"),
+      _id: v.id("organization"),
       name: v.string(),
       slug: v.string(),
       description: v.optional(v.string()),
@@ -84,9 +169,9 @@ export const getBySlug = query({
 ### `organizations.update`
 
 ```typescript
-export const update = mutation({
+export const update = ownerMutation({
   args: {
-    organizationId: v.id("organizations"),
+    // organizationId auto-injected by ownerMutation
     name: v.optional(v.string()),
     description: v.optional(v.string()),
     phone: v.optional(v.string()),
@@ -103,7 +188,7 @@ export const update = mutation({
   },
   returns: v.object({ success: v.boolean() }),
   handler: async (ctx, args) => {
-    // Requires owner role
+    // Requires owner role (ownerMutation)
   },
 });
 ```
@@ -115,9 +200,9 @@ export const update = mutation({
 ### `staff.list`
 
 ```typescript
-export const list = query({
+export const list = orgQuery({
   args: {
-    organizationId: v.id("organizations"),
+    // organizationId auto-injected by orgQuery
     status: v.optional(v.union(
       v.literal("active"),
       v.literal("inactive"),
@@ -131,7 +216,7 @@ export const list = query({
     email: v.string(),
     phone: v.optional(v.string()),
     imageUrl: v.optional(v.string()),
-    role: v.string(),
+    role: v.string(), // from member table: "owner" | "admin" | "member"
     status: v.string(),
     serviceCount: v.number(),
     services: v.optional(v.array(v.object({
@@ -143,25 +228,22 @@ export const list = query({
 });
 ```
 
-### `staff.invite`
+### `invitations.create`
 
 ```typescript
-export const invite = mutation({
+export const create = adminMutation({
   args: {
-    organizationId: v.id("organizations"),
+    // organizationId auto-injected by adminMutation
     email: v.string(),
     name: v.string(),
-    role: v.union(v.literal("admin"), v.literal("staff")),
+    role: v.union(v.literal("admin"), v.literal("member")),
     serviceIds: v.optional(v.array(v.id("services"))),
     defaultSchedule: v.optional(v.any()),
   },
-  returns: v.object({
-    staffId: v.id("staff"),
-    invitationSent: v.boolean(),
-  }),
+  returns: v.id("invitation"),
   handler: async (ctx, args) => {
-    // Requires admin+ role
-    // Creates pending staff record
+    // Requires admin+ role (adminMutation)
+    // Creates invitation record
     // Generates invitation token
     // Triggers invitation email
   },
@@ -171,7 +253,7 @@ export const invite = mutation({
 ### `staff.getSchedule`
 
 ```typescript
-export const getSchedule = query({
+export const getSchedule = orgQuery({
   args: {
     staffId: v.id("staff"),
     startDate: v.string(), // ISO date
@@ -200,17 +282,17 @@ export const getSchedule = query({
 ### `staff.updateSchedule`
 
 ```typescript
-export const updateSchedule = mutation({
+export const updateSchedule = orgMutation({
   args: {
     staffId: v.id("staff"),
     defaultSchedule: v.object({
-      monday: v.optional(v.object({ start: v.number(), end: v.number() })),
-      tuesday: v.optional(v.object({ start: v.number(), end: v.number() })),
-      wednesday: v.optional(v.object({ start: v.number(), end: v.number() })),
-      thursday: v.optional(v.object({ start: v.number(), end: v.number() })),
-      friday: v.optional(v.object({ start: v.number(), end: v.number() })),
-      saturday: v.optional(v.object({ start: v.number(), end: v.number() })),
-      sunday: v.optional(v.object({ start: v.number(), end: v.number() })),
+      monday: v.optional(v.object({ start: v.string(), end: v.string() })),    // e.g. "09:00"
+      tuesday: v.optional(v.object({ start: v.string(), end: v.string() })),
+      wednesday: v.optional(v.object({ start: v.string(), end: v.string() })),
+      thursday: v.optional(v.object({ start: v.string(), end: v.string() })),
+      friday: v.optional(v.object({ start: v.string(), end: v.string() })),
+      saturday: v.optional(v.object({ start: v.string(), end: v.string() })),
+      sunday: v.optional(v.object({ start: v.string(), end: v.string() })),
     }),
   },
   returns: v.object({ success: v.boolean() }),
@@ -221,7 +303,7 @@ export const updateSchedule = mutation({
 ### `staff.createScheduleOverride`
 
 ```typescript
-export const createScheduleOverride = mutation({
+export const createScheduleOverride = adminMutation({
   args: {
     staffId: v.id("staff"),
     date: v.string(),
@@ -249,9 +331,9 @@ export const createScheduleOverride = mutation({
 ### `services.list`
 
 ```typescript
-export const list = query({
+export const list = orgQuery({
   args: {
-    organizationId: v.id("organizations"),
+    // organizationId auto-injected by orgQuery
     categoryId: v.optional(v.id("serviceCategories")),
     status: v.optional(v.literal("active")),
     showOnlineOnly: v.optional(v.boolean()),
@@ -276,9 +358,9 @@ export const list = query({
 ### `services.create`
 
 ```typescript
-export const create = mutation({
+export const create = adminMutation({
   args: {
-    organizationId: v.id("organizations"),
+    // organizationId auto-injected by adminMutation
     name: v.string(),
     description: v.optional(v.string()),
     duration: v.number(),
@@ -302,9 +384,9 @@ export const create = mutation({
 ### `services.getCategories`
 
 ```typescript
-export const getCategories = query({
+export const getCategories = orgQuery({
   args: {
-    organizationId: v.id("organizations"),
+    // organizationId auto-injected by orgQuery
   },
   returns: v.array(v.object({
     _id: v.id("serviceCategories"),
@@ -320,7 +402,7 @@ export const getCategories = query({
 ### `services.update`
 
 ```typescript
-export const update = mutation({
+export const update = adminMutation({
   args: {
     serviceId: v.id("services"),
     name: v.optional(v.string()),
@@ -352,7 +434,7 @@ export const update = mutation({
 ### `services.delete`
 
 ```typescript
-export const deleteService = mutation({
+export const deleteService = adminMutation({
   args: {
     serviceId: v.id("services"),
   },
@@ -361,7 +443,7 @@ export const deleteService = mutation({
     softDeleted: v.boolean(), // True if has booking history
   }),
   handler: async (ctx, args) => {
-    // Requires admin+ role
+    // Requires admin+ role (adminMutation)
     // Check if service has booking history
     // If has history: soft delete (set status = "inactive")
     // If no history: hard delete
@@ -377,9 +459,9 @@ export const deleteService = mutation({
 ### `appointments.getAvailableSlots`
 
 ```typescript
-export const getAvailableSlots = query({
+export const getAvailableSlots = publicQuery({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.id("organization"),
     date: v.string(), // ISO date: "2024-03-15"
     serviceIds: v.array(v.id("services")),
     staffId: v.optional(v.id("staff")),
@@ -408,7 +490,7 @@ export const getAvailableSlots = query({
 ```typescript
 export const acquireLock = mutation({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.id("organization"),
     staffId: v.id("staff"),
     date: v.string(),
     startTime: v.number(),
@@ -432,7 +514,7 @@ export const acquireLock = mutation({
 ```typescript
 export const create = mutation({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.id("organization"),
     staffId: v.id("staff"),
     date: v.string(),
     startTime: v.number(),
@@ -471,9 +553,9 @@ export const create = mutation({
 ### `appointments.getByDate`
 
 ```typescript
-export const getByDate = query({
+export const getByDate = orgQuery({
   args: {
-    organizationId: v.id("organizations"),
+    // organizationId auto-injected by orgQuery
     date: v.string(),
     staffId: v.optional(v.id("staff")),
   },
@@ -508,7 +590,7 @@ export const getByDate = query({
 ### `appointments.updateStatus`
 
 ```typescript
-export const updateStatus = mutation({
+export const updateStatus = orgMutation({
   args: {
     appointmentId: v.id("appointments"),
     status: v.union(
@@ -584,9 +666,9 @@ export const reschedule = mutation({
 ### `customers.list`
 
 ```typescript
-export const list = query({
+export const list = orgQuery({
   args: {
-    organizationId: v.id("organizations"),
+    // organizationId auto-injected by orgQuery
     search: v.optional(v.string()),
     sortBy: v.optional(v.union(
       v.literal("name"),
@@ -614,7 +696,7 @@ export const list = query({
 ### `customers.getProfile`
 
 ```typescript
-export const getProfile = query({
+export const getProfile = orgQuery({
   args: {
     customerId: v.id("customers"),
   },
@@ -655,7 +737,7 @@ export const getProfile = query({
 ### `customers.update`
 
 ```typescript
-export const update = mutation({
+export const update = orgMutation({
   args: {
     customerId: v.id("customers"),
     name: v.optional(v.string()),
@@ -683,7 +765,7 @@ export const update = mutation({
 ### `customers.merge`
 
 ```typescript
-export const merge = mutation({
+export const merge = adminMutation({
   args: {
     primaryCustomerId: v.id("customers"),
     duplicateCustomerId: v.id("customers"),
@@ -707,9 +789,9 @@ export const merge = mutation({
 ### `customers.advancedSearch`
 
 ```typescript
-export const advancedSearch = query({
+export const advancedSearch = orgQuery({
   args: {
-    organizationId: v.id("organizations"),
+    // organizationId auto-injected by orgQuery
     query: v.optional(v.string()),
     filters: v.optional(v.object({
       lastVisit: v.optional(v.union(
@@ -784,7 +866,7 @@ export const advancedSearch = query({
 ### `timeOff.request`
 
 ```typescript
-export const request = mutation({
+export const request = orgMutation({
   args: {
     startDate: v.string(),
     endDate: v.string(),
@@ -812,9 +894,9 @@ export const request = mutation({
 ### `timeOff.listPending`
 
 ```typescript
-export const listPending = query({
+export const listPending = adminQuery({
   args: {
-    organizationId: v.id("organizations"),
+    // organizationId auto-injected by adminQuery
   },
   returns: v.array(v.object({
     _id: v.id("timeOffRequests"),
@@ -839,7 +921,7 @@ export const listPending = query({
 ### `timeOff.approve`
 
 ```typescript
-export const approve = mutation({
+export const approve = adminMutation({
   args: {
     requestId: v.id("timeOffRequests"),
     appointmentAction: v.union(
@@ -865,7 +947,7 @@ export const approve = mutation({
 ### `timeOff.reject`
 
 ```typescript
-export const reject = mutation({
+export const reject = adminMutation({
   args: {
     requestId: v.id("timeOffRequests"),
     reason: v.string(),
@@ -883,7 +965,7 @@ export const reject = mutation({
 ### `timeOff.getMyRequests`
 
 ```typescript
-export const getMyRequests = query({
+export const getMyRequests = orgQuery({
   args: {
     status: v.optional(v.union(
       v.literal("pending"),
@@ -918,7 +1000,7 @@ export const getMyRequests = query({
 ### `overtime.create`
 
 ```typescript
-export const create = mutation({
+export const create = orgMutation({
   args: {
     date: v.string(),
     startTime: v.number(),
@@ -937,7 +1019,7 @@ export const create = mutation({
 ### `overtime.delete`
 
 ```typescript
-export const deleteOvertime = mutation({
+export const deleteOvertime = orgMutation({
   args: {
     overtimeId: v.id("staffOvertime"),
   },
@@ -952,7 +1034,7 @@ export const deleteOvertime = mutation({
 ### `overtime.getMyOvertime`
 
 ```typescript
-export const getMyOvertime = query({
+export const getMyOvertime = orgQuery({
   args: {
     startDate: v.string(),
     endDate: v.string(),
@@ -978,9 +1060,9 @@ export const getMyOvertime = query({
 ### `products.list`
 
 ```typescript
-export const list = query({
+export const list = adminQuery({
   args: {
-    organizationId: v.id("organizations"),
+    // organizationId auto-injected by adminQuery
     categoryId: v.optional(v.id("productCategories")),
     status: v.optional(v.string()),
     showOnlineOnly: v.optional(v.boolean()),
@@ -1005,9 +1087,9 @@ export const list = query({
 ### `products.search`
 
 ```typescript
-export const search = query({
+export const search = publicQuery({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.id("organization"),
     searchTerm: v.string(),
     limit: v.optional(v.number()),
   },
@@ -1028,9 +1110,9 @@ export const search = query({
 ### `products.create`
 
 ```typescript
-export const create = mutation({
+export const create = adminMutation({
   args: {
-    organizationId: v.id("organizations"),
+    // organizationId auto-injected by adminMutation
     name: v.string(),
     description: v.optional(v.string()),
     brand: v.optional(v.string()),
@@ -1070,7 +1152,7 @@ export const create = mutation({
 ### `products.update`
 
 ```typescript
-export const update = mutation({
+export const update = adminMutation({
   args: {
     productId: v.id("products"),
     name: v.optional(v.string()),
@@ -1104,7 +1186,7 @@ export const update = mutation({
 ### `products.delete`
 
 ```typescript
-export const deleteProduct = mutation({
+export const deleteProduct = adminMutation({
   args: {
     productId: v.id("products"),
   },
@@ -1113,7 +1195,7 @@ export const deleteProduct = mutation({
     softDeleted: v.boolean(),
   }),
   handler: async (ctx, args) => {
-    // Requires admin+ role
+    // Requires admin+ role (adminMutation)
     // Check for inventory transactions (keep for history)
     // Soft delete: set status = "inactive"
   },
@@ -1123,7 +1205,7 @@ export const deleteProduct = mutation({
 ### `products.adjustStock`
 
 ```typescript
-export const adjustStock = mutation({
+export const adjustStock = adminMutation({
   args: {
     productId: v.id("products"),
     newQuantity: v.number(),
@@ -1151,9 +1233,9 @@ export const adjustStock = mutation({
 ### `analytics.getDashboardMetrics`
 
 ```typescript
-export const getDashboardMetrics = query({
+export const getDashboardMetrics = orgQuery({
   args: {
-    organizationId: v.id("organizations"),
+    // organizationId auto-injected by orgQuery
   },
   returns: v.object({
     today: v.object({
@@ -1185,9 +1267,9 @@ export const getDashboardMetrics = query({
 ### `analytics.getRevenueReport`
 
 ```typescript
-export const getRevenueReport = query({
+export const getRevenueReport = adminQuery({
   args: {
-    organizationId: v.id("organizations"),
+    // organizationId auto-injected by adminQuery
     startDate: v.string(),
     endDate: v.string(),
     groupBy: v.optional(v.union(
@@ -1238,9 +1320,9 @@ export const getRevenueReport = query({
 ### `notifications.list`
 
 ```typescript
-export const list = query({
+export const list = orgQuery({
   args: {
-    organizationId: v.id("organizations"),
+    // organizationId auto-injected by orgQuery
     unreadOnly: v.optional(v.boolean()),
     limit: v.optional(v.number()),
   },
@@ -1260,7 +1342,7 @@ export const list = query({
 ### `notifications.markRead`
 
 ```typescript
-export const markRead = mutation({
+export const markRead = orgMutation({
   args: {
     notificationIds: v.array(v.id("notifications")),
   },
@@ -1360,9 +1442,9 @@ export const sendScheduledReminders = internalAction({
 ### `subscriptions.getCurrent`
 
 ```typescript
-export const getCurrent = query({
+export const getCurrent = ownerQuery({
   args: {
-    organizationId: v.id("organizations"),
+    // organizationId auto-injected by ownerQuery
   },
   returns: v.union(
     v.object({
@@ -1370,8 +1452,8 @@ export const getCurrent = query({
       status: v.union(
         v.literal("active"),
         v.literal("past_due"),
-        v.literal("cancelled"),
-        v.literal("incomplete")
+        v.literal("canceled"),
+        v.literal("unpaid")
       ),
       plan: v.union(
         v.literal("standard_monthly"),
@@ -1396,9 +1478,9 @@ export const getCurrent = query({
 ### `subscriptions.getBillingHistory`
 
 ```typescript
-export const getBillingHistory = query({
+export const getBillingHistory = ownerQuery({
   args: {
-    organizationId: v.id("organizations"),
+    // organizationId auto-injected by ownerQuery
     limit: v.optional(v.number()),
     cursor: v.optional(v.string()),
   },
@@ -1428,7 +1510,7 @@ export const getBillingHistory = query({
 ```typescript
 export const createCheckout = action({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.id("organization"), // actions don't use custom wrappers
     plan: v.union(
       v.literal("standard_monthly"),
       v.literal("standard_yearly")
@@ -1450,9 +1532,9 @@ export const createCheckout = action({
 ### `subscriptions.cancel`
 
 ```typescript
-export const cancel = mutation({
+export const cancel = ownerMutation({
   args: {
-    organizationId: v.id("organizations"),
+    // organizationId auto-injected by ownerMutation
     reason: v.optional(v.string()),
   },
   returns: v.object({
@@ -1472,7 +1554,7 @@ export const cancel = mutation({
 ```typescript
 export const getPortalUrl = action({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.id("organization"), // actions don't use custom wrappers
   },
   returns: v.object({
     portalUrl: v.string(),
@@ -1488,9 +1570,9 @@ export const getPortalUrl = action({
 ### `subscriptions.reactivate`
 
 ```typescript
-export const reactivate = mutation({
+export const reactivate = ownerMutation({
   args: {
-    organizationId: v.id("organizations"),
+    // organizationId auto-injected by ownerMutation
   },
   returns: v.object({
     success: v.boolean(),
@@ -1502,6 +1584,158 @@ export const reactivate = mutation({
   },
 });
 ```
+
+---
+
+## File Upload APIs
+
+> **File:** `convex/files.ts` (192 lines)
+> **Status:** ✅ Implemented
+> **Purpose:** Handles file uploads using Convex File Storage for organization logos and staff profile images
+
+Convex provides built-in file storage with CDN distribution. The upload process follows a 3-step flow:
+
+1. **Generate Upload URL** (client requests a temporary upload URL)
+2. **Upload File** (client uploads directly to Convex storage)
+3. **Save Reference** (backend saves the file URL to the database)
+
+### `files.generateUploadUrl`
+
+Generates a temporary upload URL for client-side file uploads.
+
+```typescript
+export const generateUploadUrl = mutation({
+  args: {},
+  returns: v.string(),
+  handler: async (ctx) => {
+    return await ctx.storage.generateUploadUrl();
+  },
+});
+```
+
+**Returns:** Temporary upload URL (valid for ~1 hour)
+
+**Usage:** Called by client before file upload. No authentication required (URL itself is the auth).
+
+### `files.saveOrganizationLogo`
+
+Saves organization logo after upload. Validates file size and type.
+
+```typescript
+export const saveOrganizationLogo = adminMutation({
+  args: {
+    storageId: v.id("_storage"),
+    fileName: v.string(),
+    fileType: v.string(),
+    fileSize: v.number(),
+  },
+  returns: v.string(), // Returns CDN URL
+  handler: async (ctx, args) => {
+    // Validates size (max 2MB) and type (JPEG/PNG/WebP)
+    // Gets CDN URL from storage
+    // Updates organization.logo
+  },
+});
+```
+
+**Permissions:** Admin or owner role required
+
+**Validation:**
+- Max file size: 2MB
+- Allowed types: `image/jpeg`, `image/png`, `image/webp`
+
+**Returns:** CDN URL of uploaded logo
+
+### `files.deleteOrganizationLogo`
+
+Removes organization logo reference (file remains in storage for caching).
+
+```typescript
+export const deleteOrganizationLogo = adminMutation({
+  args: {},
+  returns: v.null(),
+  handler: async (ctx) => {
+    // Sets organization.logo to undefined
+    // Note: Does not delete from storage (Convex handles cleanup)
+  },
+});
+```
+
+**Permissions:** Admin or owner role required
+
+### `files.saveStaffImage`
+
+Saves staff profile image after upload. Checks permission (own profile or admin).
+
+```typescript
+export const saveStaffImage = authedMutation({
+  args: {
+    staffId: v.id("staff"),
+    storageId: v.id("_storage"),
+    fileName: v.string(),
+    fileType: v.string(),
+    fileSize: v.number(),
+  },
+  returns: v.string(), // Returns CDN URL
+  handler: async (ctx, args) => {
+    // Validates size and type
+    // Checks permission: own profile OR admin/owner
+    // Updates staff.imageUrl
+  },
+});
+```
+
+**Permissions:** Staff member (own profile) OR admin/owner (any profile)
+
+**Validation:**
+- Max file size: 2MB
+- Allowed types: `image/jpeg`, `image/png`, `image/webp`
+
+**Returns:** CDN URL of uploaded image
+
+### Upload Flow Example
+
+```typescript
+// Client-side upload flow
+import { useAction, useMutation } from "convex/react";
+import { api } from "@/convex/_generated/api";
+
+async function uploadLogo(file: File) {
+  // Step 1: Get upload URL
+  const uploadUrl = await generateUploadUrl();
+
+  // Step 2: Upload file directly to Convex storage
+  const response = await fetch(uploadUrl, {
+    method: "POST",
+    body: file,
+  });
+  const { storageId } = await response.json();
+
+  // Step 3: Save reference in database
+  const logoUrl = await saveOrganizationLogo({
+    storageId,
+    fileName: file.name,
+    fileType: file.type,
+    fileSize: file.size,
+  });
+
+  return logoUrl; // CDN URL for display
+}
+```
+
+### File Storage Constraints
+
+| Constraint | Value | Rationale |
+|------------|-------|-----------|
+| Max file size | 2MB | Sufficient for profile images/logos, prevents abuse |
+| Allowed formats | JPEG, PNG, WebP | Standard web image formats, WebP for modern browsers |
+| Storage retention | Permanent | Files not deleted (CDN caching), Convex handles cleanup |
+| Upload URL TTL | ~1 hour | Temporary URL expires after generation |
+| CDN distribution | Global | Convex provides automatic CDN distribution |
+
+**See also:**
+- [File Storage Documentation](./architecture.md#file-storage) for architecture details
+- [Logo Upload Component](../../../src/components/logo-upload/LogoUpload.tsx) for frontend implementation
 
 ---
 
@@ -1597,8 +1831,9 @@ export const checkGracePeriods = internalMutation({
     const now = Date.now();
 
     // Find orgs with expired grace periods
+    // Note: subscriptionStatus/gracePeriodEndsAt live on organizationSettings table
     const expiredOrgs = await ctx.db
-      .query("organizations")
+      .query("organizationSettings")
       .withIndex("by_subscription_status", (q) =>
         q.eq("subscriptionStatus", "past_due")
       )
@@ -1640,3 +1875,29 @@ export const sendGracePeriodReminders = internalAction({
   },
 });
 ```
+
+---
+
+## See Also
+
+**Related Documentation:**
+- [Convex Schema](./convex-schema.md) - Database tables referenced in these APIs
+- [System Architecture](./architecture.md) - Multi-tenancy, auth, and rate limiting
+- [Rate Limiting](./architecture.md#rate-limiting) - Rate limit configuration details
+- [Glossary - Organization](../appendix/glossary.md#organization) - Terminology guidelines
+
+**Key Sections in This Document:**
+- [Shared Validators](#shared-validators-convexlibvalidatorsts) - Centralized type validators
+- [File Upload APIs](#file-upload-apis) - File storage implementation
+- [Organization APIs](#organization-apis) - Tenant management
+- [Staff APIs](#staff-apis) - Staff and invitation management
+- [Subscription APIs](#subscription-apis-polarsh-integration) - Billing integration
+
+**Implementation Files:**
+- `convex/lib/validators.ts` - All shared validators (231 lines)
+- `convex/lib/rateLimits.ts` - Rate limit configuration (104 lines)
+- `convex/files.ts` - File upload implementation (192 lines)
+- `convex/organizations.ts` - Organization CRUD operations
+- `convex/staff.ts` - Staff profile management
+- `convex/invitations.ts` - Invitation lifecycle
+- `convex/members.ts` - Member and role management

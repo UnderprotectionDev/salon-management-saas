@@ -14,7 +14,7 @@ Acceptance Criteria:
 
 ---
 
-## Salon Owner Stories (Super Admin)
+## Salon Owner Stories (Owner)
 
 ### US-001: Initial Salon Setup [P0]
 
@@ -56,7 +56,7 @@ Acceptance Criteria:
 
 **Acceptance Criteria:**
 - [ ] Can invite staff via email (sends Better Auth invitation)
-- [ ] Can set staff role (Admin, Staff)
+- [ ] Can set staff role (Admin, Member)
 - [ ] Can assign services staff member can perform
 - [ ] Can set staff working hours (default or custom)
 - [ ] Can upload staff profile photo
@@ -103,17 +103,17 @@ Acceptance Criteria:
 **So that** sensitive business data is protected.
 
 **Acceptance Criteria:**
-- [ ] Can set role-based permissions (Owner, Admin, Staff)
-- [ ] Staff role can only view/manage own schedule
+- [ ] Can set role-based permissions (Owner, Admin, Member)
+- [ ] Member role can only view/manage own schedule
 - [ ] Admin role can manage all bookings and staff
 - [ ] Owner role has full access including settings
 - [ ] Permissions apply immediately after change
 
 ---
 
-## Admin/Staff Stories
+## Admin/Member Stories
 
-> **Note:** The system has 3 roles (Owner > Admin > Staff). There is no separate "Receptionist" role - front desk duties are performed by Admin or Owner.
+> **Note:** The system has 3 roles (Owner > Admin > Member). There is no separate "Receptionist" role - front desk duties are performed by Admin or Owner.
 
 ### US-010: View Daily Schedule [P0]
 
@@ -495,20 +495,22 @@ US-031 (Real-Time) ────── Required for all booking features
 
 ## Implementation Priority
 
-### Sprint 1 (P0 - Core)
+### Sprint 1 (P0 - Multi-Tenant Foundation) - DONE
 - US-001: Salon Setup
-- US-002: Service Catalog
-- US-003: Staff Onboarding
 - US-030: Multi-Tenant Isolation
 
-### Sprint 2 (P0 - Booking)
+### Sprint 2 (P0 - Services, Staff & Customers)
+- US-002: Service Catalog
+- US-003: Staff Onboarding
+- US-006: Permissions
+
+### Sprint 3 (P0 - Booking Engine Core)
 - US-020: Browse Services
 - US-021: Book Appointment
 - US-022: View Slots
-- US-023: Confirmation
 - US-031: Real-Time Sync
 
-### Sprint 3 (P0 - Operations)
+### Sprint 4 (P0 - Booking Operations)
 - US-010: Daily Schedule
 - US-011: Walk-in Booking
 - US-012: Check-in
@@ -516,17 +518,21 @@ US-031 (Real-Time) ────── Required for all booking features
 - US-015: No-Show
 - US-025: Customer Cancel
 
-### Sprint 4 (P0/P1 - Dashboard)
+### Sprint 5 (P0 - Dashboard & Calendar)
 - US-004: Dashboard
-- US-006: Permissions
 - US-013: Checkout
-- US-024: Reminders
-- US-026: Reschedule
 
-### Sprint 5 (P1 - Enhancement)
+### Sprint 7 (P1 - Email Notifications)
+- US-023: Confirmation
+- US-024: Reminders
+
+### Sprint 8 (P1 - Reports & Analytics)
 - US-005: Reports
-- US-027: Booking History
 - US-032: Audit Logging
+
+### Sprint 9 (P1 - Customer Portal)
+- US-026: Reschedule
+- US-027: Booking History
 
 ---
 

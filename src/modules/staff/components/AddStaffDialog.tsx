@@ -72,12 +72,14 @@ export function AddStaffDialog({
         form.reset();
         onSuccess?.();
       } catch (error) {
-        // Surface error to form
+        // Surface error to form using toast instead
         const message =
           error instanceof Error
             ? error.message
             : "Failed to send invitation. Please try again.";
-        form.setErrorMap({ onSubmit: message });
+        // Using toast for error display since TanStack Form API has changed
+        const { toast } = await import("sonner");
+        toast.error(message);
       }
     },
   });
@@ -116,6 +118,7 @@ export function AddStaffDialog({
               name="name"
               validators={{
                 onBlur: nameSchema,
+                onSubmit: nameSchema,
               }}
             >
               {(field) => {
@@ -136,9 +139,7 @@ export function AddStaffDialog({
                       aria-invalid={hasError}
                     />
                     {hasError && (
-                      <FieldError>
-                        {field.state.meta.errors.join(", ")}
-                      </FieldError>
+                      <FieldError errors={field.state.meta.errors} />
                     )}
                   </Field>
                 );
@@ -149,6 +150,7 @@ export function AddStaffDialog({
               name="email"
               validators={{
                 onBlur: emailSchema,
+                onSubmit: emailSchema,
               }}
             >
               {(field) => {
@@ -173,9 +175,7 @@ export function AddStaffDialog({
                       They will need to sign up with this email to join
                     </FieldDescription>
                     {hasError && (
-                      <FieldError>
-                        {field.state.meta.errors.join(", ")}
-                      </FieldError>
+                      <FieldError errors={field.state.meta.errors} />
                     )}
                   </Field>
                 );
@@ -230,7 +230,7 @@ export function AddStaffDialog({
               {(errors) =>
                 errors.length > 0 && (
                   <div className="rounded-md bg-destructive/10 p-3 text-sm text-destructive">
-                    {errors.join(", ")}
+                    {errors.map((e) => String(e)).join(", ")}
                   </div>
                 )
               }

@@ -341,50 +341,41 @@ flowchart TB
 
 ## Authentication Flows
 
-### Magic Link Login
+### Google OAuth Login (Current)
 
 ```mermaid
 flowchart TB
     Start([User visits login page])
-    EnterEmail[Enter Email Address]
-    Validate{Valid Email?}
-    Invalid[Show Error]
-    SendLink[Send Magic Link]
-    Check{User Exists?}
-    Existing[Send Login Link]
-    New[Send Invitation Link]
-    EmailSent[Email Sent Message]
-    Wait([User Checks Email])
-    Click[User Clicks Link]
-    ValidToken{Token Valid?}
-    Expired[Token Expired - Retry]
-    CreateSession[Create Session]
-    Redirect{Has Organization?}
+    ClickGoogle[Click Sign in with Google]
+    GoogleConsent[Google Consent Screen]
+    Authorize{Authorized?}
+    Denied[Show Error - Try Again]
+    Callback[OAuth Callback]
+    CreateSession[Create/Update Session]
+    CheckInvitations{Has Pending Invitations?}
+    ShowBanner[Show Invitation Banner]
+    HasOrg{Has Organization?}
     Dashboard[Redirect to Dashboard]
-    Setup[Redirect to Setup]
+    Setup[Redirect to Onboarding]
 
-    Start --> EnterEmail
-    EnterEmail --> Validate
-    Validate -->|No| Invalid
-    Invalid --> EnterEmail
-    Validate -->|Yes| SendLink
-    SendLink --> Check
-    Check -->|Yes| Existing
-    Check -->|No| New
-    Existing --> EmailSent
-    New --> EmailSent
-    EmailSent --> Wait
-    Wait --> Click
-    Click --> ValidToken
-    ValidToken -->|No| Expired
-    Expired --> EnterEmail
-    ValidToken -->|Yes| CreateSession
-    CreateSession --> Redirect
-    Redirect -->|Yes| Dashboard
-    Redirect -->|No| Setup
+    Start --> ClickGoogle
+    ClickGoogle --> GoogleConsent
+    GoogleConsent --> Authorize
+    Authorize -->|No| Denied
+    Denied --> Start
+    Authorize -->|Yes| Callback
+    Callback --> CreateSession
+    CreateSession --> CheckInvitations
+    CheckInvitations -->|Yes| ShowBanner
+    CheckInvitations -->|No| HasOrg
+    ShowBanner --> HasOrg
+    HasOrg -->|Yes| Dashboard
+    HasOrg -->|No| Setup
 ```
 
-### OTP Verification (Booking)
+### OTP Verification (Booking) — Planned (Sprint 3-4)
+
+> **Note:** OTP verification for booking is not yet implemented. This flow describes the planned behavior.
 
 ```mermaid
 flowchart TB

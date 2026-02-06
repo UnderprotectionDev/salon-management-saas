@@ -3,7 +3,7 @@
 > **Priority:** P0 (MVP Must-Have)
 > **Owner:** Backend Team
 > **Dependencies:** Multi-tenancy, Staff Management, Service Catalog
-> **Last Updated:** 2026-02-04
+> **Last Updated:** 2026-02-06
 
 ## Overview
 
@@ -29,8 +29,8 @@ stateDiagram-v2
     SlotSelected --> Locked: Lock acquired (2min TTL)
     Locked --> Released: Timeout/Cancel
     Locked --> PendingVerification: Customer info submitted
-    PendingVerification --> Confirmed: OTP verified
-    PendingVerification --> Released: OTP timeout (5min)
+    PendingVerification --> Confirmed: Verified (OTP planned)
+    PendingVerification --> Released: Verification timeout (5min)
     Confirmed --> CheckedIn: Customer arrives
     Confirmed --> Cancelled: User/Admin cancels
     Confirmed --> NoShow: 15min past, not arrived
@@ -47,7 +47,7 @@ stateDiagram-v2
 |-------|-------------|-------------------|
 | `slot_selected` | User viewing slot | Select different slot |
 | `locked` | Temporary hold (2min) | Complete booking, cancel |
-| `pending_verification` | Awaiting OTP | Verify OTP, resend OTP, cancel |
+| `pending_verification` | Awaiting verification (OTP planned) | Verify, resend, cancel |
 | `confirmed` | Booking complete | Check-in, cancel, reschedule |
 | `checked_in` | Customer arrived | Complete, no-show |
 | `completed` | Service rendered | None (final) |
@@ -207,7 +207,7 @@ Two customers selecting the same slot simultaneously could both complete booking
 ```typescript
 // convex/schema.ts
 slotLocks: defineTable({
-  organizationId: v.id("organizations"),
+  organizationId: v.id("organization"),
   staffId: v.id("staff"),
   date: v.string(),
   startTime: v.number(), // minutes from midnight
@@ -361,6 +361,8 @@ export const cleanupExpiredLocks = internalMutation({
 
 ### Step 6: OTP Verification
 
+> **Note:** OTP verification is planned for Sprint 3-4 and is not yet implemented. The booking flow currently skips this step.
+
 **UI:** 6-digit code input
 
 **Process:**
@@ -410,7 +412,7 @@ flowchart LR
 ```typescript
 export const createWalkInBooking = mutation({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.id("organization"),
     customerName: v.string(),
     customerPhone: v.string(),
     serviceIds: v.array(v.id("services")),
@@ -560,7 +562,7 @@ await ctx.db.patch(appointmentId, { reminderJobId });
 ```typescript
 export const getAvailableSlots = query({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.id("organization"),
     date: v.string(),
     serviceIds: v.array(v.id("services")),
     staffId: v.optional(v.id("staff")),
@@ -585,7 +587,7 @@ export const getAvailableSlots = query({
 ```typescript
 export const createAppointment = mutation({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.id("organization"),
     staffId: v.id("staff"),
     date: v.string(),
     startTime: v.number(),
@@ -724,8 +726,8 @@ export const cancelAppointment = mutation({
 - [ ] Component: `OTPVerification`
 - [ ] Component: `BookingConfirmation`
 - [ ] Component: `BookingSummary`
-- [ ] Page: `/[org]/book` (booking wizard)
-- [ ] Page: `/[org]/book/confirmation/[id]`
+- [ ] Page: `/[slug]/book` (booking wizard)
+- [ ] Page: `/[slug]/book/confirmation/[id]`
 - [ ] Hook: `useAvailableSlots`
 - [ ] Hook: `useSlotLock`
 - [ ] Hook: `useBookingFlow`

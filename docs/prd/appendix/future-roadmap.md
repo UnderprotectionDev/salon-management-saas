@@ -245,8 +245,10 @@ flowchart TB
 
 **Options:**
 1. **React Native:** Share code with web
-2. **Capacitor:** Wrap existing PWA
+2. **Capacitor:** Wrap existing web app
 3. **Native:** Best performance, highest cost
+
+> **Note:** There is no PWA currently. The web app is a standard Next.js application.
 
 **Features:**
 - Push notifications
@@ -254,7 +256,7 @@ flowchart TB
 - Biometric login
 - Camera for profile photos
 
-**Initial Recommendation:** Capacitor wrapper for PWA with push notifications.
+**Initial Recommendation:** React Native for code sharing with the existing React codebase.
 
 ---
 
@@ -336,7 +338,7 @@ flowchart TB
 
 **Target:** v1.1
 
-- Rate limiting per endpoint
+- ~~Rate limiting per endpoint~~ (Already implemented in Sprint 1 via `convex/lib/rateLimits.ts` using `@convex-dev/rate-limiter`)
 - Brute force protection
 - Security audit
 - Penetration testing

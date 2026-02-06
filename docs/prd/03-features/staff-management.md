@@ -13,7 +13,7 @@ Staff management handles team member profiles, working schedules, service assign
 
 | Rule | Description |
 |------|-------------|
-| **Role System** | 3 roles only: Owner > Admin > Staff |
+| **Role System** | 3 roles only: Owner > Admin > Member (roles on `member` table) |
 | **Time-Off** | Requires approval from Owner or Admin |
 | **Out-of-Hours** | Admin can book, Staff can define own overtime |
 | **Schedule** | Staff views only own schedule |
@@ -28,22 +28,22 @@ Staff management handles team member profiles, working schedules, service assign
 
 ```mermaid
 flowchart TB
-    Owner[Owner<br/>Super Admin]
+    Owner[Owner<br/>Owner]
     Admin[Admin<br/>Manager/Receptionist]
-    Staff[Staff Member<br/>Service Provider]
+    Member[Member<br/>Service Provider]
 
     Owner --> Admin
-    Admin --> Staff
+    Admin --> Member
 
     Owner -.- OwnerPerms["Full access<br/>Billing & Settings<br/>Data Export"]
-    Admin -.- AdminPerms["Manage all bookings<br/>Approve time-off<br/>View reports<br/>No billing access"]
-    Staff -.- StaffPerms["Own schedule only<br/>Own appointments<br/>Define overtime"]
+    Admin -.- AdminPerms["Manage all bookings<br/>Approve time-off<br/>View reports & settings"]
+    Member -.- MemberPerms["Own schedule only<br/>Own appointments<br/>Define overtime"]
 ```
 
 ### Permission Matrix
 
-| Permission | Owner | Admin | Staff |
-|------------|-------|-------|-------|
+| Permission | Owner | Admin | Member |
+|------------|-------|-------|--------|
 | View dashboard | ✅ | ✅ | ❌ |
 | View all schedules | ✅ | ✅ | ❌ |
 | View own schedule | ✅ | ✅ | ✅ |
@@ -69,11 +69,25 @@ flowchart TB
 ### Data Model
 
 ```typescript
-// convex/schema.ts
+// convex/schema.ts — ✅ Implemented
+// Note: Role is on `member` table, NOT on staff table.
+// Staff is a professional profile only.
+
+member: defineTable({
+  organizationId: v.id("organization"),
+  userId: v.string(), // Better Auth user ID
+  role: v.union(v.literal("owner"), v.literal("admin"), v.literal("member")),
+  createdAt: v.number(),
+  updatedAt: v.number(),
+})
+.index("organizationId", ["organizationId"])
+.index("userId", ["userId"])
+.index("organizationId_userId", ["organizationId", "userId"]),
+
 staff: defineTable({
-  // Identity
-  userId: v.id("users"), // Better Auth user
-  organizationId: v.id("organizations"),
+  userId: v.string(), // Better Auth user ID
+  organizationId: v.id("organization"),
+  memberId: v.id("member"), // Links to member for role
 
   // Profile
   name: v.string(),
@@ -82,46 +96,51 @@ staff: defineTable({
   imageUrl: v.optional(v.string()),
   bio: v.optional(v.string()),
 
-  // Role & Status
-  role: v.union(v.literal("owner"), v.literal("admin"), v.literal("staff")),
+  // Status
   status: v.union(v.literal("active"), v.literal("inactive"), v.literal("pending")),
 
-  // Services this staff can perform
-  serviceIds: v.array(v.id("services")),
+  // Services (string IDs until services table exists)
+  serviceIds: v.optional(v.array(v.string())),
 
-  // Default working hours (can be overridden per day)
-  defaultSchedule: v.object({
-    monday: v.optional(v.object({ start: v.number(), end: v.number() })),
-    tuesday: v.optional(v.object({ start: v.number(), end: v.number() })),
-    wednesday: v.optional(v.object({ start: v.number(), end: v.number() })),
-    thursday: v.optional(v.object({ start: v.number(), end: v.number() })),
-    friday: v.optional(v.object({ start: v.number(), end: v.number() })),
-    saturday: v.optional(v.object({ start: v.number(), end: v.number() })),
-    sunday: v.optional(v.object({ start: v.number(), end: v.number() })),
-  }),
+  // Default working schedule (time as strings, e.g., "09:00")
+  defaultSchedule: v.optional(v.object({
+    monday: v.optional(v.object({ start: v.string(), end: v.string(), available: v.boolean() })),
+    tuesday: v.optional(v.object({ start: v.string(), end: v.string(), available: v.boolean() })),
+    wednesday: v.optional(v.object({ start: v.string(), end: v.string(), available: v.boolean() })),
+    thursday: v.optional(v.object({ start: v.string(), end: v.string(), available: v.boolean() })),
+    friday: v.optional(v.object({ start: v.string(), end: v.string(), available: v.boolean() })),
+    saturday: v.optional(v.object({ start: v.string(), end: v.string(), available: v.boolean() })),
+    sunday: v.optional(v.object({ start: v.string(), end: v.string(), available: v.boolean() })),
+  })),
 
-  // Timestamps
   createdAt: v.number(),
   updatedAt: v.number(),
 })
-.index("by_organization", ["organizationId"])
-.index("by_user", ["userId"])
-.index("by_org_status", ["organizationId", "status"])
+.index("organizationId", ["organizationId"])
+.index("userId", ["userId"])
+.index("memberId", ["memberId"])
+.index("organizationId_userId", ["organizationId", "userId"])
+.index("organizationId_status", ["organizationId", "status"])
+.index("organizationId_email", ["organizationId", "email"]),
 ```
 
 ### Profile Fields
 
 | Field | Type | Required | Description |
 |-------|------|----------|-------------|
+| userId | string | Yes | Better Auth user ID |
+| organizationId | ID | Yes | Organization reference |
+| memberId | ID | Yes | Member table reference (for role) |
 | name | string | Yes | Display name |
 | email | string | Yes | Contact email (from Better Auth) |
 | phone | string | No | Contact phone |
 | imageUrl | string | No | Profile photo URL |
 | bio | string | No | Short bio (max 500 chars) |
-| role | enum | Yes | owner/admin/staff |
 | status | enum | Yes | active/inactive/pending |
 | serviceIds | array | No | Services they can perform |
-| defaultSchedule | object | Yes | Weekly working hours |
+| defaultSchedule | object | No | Weekly working hours (time as "HH:mm" strings) |
+
+> **Architecture Note:** Role (owner/admin/member) is managed on the `member` table, NOT the `staff` table. This separates organizational membership from professional profile data. Invitations use a separate `invitation` table with full lifecycle management (create → accept/reject/cancel/resend).
 
 ---
 
@@ -139,7 +158,7 @@ staff: defineTable({
 // convex/schema.ts
 scheduleOverrides: defineTable({
   staffId: v.id("staff"),
-  organizationId: v.id("organizations"),
+  organizationId: v.id("organization"),
   date: v.string(), // "2024-03-15"
   type: v.union(
     v.literal("custom_hours"), // Different hours
@@ -162,7 +181,7 @@ scheduleOverrides: defineTable({
 // convex/schema.ts
 timeOffRequests: defineTable({
   staffId: v.id("staff"),
-  organizationId: v.id("organizations"),
+  organizationId: v.id("organization"),
   startDate: v.string(),
   endDate: v.string(),
   type: v.union(
@@ -407,7 +426,7 @@ Staff can mark themselves available outside regular business hours:
 // convex/schema.ts
 staffOvertime: defineTable({
   staffId: v.id("staff"),
-  organizationId: v.id("organizations"),
+  organizationId: v.id("organization"),
   date: v.string(), // Specific date
   startTime: v.number(), // Minutes from midnight
   endTime: v.number(),
@@ -567,7 +586,7 @@ If you have questions, contact [Owner Email].
 ```typescript
 export const listStaff = query({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.id("organization"),
     status: v.optional(v.union(
       v.literal("active"),
       v.literal("inactive"),
@@ -613,10 +632,10 @@ export const getStaffSchedule = query({
 ```typescript
 export const inviteStaff = mutation({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.id("organization"),
     email: v.string(),
     name: v.string(),
-    role: v.union(v.literal("admin"), v.literal("staff")),
+    role: v.union(v.literal("admin"), v.literal("member")),
     serviceIds: v.array(v.id("services")),
   },
   returns: v.object({

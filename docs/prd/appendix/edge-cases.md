@@ -33,7 +33,7 @@ const existingCustomer = await findCustomerByPhone(phone);
 if (existingCustomer?.userId) {
   // Prompt to log in instead
   throw new ConvexError({
-    code: "ACCOUNT_EXISTS",
+    code: ErrorCode.ALREADY_EXISTS,
     message: "This phone is linked to an account. Please log in to continue.",
     loginPrompt: true,
   });
@@ -246,7 +246,7 @@ Options:
 try {
   await acquireSlotLock(slot);
 } catch (error) {
-  if (error.code === "SLOT_LOCKED") {
+  if (error.code === ErrorCode.VALIDATION_ERROR) {
     // Show user-friendly message
     showToast("This slot is being booked by another user. Please select a different time.");
     // Refresh available slots
@@ -681,7 +681,7 @@ if (existingEvent) {
 const appointment = await ctx.db.get(args.appointmentId);
 if (appointment.status !== "confirmed") {
   throw new ConvexError({
-    code: "INVALID_STATE",
+    code: ErrorCode.VALIDATION_ERROR,
     message: `Cannot check in from status: ${appointment.status}`,
   });
 }

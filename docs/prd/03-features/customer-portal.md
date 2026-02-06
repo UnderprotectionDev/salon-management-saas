@@ -3,7 +3,7 @@
 > **Priority:** P1 (MVP Nice-to-Have)
 > **Owner:** Frontend Team
 > **Dependencies:** Core Booking, Authentication
-> **Last Updated:** 2026-02-04
+> **Last Updated:** 2026-02-06
 
 ## Overview
 
@@ -14,7 +14,7 @@ The customer portal provides a self-service interface for salon customers to boo
 | Rule | Description |
 |------|-------------|
 | **Account Model** | Hybrid - Guest booking first, account prompt after 3+ visits |
-| **Authentication** | Email magic link (no password) |
+| **Authentication** | Google OAuth (primary), Magic link (planned) |
 | **Notes** | Separate customer notes and internal staff notes |
 | **No-Show Policy** | Recorded only, no penalty or blocking |
 
@@ -122,7 +122,7 @@ journey
 
 ## Public Pages (No Auth Required)
 
-### Salon Landing Page (`/[salon-slug]`)
+### Salon Landing Page (`/[slug]`)
 
 **Purpose:** Entry point for customers discovering the salon
 
@@ -161,7 +161,7 @@ journey
 └─────────────────────────────────────────────────────────┘
 ```
 
-### Services Page (`/[salon-slug]/services`)
+### Services Page (`/[slug]/services`)
 
 **Purpose:** Browse all services with details
 
@@ -172,7 +172,7 @@ journey
 - Search functionality
 - "Book This" button per service
 
-### Booking Flow (`/[salon-slug]/book`)
+### Booking Flow (`/[slug]/book`)
 
 **Purpose:** Complete appointment booking
 
@@ -185,7 +185,7 @@ See [Core Booking](./core-booking.md) for detailed flow specification.
 - Progress indicator
 - Back navigation
 
-### Booking Confirmation (`/[salon-slug]/book/confirmed/[id]`)
+### Booking Confirmation (`/[slug]/book/confirmed/[id]`)
 
 **Purpose:** Show booking success and next steps
 
@@ -207,7 +207,7 @@ See [Core Booking](./core-booking.md) for detailed flow specification.
 flowchart TB
     Start[Customer wants to access account]
     HasAccount{Has account?}
-    LoginMethod[Email magic link]
+    LoginMethod[Google OAuth / Magic link]
     CreateAccount[Create account during booking]
     Authenticated[Access granted]
 
@@ -219,10 +219,11 @@ flowchart TB
 ```
 
 **Login Methods:**
-1. **Magic Link (Primary):** Email-based passwordless login
-2. **Phone OTP (Future):** SMS-based verification
+1. **Google OAuth (Current):** Primary authentication method
+2. **Magic Link (Planned):** Email-based passwordless login for customer portal
+3. **Phone OTP (Future):** SMS-based verification
 
-### My Bookings (`/[salon-slug]/my-bookings`)
+### My Bookings (`/[slug]/my-bookings`)
 
 **Purpose:** View and manage appointments
 
@@ -251,7 +252,7 @@ flowchart TB
 - Add to calendar
 - View salon directions
 
-### Booking History (`/[salon-slug]/my-bookings/history`)
+### Booking History (`/[slug]/my-bookings/history`)
 
 **Purpose:** View past appointments
 
@@ -262,7 +263,7 @@ flowchart TB
 - Total paid
 - "Book Again" button
 
-### My Profile (`/[salon-slug]/profile`)
+### My Profile (`/[slug]/profile`)
 
 **Purpose:** Manage customer profile
 
@@ -283,8 +284,8 @@ flowchart TB
 // convex/schema.ts
 customers: defineTable({
   // Identity
-  organizationId: v.id("organizations"),
-  userId: v.optional(v.id("users")), // If registered (null for guests)
+  organizationId: v.id("organization"),
+  userId: v.optional(v.string()), // If registered (null for guests) - Better Auth stores userId as string
 
   // Contact
   name: v.string(),
@@ -393,9 +394,10 @@ export const getMyProfile = query({
 });
 
 // Customer detail query (for staff)
+// Uses orgQuery wrapper — requires org membership (owner, admin, or member role)
 export const getCustomerDetail = query({
   handler: async (ctx, { customerId }) => {
-    await assertRole(ctx, ["owner", "admin", "staff"]);
+    // Access control handled by orgQuery wrapper (owner, admin, member)
     const customer = await ctx.db.get(customerId);
     return {
       ...customer,
@@ -422,8 +424,9 @@ export const markNoShow = mutation({
   args: {
     appointmentId: v.id("appointments"),
   },
+  // Uses adminMutation wrapper — requires owner or admin role
   handler: async (ctx, args) => {
-    await assertRole(ctx, ["owner", "admin"]);
+    // Access control handled by adminMutation wrapper (owner, admin)
 
     const appointment = await ctx.db.get(args.appointmentId);
 
@@ -470,7 +473,7 @@ export const markNoShow = mutation({
 ```typescript
 export const getMyBookings = query({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.id("organization"),
     status: v.optional(v.union(
       v.literal("upcoming"),
       v.literal("past"),
@@ -510,7 +513,7 @@ export const getMyBookings = query({
 ```typescript
 export const getMyProfile = query({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.id("organization"),
   },
   returns: v.object({
     name: v.string(),
@@ -538,7 +541,7 @@ export const getMyProfile = query({
 ```typescript
 export const updateMyProfile = mutation({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.id("organization"),
     name: v.optional(v.string()),
     phone: v.optional(v.string()),
     preferredStaffId: v.optional(v.id("staff")),
@@ -675,13 +678,13 @@ We'd love to see you soon. Book a new appointment:
 
 ### Frontend (Next.js)
 
-- [ ] Page: `/[org]` (salon landing)
-- [ ] Page: `/[org]/services`
-- [ ] Page: `/[org]/book` (booking wizard)
-- [ ] Page: `/[org]/book/confirmed/[id]`
-- [ ] Page: `/[org]/my-bookings`
-- [ ] Page: `/[org]/my-bookings/history`
-- [ ] Page: `/[org]/profile`
+- [ ] Page: `/[slug]` (salon landing)
+- [ ] Page: `/[slug]/services`
+- [ ] Page: `/[slug]/book` (booking wizard)
+- [ ] Page: `/[slug]/book/confirmed/[id]`
+- [ ] Page: `/[slug]/my-bookings`
+- [ ] Page: `/[slug]/my-bookings/history`
+- [ ] Page: `/[slug]/profile`
 - [ ] Component: `SalonHeader`
 - [ ] Component: `ServiceGrid`
 - [ ] Component: `BookingWizard`

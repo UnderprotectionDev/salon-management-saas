@@ -3,8 +3,8 @@ import { convex } from "@convex-dev/better-auth/plugins";
 import { betterAuth } from "better-auth/minimal";
 import { components } from "./_generated/api";
 import type { DataModel } from "./_generated/dataModel";
-import { query } from "./_generated/server";
 import authConfig from "./auth.config";
+import { maybeAuthedQuery } from "./lib/functions";
 
 const siteUrl = process.env.SITE_URL!;
 
@@ -35,11 +35,11 @@ export const createAuth = (ctx: GenericCtx<DataModel>) => {
   });
 };
 
-// Example function for getting the current user
-// Feel free to edit, omit, etc.
-export const getCurrentUser = query({
+// Returns the current user if authenticated, null otherwise
+// Does NOT throw if user is not authenticated
+export const getCurrentUser = maybeAuthedQuery({
   args: {},
   handler: async (ctx) => {
-    return authComponent.getAuthUser(ctx);
+    return ctx.user;
   },
 });

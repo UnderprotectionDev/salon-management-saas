@@ -1,7 +1,16 @@
 "use client";
 
 import { useQuery } from "convex/react";
-import { Calendar, Clock, TrendingUp, Users } from "lucide-react";
+import {
+  Calendar,
+  Clock,
+  Settings,
+  TrendingUp,
+  UserPlus,
+  Users,
+} from "lucide-react";
+import Link from "next/link";
+import { Button } from "@/components/ui/button";
 import {
   Card,
   CardContent,
@@ -63,6 +72,7 @@ export default function DashboardPage() {
   );
 
   const isLoading = staffList === undefined || settings === undefined;
+  const slug = activeOrganization?.slug;
 
   return (
     <div className="space-y-6">
@@ -84,21 +94,21 @@ export default function DashboardPage() {
         <StatCard
           title="Today's Appointments"
           value={0}
-          description="Coming soon"
+          description="Coming in Sprint 3"
           icon={<Calendar className="size-4" />}
           loading={false}
         />
         <StatCard
           title="This Week"
           value={0}
-          description="Total bookings"
+          description="Coming in Sprint 3"
           icon={<TrendingUp className="size-4" />}
           loading={false}
         />
         <StatCard
           title="Avg. Duration"
           value="--"
-          description="Per appointment"
+          description="Coming in Sprint 3"
           icon={<Clock className="size-4" />}
           loading={false}
         />
@@ -111,9 +121,24 @@ export default function DashboardPage() {
             <CardDescription>Common tasks for your salon</CardDescription>
           </CardHeader>
           <CardContent className="grid gap-2">
-            <div className="rounded-md border border-dashed p-4 text-center text-sm text-muted-foreground">
-              Appointment booking coming soon
-            </div>
+            <Button variant="outline" className="w-full justify-start" asChild>
+              <Link href={`/${slug}/staff`}>
+                <Users className="mr-2 size-4" />
+                Manage Staff
+              </Link>
+            </Button>
+            <Button variant="outline" className="w-full justify-start" asChild>
+              <Link href={`/${slug}/settings?tab=team`}>
+                <UserPlus className="mr-2 size-4" />
+                Invite Team Members
+              </Link>
+            </Button>
+            <Button variant="outline" className="w-full justify-start" asChild>
+              <Link href={`/${slug}/settings`}>
+                <Settings className="mr-2 size-4" />
+                Salon Settings
+              </Link>
+            </Button>
           </CardContent>
         </Card>
 

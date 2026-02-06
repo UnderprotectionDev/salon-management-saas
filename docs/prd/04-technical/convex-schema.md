@@ -1,9 +1,13 @@
 # Convex Database Schema
 
-> **Last Updated:** 2026-02-04
+> **Last Updated:** 2026-02-06
 > **Status:** Active
 
 This document contains the complete Convex database schema for the Salon Management SaaS. All tables include multi-tenancy support through `organizationId`.
+
+> **Terminology Note:** This document uses `organization` to match the actual database table names. In code, always use `organizationId`, never `salonId` or `tenantId`. See [Glossary - Organization](../appendix/glossary.md#organization) for terminology guidelines.
+
+> **Note:** Authentication tables (`user`, `session`, `account`, `verification`, `jwks`) are managed by the Better Auth component at `convex/betterAuth/schema.ts` and are NOT part of the application schema.
 
 ---
 
@@ -11,17 +15,23 @@ This document contains the complete Convex database schema for the Salon Managem
 
 ```mermaid
 erDiagram
-    organizations ||--o{ staff : has
-    organizations ||--o{ services : offers
-    organizations ||--o{ customers : serves
-    organizations ||--o{ appointments : manages
-    organizations ||--o{ products : sells
+    organization ||--|| organizationSettings : has
+    organization ||--o{ member : has
+    organization ||--o{ invitation : has
+    organization ||--o{ staff : has
+    organization ||--o{ auditLogs : tracks
+
+    member ||--o| staff : "has profile"
+
+    organization ||--o{ services : offers
+    organization ||--o{ customers : serves
+    organization ||--o{ appointments : manages
+    organization ||--o{ products : sells
 
     staff ||--o{ appointments : handles
     staff ||--o{ scheduleOverrides : has
     staff ||--o{ timeOffRequests : requests
 
-    services ||--o{ appointments : included_in
     services }o--|| serviceCategories : belongs_to
 
     customers ||--o{ appointments : books
@@ -31,10 +41,26 @@ erDiagram
 
     products }o--|| productCategories : belongs_to
     products ||--o{ inventoryTransactions : tracks
-
-    users ||--o{ staff : maps_to
-    users ||--o{ sessions : has
 ```
+
+---
+
+## Implementation Status
+
+| Section | Status | Sprint | Notes |
+|---------|--------|--------|-------|
+| Organization & Settings | ✅ Implemented | Sprint 1 | Full CRUD, business hours, settings |
+| Member & Invitation | ✅ Implemented | Sprint 1 | Role management, invitation lifecycle |
+| Staff | ✅ Implemented | Sprint 1 | Profile management, schedule |
+| Audit Logs | ⚠️ Partial | Sprint 1.5 | Table ✅, Helper functions ❌ (planned) |
+| Schedule Overrides & Time-Off | 📋 Planned | Sprint 2 | Schema exists, APIs pending |
+| Services & Categories | 📋 Planned | Sprint 2 | Schema exists, APIs pending |
+| Customers | 📋 Planned | Sprint 2 | Schema exists, APIs pending |
+| Appointments & Slot Locks | 📋 Planned | Sprint 3-4 | Schema exists, APIs pending |
+| Products & Inventory | 📋 Planned | Sprint 2+ | Schema exists, APIs pending |
+| Notifications | 📋 Planned | Sprint 5 | Schema exists, APIs pending |
+| Subscriptions (Polar) | 📋 Planned | Sprint 6 | Schema exists, APIs pending |
+| Security Events | 📋 Planned | TBD | Schema exists, APIs pending |
 
 ---
 
@@ -47,162 +73,143 @@ import { v } from "convex/values";
 
 export default defineSchema({
   // ============================================
-  // AUTHENTICATION & USERS
+  // ORGANIZATION (TENANT) — ✅ Implemented
   // ============================================
 
-  users: defineTable({
-    // Better Auth fields
-    email: v.string(),
-    emailVerified: v.boolean(),
-    name: v.optional(v.string()),
-    image: v.optional(v.string()),
-
-    // Custom fields
-    phone: v.optional(v.string()),
-    phoneVerified: v.optional(v.boolean()),
-
-    createdAt: v.number(),
-    updatedAt: v.number(),
-  })
-    .index("by_email", ["email"]),
-
-  sessions: defineTable({
-    userId: v.id("users"),
-    token: v.string(),
-    expiresAt: v.number(),
-    ipAddress: v.optional(v.string()),
-    userAgent: v.optional(v.string()),
-    createdAt: v.number(),
-  })
-    .index("by_user", ["userId"])
-    .index("by_token", ["token"]),
-
-  accounts: defineTable({
-    userId: v.id("users"),
-    providerId: v.string(),
-    providerAccountId: v.string(),
-    accessToken: v.optional(v.string()),
-    refreshToken: v.optional(v.string()),
-    expiresAt: v.optional(v.number()),
-    createdAt: v.number(),
-  })
-    .index("by_user", ["userId"])
-    .index("by_provider", ["providerId", "providerAccountId"]),
-
-  verificationTokens: defineTable({
-    identifier: v.string(), // email or phone
-    token: v.string(),
-    type: v.union(
-      v.literal("email"),
-      v.literal("phone"),
-      v.literal("booking")
-    ),
-    expiresAt: v.number(),
-    createdAt: v.number(),
-  })
-    .index("by_token", ["token"])
-    .index("by_identifier", ["identifier"]),
-
-  // ============================================
-  // ORGANIZATIONS (TENANTS)
-  // ============================================
-
-  organizations: defineTable({
-    // Identity
+  organization: defineTable({
     name: v.string(),
     slug: v.string(), // URL-friendly identifier
     description: v.optional(v.string()),
+    logo: v.optional(v.string()), // Storage URL
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("slug", ["slug"])
+    .index("name", ["name"]),
 
-    // Contact
+  // ============================================
+  // ORGANIZATION SETTINGS — ✅ Implemented
+  // 1:1 relationship with organization
+  // ============================================
+
+  organizationSettings: defineTable({
+    organizationId: v.id("organization"),
+
+    // Contact info
     email: v.optional(v.string()),
     phone: v.optional(v.string()),
     website: v.optional(v.string()),
 
-    // Location
+    // Address
     address: v.optional(v.object({
-      street: v.string(),
-      city: v.string(),
-      district: v.optional(v.string()),
+      street: v.optional(v.string()),
+      city: v.optional(v.string()),
+      state: v.optional(v.string()),
       postalCode: v.optional(v.string()),
-      country: v.string(),
-      coordinates: v.optional(v.object({
-        lat: v.number(),
-        lng: v.number(),
-      })),
+      country: v.optional(v.string()),
     })),
 
-    // Branding
-    logoUrl: v.optional(v.string()),
-    coverImageUrl: v.optional(v.string()),
-    primaryColor: v.optional(v.string()),
+    // Localization
+    timezone: v.optional(v.string()), // "Europe/Istanbul"
+    currency: v.optional(v.string()), // "TRY"
+    locale: v.optional(v.string()), // "tr-TR"
 
-    // Settings
-    timezone: v.string(), // "Europe/Istanbul"
-    currency: v.string(), // "TRY"
-    locale: v.string(), // "tr-TR"
-
-    // Business hours (default for organization)
-    businessHours: v.object({
-      monday: v.optional(v.object({ open: v.number(), close: v.number() })),
-      tuesday: v.optional(v.object({ open: v.number(), close: v.number() })),
-      wednesday: v.optional(v.object({ open: v.number(), close: v.number() })),
-      thursday: v.optional(v.object({ open: v.number(), close: v.number() })),
-      friday: v.optional(v.object({ open: v.number(), close: v.number() })),
-      saturday: v.optional(v.object({ open: v.number(), close: v.number() })),
-      sunday: v.optional(v.object({ open: v.number(), close: v.number() })),
-    }),
+    // Business hours: { monday: { open: "09:00", close: "18:00", closed: false }, ... }
+    businessHours: v.optional(v.object({
+      monday: v.optional(v.object({ open: v.string(), close: v.string(), closed: v.boolean() })),
+      tuesday: v.optional(v.object({ open: v.string(), close: v.string(), closed: v.boolean() })),
+      wednesday: v.optional(v.object({ open: v.string(), close: v.string(), closed: v.boolean() })),
+      thursday: v.optional(v.object({ open: v.string(), close: v.string(), closed: v.boolean() })),
+      friday: v.optional(v.object({ open: v.string(), close: v.string(), closed: v.boolean() })),
+      saturday: v.optional(v.object({ open: v.string(), close: v.string(), closed: v.boolean() })),
+      sunday: v.optional(v.object({ open: v.string(), close: v.string(), closed: v.boolean() })),
+    })),
 
     // Booking settings
-    bookingSettings: v.object({
-      advanceBookingDays: v.number(), // How far ahead (default: 30)
-      minimumNoticeMinutes: v.number(), // Min time before appointment (default: 120)
-      cancellationWindowMinutes: v.number(), // When customer can cancel (default: 120)
-      slotDurationMinutes: v.number(), // Slot increments (default: 15)
-      allowStaffSelection: v.boolean(), // Can customer choose staff
-      requirePhoneVerification: v.boolean(), // OTP required for online booking
-      allowWalkIns: v.boolean(),
-    }),
+    bookingSettings: v.optional(v.object({
+      minAdvanceBookingMinutes: v.optional(v.number()),
+      maxAdvanceBookingDays: v.optional(v.number()),
+      slotDurationMinutes: v.optional(v.number()),
+      bufferBetweenBookingsMinutes: v.optional(v.number()),
+      allowOnlineBooking: v.optional(v.boolean()),
+      requireDeposit: v.optional(v.boolean()),
+      depositAmount: v.optional(v.number()),
+      cancellationPolicyHours: v.optional(v.number()),
+    })),
 
-    // Status
-    status: v.union(
-      v.literal("active"),
-      v.literal("suspended"),
-      v.literal("trial")
-    ),
-    trialEndsAt: v.optional(v.number()),
-
-    // Subscription (Polar.sh integration)
+    // Subscription (Polar.sh integration - future)
     subscriptionStatus: v.optional(v.union(
-      v.literal("trial"),
       v.literal("active"),
+      v.literal("trialing"),
       v.literal("past_due"),
-      v.literal("suspended"),
-      v.literal("cancelled")
+      v.literal("canceled"),
+      v.literal("unpaid")
     )),
-    subscriptionPlan: v.optional(v.union(
-      v.literal("standard_monthly"),
-      v.literal("standard_yearly")
-    )),
-    polarCustomerId: v.optional(v.string()),
-    subscriptionExpiresAt: v.optional(v.number()),
-    gracePeriodEndsAt: v.optional(v.number()),
+    subscriptionPlan: v.optional(v.string()),
 
-    // Metadata
     createdAt: v.number(),
     updatedAt: v.number(),
   })
-    .index("by_slug", ["slug"])
-    .index("by_status", ["status"])
-    .index("by_subscription_status", ["subscriptionStatus"])
-    .index("by_polar_customer", ["polarCustomerId"]),
+    .index("organizationId", ["organizationId"]),
 
   // ============================================
-  // STAFF
+  // MEMBER (Organization Membership) — ✅ Implemented
+  // Manages RBAC roles separately from staff profiles
+  // ============================================
+
+  member: defineTable({
+    organizationId: v.id("organization"),
+    userId: v.string(), // Better Auth user ID (from component)
+    role: v.union(
+      v.literal("owner"),
+      v.literal("admin"),
+      v.literal("member")
+    ),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("organizationId", ["organizationId"])
+    .index("userId", ["userId"])
+    .index("organizationId_userId", ["organizationId", "userId"]),
+
+  // ============================================
+  // INVITATION (Pending Staff Invitations) — ✅ Implemented
+  // Separate table with full lifecycle management
+  // ============================================
+
+  invitation: defineTable({
+    organizationId: v.id("organization"),
+    email: v.string(),
+    name: v.string(),
+    role: v.union(v.literal("admin"), v.literal("member")), // No owner invitations
+    phone: v.optional(v.string()),
+    status: v.union(
+      v.literal("pending"),
+      v.literal("accepted"),
+      v.literal("expired"),
+      v.literal("cancelled"),
+      v.literal("rejected")
+    ),
+    invitedBy: v.string(), // User ID who sent the invite
+    expiresAt: v.optional(v.number()),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("organizationId", ["organizationId"])
+    .index("email", ["email"])
+    .index("organizationId_email", ["organizationId", "email"])
+    .index("status", ["status"]),
+
+  // ============================================
+  // STAFF (Profile) — ✅ Implemented
+  // Professional profile data. Role is on `member` table.
   // ============================================
 
   staff: defineTable({
-    userId: v.id("users"),
-    organizationId: v.id("organizations"),
+    // References
+    userId: v.string(), // Better Auth user ID
+    organizationId: v.id("organization"),
+    memberId: v.id("member"), // Links to member table for role
 
     // Profile
     name: v.string(),
@@ -211,65 +218,88 @@ export default defineSchema({
     imageUrl: v.optional(v.string()),
     bio: v.optional(v.string()),
 
-    // Role
-    role: v.union(
-      v.literal("owner"),
-      v.literal("admin"),
-      v.literal("staff")
-    ),
+    // Employment
     status: v.union(
       v.literal("active"),
       v.literal("inactive"),
       v.literal("pending")
     ),
 
-    // Services they can perform
-    serviceIds: v.array(v.id("services")),
+    // Services (IDs as strings until services table exists)
+    serviceIds: v.optional(v.array(v.string())),
 
-    // Default working schedule
-    defaultSchedule: v.object({
-      monday: v.optional(v.object({ start: v.number(), end: v.number() })),
-      tuesday: v.optional(v.object({ start: v.number(), end: v.number() })),
-      wednesday: v.optional(v.object({ start: v.number(), end: v.number() })),
-      thursday: v.optional(v.object({ start: v.number(), end: v.number() })),
-      friday: v.optional(v.object({ start: v.number(), end: v.number() })),
-      saturday: v.optional(v.object({ start: v.number(), end: v.number() })),
-      sunday: v.optional(v.object({ start: v.number(), end: v.number() })),
-    }),
-
-    // Invitation
-    invitationToken: v.optional(v.string()),
-    invitedAt: v.optional(v.number()),
-    invitedBy: v.optional(v.id("staff")),
+    // Default weekly schedule
+    defaultSchedule: v.optional(v.object({
+      monday: v.optional(v.object({ start: v.string(), end: v.string(), available: v.boolean() })),
+      tuesday: v.optional(v.object({ start: v.string(), end: v.string(), available: v.boolean() })),
+      wednesday: v.optional(v.object({ start: v.string(), end: v.string(), available: v.boolean() })),
+      thursday: v.optional(v.object({ start: v.string(), end: v.string(), available: v.boolean() })),
+      friday: v.optional(v.object({ start: v.string(), end: v.string(), available: v.boolean() })),
+      saturday: v.optional(v.object({ start: v.string(), end: v.string(), available: v.boolean() })),
+      sunday: v.optional(v.object({ start: v.string(), end: v.string(), available: v.boolean() })),
+    })),
 
     createdAt: v.number(),
     updatedAt: v.number(),
   })
-    .index("by_organization", ["organizationId"])
-    .index("by_user", ["userId"])
-    .index("by_org_status", ["organizationId", "status"])
-    .index("by_invitation", ["invitationToken"]),
+    .index("organizationId", ["organizationId"])
+    .index("userId", ["userId"])
+    .index("memberId", ["memberId"])
+    .index("organizationId_userId", ["organizationId", "userId"])
+    .index("organizationId_status", ["organizationId", "status"])
+    .index("organizationId_email", ["organizationId", "email"]),
+
+  // ============================================
+  // AUDIT LOGS — ⚠️ Partially Implemented
+  // Table schema exists ✅
+  // Helper functions (convex/lib/audit.ts) NOT implemented ❌
+  // Currently: Manual logging in mutations
+  // ============================================
+
+  auditLogs: defineTable({
+    organizationId: v.id("organization"),
+    userId: v.string(), // Better Auth user ID
+    action: v.string(), // "org.create", "settings.update", "member.add", etc.
+    resourceType: v.string(), // "organization", "member", "invitation", "staff"
+    resourceId: v.optional(v.string()),
+    details: v.optional(v.any()),
+    ipAddress: v.optional(v.string()),
+    timestamp: v.number(),
+  })
+    .index("organizationId", ["organizationId"])
+    .index("userId", ["userId"])
+    .index("action", ["action"])
+    .index("organizationId_action", ["organizationId", "action"])
+    .index("timestamp", ["timestamp"]),
+
+  // ============================================
+  // SCHEDULE OVERRIDES — 📋 Sprint 2
+  // ============================================
 
   scheduleOverrides: defineTable({
     staffId: v.id("staff"),
-    organizationId: v.id("organizations"),
+    organizationId: v.id("organization"),
     date: v.string(), // "2024-03-15"
     type: v.union(
       v.literal("custom_hours"),
       v.literal("day_off"),
       v.literal("time_off")
     ),
-    startTime: v.optional(v.number()), // Minutes from midnight
-    endTime: v.optional(v.number()),
+    startTime: v.optional(v.string()), // "09:00"
+    endTime: v.optional(v.string()),
     reason: v.optional(v.string()),
     createdAt: v.number(),
   })
     .index("by_staff_date", ["staffId", "date"])
     .index("by_org_date", ["organizationId", "date"]),
 
+  // ============================================
+  // TIME-OFF REQUESTS — 📋 Sprint 2
+  // ============================================
+
   timeOffRequests: defineTable({
     staffId: v.id("staff"),
-    organizationId: v.id("organizations"),
+    organizationId: v.id("organization"),
     startDate: v.string(),
     endDate: v.string(),
     type: v.union(
@@ -284,6 +314,7 @@ export default defineSchema({
       v.literal("rejected")
     ),
     reason: v.optional(v.string()),
+    rejectionReason: v.optional(v.string()),
     approvedBy: v.optional(v.id("staff")),
     reviewedAt: v.optional(v.number()),
     createdAt: v.number(),
@@ -293,11 +324,27 @@ export default defineSchema({
     .index("by_org_status", ["organizationId", "status"]),
 
   // ============================================
-  // SERVICES
+  // STAFF OVERTIME — 📋 Sprint 2
+  // ============================================
+
+  staffOvertime: defineTable({
+    staffId: v.id("staff"),
+    organizationId: v.id("organization"),
+    date: v.string(),
+    startTime: v.string(), // "18:00"
+    endTime: v.string(), // "20:00"
+    reason: v.optional(v.string()),
+    createdAt: v.number(),
+  })
+    .index("by_staff_date", ["staffId", "date"])
+    .index("by_org_date", ["organizationId", "date"]),
+
+  // ============================================
+  // SERVICES — 📋 Sprint 2
   // ============================================
 
   serviceCategories: defineTable({
-    organizationId: v.id("organizations"),
+    organizationId: v.id("organization"),
     name: v.string(),
     description: v.optional(v.string()),
     sortOrder: v.number(),
@@ -306,17 +353,16 @@ export default defineSchema({
     .index("by_organization", ["organizationId"]),
 
   services: defineTable({
-    organizationId: v.id("organizations"),
+    organizationId: v.id("organization"),
     categoryId: v.optional(v.id("serviceCategories")),
 
-    // Details
     name: v.string(),
     description: v.optional(v.string()),
     duration: v.number(), // In minutes
     bufferTime: v.optional(v.number()), // Minutes after service
 
     // Pricing
-    price: v.number(), // In TRY (smallest unit = kuruş or full lira)
+    price: v.number(), // In TRY
     priceType: v.union(
       v.literal("fixed"),
       v.literal("starting_from"),
@@ -329,11 +375,8 @@ export default defineSchema({
     isPopular: v.boolean(),
 
     // Availability
-    status: v.union(
-      v.literal("active"),
-      v.literal("inactive")
-    ),
-    showOnline: v.boolean(), // Show in customer booking
+    status: v.union(v.literal("active"), v.literal("inactive")),
+    showOnline: v.boolean(),
 
     createdAt: v.number(),
     updatedAt: v.number(),
@@ -343,12 +386,12 @@ export default defineSchema({
     .index("by_org_status", ["organizationId", "status"]),
 
   // ============================================
-  // CUSTOMERS
+  // CUSTOMERS — 📋 Sprint 2
   // ============================================
 
   customers: defineTable({
-    organizationId: v.id("organizations"),
-    userId: v.optional(v.id("users")), // If registered (null for guests)
+    organizationId: v.id("organization"),
+    userId: v.optional(v.string()), // Better Auth user ID if registered
 
     // Contact
     name: v.string(),
@@ -358,10 +401,10 @@ export default defineSchema({
 
     // Account Status (Hybrid Model)
     accountStatus: v.union(
-      v.literal("guest"),      // No account, phone verified only
-      v.literal("recognized"), // Returning guest (2+ visits)
-      v.literal("prompted"),   // Shown account creation prompt (3+ visits)
-      v.literal("registered")  // Has full account
+      v.literal("guest"),
+      v.literal("recognized"),
+      v.literal("prompted"),
+      v.literal("registered")
     ),
 
     // Preferences
@@ -371,33 +414,34 @@ export default defineSchema({
       smsReminders: v.boolean(),
     }),
 
-    // Stats (denormalized for performance)
+    // Stats (denormalized)
     totalVisits: v.number(),
     totalSpent: v.number(),
     lastVisitDate: v.optional(v.string()),
-    noShowCount: v.number(), // Informational only, no penalty
+    noShowCount: v.number(),
 
-    // Notes - SEPARATE FIELDS
-    customerNotes: v.optional(v.string()), // Customer's own notes (visible to customer)
-    staffNotes: v.optional(v.string()), // Internal staff notes (NOT visible to customer)
+    // Notes
+    customerNotes: v.optional(v.string()),
+    staffNotes: v.optional(v.string()),
 
-    tags: v.array(v.string()), // "VIP", "Frequent", etc.
+    tags: v.array(v.string()),
 
     // Source tracking
     source: v.union(
       v.literal("online"),
       v.literal("walk_in"),
       v.literal("phone"),
+      v.literal("staff"),
       v.literal("import")
     ),
 
-    // KVKK Consent Tracking (Turkish GDPR)
+    // KVKK Consent Tracking
     consents: v.object({
-      dataProcessing: v.boolean(), // Required for service
-      marketing: v.boolean(), // Optional marketing communications
+      dataProcessing: v.boolean(),
+      marketing: v.boolean(),
       dataProcessingAt: v.optional(v.number()),
       marketingAt: v.optional(v.number()),
-      withdrawnAt: v.optional(v.number()), // If consent withdrawn
+      withdrawnAt: v.optional(v.number()),
     }),
 
     createdAt: v.number(),
@@ -410,31 +454,28 @@ export default defineSchema({
     .index("by_org_status", ["organizationId", "accountStatus"]),
 
   // ============================================
-  // APPOINTMENTS
+  // APPOINTMENTS — 📋 Sprint 3-4
   // ============================================
 
   appointments: defineTable({
-    organizationId: v.id("organizations"),
+    organizationId: v.id("organization"),
     customerId: v.id("customers"),
     staffId: v.id("staff"),
 
-    // Timing
     date: v.string(), // "2024-03-15"
     startTime: v.number(), // Minutes from midnight
     endTime: v.number(),
 
-    // Status
     status: v.union(
-      v.literal("pending"),       // Awaiting confirmation
-      v.literal("confirmed"),     // Confirmed by system/staff
-      v.literal("checked_in"),    // Customer arrived
-      v.literal("in_progress"),   // Service being performed
-      v.literal("completed"),     // Service finished
-      v.literal("cancelled"),     // Cancelled
-      v.literal("no_show")        // Customer didn't show
+      v.literal("pending"),
+      v.literal("confirmed"),
+      v.literal("checked_in"),
+      v.literal("in_progress"),
+      v.literal("completed"),
+      v.literal("cancelled"),
+      v.literal("no_show")
     ),
 
-    // Source
     source: v.union(
       v.literal("online"),
       v.literal("walk_in"),
@@ -442,14 +483,9 @@ export default defineSchema({
       v.literal("staff")
     ),
 
-    // Confirmation
-    confirmationCode: v.string(), // e.g., "APT-ABC123"
+    confirmationCode: v.string(),
     confirmedAt: v.optional(v.number()),
-
-    // Check-in
     checkedInAt: v.optional(v.number()),
-
-    // Completion
     completedAt: v.optional(v.number()),
 
     // Cancellation
@@ -461,7 +497,7 @@ export default defineSchema({
     )),
     cancellationReason: v.optional(v.string()),
 
-    // Pricing (calculated from services + products)
+    // Pricing
     subtotal: v.number(),
     discount: v.optional(v.number()),
     total: v.number(),
@@ -477,8 +513,8 @@ export default defineSchema({
     paidAt: v.optional(v.number()),
 
     // Notes
-    customerNotes: v.optional(v.string()), // From customer during booking
-    staffNotes: v.optional(v.string()), // Internal notes
+    customerNotes: v.optional(v.string()),
+    staffNotes: v.optional(v.string()),
 
     // Notifications
     reminderSentAt: v.optional(v.number()),
@@ -500,7 +536,7 @@ export default defineSchema({
     serviceName: v.string(), // Denormalized
     duration: v.number(),
     price: v.number(),
-    staffId: v.id("staff"), // Can differ per service
+    staffId: v.id("staff"),
   })
     .index("by_appointment", ["appointmentId"]),
 
@@ -519,35 +555,35 @@ export default defineSchema({
     .index("by_appointment", ["appointmentId"]),
 
   slotLocks: defineTable({
-    organizationId: v.id("organizations"),
+    organizationId: v.id("organization"),
     staffId: v.id("staff"),
     date: v.string(),
     startTime: v.number(),
     endTime: v.number(),
-    sessionId: v.string(), // Browser session
-    expiresAt: v.number(), // TTL
+    sessionId: v.string(),
+    expiresAt: v.number(),
   })
     .index("by_staff_date", ["staffId", "date"])
     .index("by_expiry", ["expiresAt"]),
 
   // ============================================
-  // PRODUCTS
+  // PRODUCTS — 📋 Sprint 2+
   // ============================================
 
   productCategories: defineTable({
-    organizationId: v.id("organizations"),
+    organizationId: v.id("organization"),
     name: v.string(),
     description: v.optional(v.string()),
+    showOnline: v.boolean(),
     sortOrder: v.number(),
     createdAt: v.number(),
   })
     .index("by_organization", ["organizationId"]),
 
   products: defineTable({
-    organizationId: v.id("organizations"),
+    organizationId: v.id("organization"),
     categoryId: v.optional(v.id("productCategories")),
 
-    // Details
     name: v.string(),
     description: v.optional(v.string()),
     brand: v.optional(v.string()),
@@ -589,15 +625,14 @@ export default defineSchema({
     }),
 
   inventoryTransactions: defineTable({
-    organizationId: v.id("organizations"),
+    organizationId: v.id("organization"),
     productId: v.id("products"),
     type: v.union(
       v.literal("sale"),
       v.literal("adjustment"),
       v.literal("restock"),
       v.literal("return"),
-      v.literal("damaged"),
-      v.literal("transfer")
+      v.literal("damaged")
     ),
     quantity: v.number(),
     previousStock: v.number(),
@@ -611,12 +646,12 @@ export default defineSchema({
     .index("by_org_date", ["organizationId", "createdAt"]),
 
   // ============================================
-  // NOTIFICATIONS
+  // NOTIFICATIONS — 📋 Sprint 5
   // ============================================
 
   notifications: defineTable({
-    organizationId: v.id("organizations"),
-    userId: v.optional(v.id("users")), // Null for org-wide
+    organizationId: v.id("organization"),
+    userId: v.optional(v.string()),
     staffId: v.optional(v.id("staff")),
 
     type: v.union(
@@ -625,12 +660,13 @@ export default defineSchema({
       v.literal("time_off_request"),
       v.literal("low_stock"),
       v.literal("no_show"),
+      v.literal("payment_failed"),
       v.literal("system")
     ),
 
     title: v.string(),
     message: v.string(),
-    data: v.optional(v.any()), // Related IDs, etc.
+    data: v.optional(v.any()),
 
     read: v.boolean(),
     readAt: v.optional(v.number()),
@@ -641,41 +677,20 @@ export default defineSchema({
     .index("by_staff_unread", ["staffId", "read"]),
 
   // ============================================
-  // AUDIT LOG
-  // ============================================
-
-  auditLogs: defineTable({
-    organizationId: v.id("organizations"),
-    userId: v.optional(v.id("users")),
-    staffId: v.optional(v.id("staff")),
-
-    action: v.string(), // "appointment.created", "staff.invited", etc.
-    entityType: v.string(), // "appointment", "staff", etc.
-    entityId: v.optional(v.string()),
-
-    details: v.optional(v.any()), // Changed fields, etc.
-    ipAddress: v.optional(v.string()),
-
-    createdAt: v.number(),
-  })
-    .index("by_organization", ["organizationId"])
-    .index("by_org_date", ["organizationId", "createdAt"])
-    .index("by_entity", ["entityType", "entityId"]),
-
-  // ============================================
-  // SUBSCRIPTIONS (Polar.sh Integration)
+  // SUBSCRIPTIONS (Polar.sh) — 📋 Sprint 6
   // ============================================
 
   organizationSubscriptions: defineTable({
-    organizationId: v.id("organizations"),
+    organizationId: v.id("organization"),
     polarSubscriptionId: v.string(),
     polarProductId: v.string(),
     polarPriceId: v.string(),
     status: v.union(
       v.literal("active"),
+      v.literal("trialing"),
       v.literal("past_due"),
-      v.literal("cancelled"),
-      v.literal("incomplete")
+      v.literal("canceled"),
+      v.literal("unpaid")
     ),
     plan: v.union(
       v.literal("standard_monthly"),
@@ -693,7 +708,7 @@ export default defineSchema({
     .index("by_status", ["status"]),
 
   polarCustomers: defineTable({
-    organizationId: v.id("organizations"),
+    organizationId: v.id("organization"),
     polarCustomerId: v.string(),
     email: v.string(),
     createdAt: v.number(),
@@ -703,7 +718,7 @@ export default defineSchema({
     .index("by_polar_customer", ["polarCustomerId"]),
 
   subscriptionEvents: defineTable({
-    organizationId: v.id("organizations"),
+    organizationId: v.id("organization"),
     eventType: v.union(
       v.literal("subscription.created"),
       v.literal("subscription.updated"),
@@ -714,7 +729,7 @@ export default defineSchema({
     ),
     polarEventId: v.string(),
     polarSubscriptionId: v.optional(v.string()),
-    data: v.any(), // Raw event payload
+    data: v.any(),
     processedAt: v.number(),
     createdAt: v.number(),
   })
@@ -724,40 +739,29 @@ export default defineSchema({
     .index("by_type", ["eventType"]),
 
   // ============================================
-  // SECURITY EVENTS
+  // SECURITY EVENTS — 📋 Planned (TBD)
   // ============================================
 
   securityEvents: defineTable({
-    // Event identity
     eventType: v.union(
       v.literal("login_success"),
       v.literal("login_failure"),
       v.literal("logout"),
-      v.literal("password_reset"),
-      v.literal("otp_sent"),
-      v.literal("otp_verified"),
-      v.literal("otp_failed"),
       v.literal("permission_denied"),
       v.literal("rate_limited"),
       v.literal("suspicious_activity"),
-      v.literal("data_export"),
-      v.literal("account_locked"),
-      v.literal("account_unlocked")
+      v.literal("data_export")
     ),
 
-    // Actor
-    userId: v.optional(v.id("users")),
+    userId: v.optional(v.string()),
     staffId: v.optional(v.id("staff")),
-    organizationId: v.optional(v.id("organizations")),
-    email: v.optional(v.string()), // For failed logins
-    phone: v.optional(v.string()), // For OTP events
+    organizationId: v.optional(v.id("organization")),
+    email: v.optional(v.string()),
 
-    // Context
     ipAddress: v.optional(v.string()),
     userAgent: v.optional(v.string()),
     sessionId: v.optional(v.string()),
 
-    // Severity
     severity: v.union(
       v.literal("info"),
       v.literal("warning"),
@@ -765,7 +769,6 @@ export default defineSchema({
       v.literal("critical")
     ),
 
-    // Details
     details: v.optional(v.object({
       reason: v.optional(v.string()),
       attemptCount: v.optional(v.number()),
@@ -774,7 +777,6 @@ export default defineSchema({
       resourceId: v.optional(v.string()),
     })),
 
-    // Success/failure
     success: v.boolean(),
     errorMessage: v.optional(v.string()),
 
@@ -791,37 +793,64 @@ export default defineSchema({
 
 ---
 
+## Key Architecture Decisions
+
+### Separate Tables vs Embedded Data
+
+| Design Choice | Rationale |
+|---|---|
+| `organizationSettings` is separate from `organization` | Cleaner partial updates, avoids write contention on the main org record |
+| `member` is separate from `staff` | Separates RBAC (membership/role) from professional profile data |
+| `invitation` is separate from `staff` | Full lifecycle management (create/accept/reject/cancel/resend) without polluting staff records |
+| Role is on `member`, not `staff` | A user's organizational role (owner/admin/member) is independent of their staff profile |
+
+### Authentication Tables
+
+Auth tables are managed by the Better Auth component (`convex/betterAuth/schema.ts`) and include:
+- `user` — User accounts (email, name, image)
+- `session` — Active sessions
+- `account` — OAuth provider accounts (Google)
+- `verification` — Email/phone verification tokens
+- `jwks` — JSON Web Key Sets
+
+These tables are **NOT** defined in the application schema (`convex/schema.ts`). User IDs from Better Auth are stored as `v.string()` in application tables (not `v.id("user")`).
+
+---
+
 ## Index Usage Guide
 
 ### Query Patterns
 
 | Query | Index Used |
 |-------|------------|
-| Get organization by slug | `organizations.by_slug` |
-| List staff in organization | `staff.by_organization` |
-| Get staff by user | `staff.by_user` |
+| Get organization by slug | `organization.slug` |
+| Get org settings | `organizationSettings.organizationId` |
+| List members in org | `member.organizationId` |
+| Find user's membership | `member.organizationId_userId` |
+| List user's memberships | `member.userId` |
+| List invitations for org | `invitation.organizationId` |
+| Find invitation by email | `invitation.email` |
+| Check existing invitation | `invitation.organizationId_email` |
+| List staff in organization | `staff.organizationId` |
+| Get staff by user ID | `staff.organizationId_userId` |
+| Get staff by member ID | `staff.memberId` |
+| List active staff | `staff.organizationId_status` |
+| Find staff by email | `staff.organizationId_email` |
 | List appointments for date | `appointments.by_org_date` |
 | Get staff schedule for date | `appointments.by_staff_date` |
 | Find customer by phone | `customers.by_org_phone` |
 | Search products | `products.search_products` |
 | Get unread notifications | `notifications.by_org_unread` |
-| Get subscription by org | `organizationSubscriptions.by_organization` |
-| Get subscription by Polar ID | `organizationSubscriptions.by_polar_subscription` |
-| Get events by subscription | `subscriptionEvents.by_subscription` |
-| Find orgs with past_due status | `organizations.by_subscription_status` |
 
 ### Composite Index Strategy
 
 ```typescript
-// Example: Query with multiple filters
-const appointments = await ctx.db
-  .query("appointments")
-  .withIndex("by_org_date", (q) =>
-    q
-      .eq("organizationId", orgId)
-      .eq("date", "2024-03-15")
+// Example: Query with index + filter
+const activeStaff = await ctx.db
+  .query("staff")
+  .withIndex("organizationId_status", (q) =>
+    q.eq("organizationId", orgId).eq("status", "active")
   )
-  .filter((q) => q.eq(q.field("status"), "confirmed"))
   .collect();
 ```
 
@@ -851,7 +880,7 @@ export const backfillEstimatedDuration = internalMutation({
     const services = await ctx.db.query("services").collect();
     for (const service of services) {
       await ctx.db.patch(service._id, {
-        estimatedDuration: service.duration, // Copy from duration
+        estimatedDuration: service.duration,
       });
     }
   },
@@ -860,3 +889,115 @@ export const backfillEstimatedDuration = internalMutation({
 // Step 3: Make required after migration
 estimatedDuration: v.number(), // Now required
 ```
+
+---
+
+## Audit Logging Implementation Status
+
+> **Status:** ⚠️ Partially Implemented
+
+### What's Implemented
+
+- ✅ `auditLogs` table schema (see above)
+- ✅ All necessary indexes for querying audit logs
+- ✅ Manual audit log creation in some mutations
+
+### What's NOT Implemented
+
+- ❌ `convex/lib/audit.ts` helper file (does not exist)
+- ❌ Centralized audit logging utility
+- ❌ Automatic audit logging middleware
+- ❌ Consistent audit logging across all mutations
+
+### Current Usage Pattern
+
+Functions manually create audit logs:
+
+```typescript
+// File: convex/organizations.ts
+export const create = authedMutation({
+  handler: async (ctx, args) => {
+    // Create organization
+    const orgId = await ctx.db.insert("organization", { /* ... */ });
+
+    // Manually log audit event
+    await ctx.db.insert("auditLogs", {
+      organizationId: orgId,
+      userId: ctx.user._id,
+      action: "org.create",
+      resourceType: "organization",
+      resourceId: orgId,
+      timestamp: Date.now(),
+    });
+
+    return orgId;
+  },
+});
+```
+
+### Planned Helper Pattern (Not Yet Implemented)
+
+```typescript
+// Future: convex/lib/audit.ts
+export async function logAudit(
+  ctx: Context,
+  params: {
+    organizationId: Id<"organization">;
+    action: string;
+    resourceType: string;
+    resourceId?: string;
+    details?: any;
+    ipAddress?: string;
+  }
+) {
+  await ctx.db.insert("auditLogs", {
+    ...params,
+    userId: ctx.user._id,
+    timestamp: Date.now(),
+  });
+}
+
+// Usage:
+import { logAudit } from "./lib/audit";
+
+export const create = authedMutation({
+  handler: async (ctx, args) => {
+    const orgId = await ctx.db.insert("organization", { /* ... */ });
+
+    await logAudit(ctx, {
+      organizationId: orgId,
+      action: "org.create",
+      resourceType: "organization",
+      resourceId: orgId,
+    });
+
+    return orgId;
+  },
+});
+```
+
+**Why this matters:**
+- The table exists and can be queried
+- Audit logs are being created in key operations
+- BUT: No consistent helper means some operations may not be logged
+- Future work: Create `convex/lib/audit.ts` with reusable helper functions
+
+**See also:** [Implementation Roadmap](../06-implementation-roadmap.md#sprint-15) for planned audit helper implementation
+
+---
+
+## See Also
+
+**Related Documentation:**
+- [API Contracts](./api-contracts.md) - Function signatures using this schema
+- [System Architecture](./architecture.md) - Multi-tenancy and data isolation
+- [Shared Validators](./api-contracts.md#shared-validators-convexlibvalidatorsts) - Return type validators for schema documents
+- [Glossary - Organization](../appendix/glossary.md#organization) - Terminology guidelines (organization vs salon vs tenant)
+
+**Implementation Files:**
+- `convex/schema.ts` - Full schema definition (this document)
+- `convex/lib/validators.ts` - Document validators for return types
+- `convex/organizations.ts` - Organization CRUD operations
+- `convex/members.ts` - Member management
+- `convex/staff.ts` - Staff profile management
+- `convex/invitations.ts` - Invitation lifecycle

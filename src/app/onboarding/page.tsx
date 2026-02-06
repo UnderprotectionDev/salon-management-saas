@@ -2,9 +2,26 @@
 
 import { useForm } from "@tanstack/react-form";
 import { useMutation } from "convex/react";
-import { Building2, Loader2 } from "lucide-react";
+import {
+  ArrowLeft,
+  ArrowRight,
+  Building2,
+  Check,
+  Clock,
+  ImagePlus,
+  Loader2,
+  MapPin,
+} from "lucide-react";
 import { useRouter } from "next/navigation";
+import { useState } from "react";
+import { toast } from "sonner";
 import { z } from "zod";
+import {
+  type BusinessHours,
+  BusinessHoursEditor,
+  getDefaultBusinessHours,
+} from "@/components/business-hours/BusinessHoursEditor";
+import { LogoUpload } from "@/components/logo-upload/LogoUpload";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -21,7 +38,25 @@ import {
   FieldLabel,
 } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
+import { Progress } from "@/components/ui/progress";
+import { Textarea } from "@/components/ui/textarea";
 import { api } from "../../../convex/_generated/api";
+import type { Id } from "../../../convex/_generated/dataModel";
+
+// =============================================================================
+// Constants
+// =============================================================================
+
+const STEPS = [
+  { id: 1, name: "Basic Info", icon: Building2 },
+  { id: 2, name: "Location", icon: MapPin },
+  { id: 3, name: "Hours", icon: Clock },
+  { id: 4, name: "Logo", icon: ImagePlus },
+] as const;
+
+// =============================================================================
+// Validators
+// =============================================================================
 
 function slugify(text: string): string {
   return text
@@ -51,214 +86,516 @@ const emailSchema = z
   .email("Please enter a valid email")
   .or(z.literal(""));
 
+// =============================================================================
+// Types
+// =============================================================================
+
+interface OnboardingFormData {
+  // Step 1: Basic Info
+  name: string;
+  slug: string;
+  description: string;
+  // Step 2: Location
+  email: string;
+  phone: string;
+  street: string;
+  city: string;
+  state: string;
+  postalCode: string;
+  country: string;
+  // Step 3: Business Hours (handled separately)
+  // Step 4: Logo (handled after org creation)
+}
+
+// =============================================================================
+// Component
+// =============================================================================
+
 export default function OnboardingPage() {
   const router = useRouter();
+  const [currentStep, setCurrentStep] = useState(1);
+  const [businessHours, setBusinessHours] = useState<BusinessHours>(
+    getDefaultBusinessHours,
+  );
+  const [isCreating, setIsCreating] = useState(false);
+  const [createdOrgId, setCreatedOrgId] = useState<Id<"organization"> | null>(
+    null,
+  );
+  const [createdSlug, setCreatedSlug] = useState<string | null>(null);
+
   const createOrganization = useMutation(api.organizations.create);
+  const updateSettings = useMutation(api.organizations.updateSettings);
 
   const form = useForm({
     defaultValues: {
       name: "",
       slug: "",
+      description: "",
       email: "",
       phone: "",
-    },
-    onSubmit: async ({ value }) => {
+      street: "",
+      city: "",
+      state: "",
+      postalCode: "",
+      country: "Turkey",
+    } satisfies OnboardingFormData,
+  });
+
+  const progress = (currentStep / STEPS.length) * 100;
+
+  const canProceed = () => {
+    if (currentStep === 1) {
+      const name = form.getFieldValue("name");
+      const slug = form.getFieldValue("slug");
+      return name.length >= 2 && slug.length >= 2;
+    }
+    return true;
+  };
+
+  const handleCreateOrganization = async () => {
+    const value = form.state.values;
+    setIsCreating(true);
+    try {
       const result = await createOrganization({
         name: value.name,
         slug: value.slug,
         email: value.email || undefined,
         phone: value.phone || undefined,
       });
-      router.push(`/${result.slug}/dashboard`);
-    },
-  });
+
+      await updateSettings({
+        organizationId: result.organizationId,
+        address: {
+          street: value.street || undefined,
+          city: value.city || undefined,
+          state: value.state || undefined,
+          postalCode: value.postalCode || undefined,
+          country: value.country || undefined,
+        },
+        businessHours,
+      });
+
+      setCreatedOrgId(result.organizationId);
+      setCreatedSlug(result.slug);
+      setCurrentStep(4);
+    } catch (error) {
+      console.error("Failed to create organization:", error);
+      const message =
+        error instanceof Error ? error.message : "Failed to create salon";
+      toast.error(message);
+    } finally {
+      setIsCreating(false);
+    }
+  };
+
+  const handleNext = () => {
+    if (currentStep === 3) {
+      // Step 3 → 4: Create org first, then show logo step
+      handleCreateOrganization();
+      return;
+    }
+    if (currentStep < STEPS.length) {
+      setCurrentStep(currentStep + 1);
+    }
+  };
+
+  const handleBack = () => {
+    // Don't allow going back from logo step (org already created)
+    if (currentStep === 4) return;
+    if (currentStep > 1) {
+      setCurrentStep(currentStep - 1);
+    }
+  };
+
+  const handleFinish = () => {
+    if (createdSlug) {
+      router.push(`/${createdSlug}/dashboard`);
+    }
+  };
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-muted/30 p-4">
-      <Card className="w-full max-w-md">
-        <CardHeader className="text-center">
-          <div className="mx-auto mb-4 flex size-12 items-center justify-center rounded-full bg-primary/10">
-            <Building2 className="size-6 text-primary" />
-          </div>
-          <CardTitle className="text-2xl">Create Your Salon</CardTitle>
-          <CardDescription>
-            Set up your salon to start managing appointments and staff
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <form
-            onSubmit={(e) => {
-              e.preventDefault();
-              e.stopPropagation();
-              form.handleSubmit();
-            }}
-          >
-            <FieldGroup>
-              <form.Field
-                name="name"
-                validators={{
-                  onBlur: nameSchema,
-                }}
-              >
-                {(field) => {
-                  const hasError =
-                    field.state.meta.isTouched &&
-                    field.state.meta.errors.length > 0;
-                  return (
-                    <Field data-invalid={hasError || undefined}>
-                      <FieldLabel htmlFor={field.name}>Salon Name</FieldLabel>
-                      <Input
-                        id={field.name}
-                        name={field.name}
-                        placeholder="e.g., Elite Hair Studio"
-                        value={field.state.value}
-                        onBlur={field.handleBlur}
-                        onChange={(e) => {
-                          const value = e.target.value;
-                          field.handleChange(value);
-                          form.setFieldValue("slug", slugify(value));
-                        }}
-                        disabled={form.state.isSubmitting}
-                        aria-invalid={hasError}
-                      />
-                      {hasError && (
-                        <FieldError>
-                          {field.state.meta.errors.join(", ")}
-                        </FieldError>
-                      )}
-                    </Field>
-                  );
-                }}
-              </form.Field>
+    <div className="min-h-screen bg-muted/30 py-8 px-4">
+      <div className="mx-auto max-w-2xl">
+        {/* Header */}
+        <div className="text-center mb-8">
+          <h1 className="text-3xl font-bold tracking-tight">
+            Create Your Salon
+          </h1>
+          <p className="text-muted-foreground mt-2">
+            Set up your salon in just a few steps
+          </p>
+        </div>
 
-              <form.Field
-                name="slug"
-                validators={{
-                  onBlur: slugSchema,
-                }}
-              >
-                {(field) => {
-                  const hasError =
-                    field.state.meta.isTouched &&
-                    field.state.meta.errors.length > 0;
-                  return (
-                    <Field data-invalid={hasError || undefined}>
-                      <FieldLabel htmlFor={field.name}>URL Slug</FieldLabel>
-                      <div className="flex items-center gap-2">
-                        <span className="text-sm text-muted-foreground">
-                          yoursite.com/
-                        </span>
+        {/* Progress */}
+        <div className="mb-8">
+          <Progress value={progress} className="h-2" />
+          <div className="flex justify-between mt-4">
+            {STEPS.map((step) => {
+              const Icon = step.icon;
+              const isActive = currentStep === step.id;
+              const isCompleted = currentStep > step.id;
+              return (
+                <div
+                  key={step.id}
+                  className={`flex flex-col items-center gap-1 ${
+                    isActive
+                      ? "text-primary"
+                      : isCompleted
+                        ? "text-primary/60"
+                        : "text-muted-foreground"
+                  }`}
+                >
+                  <div
+                    className={`flex items-center justify-center w-10 h-10 rounded-full border-2 ${
+                      isActive
+                        ? "border-primary bg-primary/10"
+                        : isCompleted
+                          ? "border-primary/60 bg-primary/5"
+                          : "border-muted-foreground/30"
+                    }`}
+                  >
+                    {isCompleted ? (
+                      <Check className="size-5" />
+                    ) : (
+                      <Icon className="size-5" />
+                    )}
+                  </div>
+                  <span className="text-xs font-medium hidden sm:block">
+                    {step.name}
+                  </span>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+
+        {/* Step Content */}
+        <Card>
+          <CardHeader>
+            <CardTitle>
+              {currentStep === 1 && "Basic Information"}
+              {currentStep === 2 && "Location & Contact"}
+              {currentStep === 3 && "Business Hours"}
+              {currentStep === 4 && "Add Your Logo"}
+            </CardTitle>
+            <CardDescription>
+              {currentStep === 1 &&
+                "Enter your salon's name and create a unique URL"}
+              {currentStep === 2 &&
+                "Add your salon's address and contact information"}
+              {currentStep === 3 &&
+                "Set your operating hours for each day of the week"}
+              {currentStep === 4 &&
+                "Upload a logo to help customers recognize your brand (optional)"}
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            {/* Step 1: Basic Info */}
+            {currentStep === 1 && (
+              <FieldGroup>
+                <form.Field
+                  name="name"
+                  validators={{
+                    onBlur: nameSchema,
+                  }}
+                >
+                  {(field) => {
+                    const hasError =
+                      field.state.meta.isTouched &&
+                      field.state.meta.errors.length > 0;
+                    return (
+                      <Field data-invalid={hasError || undefined}>
+                        <FieldLabel htmlFor={field.name}>Salon Name</FieldLabel>
                         <Input
                           id={field.name}
                           name={field.name}
-                          placeholder="elite-hair-studio"
+                          placeholder="e.g., Elite Hair Studio"
                           value={field.state.value}
                           onBlur={field.handleBlur}
-                          onChange={(e) =>
-                            field.handleChange(slugify(e.target.value))
-                          }
-                          disabled={form.state.isSubmitting}
-                          className="flex-1"
+                          onChange={(e) => {
+                            const value = e.target.value;
+                            field.handleChange(value);
+                            form.setFieldValue("slug", slugify(value));
+                          }}
                           aria-invalid={hasError}
                         />
-                      </div>
-                      <FieldDescription>
-                        This will be your salon&apos;s unique URL
-                      </FieldDescription>
-                      {hasError && (
-                        <FieldError>
-                          {field.state.meta.errors.join(", ")}
-                        </FieldError>
-                      )}
-                    </Field>
-                  );
-                }}
-              </form.Field>
+                        {hasError && (
+                          <FieldError errors={field.state.meta.errors} />
+                        )}
+                      </Field>
+                    );
+                  }}
+                </form.Field>
 
-              <form.Field
-                name="email"
-                validators={{
-                  onBlur: emailSchema,
-                }}
-              >
-                {(field) => {
-                  const hasError =
-                    field.state.meta.isTouched &&
-                    field.state.meta.errors.length > 0;
-                  return (
-                    <Field data-invalid={hasError || undefined}>
+                <form.Field
+                  name="slug"
+                  validators={{
+                    onBlur: slugSchema,
+                  }}
+                >
+                  {(field) => {
+                    const hasError =
+                      field.state.meta.isTouched &&
+                      field.state.meta.errors.length > 0;
+                    return (
+                      <Field data-invalid={hasError || undefined}>
+                        <FieldLabel htmlFor={field.name}>URL Slug</FieldLabel>
+                        <div className="flex items-center gap-2">
+                          <span className="text-sm text-muted-foreground">
+                            yoursite.com/
+                          </span>
+                          <Input
+                            id={field.name}
+                            name={field.name}
+                            placeholder="elite-hair-studio"
+                            value={field.state.value}
+                            onBlur={field.handleBlur}
+                            onChange={(e) =>
+                              field.handleChange(slugify(e.target.value))
+                            }
+                            className="flex-1"
+                            aria-invalid={hasError}
+                          />
+                        </div>
+                        <FieldDescription>
+                          This will be your salon's unique URL
+                        </FieldDescription>
+                        {hasError && (
+                          <FieldError errors={field.state.meta.errors} />
+                        )}
+                      </Field>
+                    );
+                  }}
+                </form.Field>
+
+                <form.Field name="description">
+                  {(field) => (
+                    <Field>
                       <FieldLabel htmlFor={field.name}>
-                        Business Email (optional)
+                        Description (optional)
+                      </FieldLabel>
+                      <Textarea
+                        id={field.name}
+                        name={field.name}
+                        placeholder="Tell customers about your salon..."
+                        value={field.state.value}
+                        onBlur={field.handleBlur}
+                        onChange={(e) => field.handleChange(e.target.value)}
+                        rows={3}
+                      />
+                    </Field>
+                  )}
+                </form.Field>
+              </FieldGroup>
+            )}
+
+            {/* Step 2: Location & Contact */}
+            {currentStep === 2 && (
+              <FieldGroup>
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <form.Field
+                    name="email"
+                    validators={{
+                      onBlur: emailSchema,
+                    }}
+                  >
+                    {(field) => {
+                      const hasError =
+                        field.state.meta.isTouched &&
+                        field.state.meta.errors.length > 0;
+                      return (
+                        <Field data-invalid={hasError || undefined}>
+                          <FieldLabel htmlFor={field.name}>
+                            Business Email
+                          </FieldLabel>
+                          <Input
+                            id={field.name}
+                            name={field.name}
+                            type="email"
+                            placeholder="contact@yoursalon.com"
+                            value={field.state.value}
+                            onBlur={field.handleBlur}
+                            onChange={(e) => field.handleChange(e.target.value)}
+                            aria-invalid={hasError}
+                          />
+                          {hasError && (
+                            <FieldError errors={field.state.meta.errors} />
+                          )}
+                        </Field>
+                      );
+                    }}
+                  </form.Field>
+
+                  <form.Field name="phone">
+                    {(field) => (
+                      <Field>
+                        <FieldLabel htmlFor={field.name}>
+                          Business Phone
+                        </FieldLabel>
+                        <Input
+                          id={field.name}
+                          name={field.name}
+                          type="tel"
+                          placeholder="+90 555 123 4567"
+                          value={field.state.value}
+                          onBlur={field.handleBlur}
+                          onChange={(e) => field.handleChange(e.target.value)}
+                        />
+                      </Field>
+                    )}
+                  </form.Field>
+                </div>
+
+                <form.Field name="street">
+                  {(field) => (
+                    <Field>
+                      <FieldLabel htmlFor={field.name}>
+                        Street Address
                       </FieldLabel>
                       <Input
                         id={field.name}
                         name={field.name}
-                        type="email"
-                        placeholder="contact@yoursalon.com"
+                        placeholder="123 Main Street, Suite 100"
                         value={field.state.value}
                         onBlur={field.handleBlur}
                         onChange={(e) => field.handleChange(e.target.value)}
-                        disabled={form.state.isSubmitting}
-                        aria-invalid={hasError}
                       />
-                      {hasError && (
-                        <FieldError>
-                          {field.state.meta.errors.join(", ")}
-                        </FieldError>
-                      )}
                     </Field>
-                  );
-                }}
-              </form.Field>
+                  )}
+                </form.Field>
 
-              <form.Field name="phone">
-                {(field) => (
-                  <Field>
-                    <FieldLabel htmlFor={field.name}>
-                      Business Phone (optional)
-                    </FieldLabel>
-                    <Input
-                      id={field.name}
-                      name={field.name}
-                      type="tel"
-                      placeholder="+90 555 123 4567"
-                      value={field.state.value}
-                      onBlur={field.handleBlur}
-                      onChange={(e) => field.handleChange(e.target.value)}
-                      disabled={form.state.isSubmitting}
-                    />
-                  </Field>
-                )}
-              </form.Field>
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <form.Field name="city">
+                    {(field) => (
+                      <Field>
+                        <FieldLabel htmlFor={field.name}>City</FieldLabel>
+                        <Input
+                          id={field.name}
+                          name={field.name}
+                          placeholder="Istanbul"
+                          value={field.state.value}
+                          onBlur={field.handleBlur}
+                          onChange={(e) => field.handleChange(e.target.value)}
+                        />
+                      </Field>
+                    )}
+                  </form.Field>
 
-              <form.Subscribe selector={(state) => state.errors}>
-                {(errors) =>
-                  errors.length > 0 && (
-                    <div className="rounded-md bg-destructive/10 p-3 text-sm text-destructive">
-                      {errors.join(", ")}
-                    </div>
-                  )
-                }
-              </form.Subscribe>
+                  <form.Field name="state">
+                    {(field) => (
+                      <Field>
+                        <FieldLabel htmlFor={field.name}>District</FieldLabel>
+                        <Input
+                          id={field.name}
+                          name={field.name}
+                          placeholder="Kadikoy"
+                          value={field.state.value}
+                          onBlur={field.handleBlur}
+                          onChange={(e) => field.handleChange(e.target.value)}
+                        />
+                      </Field>
+                    )}
+                  </form.Field>
+                </div>
 
-              <Button
-                type="submit"
-                className="w-full"
-                disabled={form.state.isSubmitting}
-              >
-                {form.state.isSubmitting ? (
-                  <>
-                    <Loader2 className="mr-2 size-4 animate-spin" />
-                    Creating Salon...
-                  </>
-                ) : (
-                  "Create Salon"
-                )}
-              </Button>
-            </FieldGroup>
-          </form>
-        </CardContent>
-      </Card>
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <form.Field name="postalCode">
+                    {(field) => (
+                      <Field>
+                        <FieldLabel htmlFor={field.name}>
+                          Postal Code
+                        </FieldLabel>
+                        <Input
+                          id={field.name}
+                          name={field.name}
+                          placeholder="34000"
+                          value={field.state.value}
+                          onBlur={field.handleBlur}
+                          onChange={(e) => field.handleChange(e.target.value)}
+                        />
+                      </Field>
+                    )}
+                  </form.Field>
+
+                  <form.Field name="country">
+                    {(field) => (
+                      <Field>
+                        <FieldLabel htmlFor={field.name}>Country</FieldLabel>
+                        <Input
+                          id={field.name}
+                          name={field.name}
+                          placeholder="Turkey"
+                          value={field.state.value}
+                          onBlur={field.handleBlur}
+                          onChange={(e) => field.handleChange(e.target.value)}
+                        />
+                      </Field>
+                    )}
+                  </form.Field>
+                </div>
+              </FieldGroup>
+            )}
+
+            {/* Step 3: Business Hours */}
+            {currentStep === 3 && (
+              <div className="space-y-4">
+                <BusinessHoursEditor
+                  value={businessHours}
+                  onChange={setBusinessHours}
+                />
+              </div>
+            )}
+
+            {/* Step 4: Logo (after org creation) */}
+            {currentStep === 4 && createdOrgId && (
+              <div className="flex flex-col items-center justify-center py-4">
+                <LogoUpload organizationId={createdOrgId} />
+                <p className="text-sm text-muted-foreground mt-4">
+                  You can add or change your logo later in Settings.
+                </p>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
+        {/* Navigation */}
+        <div className="flex justify-between mt-6">
+          <Button
+            variant="outline"
+            onClick={handleBack}
+            disabled={currentStep === 1 || currentStep === 4 || isCreating}
+          >
+            <ArrowLeft className="size-4 mr-2" />
+            Back
+          </Button>
+
+          {currentStep === 4 ? (
+            <Button onClick={handleFinish}>
+              <Check className="size-4 mr-2" />
+              {createdOrgId ? "Finish" : "Skip"}
+            </Button>
+          ) : currentStep === 3 ? (
+            <Button onClick={handleNext} disabled={isCreating || !canProceed()}>
+              {isCreating ? (
+                <>
+                  <Loader2 className="size-4 mr-2 animate-spin" />
+                  Creating...
+                </>
+              ) : (
+                <>
+                  Next
+                  <ArrowRight className="size-4 ml-2" />
+                </>
+              )}
+            </Button>
+          ) : (
+            <Button onClick={handleNext} disabled={!canProceed()}>
+              Next
+              <ArrowRight className="size-4 ml-2" />
+            </Button>
+          )}
+        </div>
+      </div>
     </div>
   );
 }

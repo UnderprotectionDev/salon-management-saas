@@ -15,14 +15,14 @@ This document outlines the security requirements, authentication flows, authoriz
 ```mermaid
 flowchart TB
     subgraph Client["Client Layer"]
-        Browser[Browser/PWA]
+        Browser[Browser]
         HTTPS[HTTPS Only]
     end
 
     subgraph Auth["Authentication"]
         BetterAuth[Better Auth]
         Sessions[Session Store]
-        OTP[OTP Service]
+        Google[Google OAuth]
     end
 
     subgraph API["API Layer"]
@@ -54,35 +54,25 @@ flowchart TB
 
 | Method | Use Case | Security Level |
 |--------|----------|----------------|
-| Magic Link (Email) | Staff login | High |
-| OTP (Phone) | Customer booking verification | Medium |
+| Google OAuth | Primary login (social login via Better Auth) | High |
+| Email/Password | Secondary login (configured, not primary) | Medium |
 | Session Token | Ongoing authentication | High |
 
 ### Better Auth Configuration
 
 ```typescript
-// auth.ts
-import { betterAuth } from "better-auth";
-import { ConvexAdapter } from "@better-auth/convex";
-
-export const auth = betterAuth({
-  database: new ConvexAdapter(convex),
-
-  emailAndPassword: {
-    enabled: false, // No password auth - magic link only
-  },
-
-  magicLink: {
-    enabled: true,
-    expiresIn: 60 * 15, // 15 minutes
-    sendMagicLink: async ({ email, url }) => {
-      await sendEmail({
-        to: email,
-        subject: "Your login link",
-        template: "magic-link",
-        data: { url },
-      });
+// convex/betterAuth/auth.ts
+export const auth = createAuth({
+  // ...
+  socialProviders: {
+    google: {
+      clientId: process.env.GOOGLE_CLIENT_ID!,
+      clientSecret: process.env.GOOGLE_CLIENT_SECRET!,
     },
+  },
+  emailAndPassword: {
+    enabled: true,
+    requireEmailVerification: false,
   },
 
   session: {
@@ -93,62 +83,37 @@ export const auth = betterAuth({
       maxAge: 60 * 5, // 5 minutes
     },
   },
-
-  rateLimit: {
-    enabled: true,
-    window: 60, // 1 minute
-    max: 10, // Max 10 requests per window
-  },
 });
 ```
 
-### Magic Link Flow
+### Google OAuth Flow
 
 ```mermaid
 sequenceDiagram
     participant User
     participant App
     participant Auth as Better Auth
-    participant Email as Resend
+    participant Google as Google OAuth
     participant DB as Convex
 
-    User->>App: Enter email
-    App->>Auth: Request magic link
-    Auth->>Auth: Generate token (15min TTL)
-    Auth->>DB: Store token hash
-    Auth->>Email: Send magic link
-    Email-->>User: Click link
-    User->>App: Open magic link
-    App->>Auth: Verify token
-    Auth->>DB: Check token, mark used
+    User->>App: Click "Sign in with Google"
+    App->>Auth: Initiate OAuth flow
+    Auth->>Google: Redirect to Google consent
+    Google-->>User: Show consent screen
+    User->>Google: Approve
+    Google->>Auth: Return auth code
+    Auth->>Google: Exchange code for tokens
+    Auth->>DB: Create/update user record
     Auth->>DB: Create session
     Auth-->>App: Return session cookie
     App-->>User: Logged in
 ```
 
-### OTP Verification (Booking)
+### OTP Verification (Planned - Future)
 
-```mermaid
-sequenceDiagram
-    participant Customer
-    participant App
-    participant Convex
-    participant SMS as SMS/Email
+> **Status:** Not currently implemented. Planned for future booking verification.
 
-    Customer->>App: Enter phone number
-    App->>Convex: Request OTP
-    Convex->>Convex: Generate 6-digit code
-    Convex->>Convex: Store hash with 5min TTL
-    Convex->>SMS: Send code
-    SMS-->>Customer: Receive code
-    Customer->>App: Enter code
-    App->>Convex: Verify OTP
-    Convex->>Convex: Check hash, attempts < 3
-    Convex-->>App: Verified
-    App->>Convex: Complete booking
-```
-
-**OTP Security Rules:**
+When implemented, OTP will be used for customer booking verification:
 - 6-digit numeric code
 - 5-minute expiration
 - Max 3 verification attempts
@@ -163,7 +128,7 @@ sequenceDiagram
 
 ```typescript
 // Authorization model
-type Role = "owner" | "admin" | "staff" | "customer";
+type Role = "owner" | "admin" | "member";
 
 interface Permission {
   resource: string;
@@ -182,98 +147,110 @@ const rolePermissions: Record<Role, Permission[]> = {
     { resource: "customers", actions: ["create", "read", "update"], scope: "organization" },
     { resource: "reports", actions: ["read"], scope: "organization" },
   ],
-  staff: [
+  member: [
     { resource: "appointments", actions: ["create", "read", "update"], scope: "own" },
     { resource: "customers", actions: ["read"], scope: "organization" },
     { resource: "services", actions: ["read"], scope: "organization" },
-  ],
-  customer: [
-    { resource: "appointments", actions: ["create", "read", "update"], scope: "own" },
-    { resource: "services", actions: ["read"], scope: "organization" },
-    { resource: "profile", actions: ["read", "update"], scope: "own" },
   ],
 };
 ```
 
 ### Authorization Implementation
 
+Authorization is enforced through custom function wrappers built with `convex-helpers`. Each wrapper validates auth and injects typed context:
+
 ```typescript
-// convex/lib/auth.ts
-import { ConvexError } from "convex/values";
+// convex/lib/functions.ts — Custom function wrappers (from convex-helpers)
 
-export async function assertOrgAccess(
-  ctx: QueryCtx | MutationCtx,
-  organizationId: Id<"organizations">
-): Promise<{ userId: Id<"users">; staffId: Id<"staff">; role: Role }> {
-  const identity = await ctx.auth.getUserIdentity();
-  if (!identity) {
-    throw new ConvexError({ code: "UNAUTHENTICATED", message: "Not logged in" });
-  }
+// Queries
+publicQuery     // No auth required
+maybeAuthedQuery // Optional auth — ctx.user is AuthUser | null (doesn't throw)
+authedQuery     // Requires login — ctx.user guaranteed
+orgQuery        // Requires org membership — auto-injects ctx.organizationId, ctx.member, ctx.staff
+adminQuery      // Requires admin or owner role
+ownerQuery      // Requires owner role only
 
-  const user = await ctx.db
-    .query("users")
-    .withIndex("by_email", (q) => q.eq("email", identity.email))
-    .first();
+// Mutations
+authedMutation  // Requires login
+orgMutation     // Requires org membership
+adminMutation   // Requires admin or owner role
+ownerMutation   // Requires owner role only
+```
 
-  if (!user) {
-    throw new ConvexError({ code: "USER_NOT_FOUND", message: "User not found" });
-  }
+User resolution uses the Better Auth component:
 
-  const staffMember = await ctx.db
-    .query("staff")
-    .withIndex("by_user", (q) => q.eq("userId", user._id))
-    .filter((q) => q.eq(q.field("organizationId"), organizationId))
-    .first();
-
-  if (!staffMember || staffMember.status !== "active") {
-    throw new ConvexError({ code: "ACCESS_DENIED", message: "Not a member of this organization" });
-  }
-
-  return {
-    userId: user._id,
-    staffId: staffMember._id,
-    role: staffMember.role as Role,
-  };
+```typescript
+// User resolution (NOT ctx.auth.getUserIdentity())
+const user = await authComponent.getAuthUser(ctx);
+if (!user) {
+  throw new ConvexError({
+    code: ErrorCode.UNAUTHENTICATED,
+    message: "Authentication required",
+  });
 }
+```
 
-export async function assertRole(
-  ctx: QueryCtx | MutationCtx,
-  organizationId: Id<"organizations">,
-  requiredRoles: Role[]
-): Promise<void> {
-  const { role } = await assertOrgAccess(ctx, organizationId);
+#### Error Codes
 
-  if (!requiredRoles.includes(role)) {
-    throw new ConvexError({
-      code: "FORBIDDEN",
-      message: `Requires one of: ${requiredRoles.join(", ")}`,
-    });
-  }
-}
+All authorization errors use the structured `ErrorCode` enum:
+
+```typescript
+const ErrorCode = {
+  // Authentication errors
+  UNAUTHENTICATED: "UNAUTHENTICATED",
+  // Authorization errors
+  FORBIDDEN: "FORBIDDEN",
+  ADMIN_REQUIRED: "ADMIN_REQUIRED",
+  OWNER_REQUIRED: "OWNER_REQUIRED",
+  // Resource errors
+  NOT_FOUND: "NOT_FOUND",
+  ALREADY_EXISTS: "ALREADY_EXISTS",
+  // Validation errors
+  VALIDATION_ERROR: "VALIDATION_ERROR",
+  INVALID_INPUT: "INVALID_INPUT",
+  // Rate limiting
+  RATE_LIMITED: "RATE_LIMITED",
+  // General errors
+  INTERNAL_ERROR: "INTERNAL_ERROR",
+} as const;
 ```
 
 ### Usage in Mutations
 
 ```typescript
-export const updateService = mutation({
+// Admin-only mutation — no manual role checking needed
+export const updateService = adminMutation({
   args: {
     serviceId: v.id("services"),
     name: v.optional(v.string()),
     price: v.optional(v.number()),
   },
+  returns: v.null(),
   handler: async (ctx, args) => {
     const service = await ctx.db.get(args.serviceId);
-    if (!service) throw new ConvexError({ code: "NOT_FOUND" });
+    if (!service) {
+      throw new ConvexError({ code: ErrorCode.NOT_FOUND, message: "Service not found" });
+    }
 
-    // Check authorization - requires admin or owner
-    await assertRole(ctx, service.organizationId, ["owner", "admin"]);
-
-    // Proceed with update
+    // ctx.organizationId, ctx.member, ctx.staff, ctx.role are auto-injected
     await ctx.db.patch(args.serviceId, {
       ...(args.name && { name: args.name }),
       ...(args.price && { price: args.price }),
       updatedAt: Date.now(),
     });
+    return null;
+  },
+});
+
+// Org-level query — any member can access
+export const listStaff = orgQuery({
+  args: {},
+  handler: async (ctx) => {
+    // ctx.organizationId is automatically available
+    return await ctx.db
+      .query("staff")
+      .withIndex("organizationId", (q) => q.eq("organizationId", ctx.organizationId))
+      .collect();
   },
 });
 ```
@@ -305,7 +282,7 @@ const appointments = await ctx.db.query("appointments").collect();
 // All mutations validate input
 export const createAppointment = mutation({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.id("organization"),
     date: v.string(), // Will be validated as ISO date
     startTime: v.number(),
     customerPhone: v.string(),
@@ -352,7 +329,7 @@ export const createAppointment = mutation({
 | Email | Encrypted at rest | Organization members |
 | Phone | Encrypted at rest | Organization members |
 | Session tokens | Hashed | System only |
-| OTP codes | Hashed with salt | System only |
+| OAuth tokens | Managed by Google/Better Auth | System only |
 | Invitation tokens | Hashed | System only |
 
 ### Data Retention
@@ -364,7 +341,6 @@ export const createAppointment = mutation({
 | Cancelled appointments | 90 days | Automated purge |
 | Audit logs | 1 year | Automated purge |
 | Sessions | Until expiry | Automated cleanup |
-| OTP tokens | 5 minutes | Automated cleanup |
 
 ---
 
@@ -386,7 +362,7 @@ export const createAppointment = mutation({
 // Audit log for data access
 export const logDataAccess = internalMutation({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.id("organization"),
     userId: v.id("users"),
     action: v.string(),
     entityType: v.string(),
@@ -409,16 +385,11 @@ export const logDataAccess = internalMutation({
 customers: defineTable({
   // ... other fields
   consents: v.object({
-    termsAccepted: v.boolean(),
-    termsAcceptedAt: v.optional(v.number()),
-    termsVersion: v.optional(v.string()), // e.g., "2026-01-15"
-    privacyAccepted: v.boolean(),
-    privacyAcceptedAt: v.optional(v.number()),
-    privacyVersion: v.optional(v.string()),
-    marketingOptIn: v.boolean(),
-    marketingOptInAt: v.optional(v.number()),
-    dataProcessingConsent: v.boolean(), // KVKK explicit consent
-    dataProcessingConsentAt: v.optional(v.number()),
+    dataProcessing: v.boolean(),         // KVKK explicit consent
+    marketing: v.boolean(),              // Optional marketing opt-in
+    dataProcessingAt: v.optional(v.number()), // Timestamp of consent
+    marketingAt: v.optional(v.number()),     // Timestamp of marketing opt-in
+    withdrawnAt: v.optional(v.number()),     // Timestamp of consent withdrawal
   }),
 });
 ```
@@ -434,8 +405,8 @@ sequenceDiagram
     Note over Customer,Convex: First Booking (Guest)
     Customer->>App: Start booking
     App->>Customer: Show consent checkboxes
-    Note right of App: ☑️ Terms of Service (required)<br/>☑️ Privacy Policy (required)<br/>☐ Marketing communications (optional)
-    Customer->>App: Accept required consents
+    Note right of App: ☑️ Data processing consent (required)<br/>☐ Marketing communications (optional)
+    Customer->>App: Accept data processing consent
     App->>Convex: Store consents with timestamps
     Convex->>Convex: Create customer record with consents
 
@@ -443,7 +414,7 @@ sequenceDiagram
     Customer->>App: Go to profile settings
     App->>Customer: Show current consent status
     Customer->>App: Opt-out of marketing
-    App->>Convex: Update marketingOptIn = false
+    App->>Convex: Update marketing = false, withdrawnAt = now
     Convex->>Convex: Log consent change in auditLogs
 ```
 
@@ -451,8 +422,7 @@ sequenceDiagram
 
 **Guest Booking (First Visit):**
 ```
-☑️ I accept the Terms of Service (required)
-☑️ I accept the Privacy Policy and consent to data processing (required)
+☑️ I consent to the processing of my personal data (required)
 ☐ I agree to receive promotional communications (optional)
 
 [Continue to Booking]
@@ -516,12 +486,16 @@ export const exportCustomerData = action({
 
 ### Rate Limiting
 
-| Endpoint Type | Limit | Window |
-|---------------|-------|--------|
-| Authentication | 10 requests | 1 minute |
-| Public APIs | 100 requests | 1 minute |
-| Authenticated APIs | 500 requests | 1 minute |
-| File uploads | 10 uploads | 1 hour |
+Implemented via `@convex-dev/rate-limiter` in `convex/lib/rateLimits.ts`:
+
+| Rate Limit | Limit | Window | Type | Scope |
+|------------|-------|--------|------|-------|
+| `createInvitation` | 20/day | 1 day | Token bucket (capacity: 25) | Per org |
+| `resendInvitation` | 3/hour | 1 hour | Token bucket | Per invitation |
+| `createOrganization` | 3/day | 1 day | Fixed window | Per user |
+| `addMember` | 10/hour | 1 hour | Token bucket (capacity: 15) | Per org |
+| `createBooking` | 5/min | 1 minute | Token bucket (capacity: 10) | Per user (future) |
+| `cancelBooking` | 3/hour | 1 hour | Token bucket | Per user (future) |
 
 ### CORS Configuration
 

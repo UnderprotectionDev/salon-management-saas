@@ -36,7 +36,34 @@ When a customer fails to appear for their scheduled appointment without cancelli
 
 ### Organization
 
-A single salon business entity in the multi-tenant system. Each organization has its own staff, services, customers, and appointments. Also referred to as "tenant" or "salon".
+A single salon business entity in the multi-tenant system. Each organization has its own staff, services, customers, and appointments.
+
+**Also known as:** "Tenant" (architectural), "Salon" (user-facing)
+
+**Terminology Guidelines:**
+
+| Context | Preferred Term | Rationale | Examples |
+|---------|----------------|-----------|----------|
+| **Code & Database** | `organization` | Matches schema table names | `organizationId`, `organization.slug`, `ctx.organizationId` |
+| **User Interface** | `salon` | More intuitive for salon owners/staff | "Select your salon", "Salon settings", "Switch salons" |
+| **Architecture Docs** | `tenant` | Industry-standard multi-tenancy term | "Tenant isolation", "Per-tenant data", "Tenant context" |
+| **API Documentation** | `organization` | Consistency with code/schema | `organizations.create`, `orgQuery`, `organizationSettings` |
+| **PRD/Specs** | `organization` or `salon` | Context-dependent (use organization for technical, salon for features) | Technical: "Organization table", User-facing: "Salon onboarding" |
+
+**Important:** Do NOT mix terms within the same document section. Pick the appropriate term for the context and use it consistently.
+
+**Examples of Correct Usage:**
+- ✅ Code: `const org = await ctx.db.get(ctx.organizationId);`
+- ✅ UI Text: "You can switch between your salons using the dropdown."
+- ✅ Architecture: "The system uses tenant-based data isolation."
+- ✅ API: `api.organizations.getBySlug({ slug })`
+
+**Examples of Incorrect Usage:**
+- ❌ Code: `const salon = await ctx.db.get(ctx.tenantId);` (mismatched with schema)
+- ❌ UI Text: "Select your organization" (too formal/technical)
+- ❌ Architecture: "Each salon has isolated data" (not standard terminology)
+
+**See also:** [Salon](#salon), [Tenant](#tenant)
 
 ### Service
 
@@ -55,7 +82,33 @@ A grouping of related services (e.g., "Hair", "Nails", "Makeup"). Used for organ
 
 ### Staff
 
-An employee or team member of a salon. Can have different roles (owner, admin, staff) with varying permissions.
+An employee or team member of a salon. Has a membership role (owner, admin, member) via the `member` table and a professional profile in the `staff` table.
+
+### Salon
+
+**User-facing term** for an [Organization](#organization). Preferred in UI text and customer-facing communications.
+
+Use "salon" when:
+- Writing UI labels, buttons, and messages
+- Describing features from the user's perspective
+- Creating marketing or help documentation
+- The audience is salon owners, staff, or customers
+
+**See [Organization](#organization)** for the complete terminology guidelines and when to use "organization" vs "salon" vs "tenant".
+
+### Tenant
+
+**Architectural term** for an [Organization](#organization). Used in multi-tenancy discussions and system architecture documentation.
+
+Use "tenant" when:
+- Discussing data isolation strategies
+- Describing multi-tenancy architecture
+- Writing technical architecture documents
+- Explaining how the system handles multiple organizations
+
+**Technical implementation:** Each tenant's data is isolated using `organizationId` foreign keys in all tables. See [Multi-Tenancy Architecture](../04-technical/architecture.md#multi-tenancy-architecture) for details.
+
+**See [Organization](#organization)** for the complete terminology guidelines.
 
 ### Walk-in
 
@@ -96,11 +149,11 @@ The current state of an organization's subscription:
 
 | Status | Description | Access Level |
 |--------|-------------|--------------|
-| `trial` | New organization, not yet subscribed | Limited/Demo |
+| `trialing` | New organization, in trial period | Full (trial) |
 | `active` | Payment successful, subscription current | Full |
 | `past_due` | Payment failed, in grace period | Full (with warnings) |
-| `suspended` | Grace period expired | Billing page only |
-| `cancelled` | User cancelled, access until period end | Full until end date |
+| `canceled` | User cancelled, access until period end | Full until end date |
+| `unpaid` | Grace period expired, no payment | Billing page only |
 
 ### ARPU (Average Revenue Per User)
 
@@ -122,9 +175,13 @@ An authentication framework used for handling user login, session management, an
 
 The backend platform used for database, server functions, and real-time subscriptions. Provides a unified solution for data storage and API.
 
-### Magic Link
+### Google OAuth
 
-A passwordless authentication method where users receive a unique, time-limited link via email to log in.
+The primary authentication method. Users sign in via their Google account through the Better Auth social provider integration.
+
+### Magic Link (Planned)
+
+A passwordless authentication method where users receive a unique, time-limited link via email to log in. Not yet implemented.
 
 ### Multi-tenancy
 
@@ -134,9 +191,9 @@ An architecture where a single application instance serves multiple organization
 
 A Convex function that modifies database state. Runs in a transaction ensuring ACID properties.
 
-### OTP (One-Time Password)
+### OTP (One-Time Password) (Planned)
 
-A temporary code (usually 6 digits) sent via SMS or email to verify user identity. Used for booking verification.
+A temporary code (usually 6 digits) sent via SMS or email to verify user identity. Planned for booking verification in Sprint 3-4.
 
 ### Query (Convex)
 
@@ -251,13 +308,25 @@ See [Organization](#organization).
 | `active` | Available for booking |
 | `inactive` | Hidden from booking, preserved in history |
 
+### Member Roles
+
+| Role | Description |
+|------|-------------|
+| `owner` | Full access, billing, org deletion. One per organization. |
+| `admin` | Staff management, settings, day-to-day operations |
+| `member` | Basic access, own schedule and appointments |
+
 ### Organization Statuses
+
+> Note: Organization status is tracked via `organizationSettings.subscriptionStatus`.
 
 | Status | Description |
 |--------|-------------|
+| `trialing` | In trial period |
 | `active` | Fully operational |
-| `trial` | In trial period |
-| `suspended` | Temporarily disabled |
+| `past_due` | Payment failed, in grace period |
+| `canceled` | User cancelled |
+| `unpaid` | Grace period expired |
 
 ---
 
@@ -270,7 +339,8 @@ See [Organization](#organization).
 | ISO Date | `2024-03-15` | Database storage, API |
 | Display Date | `15.03.2024` | Turkish UI display |
 | Display Time | `14:30` | 24-hour format |
-| Minutes from midnight | `870` | Internal time storage (14:30 = 14*60 + 30) |
+| Time string | `"14:30"` | Business hours & staff schedule storage |
+| Minutes from midnight | `870` | Appointment time storage (14:30 = 14*60 + 30) |
 | Unix timestamp | `1710505800000` | Absolute timestamps |
 
 ### Duration Conventions

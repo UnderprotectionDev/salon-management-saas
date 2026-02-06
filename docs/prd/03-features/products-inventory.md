@@ -3,6 +3,7 @@
 > **Priority:** P1 (MVP Nice-to-Have)
 > **Owner:** Backend Team
 > **Dependencies:** Multi-tenancy, Admin Dashboard
+> **Last Updated:** 2026-02-06
 
 ## Overview
 
@@ -65,7 +66,7 @@ The products module enables salons to **showcase retail products** they offer (s
 ```typescript
 // convex/schema.ts
 products: defineTable({
-  organizationId: v.id("organizations"),
+  organizationId: v.id("organization"),
 
   // Basic Info
   name: v.string(),
@@ -127,7 +128,7 @@ products: defineTable({
 })
 
 productCategories: defineTable({
-  organizationId: v.id("organizations"),
+  organizationId: v.id("organization"),
   name: v.string(),
   description: v.optional(v.string()),
   imageUrl: v.optional(v.string()),
@@ -139,7 +140,7 @@ productCategories: defineTable({
 
 // Inventory tracking for internal management
 inventoryTransactions: defineTable({
-  organizationId: v.id("organizations"),
+  organizationId: v.id("organization"),
   productId: v.id("products"),
 
   // Transaction details
@@ -177,7 +178,7 @@ inventoryTransactions: defineTable({
 
 ## Customer-Facing Showcase
 
-### Showcase Page (`/[org]/products`)
+### Showcase Page (`/[slug]/products`)
 
 **Purpose:** Digital vitrine for customers to browse available products
 
@@ -256,7 +257,7 @@ inventoryTransactions: defineTable({
 
 ## Admin Product Management
 
-### Product List (`/[org]/admin/products`)
+### Product List (`/[slug]/products`)
 
 **Features:**
 
@@ -446,7 +447,7 @@ Profit Margin (%) = ((Selling Price - Cost Price) / Cost Price) × 100
 ```typescript
 export const listProducts = query({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.id("organization"),
     categoryId: v.optional(v.id("productCategories")),
     status: v.optional(v.string()),
     lowStockOnly: v.optional(v.boolean()),
@@ -480,7 +481,7 @@ export const listProducts = query({
 ```typescript
 export const getShowcaseProducts = query({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.id("organization"),
     categoryId: v.optional(v.id("productCategories")),
     featuredOnly: v.optional(v.boolean()),
     limit: v.optional(v.number()),
@@ -508,7 +509,7 @@ export const getShowcaseProducts = query({
 ```typescript
 export const getLowStockProducts = query({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.id("organization"),
   },
   returns: v.array(v.object({
     _id: v.id("products"),
@@ -540,7 +541,7 @@ export const getLowStockProducts = query({
 ```typescript
 export const createProduct = mutation({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.id("organization"),
     name: v.string(),
     description: v.optional(v.string()),
     brand: v.optional(v.string()),
@@ -705,12 +706,11 @@ export const getInventoryHistory = query({
 
 ### Frontend (Next.js)
 
-- [ ] Page: `/[org]/products` (public showcase)
-- [ ] Page: `/[org]/admin/products` (admin list)
-- [ ] Page: `/[org]/admin/products/new`
-- [ ] Page: `/[org]/admin/products/[id]`
-- [ ] Page: `/[org]/admin/products/categories`
-- [ ] Page: `/[org]/admin/products/[id]/history`
+- [ ] Page: `/[slug]/products` (admin list & public showcase - role-based rendering)
+- [ ] Page: `/[slug]/products/new`
+- [ ] Page: `/[slug]/products/[id]`
+- [ ] Page: `/[slug]/products/categories`
+- [ ] Page: `/[slug]/products/[id]/history`
 - [ ] Component: `ShowcaseGrid`
 - [ ] Component: `ShowcaseProductCard`
 - [ ] Component: `ProductDetailModal` (public)
