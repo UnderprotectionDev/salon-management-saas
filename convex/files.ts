@@ -2,11 +2,10 @@
  * File Storage Functions
  *
  * Handles file uploads using Convex File Storage.
- * Used for organization logos, staff profile images, etc.
+ * Used for organization logos, staff profile images, service images, etc.
  */
 
 import { ConvexError, v } from "convex/values";
-import { mutation } from "./_generated/server";
 import { adminMutation, authedMutation, ErrorCode } from "./lib/functions";
 
 // =============================================================================
@@ -15,6 +14,22 @@ import { adminMutation, authedMutation, ErrorCode } from "./lib/functions";
 
 const MAX_FILE_SIZE = 2 * 1024 * 1024; // 2MB
 const ALLOWED_IMAGE_TYPES = ["image/jpeg", "image/png", "image/webp"];
+
+// =============================================================================
+// Queries
+// =============================================================================
+
+/**
+ * Get a URL for a file from storage
+ * Used to retrieve URLs for uploaded files
+ */
+export const getFileUrl = authedMutation({
+  args: { storageId: v.id("_storage") },
+  returns: v.union(v.string(), v.null()),
+  handler: async (ctx, args) => {
+    return await ctx.storage.getUrl(args.storageId);
+  },
+});
 
 // =============================================================================
 // Mutations
@@ -187,6 +202,64 @@ export const saveStaffImage = authedMutation({
 
     // Update staff with new image
     await ctx.db.patch(args.staffId, {
+      imageUrl: url,
+      updatedAt: Date.now(),
+    });
+
+    return url;
+  },
+});
+
+/**
+ * Save service image
+ * Called after file is uploaded to storage
+ */
+export const saveServiceImage = adminMutation({
+  args: {
+    serviceId: v.id("services"),
+    storageId: v.id("_storage"),
+    fileName: v.string(),
+    fileType: v.string(),
+    fileSize: v.number(),
+  },
+  returns: v.string(),
+  handler: async (ctx, args) => {
+    // Validate file size
+    if (args.fileSize > MAX_FILE_SIZE) {
+      throw new ConvexError({
+        code: ErrorCode.VALIDATION_ERROR,
+        message: `File size exceeds maximum of ${MAX_FILE_SIZE / 1024 / 1024}MB`,
+      });
+    }
+
+    // Validate file type
+    if (!ALLOWED_IMAGE_TYPES.includes(args.fileType)) {
+      throw new ConvexError({
+        code: ErrorCode.VALIDATION_ERROR,
+        message: "Only JPEG, PNG, and WebP images are allowed",
+      });
+    }
+
+    // Verify service belongs to this organization
+    const service = await ctx.db.get(args.serviceId);
+    if (!service || service.organizationId !== ctx.organizationId) {
+      throw new ConvexError({
+        code: ErrorCode.NOT_FOUND,
+        message: "Service not found",
+      });
+    }
+
+    // Get the URL for the uploaded file
+    const url = await ctx.storage.getUrl(args.storageId);
+    if (!url) {
+      throw new ConvexError({
+        code: ErrorCode.INTERNAL_ERROR,
+        message: "Failed to get file URL",
+      });
+    }
+
+    // Update service with new image
+    await ctx.db.patch(args.serviceId, {
       imageUrl: url,
       updatedAt: Date.now(),
     });

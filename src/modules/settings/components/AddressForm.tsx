@@ -98,8 +98,9 @@ export function AddressForm({
         {hasAddress ? (
           <div className="text-sm">
             {address?.street && <p>{address.street}</p>}
-            {[address?.city, address?.state, address?.postalCode].filter(Boolean)
-              .length > 0 && (
+            {[address?.city, address?.state, address?.postalCode].filter(
+              Boolean,
+            ).length > 0 && (
               <p>
                 {[address?.city, address?.state, address?.postalCode]
                   .filter(Boolean)

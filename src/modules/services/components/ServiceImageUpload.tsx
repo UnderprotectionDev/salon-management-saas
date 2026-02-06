@@ -1,56 +1,39 @@
 "use client";
 
 import { useMutation } from "convex/react";
-import { ImagePlus, Loader2, Trash2, Upload } from "lucide-react";
+import { ImagePlus, Loader2, Upload } from "lucide-react";
 import Image from "next/image";
-import { useEffect, useRef, useState } from "react";
+import { useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
-import { api } from "../../../convex/_generated/api";
-import type { Id } from "../../../convex/_generated/dataModel";
-
-// =============================================================================
-// Types
-// =============================================================================
-
-interface LogoUploadProps {
-  organizationId: Id<"organization">;
-  currentLogo?: string | null;
-  onUploadComplete?: (url: string) => void;
-  onDelete?: () => void;
-  disabled?: boolean;
-}
-
-// =============================================================================
-// Constants
-// =============================================================================
+import { api } from "../../../../convex/_generated/api";
+import type { Id } from "../../../../convex/_generated/dataModel";
 
 const MAX_FILE_SIZE = 2 * 1024 * 1024; // 2MB
 const ALLOWED_TYPES = ["image/jpeg", "image/png", "image/webp"];
 
-// =============================================================================
-// Component
-// =============================================================================
+type ServiceImageUploadProps = {
+  organizationId: Id<"organization">;
+  serviceId?: Id<"services">;
+  currentImage?: string | null;
+  onUploadComplete?: (url: string) => void;
+  disabled?: boolean;
+};
 
-export function LogoUpload({
+export function ServiceImageUpload({
   organizationId,
-  currentLogo,
+  serviceId,
+  currentImage,
   onUploadComplete,
-  onDelete,
   disabled = false,
-}: LogoUploadProps) {
+}: ServiceImageUploadProps) {
   const [isUploading, setIsUploading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [preview, setPreview] = useState<string | null>(currentLogo ?? null);
+  const [preview, setPreview] = useState<string | null>(currentImage ?? null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // Sync preview with currentLogo prop changes
-  useEffect(() => {
-    setPreview(currentLogo ?? null);
-  }, [currentLogo]);
-
   const generateUploadUrl = useMutation(api.files.generateUploadUrl);
-  const saveOrganizationLogo = useMutation(api.files.saveOrganizationLogo);
-  const deleteOrganizationLogo = useMutation(api.files.deleteOrganizationLogo);
+  const saveServiceImage = useMutation(api.files.saveServiceImage);
+  const getFileUrl = useMutation(api.files.getFileUrl);
 
   const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -58,13 +41,11 @@ export function LogoUpload({
 
     setError(null);
 
-    // Validate file type
     if (!ALLOWED_TYPES.includes(file.type)) {
       setError("Only JPEG, PNG, and WebP images are allowed");
       return;
     }
 
-    // Validate file size
     if (file.size > MAX_FILE_SIZE) {
       setError("File size must be less than 2MB");
       return;
@@ -77,60 +58,45 @@ export function LogoUpload({
     };
     reader.readAsDataURL(file);
 
-    // Upload file
     setIsUploading(true);
     try {
-      // Step 1: Get upload URL
       const uploadUrl = await generateUploadUrl();
-
-      // Step 2: Upload file to storage
       const response = await fetch(uploadUrl, {
         method: "POST",
         headers: { "Content-Type": file.type },
         body: file,
       });
 
-      if (!response.ok) {
-        throw new Error("Failed to upload file");
-      }
-
+      if (!response.ok) throw new Error("Failed to upload file");
       const { storageId } = await response.json();
 
-      // Step 3: Save logo reference
-      const url = await saveOrganizationLogo({
-        organizationId,
-        storageId,
-        fileName: file.name,
-        fileType: file.type,
-        fileSize: file.size,
-      });
-
-      setPreview(url);
-      onUploadComplete?.(url);
+      if (serviceId) {
+        // Save directly to service if we have an ID
+        const url = await saveServiceImage({
+          organizationId,
+          serviceId,
+          storageId,
+          fileName: file.name,
+          fileType: file.type,
+          fileSize: file.size,
+        });
+        setPreview(url);
+        onUploadComplete?.(url);
+      } else {
+        // For new services without serviceId, convert storageId to URL
+        const url = await getFileUrl({ storageId });
+        if (url) {
+          onUploadComplete?.(url);
+        }
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to upload image");
-      setPreview(currentLogo ?? null);
+      setPreview(currentImage ?? null);
     } finally {
       setIsUploading(false);
-      // Reset file input
       if (fileInputRef.current) {
         fileInputRef.current.value = "";
       }
-    }
-  };
-
-  const handleDelete = async () => {
-    if (!preview) return;
-
-    setIsUploading(true);
-    try {
-      await deleteOrganizationLogo({ organizationId });
-      setPreview(null);
-      onDelete?.();
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to delete image");
-    } finally {
-      setIsUploading(false);
     }
   };
 
@@ -139,8 +105,7 @@ export function LogoUpload({
   };
 
   return (
-    <div className="space-y-3">
-      {/* Preview Area */}
+    <div className="space-y-2">
       <div
         role="button"
         tabIndex={disabled || isUploading ? -1 : 0}
@@ -155,10 +120,10 @@ export function LogoUpload({
           }
         }}
         aria-disabled={disabled || isUploading}
-        aria-label={preview ? "Change logo" : "Upload logo"}
+        aria-label={preview ? "Change image" : "Upload image"}
         className={`
           relative flex items-center justify-center
-          w-32 h-32 border-2 border-dashed rounded-lg
+          w-full h-32 border-2 border-dashed rounded-lg
           transition-colors cursor-pointer
           ${disabled || isUploading ? "opacity-50 cursor-not-allowed" : "hover:border-primary"}
           ${error ? "border-destructive" : "border-muted-foreground/25"}
@@ -167,24 +132,23 @@ export function LogoUpload({
       >
         {isUploading ? (
           <div className="flex flex-col items-center gap-2 text-muted-foreground">
-            <Loader2 className="size-8 animate-spin" />
+            <Loader2 className="size-6 animate-spin" />
             <span className="text-xs">Uploading...</span>
           </div>
         ) : preview ? (
           <Image
             src={preview}
-            alt="Logo preview"
+            alt="Service image preview"
             fill
-            className="object-contain p-2 rounded-lg"
+            className="object-cover rounded-lg"
           />
         ) : (
           <div className="flex flex-col items-center gap-2 text-muted-foreground">
-            <ImagePlus className="size-8" />
-            <span className="text-xs">Upload Logo</span>
+            <ImagePlus className="size-6" />
+            <span className="text-xs">Upload Image</span>
           </div>
         )}
 
-        {/* Hidden file input */}
         <input
           ref={fileInputRef}
           type="file"
@@ -195,36 +159,22 @@ export function LogoUpload({
         />
       </div>
 
-      {/* Error message */}
-      {error && <p className="text-sm text-destructive">{error}</p>}
+      {error && <p className="text-xs text-destructive">{error}</p>}
 
-      {/* Actions */}
-      <div className="flex gap-2">
+      {preview && (
         <Button
           type="button"
           variant="outline"
           size="sm"
+          className="w-full"
           onClick={triggerFileSelect}
           disabled={disabled || isUploading}
         >
           <Upload className="size-4 mr-2" />
-          {preview ? "Change" : "Upload"}
+          Change Image
         </Button>
-        {preview && (
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            onClick={handleDelete}
-            disabled={disabled || isUploading}
-          >
-            <Trash2 className="size-4 mr-2" />
-            Remove
-          </Button>
-        )}
-      </div>
+      )}
 
-      {/* Help text */}
       <p className="text-xs text-muted-foreground">
         Max 2MB. JPEG, PNG, or WebP.
       </p>

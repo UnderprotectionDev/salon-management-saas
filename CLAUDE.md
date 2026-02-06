@@ -49,13 +49,16 @@ convex/              # Backend functions and schema
 ├── betterAuth/      # Better Auth component (schema, auth config)
 ├── lib/
 │   ├── functions.ts # Custom query/mutation wrappers with auth & RLS
-│   ├── validators.ts # Return type validators (231 lines)
-│   ├── rateLimits.ts # Rate limiting config (104 lines)
+│   ├── validators.ts # Return type validators (309 lines)
+│   ├── rateLimits.ts # Rate limiting config (118 lines)
 │   ├── relationships.ts # Database relationship helpers
 │   └── rls.ts       # Row-level security helpers
 ├── auth.ts          # Auth instance and options
 ├── http.ts          # HTTP router with auth routes
-├── files.ts         # File storage mutations (192 lines)
+├── files.ts         # File storage mutations (253 lines)
+├── users.ts         # User queries (getCurrentUser)
+├── serviceCategories.ts # Service category CRUD (188 lines)
+├── services.ts      # Service CRUD + staff assignment (353 lines)
 └── *.ts             # Domain functions (organizations, staff, members, invitations)
 
 src/
@@ -71,6 +74,7 @@ src/
     ├── convex/      # ConvexClientProvider
     ├── auth/        # Auth components, layouts, views
     ├── organization/ # OrganizationProvider, OrganizationSwitcher
+    ├── services/    # Service catalog, categories, pricing
     ├── settings/    # Settings forms & sub-pages
     └── staff/       # Staff management components
 
@@ -182,7 +186,7 @@ export const create = adminMutation({
 });
 ```
 
-**Available rate limits:** `createInvitation`, `resendInvitation`, `createOrganization`, `addMember`, `createBooking`, `cancelBooking`
+**Available rate limits:** `createInvitation`, `resendInvitation`, `createOrganization`, `addMember`, `createService`, `createBooking`, `cancelBooking`
 
 ## Key Files
 
@@ -192,7 +196,10 @@ export const create = adminMutation({
 | `convex/lib/functions.ts` | Custom function wrappers (CRITICAL - use these, not base functions) |
 | `convex/lib/validators.ts` | Shared return type validators |
 | `convex/lib/rateLimits.ts` | Rate limiting configuration |
-| `convex/files.ts` | File storage/upload (logos, staff images) |
+| `convex/users.ts` | User queries (getCurrentUser) |
+| `convex/serviceCategories.ts` | Service category CRUD |
+| `convex/services.ts` | Service CRUD + staff assignment |
+| `convex/files.ts` | File storage/upload (logos, staff images, service images) |
 | `convex/betterAuth/auth.ts` | Better Auth instance and options |
 | `convex/http.ts` | HTTP router with auth routes |
 | `src/lib/auth-client.ts` | Client-side auth hooks (authClient) |

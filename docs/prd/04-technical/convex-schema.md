@@ -51,11 +51,11 @@ erDiagram
 |---------|--------|--------|-------|
 | Organization & Settings | ✅ Implemented | Sprint 1 | Full CRUD, business hours, settings |
 | Member & Invitation | ✅ Implemented | Sprint 1 | Role management, invitation lifecycle |
-| Staff | ✅ Implemented | Sprint 1 | Profile management, schedule |
+| Staff | ✅ Implemented | Sprint 1 | Profile management, schedule, service assignments |
 | Audit Logs | ⚠️ Partial | Sprint 1.5 | Table ✅, Helper functions ❌ (planned) |
-| Schedule Overrides & Time-Off | 📋 Planned | Sprint 2 | Schema exists, APIs pending |
-| Services & Categories | 📋 Planned | Sprint 2 | Schema exists, APIs pending |
-| Customers | 📋 Planned | Sprint 2 | Schema exists, APIs pending |
+| Services & Categories | ✅ Implemented | Sprint 2A | Full CRUD, staff assignment, image upload |
+| Schedule Overrides & Time-Off | 📋 Planned | Sprint 2B | Schema exists, APIs pending |
+| Customers | 📋 Planned | Sprint 2C | Schema exists, APIs pending |
 | Appointments & Slot Locks | 📋 Planned | Sprint 3-4 | Schema exists, APIs pending |
 | Products & Inventory | 📋 Planned | Sprint 2+ | Schema exists, APIs pending |
 | Notifications | 📋 Planned | Sprint 5 | Schema exists, APIs pending |
@@ -225,8 +225,8 @@ export default defineSchema({
       v.literal("pending")
     ),
 
-    // Services (IDs as strings until services table exists)
-    serviceIds: v.optional(v.array(v.string())),
+    // Services (typed IDs referencing services table)
+    serviceIds: v.optional(v.array(v.id("services"))),
 
     // Default weekly schedule
     defaultSchedule: v.optional(v.object({
@@ -340,7 +340,7 @@ export default defineSchema({
     .index("by_org_date", ["organizationId", "date"]),
 
   // ============================================
-  // SERVICES — 📋 Sprint 2
+  // SERVICES — ✅ Implemented (Sprint 2A)
   // ============================================
 
   serviceCategories: defineTable({
@@ -362,7 +362,7 @@ export default defineSchema({
     bufferTime: v.optional(v.number()), // Minutes after service
 
     // Pricing
-    price: v.number(), // In TRY
+    price: v.number(), // In kuruş (15000 = ₺150.00)
     priceType: v.union(
       v.literal("fixed"),
       v.literal("starting_from"),
@@ -996,8 +996,12 @@ export const create = authedMutation({
 
 **Implementation Files:**
 - `convex/schema.ts` - Full schema definition (this document)
-- `convex/lib/validators.ts` - Document validators for return types
+- `convex/lib/validators.ts` - Document validators for return types (309 lines)
 - `convex/organizations.ts` - Organization CRUD operations
 - `convex/members.ts` - Member management
 - `convex/staff.ts` - Staff profile management
 - `convex/invitations.ts` - Invitation lifecycle
+- `convex/serviceCategories.ts` - Service category CRUD (188 lines)
+- `convex/services.ts` - Service CRUD + staff assignment (353 lines)
+- `convex/users.ts` - User queries (getCurrentUser)
+- `convex/files.ts` - File uploads: logos, staff images, service images (253 lines)

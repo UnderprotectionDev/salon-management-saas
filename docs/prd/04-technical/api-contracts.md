@@ -55,7 +55,7 @@ const timestampFields = {
 
 ## Shared Validators (convex/lib/validators.ts)
 
-> **File:** `convex/lib/validators.ts` (231 lines)
+> **File:** `convex/lib/validators.ts` (309 lines)
 > **Status:** ✅ Implemented
 > **Purpose:** Centralized validator library for consistent type checking and return value validation across all Convex functions
 
@@ -72,6 +72,8 @@ Small, focused validators that are composed into larger validators:
 | `invitationStatusValidator` | Union | `pending` \| `accepted` \| `expired` \| `cancelled` \| `rejected` | Invitation lifecycle status |
 | `staffStatusValidator` | Union | `active` \| `inactive` \| `pending` | Staff employment status |
 | `subscriptionStatusValidator` | Union | `active` \| `trialing` \| `past_due` \| `canceled` \| `unpaid` | Subscription billing status |
+| `servicePriceTypeValidator` | Union | `fixed` \| `starting_from` \| `variable` | Service pricing model |
+| `serviceStatusValidator` | Union | `active` \| `inactive` | Service availability status |
 | `addressValidator` | Object | Optional street, city, state, postalCode, country | Physical address |
 | `businessHoursValidator` | Object | Weekly schedule with open/close/closed fields | Organization operating hours |
 | `businessHoursDayValidator` | Object | Single day: `{ open, close, closed }` | One day's business hours |
@@ -90,6 +92,8 @@ These validators include Convex system fields (`_id`, `_creationTime`) for retur
 | `invitationDocValidator` | Invitation document | `_id: v.id("invitation")`, `_creationTime: v.number()` |
 | `organizationSettingsDocValidator` | Settings document | `_id: v.id("organizationSettings")`, `_creationTime: v.number()` |
 | `staffDocValidator` | Staff profile document | `_id: v.id("staff")`, `_creationTime: v.number()` |
+| `serviceCategoryDocValidator` | Category document | `_id: v.id("serviceCategories")`, `_creationTime: v.number()` |
+| `serviceDocValidator` | Service document | `_id: v.id("services")`, `_creationTime: v.number()` |
 
 **Key difference:** Arguments use bare validators (e.g., `v.optional(staffStatusValidator)`), but document validators always include required system fields.
 
@@ -101,6 +105,8 @@ Validators for enriched query results that combine data from multiple tables:
 |-----------|---------|------------------|
 | `organizationWithRoleValidator` | Organization + user's role/membership | Adds `role: memberRoleValidator` and `memberId: v.id("member")` |
 | `invitationWithOrgValidator` | Invitation + organization info | Adds `organizationName: v.string()` and `organizationSlug: v.string()` |
+| `serviceWithCategoryValidator` | Service + category name | Extends serviceDoc with `categoryName: v.optional(v.string())` |
+| `serviceCategoryWithCountValidator` | Category + service count | Extends categoryDoc with `serviceCount: v.number()` |
 
 ### Usage Example
 
@@ -326,7 +332,69 @@ export const createScheduleOverride = adminMutation({
 
 ---
 
-## Service APIs
+## Service APIs — ✅ Implemented (Sprint 2A)
+
+> **Files:** `convex/services.ts` (353 lines), `convex/serviceCategories.ts` (188 lines)
+> **Status:** ✅ Implemented
+
+### `serviceCategories.list`
+
+```typescript
+export const list = orgQuery({
+  args: {
+    // organizationId auto-injected by orgQuery
+  },
+  returns: v.array(serviceCategoryWithCountValidator),
+  handler: async (ctx, args) => {
+    // Returns categories sorted by sortOrder with serviceCount
+  },
+});
+```
+
+### `serviceCategories.create`
+
+```typescript
+export const create = adminMutation({
+  args: {
+    name: v.string(),
+    description: v.optional(v.string()),
+  },
+  returns: v.id("serviceCategories"),
+  handler: async (ctx, args) => {
+    // Duplicate name check, auto sortOrder
+  },
+});
+```
+
+### `serviceCategories.update`
+
+```typescript
+export const update = adminMutation({
+  args: {
+    categoryId: v.id("serviceCategories"),
+    name: v.optional(v.string()),
+    description: v.optional(v.string()),
+  },
+  returns: v.id("serviceCategories"),
+  handler: async (ctx, args) => {
+    // Duplicate name check on rename
+  },
+});
+```
+
+### `serviceCategories.remove`
+
+```typescript
+export const remove = adminMutation({
+  args: {
+    categoryId: v.id("serviceCategories"),
+  },
+  returns: v.null(),
+  handler: async (ctx, args) => {
+    // Reassigns services to uncategorized, then deletes category
+  },
+});
+```
 
 ### `services.list`
 
@@ -335,22 +403,23 @@ export const list = orgQuery({
   args: {
     // organizationId auto-injected by orgQuery
     categoryId: v.optional(v.id("serviceCategories")),
-    status: v.optional(v.literal("active")),
-    showOnlineOnly: v.optional(v.boolean()),
+    status: v.optional(serviceStatusValidator),
   },
-  returns: v.array(v.object({
-    _id: v.id("services"),
-    name: v.string(),
-    description: v.optional(v.string()),
-    duration: v.number(),
-    price: v.number(),
-    priceType: v.string(),
-    imageUrl: v.optional(v.string()),
-    categoryId: v.optional(v.id("serviceCategories")),
-    categoryName: v.optional(v.string()),
-    isPopular: v.boolean(),
-    staffCount: v.number(), // Number of staff who can perform
-  })),
+  returns: v.array(serviceWithCategoryValidator),
+  handler: async (ctx, args) => {
+    // Enriched with categoryName, sorted by sortOrder
+  },
+});
+```
+
+### `services.get`
+
+```typescript
+export const get = orgQuery({
+  args: {
+    serviceId: v.id("services"),
+  },
+  returns: v.union(serviceWithCategoryValidator, v.null()),
   handler: async (ctx, args) => { /* ... */ },
 });
 ```
@@ -360,42 +429,19 @@ export const list = orgQuery({
 ```typescript
 export const create = adminMutation({
   args: {
-    // organizationId auto-injected by adminMutation
     name: v.string(),
     description: v.optional(v.string()),
     duration: v.number(),
     bufferTime: v.optional(v.number()),
-    price: v.number(),
-    priceType: v.union(
-      v.literal("fixed"),
-      v.literal("starting_from"),
-      v.literal("variable")
-    ),
+    price: v.number(),             // kuruş (15000 = ₺150.00)
+    priceType: servicePriceTypeValidator,
     categoryId: v.optional(v.id("serviceCategories")),
-    imageUrl: v.optional(v.string()),
-    isPopular: v.optional(v.boolean()),
-    showOnline: v.optional(v.boolean()),
   },
   returns: v.id("services"),
-  handler: async (ctx, args) => { /* ... */ },
-});
-```
-
-### `services.getCategories`
-
-```typescript
-export const getCategories = orgQuery({
-  args: {
-    // organizationId auto-injected by orgQuery
+  handler: async (ctx, args) => {
+    // Rate limited (createService), validates category,
+    // auto sortOrder, defaults: isPopular=false, showOnline=true, status=active
   },
-  returns: v.array(v.object({
-    _id: v.id("serviceCategories"),
-    name: v.string(),
-    description: v.optional(v.string()),
-    serviceCount: v.number(),
-    sortOrder: v.number(),
-  })),
-  handler: async (ctx, args) => { /* ... */ },
 });
 ```
 
@@ -410,44 +456,65 @@ export const update = adminMutation({
     duration: v.optional(v.number()),
     bufferTime: v.optional(v.number()),
     price: v.optional(v.number()),
-    priceType: v.optional(v.union(
-      v.literal("fixed"),
-      v.literal("starting_from"),
-      v.literal("variable")
-    )),
+    priceType: v.optional(servicePriceTypeValidator),
     categoryId: v.optional(v.id("serviceCategories")),
-    imageUrl: v.optional(v.string()),
     isPopular: v.optional(v.boolean()),
     showOnline: v.optional(v.boolean()),
-    status: v.optional(v.union(v.literal("active"), v.literal("inactive"))),
+    status: v.optional(serviceStatusValidator),
   },
-  returns: v.object({ success: v.boolean() }),
+  returns: v.id("services"),
   handler: async (ctx, args) => {
-    // Requires admin+ role
-    // Validate service exists and belongs to org
-    // Update service fields
-    // Create audit log
+    // Partial update, validates category if provided
   },
 });
 ```
 
-### `services.delete`
+### `services.remove`
 
 ```typescript
-export const deleteService = adminMutation({
+export const remove = adminMutation({
   args: {
     serviceId: v.id("services"),
   },
-  returns: v.object({
-    success: v.boolean(),
-    softDeleted: v.boolean(), // True if has booking history
-  }),
+  returns: v.null(),
   handler: async (ctx, args) => {
-    // Requires admin+ role (adminMutation)
-    // Check if service has booking history
-    // If has history: soft delete (set status = "inactive")
-    // If no history: hard delete
-    // Remove from staff service assignments
+    // Soft-delete: sets status="inactive"
+    // Removes service from all staff.serviceIds arrays
+  },
+});
+```
+
+### `services.assignStaff`
+
+```typescript
+export const assignStaff = adminMutation({
+  args: {
+    serviceId: v.id("services"),
+    staffId: v.id("staff"),
+    assign: v.boolean(),  // true = add, false = remove
+  },
+  returns: v.null(),
+  handler: async (ctx, args) => {
+    // Toggles service in staff.serviceIds array
+  },
+});
+```
+
+### `services.getStaffForService`
+
+```typescript
+export const getStaffForService = orgQuery({
+  args: {
+    serviceId: v.id("services"),
+  },
+  returns: v.array(v.object({
+    _id: v.id("staff"),
+    name: v.string(),
+    imageUrl: v.optional(v.string()),
+    assigned: v.boolean(),
+  })),
+  handler: async (ctx, args) => {
+    // Returns all active staff with assignment status
   },
 });
 ```
@@ -1589,9 +1656,9 @@ export const reactivate = ownerMutation({
 
 ## File Upload APIs
 
-> **File:** `convex/files.ts` (192 lines)
+> **File:** `convex/files.ts` (253 lines)
 > **Status:** ✅ Implemented
-> **Purpose:** Handles file uploads using Convex File Storage for organization logos and staff profile images
+> **Purpose:** Handles file uploads using Convex File Storage for organization logos, staff profile images, and service images
 
 Convex provides built-in file storage with CDN distribution. The upload process follows a 3-step flow:
 
@@ -1732,6 +1799,36 @@ async function uploadLogo(file: File) {
 | Storage retention | Permanent | Files not deleted (CDN caching), Convex handles cleanup |
 | Upload URL TTL | ~1 hour | Temporary URL expires after generation |
 | CDN distribution | Global | Convex provides automatic CDN distribution |
+
+### `files.saveServiceImage`
+
+Saves service image after upload. Validates file size and type.
+
+```typescript
+export const saveServiceImage = adminMutation({
+  args: {
+    serviceId: v.id("services"),
+    storageId: v.id("_storage"),
+    fileName: v.string(),
+    fileType: v.string(),
+    fileSize: v.number(),
+  },
+  returns: v.string(), // Returns CDN URL
+  handler: async (ctx, args) => {
+    // Validates size (max 2MB) and type (JPEG/PNG/WebP)
+    // Gets CDN URL from storage
+    // Updates services.imageUrl
+  },
+});
+```
+
+**Permissions:** Admin or owner role required
+
+**Validation:**
+- Max file size: 2MB
+- Allowed types: `image/jpeg`, `image/png`, `image/webp`
+
+**Returns:** CDN URL of uploaded service image
 
 **See also:**
 - [File Storage Documentation](./architecture.md#file-storage) for architecture details
@@ -1894,10 +1991,13 @@ export const sendGracePeriodReminders = internalAction({
 - [Subscription APIs](#subscription-apis-polarsh-integration) - Billing integration
 
 **Implementation Files:**
-- `convex/lib/validators.ts` - All shared validators (231 lines)
-- `convex/lib/rateLimits.ts` - Rate limit configuration (104 lines)
-- `convex/files.ts` - File upload implementation (192 lines)
+- `convex/lib/validators.ts` - All shared validators (309 lines)
+- `convex/lib/rateLimits.ts` - Rate limit configuration (118 lines)
+- `convex/files.ts` - File upload implementation (253 lines)
 - `convex/organizations.ts` - Organization CRUD operations
 - `convex/staff.ts` - Staff profile management
 - `convex/invitations.ts` - Invitation lifecycle
 - `convex/members.ts` - Member and role management
+- `convex/serviceCategories.ts` - Service category CRUD (188 lines)
+- `convex/services.ts` - Service CRUD + staff assignment (353 lines)
+- `convex/users.ts` - User queries (10 lines)

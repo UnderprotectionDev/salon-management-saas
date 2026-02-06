@@ -175,8 +175,8 @@ export default defineSchema({
       v.literal("inactive"),
       v.literal("pending"),
     ),
-    // Services this staff can perform (service IDs for future)
-    serviceIds: v.optional(v.array(v.string())),
+    // Services this staff can perform
+    serviceIds: v.optional(v.array(v.id("services"))),
     // Default weekly schedule
     defaultSchedule: v.optional(
       v.object({
@@ -241,4 +241,40 @@ export default defineSchema({
     .index("organizationId_userId", ["organizationId", "userId"])
     .index("organizationId_status", ["organizationId", "status"])
     .index("organizationId_email", ["organizationId", "email"]),
+
+  // Service Categories
+  serviceCategories: defineTable({
+    organizationId: v.id("organization"),
+    name: v.string(),
+    description: v.optional(v.string()),
+    sortOrder: v.number(),
+    createdAt: v.number(),
+    updatedAt: v.optional(v.number()),
+  }).index("by_organization", ["organizationId"]),
+
+  // Services
+  services: defineTable({
+    organizationId: v.id("organization"),
+    categoryId: v.optional(v.id("serviceCategories")),
+    name: v.string(),
+    description: v.optional(v.string()),
+    duration: v.number(), // minutes
+    bufferTime: v.optional(v.number()), // minutes after service
+    price: v.number(), // kuruş (15000 = 150.00 TL)
+    priceType: v.union(
+      v.literal("fixed"),
+      v.literal("starting_from"),
+      v.literal("variable"),
+    ),
+    imageUrl: v.optional(v.string()),
+    sortOrder: v.number(),
+    isPopular: v.boolean(),
+    status: v.union(v.literal("active"), v.literal("inactive")),
+    showOnline: v.boolean(),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_organization", ["organizationId"])
+    .index("by_org_category", ["organizationId", "categoryId"])
+    .index("by_org_status", ["organizationId", "status"]),
 });
