@@ -5,6 +5,7 @@ import {
   ErrorCode,
   orgQuery,
 } from "./lib/functions";
+import { resolveScheduleRange } from "./lib/scheduleResolver";
 import {
   staffDocValidator,
   staffScheduleValidator,
@@ -274,5 +275,74 @@ export const updateProfile = authedMutation({
     await ctx.db.patch(staffId, updates);
 
     return staffId;
+  },
+});
+
+// =============================================================================
+// Schedule Resolution
+// =============================================================================
+
+/**
+ * Get resolved schedule for a staff member over a date range.
+ * Combines default schedule, overrides, and overtime into a unified view.
+ */
+export const getResolvedSchedule = orgQuery({
+  args: {
+    staffId: v.id("staff"),
+    startDate: v.string(),
+    endDate: v.string(),
+  },
+  returns: v.array(
+    v.object({
+      date: v.string(),
+      available: v.boolean(),
+      effectiveStart: v.union(v.string(), v.null()),
+      effectiveEnd: v.union(v.string(), v.null()),
+      overtimeWindows: v.array(
+        v.object({ start: v.string(), end: v.string() }),
+      ),
+      overrideType: v.union(
+        v.literal("custom_hours"),
+        v.literal("day_off"),
+        v.literal("time_off"),
+        v.null(),
+      ),
+      isTimeOff: v.boolean(),
+    }),
+  ),
+  handler: async (ctx, args) => {
+    const staff = await ctx.db.get(args.staffId);
+    if (!staff) {
+      throw new ConvexError({
+        code: ErrorCode.NOT_FOUND,
+        message: "Staff not found",
+      });
+    }
+
+    // Fetch overrides in date range
+    const overrides = await ctx.db
+      .query("scheduleOverrides")
+      .withIndex("by_staff_date", (q) => q.eq("staffId", args.staffId))
+      .collect();
+    const filteredOverrides = overrides.filter(
+      (o) => o.date >= args.startDate && o.date <= args.endDate,
+    );
+
+    // Fetch overtime entries in date range
+    const overtime = await ctx.db
+      .query("staffOvertime")
+      .withIndex("by_staff_date", (q) => q.eq("staffId", args.staffId))
+      .collect();
+    const filteredOvertime = overtime.filter(
+      (o) => o.date >= args.startDate && o.date <= args.endDate,
+    );
+
+    return resolveScheduleRange({
+      startDate: args.startDate,
+      endDate: args.endDate,
+      defaultSchedule: staff.defaultSchedule ?? undefined,
+      overrides: filteredOverrides,
+      overtimeEntries: filteredOvertime,
+    });
   },
 });

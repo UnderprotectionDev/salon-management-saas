@@ -61,6 +61,7 @@ convex/
 │   ├── rateLimits.ts      # Rate limiting utilities
 │   ├── relationships.ts   # Database relationship helpers
 │   ├── rls.ts             # Row-level security helpers
+│   ├── scheduleResolver.ts # Schedule resolution logic (163 lines)
 │   └── validators.ts      # Convex return validators
 │
 ├── auth.config.ts         # Better Auth configuration
@@ -72,9 +73,12 @@ convex/
 ├── members.ts             # Organization member management
 ├── organizations.ts       # Organization CRUD operations
 ├── schema.ts              # Database schema definition
+├── scheduleOverrides.ts   # Schedule override CRUD (178 lines)
 ├── serviceCategories.ts   # Service category CRUD
 ├── services.ts            # Service CRUD + staff assignment
 ├── staff.ts               # Staff profile queries/mutations
+├── staffOvertime.ts       # Overtime management (155 lines)
+├── timeOffRequests.ts     # Time-off request workflow (335 lines)
 └── users.ts               # User queries (getCurrentUser)
 ```
 
@@ -89,8 +93,12 @@ convex/
 | `lib/validators.ts` | Reusable return type validators (309 lines) |
 | `lib/audit.ts` | Audit trail creation helpers |
 | `lib/rls.ts` | Row-level security enforcement |
+| `lib/scheduleResolver.ts` | Schedule resolution logic (163 lines) |
 | `services.ts` | Service CRUD + staff assignment (353 lines) |
 | `serviceCategories.ts` | Service category management (188 lines) |
+| `scheduleOverrides.ts` | Schedule override CRUD (178 lines) |
+| `timeOffRequests.ts` | Time-off request workflow (335 lines) |
+| `staffOvertime.ts` | Overtime management (155 lines) |
 | `users.ts` | User queries (getCurrentUser) |
 | `files.ts` | File uploads: logos, staff images, service images (253 lines) |
 
@@ -181,7 +189,19 @@ src/
 │   │   └── index.ts       # Public exports
 │   │
 │   └── staff/             # Staff management module
-│       ├── components/    # AddStaffDialog, StaffTable, etc.
+│       ├── components/    # Staff components (dialogs, lists, forms)
+│       │   ├── AddStaffDialog.tsx
+│       │   ├── StaffTable.tsx
+│       │   ├── ScheduleEditor.tsx
+│       │   ├── ScheduleOverrideDialog.tsx
+│       │   ├── ScheduleOverrideList.tsx
+│       │   ├── TimeOffRequestForm.tsx
+│       │   ├── TimeOffRequestList.tsx
+│       │   ├── TimeOffApprovalPanel.tsx
+│       │   ├── OvertimeDialog.tsx
+│       │   └── OvertimeManager.tsx
+│       ├── lib/           # Shared utilities & constants
+│       │   └── constants.ts  # DAYS, TIME_OPTIONS, timeToMinutes
 │       └── index.ts
 │
 └── middleware.ts          # Next.js middleware (auth protection)
@@ -344,7 +364,7 @@ modules/[feature]/
 | `organization/` | Org context, switcher, invitation handling |
 | `services/` | Service catalog, categories, pricing, staff assignment |
 | `settings/` | Settings forms & sub-pages |
-| `staff/` | Staff management components & dialogs |
+| `staff/` | Staff management: profiles, schedules, overrides, time-off, overtime |
 
 ---
 
@@ -535,8 +555,9 @@ bun run format    # Auto-fix formatting
 | Version | Date | Changes |
 |---------|------|---------|
 | 1.0.0 | 2025-02-06 | Initial file hierarchy documentation |
-| 1.1.0 | 2026-02-06 | Added Sprint 2A: services module, serviceCategories.ts, services.ts, users.ts, services page |
+| 1.1.0 | 2026-02-06 | Added Milestone 2A: services module, serviceCategories.ts, services.ts, users.ts, services page |
+| 1.2.0 | 2026-02-06 | Added Milestone 2B: scheduleOverrides.ts, timeOffRequests.ts, staffOvertime.ts, scheduleResolver.ts, staff schedule components |
 
 ---
 
-**Note:** This document is auto-updated as the project structure evolves. Last sync: Sprint 2A (Complete).
+**Note:** This document is auto-updated as the project structure evolves. Last sync: Milestone 2B (Complete).

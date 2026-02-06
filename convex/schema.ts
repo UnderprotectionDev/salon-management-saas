@@ -277,4 +277,63 @@ export default defineSchema({
     .index("by_organization", ["organizationId"])
     .index("by_org_category", ["organizationId", "categoryId"])
     .index("by_org_status", ["organizationId", "status"]),
+
+  // Schedule Overrides — per-day schedule changes (custom hours, day off, time off)
+  scheduleOverrides: defineTable({
+    staffId: v.id("staff"),
+    organizationId: v.id("organization"),
+    date: v.string(), // "YYYY-MM-DD"
+    type: v.union(
+      v.literal("custom_hours"),
+      v.literal("day_off"),
+      v.literal("time_off"),
+    ),
+    startTime: v.optional(v.string()), // "HH:MM" — required for custom_hours
+    endTime: v.optional(v.string()),
+    reason: v.optional(v.string()),
+    createdAt: v.number(),
+  })
+    .index("by_staff_date", ["staffId", "date"])
+    .index("by_org_date", ["organizationId", "date"]),
+
+  // Time-Off Requests — vacation, sick leave, personal time requests
+  timeOffRequests: defineTable({
+    staffId: v.id("staff"),
+    organizationId: v.id("organization"),
+    startDate: v.string(),
+    endDate: v.string(),
+    type: v.union(
+      v.literal("vacation"),
+      v.literal("sick"),
+      v.literal("personal"),
+      v.literal("other"),
+    ),
+    status: v.union(
+      v.literal("pending"),
+      v.literal("approved"),
+      v.literal("rejected"),
+    ),
+    reason: v.optional(v.string()),
+    rejectionReason: v.optional(v.string()),
+    approvedBy: v.optional(v.id("staff")),
+    reviewedAt: v.optional(v.number()),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_staff", ["staffId"])
+    .index("by_org_status", ["organizationId", "status"])
+    .index("by_staff_dates", ["staffId", "startDate"]),
+
+  // Staff Overtime — extra work hours beyond default schedule
+  staffOvertime: defineTable({
+    staffId: v.id("staff"),
+    organizationId: v.id("organization"),
+    date: v.string(),
+    startTime: v.string(),
+    endTime: v.string(),
+    reason: v.optional(v.string()),
+    createdAt: v.number(),
+  })
+    .index("by_staff_date", ["staffId", "date"])
+    .index("by_org_date", ["organizationId", "date"]),
 });

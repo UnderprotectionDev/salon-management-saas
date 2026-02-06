@@ -89,6 +89,42 @@ export const rateLimiter = new RateLimiter(components.rateLimiter, {
   },
 
   // ==========================================================================
+  // Staff Schedule Limits
+  // ==========================================================================
+
+  /**
+   * Schedule override oluşturma limiti (organizasyon başına)
+   * Günde max 30 override, burst için 10 ekstra
+   */
+  createScheduleOverride: {
+    kind: "token bucket",
+    rate: 30,
+    period: DAY,
+    capacity: 40,
+  },
+
+  /**
+   * İzin talebi oluşturma limiti (staff başına)
+   * Günde max 5 talep
+   */
+  createTimeOffRequest: {
+    kind: "fixed window",
+    rate: 5,
+    period: DAY,
+  },
+
+  /**
+   * Mesai oluşturma limiti (staff başına)
+   * Günde max 10, burst için 5 ekstra
+   */
+  createOvertime: {
+    kind: "token bucket",
+    rate: 10,
+    period: DAY,
+    capacity: 15,
+  },
+
+  // ==========================================================================
   // Future: Booking Limits (ileride kullanılacak)
   // ==========================================================================
 

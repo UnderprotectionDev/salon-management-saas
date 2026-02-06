@@ -1,7 +1,15 @@
 "use client";
 
 import { useQuery } from "convex/react";
-import { ArrowLeft, Calendar, Mail, Phone, User } from "lucide-react";
+import {
+  ArrowLeft,
+  Calendar,
+  CalendarClock,
+  Mail,
+  Phone,
+  Plus,
+  User,
+} from "lucide-react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useState } from "react";
@@ -16,8 +24,19 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useOrganization } from "@/modules/organization";
-import { ScheduleEditor, StaffProfileForm } from "@/modules/staff";
+import {
+  OvertimeManager,
+  ScheduleEditor,
+  ScheduleOverrideDialog,
+  ScheduleOverrideList,
+  StaffProfileForm,
+  TimeOffApprovalPanel,
+  TimeOffRequestForm,
+  TimeOffRequestList,
+} from "@/modules/staff";
+import { DAY_LABELS, DAYS } from "@/modules/staff/lib/constants";
 import type { StaffSchedule } from "@/modules/staff/components/ScheduleEditor";
 import { api } from "../../../../../convex/_generated/api";
 import type { Id } from "../../../../../convex/_generated/dataModel";
@@ -44,26 +63,6 @@ function getStatusColor(
   }
 }
 
-const DAYS = [
-  "monday",
-  "tuesday",
-  "wednesday",
-  "thursday",
-  "friday",
-  "saturday",
-  "sunday",
-] as const;
-
-const DAY_LABELS: Record<(typeof DAYS)[number], string> = {
-  monday: "Monday",
-  tuesday: "Tuesday",
-  wednesday: "Wednesday",
-  thursday: "Thursday",
-  friday: "Friday",
-  saturday: "Saturday",
-  sunday: "Sunday",
-};
-
 function StaffDetailSkeleton() {
   return (
     <div className="space-y-6">
@@ -83,6 +82,7 @@ function StaffDetailSkeleton() {
           </div>
         </CardContent>
       </Card>
+      <Skeleton className="h-10 w-full" />
       <Card>
         <CardHeader>
           <Skeleton className="h-6 w-40" />
@@ -106,6 +106,7 @@ export default function StaffDetailPage() {
   const staff = useQuery(api.staff.get, { staffId });
   const [isEditing, setIsEditing] = useState(false);
   const [editSchedule, setEditSchedule] = useState<StaffSchedule | null>(null);
+  const [showOverrideDialog, setShowOverrideDialog] = useState(false);
 
   if (staff === undefined) {
     return <StaffDetailSkeleton />;
@@ -139,6 +140,9 @@ export default function StaffDetailPage() {
     currentRole === "owner" ||
     currentRole === "admin";
 
+  const isAdmin = currentRole === "owner" || currentRole === "admin";
+  const isSelf = currentStaff?._id === staffId;
+
   const schedule = (editSchedule ??
     staff.defaultSchedule ??
     {}) as StaffSchedule;
@@ -169,141 +173,221 @@ export default function StaffDetailPage() {
         Back to Staff
       </Link>
 
-      {isEditing ? (
-        <>
-          {/* Edit Profile Form */}
-          <Card>
-            <CardHeader>
-              <CardTitle>Edit Profile</CardTitle>
-              <CardDescription>Update staff member information</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <StaffProfileForm
-                staff={{
-                  ...staff,
-                  defaultSchedule: editSchedule ?? staff.defaultSchedule,
-                }}
-                onSuccess={handleEditSuccess}
-                onCancel={handleEditCancel}
-              />
-            </CardContent>
-          </Card>
+      {/* Profile Card (always visible) */}
+      <Card>
+        <CardContent className="p-6">
+          <div className="flex items-start gap-6">
+            <Avatar className="size-20">
+              <AvatarImage src={staff.imageUrl ?? undefined} />
+              <AvatarFallback className="text-xl">
+                {getInitials(staff.name)}
+              </AvatarFallback>
+            </Avatar>
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center gap-3">
+                <h2 className="text-xl font-semibold truncate">{staff.name}</h2>
+                <Badge variant={getStatusColor(staff.status)}>
+                  {staff.status}
+                </Badge>
+              </div>
+              <div className="mt-3 space-y-2">
+                <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                  <Mail className="size-4" />
+                  <span>{staff.email}</span>
+                </div>
+                {staff.phone && (
+                  <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                    <Phone className="size-4" />
+                    <span>{staff.phone}</span>
+                  </div>
+                )}
+              </div>
+              {staff.bio && (
+                <p className="mt-3 text-sm text-muted-foreground">
+                  {staff.bio}
+                </p>
+              )}
+            </div>
+          </div>
+        </CardContent>
+      </Card>
 
-          {/* Schedule Editor */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Calendar className="size-5" />
-                Work Schedule
-              </CardTitle>
-              <CardDescription>
-                Set the default weekly working hours
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <ScheduleEditor value={schedule} onChange={setEditSchedule} />
-            </CardContent>
-          </Card>
-        </>
-      ) : (
-        <>
-          {/* Profile Card */}
-          <Card>
-            <CardContent className="p-6">
-              <div className="flex items-start gap-6">
-                <Avatar className="size-20">
-                  <AvatarImage src={staff.imageUrl ?? undefined} />
-                  <AvatarFallback className="text-xl">
-                    {getInitials(staff.name)}
-                  </AvatarFallback>
-                </Avatar>
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-3">
-                    <h2 className="text-xl font-semibold truncate">
-                      {staff.name}
-                    </h2>
-                    <Badge variant={getStatusColor(staff.status)}>
-                      {staff.status}
-                    </Badge>
+      {/* Tabs */}
+      <Tabs defaultValue="overview">
+        <TabsList>
+          <TabsTrigger value="overview">Overview</TabsTrigger>
+          <TabsTrigger value="overrides">Schedule Overrides</TabsTrigger>
+          <TabsTrigger value="timeoff">Time Off</TabsTrigger>
+          <TabsTrigger value="overtime">Overtime</TabsTrigger>
+        </TabsList>
+
+        {/* Overview Tab */}
+        <TabsContent value="overview" className="space-y-6">
+          {isEditing ? (
+            <>
+              <Card>
+                <CardHeader>
+                  <CardTitle>Edit Profile</CardTitle>
+                  <CardDescription>
+                    Update staff member information
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <StaffProfileForm
+                    staff={{
+                      ...staff,
+                      defaultSchedule: editSchedule ?? staff.defaultSchedule,
+                    }}
+                    onSuccess={handleEditSuccess}
+                    onCancel={handleEditCancel}
+                  />
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <Calendar className="size-5" />
+                    Work Schedule
+                  </CardTitle>
+                  <CardDescription>
+                    Set the default weekly working hours
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <ScheduleEditor value={schedule} onChange={setEditSchedule} />
+                </CardContent>
+              </Card>
+            </>
+          ) : (
+            <>
+              {/* Work Schedule Card (read-only) */}
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <Calendar className="size-5" />
+                    Work Schedule
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-3">
+                    {DAYS.map((day) => {
+                      const daySchedule = schedule[day];
+                      return (
+                        <div
+                          key={day}
+                          className="flex items-center justify-between py-2 border-b last:border-b-0"
+                        >
+                          <span className="text-sm font-medium w-28">
+                            {DAY_LABELS[day]}
+                          </span>
+                          {daySchedule?.available ? (
+                            <span className="text-sm">
+                              {daySchedule.start} - {daySchedule.end}
+                            </span>
+                          ) : (
+                            <span className="text-sm text-muted-foreground">
+                              Unavailable
+                            </span>
+                          )}
+                        </div>
+                      );
+                    })}
                   </div>
-                  <div className="mt-3 space-y-2">
-                    <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                      <Mail className="size-4" />
-                      <span>{staff.email}</span>
-                    </div>
-                    {staff.phone && (
-                      <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                        <Phone className="size-4" />
-                        <span>{staff.phone}</span>
-                      </div>
-                    )}
-                  </div>
-                  {staff.bio && (
-                    <p className="mt-3 text-sm text-muted-foreground">
-                      {staff.bio}
+                </CardContent>
+              </Card>
+
+              {/* Service assignments */}
+              <Card>
+                <CardHeader>
+                  <CardTitle>Service Assignments</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  {staff.serviceIds && staff.serviceIds.length > 0 ? (
+                    <p className="text-sm text-muted-foreground">
+                      {staff.serviceIds.length} service(s) assigned
+                    </p>
+                  ) : (
+                    <p className="text-sm text-muted-foreground">
+                      No services assigned yet
                     </p>
                   )}
-                </div>
-              </div>
-            </CardContent>
-          </Card>
+                </CardContent>
+              </Card>
 
-          {/* Work Schedule Card (read-only) */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Calendar className="size-5" />
-                Work Schedule
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-3">
-                {DAYS.map((day) => {
-                  const daySchedule = schedule[day];
-                  return (
-                    <div
-                      key={day}
-                      className="flex items-center justify-between py-2 border-b last:border-b-0"
-                    >
-                      <span className="text-sm font-medium w-28">
-                        {DAY_LABELS[day]}
-                      </span>
-                      {daySchedule?.available ? (
-                        <span className="text-sm">
-                          {daySchedule.start} - {daySchedule.end}
-                        </span>
-                      ) : (
-                        <span className="text-sm text-muted-foreground">
-                          Unavailable
-                        </span>
-                      )}
-                    </div>
-                  );
-                })}
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Service assignments placeholder */}
-          <Card>
-            <CardHeader>
-              <CardTitle>Service Assignments</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <p className="text-sm text-muted-foreground">
-                Service assignments coming in Sprint 2
-              </p>
-            </CardContent>
-          </Card>
-
-          {/* Edit Button */}
-          {canEdit && (
-            <Button variant="outline" onClick={handleEditStart}>
-              Edit Profile
-            </Button>
+              {canEdit && (
+                <Button variant="outline" onClick={handleEditStart}>
+                  Edit Profile
+                </Button>
+              )}
+            </>
           )}
-        </>
-      )}
+        </TabsContent>
+
+        {/* Schedule Overrides Tab */}
+        <TabsContent value="overrides" className="space-y-4">
+          {canEdit && (
+            <div className="flex justify-end">
+              <Button onClick={() => setShowOverrideDialog(true)}>
+                <Plus className="mr-2 size-4" />
+                Add Override
+              </Button>
+            </div>
+          )}
+          <ScheduleOverrideList staffId={staffId} canEdit={canEdit} />
+          <ScheduleOverrideDialog
+            staffId={staffId}
+            open={showOverrideDialog}
+            onOpenChange={setShowOverrideDialog}
+          />
+        </TabsContent>
+
+        {/* Time Off Tab */}
+        <TabsContent value="timeoff" className="space-y-6">
+          {/* Admin approval panel */}
+          {isAdmin && <TimeOffApprovalPanel />}
+
+          {/* Self: request form + list */}
+          {isSelf && (
+            <>
+              <TimeOffRequestForm />
+              <TimeOffRequestList />
+            </>
+          )}
+
+          {/* Admin viewing someone else: show that user's list only */}
+          {isAdmin && !isSelf && (
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <CalendarClock className="size-5" />
+                  Time Off
+                </CardTitle>
+                <CardDescription>
+                  Manage time-off requests from the approval panel above.
+                </CardDescription>
+              </CardHeader>
+            </Card>
+          )}
+
+          {/* Not admin, not self */}
+          {!isAdmin && !isSelf && (
+            <Card>
+              <CardContent className="flex flex-col items-center justify-center py-8">
+                <CalendarClock className="mb-3 size-10 text-muted-foreground" />
+                <p className="text-sm text-muted-foreground">
+                  Time-off information is not available for this staff member.
+                </p>
+              </CardContent>
+            </Card>
+          )}
+        </TabsContent>
+
+        {/* Overtime Tab */}
+        <TabsContent value="overtime" className="space-y-4">
+          <OvertimeManager staffId={staffId} canEdit={canEdit} />
+        </TabsContent>
+      </Tabs>
     </div>
   );
 }

@@ -16,12 +16,16 @@ import type * as lib_functions from "../lib/functions.js";
 import type * as lib_rateLimits from "../lib/rateLimits.js";
 import type * as lib_relationships from "../lib/relationships.js";
 import type * as lib_rls from "../lib/rls.js";
+import type * as lib_scheduleResolver from "../lib/scheduleResolver.js";
 import type * as lib_validators from "../lib/validators.js";
 import type * as members from "../members.js";
 import type * as organizations from "../organizations.js";
+import type * as scheduleOverrides from "../scheduleOverrides.js";
 import type * as serviceCategories from "../serviceCategories.js";
 import type * as services from "../services.js";
 import type * as staff from "../staff.js";
+import type * as staffOvertime from "../staffOvertime.js";
+import type * as timeOffRequests from "../timeOffRequests.js";
 import type * as users from "../users.js";
 
 import type {
@@ -39,12 +43,16 @@ declare const fullApi: ApiFromModules<{
   "lib/rateLimits": typeof lib_rateLimits;
   "lib/relationships": typeof lib_relationships;
   "lib/rls": typeof lib_rls;
+  "lib/scheduleResolver": typeof lib_scheduleResolver;
   "lib/validators": typeof lib_validators;
   members: typeof members;
   organizations: typeof organizations;
+  scheduleOverrides: typeof scheduleOverrides;
   serviceCategories: typeof serviceCategories;
   services: typeof services;
   staff: typeof staff;
+  staffOvertime: typeof staffOvertime;
+  timeOffRequests: typeof timeOffRequests;
   users: typeof users;
 }>;
 

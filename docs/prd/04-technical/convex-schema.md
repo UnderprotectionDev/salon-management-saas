@@ -53,8 +53,10 @@ erDiagram
 | Member & Invitation | ✅ Implemented | Sprint 1 | Role management, invitation lifecycle |
 | Staff | ✅ Implemented | Sprint 1 | Profile management, schedule, service assignments |
 | Audit Logs | ⚠️ Partial | Sprint 1.5 | Table ✅, Helper functions ❌ (planned) |
-| Services & Categories | ✅ Implemented | Sprint 2A | Full CRUD, staff assignment, image upload |
-| Schedule Overrides & Time-Off | 📋 Planned | Sprint 2B | Schema exists, APIs pending |
+| Services & Categories | ✅ Implemented | Milestone 2A | Full CRUD, staff assignment, image upload |
+| Schedule Overrides | ✅ Implemented | Milestone 2B | CRUD + schedule resolution |
+| Time-Off Requests | ✅ Implemented | Milestone 2B | Request/approve/reject workflow |
+| Staff Overtime | ✅ Implemented | Milestone 2B | Overtime slot management |
 | Customers | 📋 Planned | Sprint 2C | Schema exists, APIs pending |
 | Appointments & Slot Locks | 📋 Planned | Sprint 3-4 | Schema exists, APIs pending |
 | Products & Inventory | 📋 Planned | Sprint 2+ | Schema exists, APIs pending |
@@ -273,7 +275,7 @@ export default defineSchema({
     .index("timestamp", ["timestamp"]),
 
   // ============================================
-  // SCHEDULE OVERRIDES — 📋 Sprint 2
+  // SCHEDULE OVERRIDES — ✅ Implemented (Milestone 2B)
   // ============================================
 
   scheduleOverrides: defineTable({
@@ -294,7 +296,7 @@ export default defineSchema({
     .index("by_org_date", ["organizationId", "date"]),
 
   // ============================================
-  // TIME-OFF REQUESTS — 📋 Sprint 2
+  // TIME-OFF REQUESTS — ✅ Implemented (Milestone 2B)
   // ============================================
 
   timeOffRequests: defineTable({
@@ -324,7 +326,7 @@ export default defineSchema({
     .index("by_org_status", ["organizationId", "status"]),
 
   // ============================================
-  // STAFF OVERTIME — 📋 Sprint 2
+  // STAFF OVERTIME — ✅ Implemented (Milestone 2B)
   // ============================================
 
   staffOvertime: defineTable({
@@ -340,7 +342,7 @@ export default defineSchema({
     .index("by_org_date", ["organizationId", "date"]),
 
   // ============================================
-  // SERVICES — ✅ Implemented (Sprint 2A)
+  // SERVICES — ✅ Implemented (Milestone 2A)
   // ============================================
 
   serviceCategories: defineTable({
@@ -386,7 +388,7 @@ export default defineSchema({
     .index("by_org_status", ["organizationId", "status"]),
 
   // ============================================
-  // CUSTOMERS — 📋 Sprint 2
+  // CUSTOMERS — 📋 Milestone 2C (Planned)
   // ============================================
 
   customers: defineTable({
@@ -997,11 +999,15 @@ export const create = authedMutation({
 **Implementation Files:**
 - `convex/schema.ts` - Full schema definition (this document)
 - `convex/lib/validators.ts` - Document validators for return types (309 lines)
+- `convex/lib/scheduleResolver.ts` - Schedule resolution logic (163 lines)
 - `convex/organizations.ts` - Organization CRUD operations
 - `convex/members.ts` - Member management
 - `convex/staff.ts` - Staff profile management
 - `convex/invitations.ts` - Invitation lifecycle
 - `convex/serviceCategories.ts` - Service category CRUD (188 lines)
 - `convex/services.ts` - Service CRUD + staff assignment (353 lines)
+- `convex/scheduleOverrides.ts` - Schedule override CRUD (178 lines)
+- `convex/timeOffRequests.ts` - Time-off request workflow (335 lines)
+- `convex/staffOvertime.ts` - Overtime management (155 lines)
 - `convex/users.ts` - User queries (getCurrentUser)
 - `convex/files.ts` - File uploads: logos, staff images, service images (253 lines)
