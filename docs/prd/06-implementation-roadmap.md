@@ -20,27 +20,27 @@ This document contains the detailed implementation roadmap for remaining tasks a
 | **Auth UI** | ✅ Done | Sign-in view, auth components |
 | **UI Library** | ✅ Done | 56 shadcn/ui components |
 | **Core Pages** | ✅ Done | Landing, sign-in, dashboard |
-| **Database Schema** | ✅ Done | Sprint 1 - Full schema implemented |
-| **Multi-Tenant Setup** | ✅ Done | Sprint 1 - Organizations, members, RLS |
-| **Onboarding Wizard** | ✅ Done | Sprint 1 - Salon creation flow |
-| **Business Hours Editor** | ✅ Done | Sprint 1 - Settings page |
-| **Staff Invitation System** | ✅ Done | Sprint 1 - Email invitations |
+| **Database Schema** | ✅ Done | Milestone 1 - Full schema implemented |
+| **Multi-Tenant Setup** | ✅ Done | Milestone 1 - Organizations, members, RLS |
+| **Onboarding Wizard** | ✅ Done | Milestone 1 - Salon creation flow |
+| **Business Hours Editor** | ✅ Done | Milestone 1 - Settings page |
+| **Staff Invitation System** | ✅ Done | Milestone 1 - Email invitations |
 
-### Remaining (To Be Completed in Sprints)
+### Remaining (To Be Completed in Milestones)
 
-| Category | Priority | Sprint | Status |
-|----------|----------|--------|--------|
-| ~~Database Schema~~ | ~~P0~~ | ~~Sprint 1~~ | ✅ Done |
-| ~~Multi-Tenant Setup~~ | ~~P0~~ | ~~Sprint 1~~ | ✅ Done |
-| ~~Service Catalog~~ | ~~P0~~ | ~~Sprint 2A~~ | ✅ Done |
-| Staff Management | P0 | Sprint 2B | Pending |
-| Customer Base | P0 | Sprint 2C | Pending |
-| Booking Engine | P0 | Sprint 3-4 | Pending |
-| Admin Dashboard | P0 | Sprint 5 | Pending |
-| SaaS Billing (Polar) | P0 | Sprint 6 | Pending |
-| Email (Resend) | P1 | Sprint 7 | Pending |
-| Reports & Analytics | P1 | Sprint 8 | Pending |
-| Customer Portal | P1 | Sprint 9 | Pending |
+| Category | Priority | Milestone | Status |
+|----------|----------|-----------|--------|
+| ~~Database Schema~~ | ~~P0~~ | ~~Milestone 1~~ | ✅ Done |
+| ~~Multi-Tenant Setup~~ | ~~P0~~ | ~~Milestone 1~~ | ✅ Done |
+| ~~Service Catalog~~ | ~~P0~~ | ~~Milestone 2A~~ | ✅ Done |
+| ~~Staff Management~~ | ~~P0~~ | ~~Milestone 2B~~ | ✅ Done |
+| Customer Base | P0 | Milestone 2C | Pending |
+| Booking Engine | P0 | Milestone 3-4 | Pending |
+| Admin Dashboard | P0 | Milestone 5 | Pending |
+| SaaS Billing (Polar) | P0 | Milestone 6 | Pending |
+| Email (Resend) | P1 | Milestone 7 | Pending |
+| Reports & Analytics | P1 | Milestone 8 | Pending |
+| Customer Portal | P1 | Milestone 9 | Pending |
 
 ---
 
@@ -53,7 +53,7 @@ This document contains the detailed implementation roadmap for remaining tasks a
                         └──────────┬──────────┘
                                    │
                         ┌──────────▼──────────┐
-                        │ SPRINT 1 (✅ Done)  │
+                        │ MILESTONE 1 (✅)    │
                         │   Multi-Tenant      │
                         │   Organizations     │
                         │   + Database Schema │
@@ -62,15 +62,15 @@ This document contains the detailed implementation roadmap for remaining tasks a
               ┌────────────────────┼────────────────────┐
               │                    │                    │
      ┌────────▼────────┐  ┌────────▼────────┐  ┌───────▼────────┐
-     │   SPRINT 2A ✅  │  │   SPRINT 2B     │  │   SPRINT 2C    │
+     │  MILESTONE 2A ✅│  │  MILESTONE 2B ✅│  │  MILESTONE 2C  │
      │   Services      │  │   Staff         │  │   Customers    │
-     │   Catalog       │  │   Management    │  │   Base         │
+     │   Catalog       │  │   Enhancements  │  │   Base         │
      └────────┬────────┘  └────────┬────────┘  └───────┬────────┘
               │                    │                    │
               └────────────────────┼────────────────────┘
                                    │
                         ┌──────────▼──────────┐
-                        │   SPRINT 3-4        │
+                        │  MILESTONE 3-4      │
                         │   Booking Engine    │
                         │   + Calendar        │
                         │   + Slot Management │
@@ -79,7 +79,7 @@ This document contains the detailed implementation roadmap for remaining tasks a
          ┌─────────────────────────┼─────────────────────────┐
          │                         │                         │
 ┌────────▼────────┐     ┌──────────▼──────────┐   ┌──────────▼──────────┐
-│   SPRINT 5      │     │   SPRINT 6          │   │   SPRINT 7          │
+│  MILESTONE 5    │     │  MILESTONE 6        │   │  MILESTONE 7        │
 │   Dashboard     │     │   Billing           │   │   Email             │
 │   + Analytics   │     │   Polar.sh          │   │   Resend            │
 │   + Calendar UI │     │   Subscriptions     │   │   Notifications     │
@@ -90,7 +90,7 @@ This document contains the detailed implementation roadmap for remaining tasks a
               ┌────────────────────┼────────────────────┐
               │                                        │
      ┌────────▼────────┐                    ┌──────────▼──────────┐
-     │   SPRINT 8      │                    │   SPRINT 9          │
+     │  MILESTONE 8    │                    │  MILESTONE 9        │
      │   Reports       │                    │   Customer Portal   │
      │   Advanced      │                    │   Self-Service      │
      │   Analytics     │                    │   Booking           │
@@ -99,7 +99,7 @@ This document contains the detailed implementation roadmap for remaining tasks a
 
 ---
 
-## Sprint 1: Multi-Tenant Foundation ✅ COMPLETED
+## Milestone 1: Multi-Tenant Foundation ✅ COMPLETED
 
 > **Goal:** Set up organization structure and database schema
 > **Dependency:** Auth (✅ Done)
@@ -133,7 +133,7 @@ This document contains the detailed implementation roadmap for remaining tasks a
 | Staff list page | `src/app/[slug]/staff/page.tsx` | ✅ Done |
 | Invitation banner | `src/modules/organization/components/InvitationBanner.tsx` | ✅ Done |
 
-### Schema Tables (Sprint 1)
+### Schema Tables (Milestone 1)
 
 ```typescript
 // Created tables:
@@ -167,10 +167,10 @@ This document contains the detailed implementation roadmap for remaining tasks a
 
 ---
 
-## Sprint 1.5: Multi-Tenant Enhancements ✅ COMPLETED
+## Milestone 1.5: Multi-Tenant Enhancements ✅ COMPLETED
 
 > **Goal:** Complete multi-tenant core features
-> **Dependency:** Sprint 1 (✅ Done)
+> **Dependency:** Milestone 1 (✅ Done)
 > **Status:** ✅ Completed
 > **Completion Date:** 2026-02-06
 
@@ -259,10 +259,10 @@ This document contains the detailed implementation roadmap for remaining tasks a
 
 ---
 
-## Sprint 2A: Service Catalog ✅ COMPLETED
+## Milestone 2A: Service Catalog ✅ COMPLETED
 
 > **Goal:** Build the service catalog with categories, pricing, staff assignment, and image uploads
-> **Dependency:** Sprint 1 + 1.5 (✅ Done)
+> **Dependency:** Milestone 1 + 1.5 (✅ Done)
 > **User Stories:** US-002
 > **Completion Date:** 2026-02-06
 
@@ -299,7 +299,7 @@ This document contains the detailed implementation roadmap for remaining tasks a
 | Module exports | `src/modules/services/index.ts` | 9 | ✅ Done |
 | Enable services nav item | `src/app/[slug]/layout.tsx` | — | ✅ Done |
 
-### Schema Tables (Sprint 2A)
+### Schema Tables (Milestone 2A)
 
 ```typescript
 // Created tables:
@@ -363,34 +363,117 @@ This document contains the detailed implementation roadmap for remaining tasks a
 5. ✅ Service images can be uploaded
 6. ✅ Pricing displayed in TRY (₺)
 
-### Bug Fixes During Sprint
+### Bug Fixes During Milestone
 
 - **Circular dependency fix:** Moved `getCurrentUser` from `convex/auth.ts` to `convex/users.ts` to break circular import between `auth.ts` ↔ `lib/functions.ts`
 - **Edit dialog bug:** Fixed wrong service data appearing in edit dialog by adding `key={editTarget?._id}` to force form remount
 
 ---
 
-## Sprint 2B: Staff Management Enhancements
+## Milestone 2B: Staff Management Enhancements ✅ COMPLETED
 
-> **Status:** 📋 Pending
-> **Dependencies:** Sprint 2A (✅ Done)
+> **Goal:** Enhanced staff scheduling with overrides, time-off requests, and overtime management
+> **Dependency:** Milestone 2A (✅ Done)
 > **User Stories:** US-003, US-030
+> **Completion Date:** 2026-02-06
 
-### High-Level Goals
-- Schedule overrides and time-off requests
-- Enhanced staff management with service assignments view
+### Tasks
 
-### Key Deliverables
-- [ ] Staff schedule override management
-- [ ] Time-off request/approval workflow
-- [ ] Staff overtime management
+#### Backend (Convex)
+
+| Task | File | Lines | Status |
+|------|------|-------|--------|
+| Schedule overrides CRUD | `convex/scheduleOverrides.ts` | 178 | ✅ Done |
+| Time-off requests workflow | `convex/timeOffRequests.ts` | 335 | ✅ Done |
+| Staff overtime management | `convex/staffOvertime.ts` | 155 | ✅ Done |
+| Schedule resolver utility | `convex/lib/scheduleResolver.ts` | 163 | ✅ Done |
+| Resolved schedule query | `convex/staff.ts` (getResolvedSchedule) | — | ✅ Done |
+| Schema: scheduleOverrides table | `convex/schema.ts` | — | ✅ Done |
+| Schema: timeOffRequests table | `convex/schema.ts` | — | ✅ Done |
+| Schema: staffOvertime table | `convex/schema.ts` | — | ✅ Done |
+| Validators for new types | `convex/lib/validators.ts` | — | ✅ Done |
+| Rate limits | `convex/lib/rateLimits.ts` | — | ✅ Done |
+
+#### Frontend (Next.js)
+
+| Task | File | Status |
+|------|------|--------|
+| Schedule override dialog | `src/modules/staff/components/ScheduleOverrideDialog.tsx` | ✅ Done |
+| Schedule override list | `src/modules/staff/components/ScheduleOverrideList.tsx` | ✅ Done |
+| Time-off request form | `src/modules/staff/components/TimeOffRequestForm.tsx` | ✅ Done |
+| Time-off request list | `src/modules/staff/components/TimeOffRequestList.tsx` | ✅ Done |
+| Time-off approval panel | `src/modules/staff/components/TimeOffApprovalPanel.tsx` | ✅ Done |
+| Overtime dialog | `src/modules/staff/components/OvertimeDialog.tsx` | ✅ Done |
+| Overtime manager | `src/modules/staff/components/OvertimeManager.tsx` | ✅ Done |
+| Shared constants | `src/modules/staff/lib/constants.ts` | ✅ Done |
+| Updated staff detail page | `src/app/[slug]/staff/[id]/page.tsx` | ✅ Done |
+| Updated schedule editor | `src/modules/staff/components/ScheduleEditor.tsx` | ✅ Done |
+
+### Backend APIs (Implemented)
+
+```typescript
+// Schedule Overrides:
+- api.scheduleOverrides.listByStaff ✅ (orgQuery - filter by date range)
+- api.scheduleOverrides.listByDate ✅ (orgQuery - org-wide for a specific date)
+- api.scheduleOverrides.create ✅ (orgMutation - self OR admin/owner, rate limited)
+- api.scheduleOverrides.remove ✅ (orgMutation - self OR admin/owner)
+
+// Time-Off Requests:
+- api.timeOffRequests.listByOrg ✅ (orgQuery - admins see all, members see own)
+- api.timeOffRequests.getMyRequests ✅ (orgQuery - current user's requests)
+- api.timeOffRequests.getPendingCount ✅ (orgQuery - count for badge)
+- api.timeOffRequests.request ✅ (orgMutation - any staff, rate limited)
+- api.timeOffRequests.approve ✅ (adminMutation - auto-creates overrides)
+- api.timeOffRequests.reject ✅ (adminMutation - with rejection reason)
+- api.timeOffRequests.cancel ✅ (orgMutation - own pending requests only)
+
+// Staff Overtime:
+- api.staffOvertime.listByStaff ✅ (orgQuery - filter by date range)
+- api.staffOvertime.listByDate ✅ (orgQuery - org-wide for a specific date)
+- api.staffOvertime.create ✅ (orgMutation - self OR admin/owner, rate limited)
+- api.staffOvertime.remove ✅ (orgMutation - self OR admin/owner)
+
+// Schedule Resolver:
+- api.staff.getResolvedSchedule ✅ (orgQuery - combines default + overrides + overtime)
+```
+
+### Key Design Decisions
+
+- **Permission model:** orgMutation + handler-level check (self OR admin/owner)
+- **Time-off approval:** Auto-creates schedule overrides (type="time_off") for each day
+- **Schedule resolution:** `scheduleResolver.ts` combines default schedule, overrides, and overtime
+- **Rate limiting:**
+  - `createScheduleOverride`: 30/day per organization
+  - `createTimeOffRequest`: 5/day per staff member
+  - `createOvertime`: 10/day per staff member
+- **Shared constants:** `DAYS`, `DAY_LABELS`, `TIME_OPTIONS`, `timeToMinutes()` in `src/modules/staff/lib/constants.ts`
+
+### Deliverables
+
+- [x] Schedule override management (create/list/remove)
+- [x] Time-off request creation and viewing
+- [x] Time-off approval/rejection workflow (admin/owner)
+- [x] Staff overtime management
+- [x] Resolved schedule query (combines all sources)
+- [x] Staff detail page with tabs (Overview, Schedule Overrides, Time Off, Overtime)
+- [x] Shared time utilities and constants
+
+### Definition of Done ✅
+
+1. ✅ Staff can create/remove schedule overrides for themselves
+2. ✅ Staff can request time off with date ranges
+3. ✅ Admins can approve/reject time-off requests
+4. ✅ Approved time-off auto-creates schedule overrides
+5. ✅ Staff can manage overtime slots
+6. ✅ Resolved schedule query combines all schedule sources
+7. ✅ Staff detail page displays all schedule management features
 
 ---
 
-## Sprint 2C: Customer Base
+## Milestone 2C: Customer Base
 
 > **Status:** 📋 Pending
-> **Dependencies:** Sprint 2A (✅ Done)
+> **Dependencies:** Milestone 2A (✅ Done)
 > **User Stories:** US-006
 
 ### High-Level Goals
@@ -402,16 +485,16 @@ This document contains the detailed implementation roadmap for remaining tasks a
 - [ ] Customer search and filtering
 - [ ] Customer profile with stats
 
-For detailed user stories, acceptance criteria, and implementation tasks, see the [detailed Sprint 2 PRD](../tasks/sprint-02-services-staff-customers.md).
+For detailed user stories, acceptance criteria, and implementation tasks, see the [detailed Milestone 2 PRD](../milestones/milestone-02-services-staff-customers.md).
 
 ---
 
-## Sprint 3: Booking Engine - Core
+## Milestone 3: Booking Engine - Core
 
 > **Status:** 📋 Pending
-> **Dependencies:** Sprint 2 (Services, Staff, Customers)
+> **Dependencies:** Milestone 2 (Services, Staff, Customers)
 > **User Stories:** US-020, US-021, US-022, US-031
-> **Detailed PRD:** [../tasks/sprint-03-booking-engine-core.md](../tasks/sprint-03-booking-engine-core.md)
+> **Detailed PRD:** [../milestones/milestone-03-booking-engine-core.md](../milestones/milestone-03-booking-engine-core.md)
 
 ### High-Level Goals
 - Implement slot availability calculation algorithm
@@ -425,16 +508,16 @@ For detailed user stories, acceptance criteria, and implementation tasks, see th
 - [ ] Appointment creation with confirmation codes
 - [ ] Real-time updates via Convex subscriptions
 
-For detailed algorithm logic, technical specifications, and implementation order, see the [detailed Sprint 3 PRD](../tasks/sprint-03-booking-engine-core.md).
+For detailed algorithm logic, technical specifications, and implementation order, see the [detailed Milestone 3 PRD](../milestones/milestone-03-booking-engine-core.md).
 
 ---
 
-## Sprint 4: Booking Engine - Operations
+## Milestone 4: Booking Engine - Operations
 
 > **Status:** 📋 Pending
-> **Dependencies:** Sprint 3 (Booking Core)
+> **Dependencies:** Milestone 3 (Booking Core)
 > **User Stories:** US-010, US-011, US-012, US-014, US-015, US-025
-> **Detailed PRD:** [../tasks/sprint-04-booking-operations.md](../tasks/sprint-04-booking-operations.md)
+> **Detailed PRD:** [../milestones/milestone-04-booking-operations.md](../milestones/milestone-04-booking-operations.md)
 
 ### High-Level Goals
 - Complete 7-step online booking wizard with OTP verification
@@ -449,16 +532,16 @@ For detailed algorithm logic, technical specifications, and implementation order
 - [ ] Status transitions: pending → confirmed → checked_in → completed
 - [ ] Cancellation and rescheduling (2-hour policy)
 
-For detailed status flow, OTP implementation, and wizard steps, see the [detailed Sprint 4 PRD](../tasks/sprint-04-booking-operations.md).
+For detailed status flow, OTP implementation, and wizard steps, see the [detailed Milestone 4 PRD](../milestones/milestone-04-booking-operations.md).
 
 ---
 
-## Sprint 5: Admin Dashboard & Calendar
+## Milestone 5: Admin Dashboard & Calendar
 
 > **Status:** 📋 Pending
-> **Dependencies:** Sprint 4 (Booking Operations)
+> **Dependencies:** Milestone 4 (Booking Operations)
 > **User Stories:** US-004, US-010
-> **Detailed PRD:** [../tasks/sprint-05-dashboard-calendar.md](../tasks/sprint-05-dashboard-calendar.md)
+> **Detailed PRD:** [../milestones/milestone-05-dashboard-calendar.md](../milestones/milestone-05-dashboard-calendar.md)
 
 ### High-Level Goals
 - Create admin dashboard with real-time metrics
@@ -473,16 +556,16 @@ For detailed status flow, OTP implementation, and wizard steps, see the [detaile
 - [ ] Drag-drop rescheduling with validation
 - [ ] Real-time notification panel
 
-For detailed metrics calculations, calendar implementation, and drag-drop logic, see the [detailed Sprint 5 PRD](../tasks/sprint-05-dashboard-calendar.md).
+For detailed metrics calculations, calendar implementation, and drag-drop logic, see the [detailed Milestone 5 PRD](../milestones/milestone-05-dashboard-calendar.md).
 
 ---
 
-## Sprint 6: SaaS Billing (Polar.sh)
+## Milestone 6: SaaS Billing (Polar.sh)
 
 > **Status:** 📋 Pending
-> **Dependencies:** Sprint 5 (Dashboard)
+> **Dependencies:** Milestone 5 (Dashboard)
 > **User Stories:** US-040, US-041, US-042, US-043, US-044, US-045
-> **Detailed PRD:** [../tasks/sprint-06-saas-billing.md](../tasks/sprint-06-saas-billing.md)
+> **Detailed PRD:** [../milestones/milestone-06-saas-billing.md](../milestones/milestone-06-saas-billing.md)
 
 ### High-Level Goals
 - Integrate Polar.sh for subscription billing
@@ -497,16 +580,16 @@ For detailed metrics calculations, calendar implementation, and drag-drop logic,
 - [ ] Billing page with status, history, and cancellation
 - [ ] Subscription middleware (suspend access if expired)
 
-For detailed webhook events, grace period logic, and subscription states, see the [detailed Sprint 6 PRD](../tasks/sprint-06-saas-billing.md).
+For detailed webhook events, grace period logic, and subscription states, see the [detailed Milestone 6 PRD](../milestones/milestone-06-saas-billing.md).
 
 ---
 
-## Sprint 7: Email Notifications (Resend)
+## Milestone 7: Email Notifications (Resend)
 
 > **Status:** 📋 Pending
-> **Dependencies:** Sprint 4 (Booking), Sprint 6 (Billing)
+> **Dependencies:** Milestone 4 (Booking), Milestone 6 (Billing)
 > **User Stories:** US-023, US-024
-> **Detailed PRD:** [../tasks/sprint-07-email-notifications.md](../tasks/sprint-07-email-notifications.md)
+> **Detailed PRD:** [../milestones/milestone-07-email-notifications.md](../milestones/milestone-07-email-notifications.md)
 
 ### High-Level Goals
 - Integrate Resend for email delivery
@@ -521,16 +604,16 @@ For detailed webhook events, grace period logic, and subscription states, see th
 - [ ] Reminder scheduler (daily cron at 09:00 UTC)
 - [ ] Email retry logic (3 attempts)
 
-For detailed email template specifications, ICS format, and scheduler logic, see the [detailed Sprint 7 PRD](../tasks/sprint-07-email-notifications.md).
+For detailed email template specifications, ICS format, and scheduler logic, see the [detailed Milestone 7 PRD](../milestones/milestone-07-email-notifications.md).
 
 ---
 
-## Sprint 8: Reports & Analytics (P1)
+## Milestone 8: Reports & Analytics (P1)
 
 > **Status:** 📋 Pending
-> **Dependencies:** Sprint 5 (Dashboard), Sprint 4 (Completed appointments)
+> **Dependencies:** Milestone 5 (Dashboard), Milestone 4 (Completed appointments)
 > **User Stories:** US-005, US-032
-> **Detailed PRD:** [../tasks/sprint-08-reports-analytics.md](../tasks/sprint-08-reports-analytics.md)
+> **Detailed PRD:** [../milestones/milestone-08-reports-analytics.md](../milestones/milestone-08-reports-analytics.md)
 
 ### High-Level Goals
 - Build revenue reporting with trends and breakdowns
@@ -545,16 +628,16 @@ For detailed email template specifications, ICS format, and scheduler logic, see
 - [ ] Date range picker with presets
 - [ ] CSV export functionality
 
-For detailed metrics calculations, utilization formulas, and export implementation, see the [detailed Sprint 8 PRD](../tasks/sprint-08-reports-analytics.md).
+For detailed metrics calculations, utilization formulas, and export implementation, see the [detailed Milestone 8 PRD](../milestones/milestone-08-reports-analytics.md).
 
 ---
 
-## Sprint 9: Customer Portal (P1)
+## Milestone 9: Customer Portal (P1)
 
 > **Status:** 📋 Pending
-> **Dependencies:** Sprint 4 (Booking), Sprint 7 (Email - magic link)
+> **Dependencies:** Milestone 4 (Booking), Milestone 7 (Email - magic link)
 > **User Stories:** US-026, US-027
-> **Detailed PRD:** [../tasks/sprint-09-customer-portal.md](../tasks/sprint-09-customer-portal.md)
+> **Detailed PRD:** [../milestones/milestone-09-customer-portal.md](../milestones/milestone-09-customer-portal.md)
 
 ### High-Level Goals
 - Implement passwordless magic link authentication for customers
@@ -570,18 +653,18 @@ For detailed metrics calculations, utilization formulas, and export implementati
 - [ ] "Book again" with pre-filled services
 - [ ] Customer profile settings
 
-For detailed magic link implementation, authentication architecture, and security considerations, see the [detailed Sprint 9 PRD](../tasks/sprint-09-customer-portal.md).
+For detailed magic link implementation, authentication architecture, and security considerations, see the [detailed Milestone 9 PRD](../milestones/milestone-09-customer-portal.md).
 
 ---
 
-## Sprint Summary Table
+## Milestone Summary Table
 
-| Sprint | Goal | User Stories | Complexity | Status |
-|--------|------|-------------|------------|--------|
+| Milestone | Goal | User Stories | Complexity | Status |
+|-----------|------|-------------|------------|--------|
 | 1 | Multi-Tenant Foundation | US-001, US-030 | Medium | ✅ Done |
 | 1.5 | Multi-Tenant Enhancements | US-001, US-030 | Medium | ✅ Done |
 | 2A | Service Catalog | US-002 | Medium | ✅ Done |
-| 2B | Staff Management | US-003, US-030 | Medium | Pending |
+| 2B | Staff Enhancements | US-003, US-030 | Medium | ✅ Done |
 | 2C | Customer Base | US-006 | Medium | Pending |
 | 3 | Booking Engine Core | US-020-022, US-031 | High | Pending |
 | 4 | Booking Operations | US-010-015, US-025 | High | Pending |
@@ -641,42 +724,38 @@ For detailed magic link implementation, authentication architecture, and securit
 
 ---
 
-## Working with Sprint PRDs
+## Working with Milestone PRDs
 
 ### For Developers
 
-Each sprint has a detailed PRD in `docs/tasks/` that can be used with ralph-tui or read directly:
+Each milestone has a detailed PRD in `docs/milestones/` that can be used with ralph-tui or read directly:
 
 ```bash
-# View all sprint PRDs
-ls docs/tasks/
+# View all milestone PRDs
+ls docs/milestones/
 
-# Read a specific sprint PRD
-cat docs/tasks/sprint-02-services-staff-customers.md
+# Read a specific milestone PRD
+cat docs/milestones/milestone-02-services-staff-customers.md
 ```
 
 ### For Ralph-TUI
 
-Sprint PRDs are wrapped in `[PRD]...[/PRD]` markers for ralph-tui compatibility:
+Milestone PRDs are wrapped in `[PRD]...[/PRD]` markers for ralph-tui compatibility:
 
 ```bash
-# Generate tasks from a sprint PRD
-ralph-tui-create-json docs/tasks/sprint-02-services-staff-customers.md
+# Generate tasks from a milestone PRD
+ralph-tui-create-json docs/milestones/milestone-02-services-staff-customers.md
 
 # Create GitHub/Linear issues
-ralph-tui-create-beads docs/tasks/sprint-02-services-staff-customers.md
+ralph-tui-create-beads docs/milestones/milestone-02-services-staff-customers.md
 ```
 
-### Next Sprint to Start
+### Next Milestone to Start
 
-**Sprint 2B: Staff Management Enhancements**
-- See: [docs/tasks/sprint-02-services-staff-customers.md](../tasks/sprint-02-services-staff-customers.md)
-- Start with: Schedule overrides and time-off requests
-- Then: Staff overtime management
-- Finally: Enhanced staff views with service assignments
-
-**Sprint 2C: Customer Base**
+**Milestone 2C: Customer Base**
+- See: [docs/milestones/milestone-02-services-staff-customers.md](../milestones/milestone-02-services-staff-customers.md)
 - Customer CRUD with Turkish phone validation
 - Customer profiles with visit stats
+- Customer search and filtering
 
-> **Note:** Code review and testing should be performed at the end of each sprint. Use the quality gates defined in each sprint PRD.
+> **Note:** Code review and testing should be performed at the end of each milestone. Use the quality gates defined in each milestone PRD.

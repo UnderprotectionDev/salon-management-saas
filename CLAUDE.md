@@ -38,7 +38,7 @@ Multi-tenant salon management platform with real-time booking, staff scheduling,
 - [Convex Schema](docs/prd/04-technical/convex-schema.md) - Complete database schema
 - [API Contracts](docs/prd/04-technical/api-contracts.md) - Function signatures, validators, rate limits
 - [File Hierarchy](docs/prd/04-technical/file-hierarchy.md) - Detailed project structure
-- [Implementation Roadmap](docs/prd/06-implementation-roadmap.md) - Sprint planning and status
+- [Implementation Roadmap](docs/prd/06-implementation-roadmap.md) - Milestone planning and status
 - [Glossary](docs/prd/appendix/glossary.md) - Domain terminology (organization/salon/tenant)
 
 ## Architecture
@@ -51,6 +51,7 @@ convex/              # Backend functions and schema
 │   ├── functions.ts # Custom query/mutation wrappers with auth & RLS
 │   ├── validators.ts # Return type validators (309 lines)
 │   ├── rateLimits.ts # Rate limiting config (118 lines)
+│   ├── scheduleResolver.ts # Schedule resolution logic (163 lines)
 │   ├── relationships.ts # Database relationship helpers
 │   └── rls.ts       # Row-level security helpers
 ├── auth.ts          # Auth instance and options
@@ -59,6 +60,9 @@ convex/              # Backend functions and schema
 ├── users.ts         # User queries (getCurrentUser)
 ├── serviceCategories.ts # Service category CRUD (188 lines)
 ├── services.ts      # Service CRUD + staff assignment (353 lines)
+├── scheduleOverrides.ts # Schedule override CRUD (178 lines)
+├── timeOffRequests.ts # Time-off workflow (335 lines)
+├── staffOvertime.ts # Overtime management (155 lines)
 └── *.ts             # Domain functions (organizations, staff, members, invitations)
 
 src/
@@ -186,7 +190,7 @@ export const create = adminMutation({
 });
 ```
 
-**Available rate limits:** `createInvitation`, `resendInvitation`, `createOrganization`, `addMember`, `createService`, `createBooking`, `cancelBooking`
+**Available rate limits:** `createInvitation`, `resendInvitation`, `createOrganization`, `addMember`, `createService`, `createBooking`, `cancelBooking`, `createScheduleOverride`, `createTimeOffRequest`, `createOvertime`
 
 ## Key Files
 
@@ -199,6 +203,10 @@ export const create = adminMutation({
 | `convex/users.ts` | User queries (getCurrentUser) |
 | `convex/serviceCategories.ts` | Service category CRUD |
 | `convex/services.ts` | Service CRUD + staff assignment |
+| `convex/scheduleOverrides.ts` | Schedule override management |
+| `convex/timeOffRequests.ts` | Time-off request workflow |
+| `convex/staffOvertime.ts` | Overtime management |
+| `convex/lib/scheduleResolver.ts` | Schedule resolution combining default + overrides + overtime |
 | `convex/files.ts` | File storage/upload (logos, staff images, service images) |
 | `convex/betterAuth/auth.ts` | Better Auth instance and options |
 | `convex/http.ts` | HTTP router with auth routes |
@@ -310,3 +318,4 @@ bunx convex dev
 4. **Not running `bunx convex dev`** after schema changes
 5. **Using `useMemo`/`useCallback`** with React Compiler enabled
 6. **Editing `convex/_generated/`** or `convex/betterAuth/schema.ts`
+7. **Calling `form.reset()` during render** — use `key={id}` to force remount instead (TanStack Form)

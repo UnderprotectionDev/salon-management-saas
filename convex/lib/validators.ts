@@ -291,6 +291,105 @@ export const serviceCategoryWithCountValidator = v.object({
   serviceCount: v.number(),
 });
 
+// =============================================================================
+// Schedule Override Validators
+// =============================================================================
+
+/** Schedule override type: custom_hours | day_off | time_off */
+export const scheduleOverrideTypeValidator = v.union(
+  v.literal("custom_hours"),
+  v.literal("day_off"),
+  v.literal("time_off"),
+);
+
+/** Schedule override document validator */
+export const scheduleOverrideDocValidator = v.object({
+  _id: v.id("scheduleOverrides"),
+  _creationTime: v.number(),
+  staffId: v.id("staff"),
+  organizationId: v.id("organization"),
+  date: v.string(),
+  type: scheduleOverrideTypeValidator,
+  startTime: v.optional(v.string()),
+  endTime: v.optional(v.string()),
+  reason: v.optional(v.string()),
+  createdAt: v.number(),
+});
+
+// =============================================================================
+// Time-Off Request Validators
+// =============================================================================
+
+/** Time-off type: vacation | sick | personal | other */
+export const timeOffTypeValidator = v.union(
+  v.literal("vacation"),
+  v.literal("sick"),
+  v.literal("personal"),
+  v.literal("other"),
+);
+
+/** Time-off status: pending | approved | rejected */
+export const timeOffStatusValidator = v.union(
+  v.literal("pending"),
+  v.literal("approved"),
+  v.literal("rejected"),
+);
+
+/** Time-off request document validator */
+export const timeOffRequestDocValidator = v.object({
+  _id: v.id("timeOffRequests"),
+  _creationTime: v.number(),
+  staffId: v.id("staff"),
+  organizationId: v.id("organization"),
+  startDate: v.string(),
+  endDate: v.string(),
+  type: timeOffTypeValidator,
+  status: timeOffStatusValidator,
+  reason: v.optional(v.string()),
+  rejectionReason: v.optional(v.string()),
+  approvedBy: v.optional(v.id("staff")),
+  reviewedAt: v.optional(v.number()),
+  createdAt: v.number(),
+  updatedAt: v.number(),
+});
+
+/** Time-off request with staff name (enriched for admin panel) */
+export const timeOffRequestWithStaffValidator = v.object({
+  _id: v.id("timeOffRequests"),
+  _creationTime: v.number(),
+  staffId: v.id("staff"),
+  organizationId: v.id("organization"),
+  startDate: v.string(),
+  endDate: v.string(),
+  type: timeOffTypeValidator,
+  status: timeOffStatusValidator,
+  reason: v.optional(v.string()),
+  rejectionReason: v.optional(v.string()),
+  approvedBy: v.optional(v.id("staff")),
+  reviewedAt: v.optional(v.number()),
+  createdAt: v.number(),
+  updatedAt: v.number(),
+  staffName: v.string(),
+  approvedByName: v.optional(v.string()),
+});
+
+// =============================================================================
+// Staff Overtime Validators
+// =============================================================================
+
+/** Staff overtime document validator */
+export const staffOvertimeDocValidator = v.object({
+  _id: v.id("staffOvertime"),
+  _creationTime: v.number(),
+  staffId: v.id("staff"),
+  organizationId: v.id("organization"),
+  date: v.string(),
+  startTime: v.string(),
+  endTime: v.string(),
+  reason: v.optional(v.string()),
+  createdAt: v.number(),
+});
+
 /** Invitation with organization info (for getPendingForCurrentUser) */
 export const invitationWithOrgValidator = v.object({
   _id: v.id("invitation"),

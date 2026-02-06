@@ -928,7 +928,337 @@ export const advancedSearch = orgQuery({
 
 ---
 
-## Time-Off APIs
+## Schedule Override APIs — ✅ Implemented (Milestone 2B)
+
+> **Files:** `convex/scheduleOverrides.ts` (178 lines), `convex/lib/scheduleResolver.ts` (163 lines)
+> **Status:** ✅ Implemented
+
+### `scheduleOverrides.listByStaff`
+
+```typescript
+export const listByStaff = orgQuery({
+  args: {
+    staffId: v.id("staff"),
+    startDate: v.optional(v.string()),
+    endDate: v.optional(v.string()),
+  },
+  returns: v.array(scheduleOverrideDocValidator),
+  handler: async (ctx, args) => {
+    // Returns all overrides for staff, optionally filtered by date range
+  },
+});
+```
+
+### `scheduleOverrides.listByDate`
+
+```typescript
+export const listByDate = orgQuery({
+  args: {
+    date: v.string(), // "YYYY-MM-DD"
+  },
+  returns: v.array(scheduleOverrideDocValidator),
+  handler: async (ctx, args) => {
+    // Returns all overrides org-wide for a specific date
+  },
+});
+```
+
+### `scheduleOverrides.create`
+
+```typescript
+export const create = orgMutation({
+  args: {
+    staffId: v.id("staff"),
+    date: v.string(),
+    type: v.union(
+      v.literal("custom_hours"),
+      v.literal("day_off"),
+      v.literal("time_off")
+    ),
+    startTime: v.optional(v.string()), // "HH:MM"
+    endTime: v.optional(v.string()),
+    reason: v.optional(v.string()),
+  },
+  returns: v.id("scheduleOverrides"),
+  handler: async (ctx, args) => {
+    // Permission: self OR admin/owner
+    // Rate limited: 30/day per org
+    // Validates: custom_hours requires startTime+endTime
+    // Prevents duplicate overrides on same date
+  },
+});
+```
+
+### `scheduleOverrides.remove`
+
+```typescript
+export const remove = orgMutation({
+  args: {
+    overrideId: v.id("scheduleOverrides"),
+  },
+  returns: v.boolean(),
+  handler: async (ctx, args) => {
+    // Permission: self OR admin/owner
+  },
+});
+```
+
+---
+
+## Time-Off Request APIs — ✅ Implemented (Milestone 2B)
+
+> **File:** `convex/timeOffRequests.ts` (335 lines)
+> **Status:** ✅ Implemented
+
+### `timeOffRequests.listByOrg`
+
+```typescript
+export const listByOrg = orgQuery({
+  args: {
+    status: v.optional(v.union(
+      v.literal("pending"),
+      v.literal("approved"),
+      v.literal("rejected")
+    )),
+  },
+  returns: v.array(timeOffRequestWithStaffValidator),
+  handler: async (ctx, args) => {
+    // Admins/owners see all requests
+    // Members see only their own
+    // Enriched with staffName and approvedByName
+  },
+});
+```
+
+### `timeOffRequests.getMyRequests`
+
+```typescript
+export const getMyRequests = orgQuery({
+  args: {},
+  returns: v.array(timeOffRequestDocValidator),
+  handler: async (ctx) => {
+    // Returns current user's time-off requests
+  },
+});
+```
+
+### `timeOffRequests.getPendingCount`
+
+```typescript
+export const getPendingCount = orgQuery({
+  args: {},
+  returns: v.number(),
+  handler: async (ctx) => {
+    // Returns count of pending requests (for badge)
+  },
+});
+```
+
+### `timeOffRequests.request`
+
+```typescript
+export const request = orgMutation({
+  args: {
+    startDate: v.string(),
+    endDate: v.string(),
+    type: v.union(
+      v.literal("vacation"),
+      v.literal("sick"),
+      v.literal("personal"),
+      v.literal("other")
+    ),
+    reason: v.optional(v.string()),
+  },
+  returns: v.id("timeOffRequests"),
+  handler: async (ctx, args) => {
+    // Any staff can create
+    // Rate limited: 5/day per staff
+    // Validates date range
+  },
+});
+```
+
+### `timeOffRequests.approve`
+
+```typescript
+export const approve = adminMutation({
+  args: {
+    requestId: v.id("timeOffRequests"),
+  },
+  returns: v.id("timeOffRequests"),
+  handler: async (ctx, args) => {
+    // Admin/owner only
+    // Auto-creates schedule overrides (type="time_off") for each day
+    // Updates request status to "approved"
+  },
+});
+```
+
+### `timeOffRequests.reject`
+
+```typescript
+export const reject = adminMutation({
+  args: {
+    requestId: v.id("timeOffRequests"),
+    rejectionReason: v.optional(v.string()),
+  },
+  returns: v.id("timeOffRequests"),
+  handler: async (ctx, args) => {
+    // Admin/owner only
+    // Updates request status to "rejected"
+  },
+});
+```
+
+### `timeOffRequests.cancel`
+
+```typescript
+export const cancel = orgMutation({
+  args: {
+    requestId: v.id("timeOffRequests"),
+  },
+  returns: v.boolean(),
+  handler: async (ctx, args) => {
+    // Staff can cancel their own pending requests
+  },
+});
+```
+
+---
+
+## Staff Overtime APIs — ✅ Implemented (Milestone 2B)
+
+> **File:** `convex/staffOvertime.ts` (155 lines)
+> **Status:** ✅ Implemented
+
+### `staffOvertime.listByStaff`
+
+```typescript
+export const listByStaff = orgQuery({
+  args: {
+    staffId: v.id("staff"),
+    startDate: v.optional(v.string()),
+    endDate: v.optional(v.string()),
+  },
+  returns: v.array(staffOvertimeDocValidator),
+  handler: async (ctx, args) => {
+    // Returns all overtime entries for staff, optionally filtered by date range
+  },
+});
+```
+
+### `staffOvertime.listByDate`
+
+```typescript
+export const listByDate = orgQuery({
+  args: {
+    date: v.string(),
+  },
+  returns: v.array(staffOvertimeDocValidator),
+  handler: async (ctx, args) => {
+    // Returns all overtime entries org-wide for a specific date
+  },
+});
+```
+
+### `staffOvertime.create`
+
+```typescript
+export const create = orgMutation({
+  args: {
+    staffId: v.id("staff"),
+    date: v.string(),
+    startTime: v.string(), // "HH:MM"
+    endTime: v.string(),
+    reason: v.optional(v.string()),
+  },
+  returns: v.id("staffOvertime"),
+  handler: async (ctx, args) => {
+    // Permission: self OR admin/owner
+    // Rate limited: 10/day per staff
+    // Validates: startTime < endTime
+  },
+});
+```
+
+### `staffOvertime.remove`
+
+```typescript
+export const remove = orgMutation({
+  args: {
+    overtimeId: v.id("staffOvertime"),
+  },
+  returns: v.boolean(),
+  handler: async (ctx, args) => {
+    // Permission: self OR admin/owner
+  },
+});
+```
+
+---
+
+## Staff Schedule Resolution APIs — ✅ Implemented (Milestone 2B)
+
+> **Files:** `convex/staff.ts`, `convex/lib/scheduleResolver.ts` (163 lines)
+> **Status:** ✅ Implemented
+
+### `staff.getResolvedSchedule`
+
+```typescript
+export const getResolvedSchedule = orgQuery({
+  args: {
+    staffId: v.id("staff"),
+    startDate: v.string(),
+    endDate: v.string(),
+  },
+  returns: v.array(v.object({
+    date: v.string(),
+    available: v.boolean(),
+    effectiveStart: v.union(v.string(), v.null()),
+    effectiveEnd: v.union(v.string(), v.null()),
+    overtimeWindows: v.array(v.object({
+      start: v.string(),
+      end: v.string(),
+    })),
+    overrideType: v.union(
+      v.literal("custom_hours"),
+      v.literal("day_off"),
+      v.literal("time_off"),
+      v.null()
+    ),
+    isTimeOff: v.boolean(),
+  })),
+  handler: async (ctx, args) => {
+    // Combines:
+    // 1. Default schedule (staff.defaultSchedule)
+    // 2. Schedule overrides (scheduleOverrides table)
+    // 3. Overtime entries (staffOvertime table)
+    // Returns resolved schedule for each day in range
+  },
+});
+```
+
+**Schedule Resolution Logic:**
+
+1. **Default Schedule**: From `staff.defaultSchedule` (weekly pattern)
+2. **Override Priority**: Schedule overrides take precedence over default
+   - `day_off` / `time_off` → available=false
+   - `custom_hours` → use override times instead of default
+3. **Overtime Windows**: Added on top of regular schedule
+
+**Validator Reference:**
+
+- `scheduleOverrideDocValidator` - Schedule override with system fields
+- `timeOffRequestDocValidator` - Time-off request with system fields
+- `timeOffRequestWithStaffValidator` - Enriched with staffName, approvedByName
+- `staffOvertimeDocValidator` - Overtime entry with system fields
+- `scheduleOverrideTypeValidator` - Union: custom_hours | day_off | time_off
+- `timeOffTypeValidator` - Union: vacation | sick | personal | other
+- `timeOffStatusValidator` - Union: pending | approved | rejected
+
+---
+
+## Time-Off APIs (Legacy - Replaced by timeOffRequests)
 
 ### `timeOff.request`
 

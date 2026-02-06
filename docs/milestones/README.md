@@ -1,11 +1,11 @@
-# Sprint PRDs - Ralph TUI Compatible
+# Milestone PRDs - Ralph TUI Compatible
 
-This directory contains detailed Product Requirements Documents for each sprint, formatted for use with [ralph-tui](https://github.com/ralphwbrown/ralph-tui).
+This directory contains detailed Product Requirements Documents for each milestone, formatted for use with [ralph-tui](https://github.com/ralphwbrown/ralph-tui).
 
-## Sprint Overview
+## Milestone Overview
 
-| Sprint | Name | User Stories | Complexity | Status |
-|--------|------|-------------|------------|--------|
+| Milestone | Name | User Stories | Complexity | Status |
+|-----------|------|-------------|------------|--------|
 | 1 | Multi-Tenant Foundation | US-001, US-030, US-001.1-001.13 | High | ✅ Completed |
 | 2 | Services, Staff & Customers | US-002, US-003, US-006, US-030 | Medium-High | 📋 Pending |
 | 3 | Booking Engine - Core | US-020, US-021, US-022, US-031 | High | 📋 Pending |
@@ -16,15 +16,15 @@ This directory contains detailed Product Requirements Documents for each sprint,
 | 8 | Reports & Analytics | US-005, US-032 | Medium | 📋 Pending |
 | 9 | Customer Portal | US-026, US-027 | Medium | 📋 Pending |
 
-## Using Sprint PRDs
+## Using Milestone PRDs
 
 ### Direct Reading
 
 Each PRD is a standalone Markdown file with complete implementation details:
 
 ```bash
-# View a sprint PRD
-cat sprint-02-services-staff-customers.md
+# View a milestone PRD
+cat milestone-02-services-staff-customers.md
 ```
 
 ### With Ralph-TUI
@@ -33,20 +33,20 @@ All PRDs are wrapped in `[PRD]...[/PRD]` markers for ralph-tui compatibility:
 
 ```bash
 # Generate task JSON from PRD
-ralph-tui-create-json sprint-02-services-staff-customers.md
+ralph-tui-create-json milestone-02-services-staff-customers.md
 
 # Create issues on GitHub/Linear/etc
-ralph-tui-create-beads sprint-02-services-staff-customers.md
+ralph-tui-create-beads milestone-02-services-staff-customers.md
 ```
 
 ## PRD Structure
 
-Each sprint PRD follows this format:
+Each milestone PRD follows this format:
 
-- **Overview**: Sprint goals and problem statement
+- **Overview**: Milestone goals and problem statement
 - **Goals**: Specific, measurable objectives
 - **Quality Gates**: Backend, Frontend, and Full-Stack testing requirements
-- **Dependencies**: Required and blocked sprints
+- **Dependencies**: Required and blocked milestones
 - **User Stories**: Detailed stories with acceptance criteria, complexity, and type
 - **Functional Requirements**: System-level specifications
 - **Non-Goals**: Explicitly out of scope items
@@ -74,17 +74,17 @@ Each sprint PRD follows this format:
 - All frontend quality gates
 - End-to-end flow verification
 
-## Next Sprint
+## Next Milestone
 
-**Start with Sprint 2: Services, Staff & Customers**
+**Start with Milestone 2: Services, Staff & Customers**
 
-This sprint establishes the core data entities (services, staff, customers) required for the booking engine.
+This milestone establishes the core data entities (services, staff, customers) required for the booking engine.
 
-See: [sprint-02-services-staff-customers.md](./sprint-02-services-staff-customers.md)
+See: [milestone-02-services-staff-customers.md](./milestone-02-services-staff-customers.md)
 
 ## Architecture Notes
 
-All sprint PRDs reference the existing codebase architecture:
+All milestone PRDs reference the existing codebase architecture:
 
 - **Custom Function Wrappers**: Always use `orgQuery`, `adminMutation`, etc. from `convex/lib/functions.ts`
 - **Return Validators**: All queries/mutations must have `returns:` validators in `convex/lib/validators.ts`
@@ -101,7 +101,7 @@ All sprint PRDs reference the existing codebase architecture:
 
 ## Contributing
 
-When completing a sprint:
+When completing a milestone:
 
 1. Mark user stories as complete in the PRD
 2. Update the roadmap in `docs/prd/06-implementation-roadmap.md`

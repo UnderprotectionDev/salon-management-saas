@@ -100,6 +100,7 @@ Sprint 4 completes the booking system with operational workflows: online booking
 - [ ] System validates OTP matches and is not expired
 - [ ] Invalid OTP shows error message
 - [ ] After 3 failed attempts, customer must restart
+- [ ] Successful OTP verification transitions appointment from "pending" to "confirmed" status
 
 **Technical Notes:**
 - Files to create:
@@ -132,6 +133,10 @@ Sprint 4 completes the booking system with operational workflows: online booking
   - `convex/appointments.ts` - Add `createWalkIn` mutation
 - Use `orgMutation` (staff only)
 - Auto-populate staff and time from context
+
+### US-013: Reserved
+
+> **Note:** US-013 is reserved for future booking-related features (e.g., appointment notes, custom fields). Numbering preserved for consistency.
 
 ### US-014: Check-In & Checkout
 
@@ -203,7 +208,7 @@ Sprint 4 completes the booking system with operational workflows: online booking
 
 ## Functional Requirements
 
-- FR-4.1: Appointment status flow: `pending → confirmed → checked_in → completed`
+- FR-4.1: Appointment status flow: `pending → confirmed → checked_in → completed` (online bookings start at `pending`; walk-in bookings start at `confirmed`)
 - FR-4.2: Alternative flows: `pending → cancelled`, `confirmed → no_show`
 - FR-4.3: Cancellation policy: 2 hours before start time (customer), anytime (staff)
 - FR-4.4: OTP expiration: 5 minutes
@@ -236,7 +241,11 @@ pending ─────> confirmed ─────> checked_in ─────> 
 
 ### Cancellation Policy
 - Enforce 2-hour rule: `startTime - now() >= 2 hours`
-- Staff override: Use `adminMutation` to bypass policy
+- Staff override: Use `orgMutation` with elevated permissions to bypass policy for admin/owner roles
+
+**Mutation Wrapper Definitions:**
+- `orgMutation`: Organization-scoped operations with automatic membership verification
+- `adminMutation`: Elevated admin/owner-only operations (e.g., staff management, sensitive settings)
 
 ## Success Metrics
 
