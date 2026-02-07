@@ -1,9 +1,10 @@
 [PRD]
-# Sprint 6: SaaS Billing (Polar.sh)
+
+# Milestone 6: SaaS Billing (Polar.sh)
 
 ## Overview
 
-Sprint 6 integrates Polar.sh for subscription billing, enabling the SaaS business model. Includes subscription management, payment webhooks, grace period handling, and billing UI.
+Milestone6 integrates Polar.sh for subscription billing, enabling the SaaS business model. Includes subscription management, payment webhooks, grace period handling, and billing UI.
 
 **Problem Statement:** The platform needs a reliable subscription billing system to monetize salon organizations while providing grace periods for payment failures.
 
@@ -21,6 +22,7 @@ Sprint 6 integrates Polar.sh for subscription billing, enabling the SaaS busines
 ## Quality Gates
 
 **Backend Stories (Convex):**
+
 - `bunx convex dev` - Type generation
 - `bun run lint` - Biome linting
 - All actions use proper error handling
@@ -28,12 +30,14 @@ Sprint 6 integrates Polar.sh for subscription billing, enabling the SaaS busines
 - Idempotent webhook handlers (duplicate events)
 
 **Frontend Stories (React/Next.js):**
+
 - `bun run lint` - Biome linting
 - `bun run build` - Production build verification
 - Manual testing: Checkout flow completes
 - Manual testing: Webhook triggers subscription update
 
 **Full-Stack Stories:**
+
 - All backend + frontend quality gates
 - Subscription creation via Polar checkout works
 - Payment failure triggers grace period
@@ -42,11 +46,13 @@ Sprint 6 integrates Polar.sh for subscription billing, enabling the SaaS busines
 ## Dependencies
 
 **Requires completed:**
-- Sprint 1: Organizations (subscription ties to organization)
-- Sprint 5: Dashboard (suspension banner)
+
+- Milestone1: Organizations (subscription ties to organization)
+- Milestone5: Dashboard (suspension banner)
 
 **Provides foundation for:**
-- Sprint 7: Email Notifications (payment failure emails)
+
+- Milestone7: Email Notifications (payment failure emails)
 
 ## User Stories
 
@@ -59,6 +65,7 @@ Sprint 6 integrates Polar.sh for subscription billing, enabling the SaaS busines
 **Type:** Full-Stack
 
 **Acceptance Criteria:**
+
 - [ ] Billing page shows available plans (Free Trial, Monthly, Yearly)
 - [ ] Clicking "Subscribe" button redirects to Polar checkout page
 - [ ] Polar checkout is pre-filled with organization info
@@ -67,6 +74,7 @@ Sprint 6 integrates Polar.sh for subscription billing, enabling the SaaS busines
 - [ ] Organization owner sees "Active" subscription badge
 
 **Technical Notes:**
+
 - Files to create:
   - `convex/polar.ts` - Action to generate checkout URL
   - `src/app/[slug]/billing/page.tsx` - Billing page
@@ -84,6 +92,7 @@ Sprint 6 integrates Polar.sh for subscription billing, enabling the SaaS busines
 **Type:** Backend
 
 **Acceptance Criteria:**
+
 - [ ] Webhook endpoint receives POST requests from Polar
 - [ ] Webhook signature is validated (HMAC)
 - [ ] Event types handled: `checkout.completed`, `subscription.updated`, `subscription.cancelled`, `payment.succeeded`, `payment.failed`
@@ -94,6 +103,7 @@ Sprint 6 integrates Polar.sh for subscription billing, enabling the SaaS busines
 - [ ] Duplicate events are idempotent (check event ID)
 
 **Technical Notes:**
+
 - Files to modify:
   - `convex/http.ts` - Add `/polar/webhook` route
   - `convex/subscriptions.ts` - Subscription mutations
@@ -111,6 +121,7 @@ Sprint 6 integrates Polar.sh for subscription billing, enabling the SaaS busines
 **Type:** Frontend
 
 **Acceptance Criteria:**
+
 - [ ] Billing page shows subscription status card
 - [ ] Status card displays: Plan name, Status (Active/Cancelled/Grace/Suspended), Next billing date, Monthly price
 - [ ] Active subscriptions show "Manage Subscription" button (links to Polar portal)
@@ -118,6 +129,7 @@ Sprint 6 integrates Polar.sh for subscription billing, enabling the SaaS busines
 - [ ] Free trial shows days remaining
 
 **Technical Notes:**
+
 - Files to create:
   - `src/modules/billing/components/SubscriptionStatus.tsx`
   - `convex/polar.ts` - Add `getPortalUrl` action
@@ -133,14 +145,16 @@ Sprint 6 integrates Polar.sh for subscription billing, enabling the SaaS busines
 **Type:** Backend + Frontend
 
 **Acceptance Criteria:**
+
 - [ ] Payment failure webhook starts grace period (7 days)
 - [ ] During grace period, banner shows: "Payment failed. Update payment method to avoid suspension."
 - [ ] Banner shows days remaining in grace period
 - [ ] Grace period expiration updates subscription status to "suspended"
 - [ ] Suspended organizations can only access billing page
-- [ ] Reminder notifications sent on Day 1, 3, 5, 7 (Sprint 7)
+- [ ] Reminder notifications sent on Day 1, 3, 5, 7 (Milestone7)
 
 **Technical Notes:**
+
 - Files to create:
   - `convex/subscriptions.ts` - Add `gracePeriodEndDate` field
   - `src/modules/billing/components/GracePeriodBanner.tsx`
@@ -158,6 +172,7 @@ Sprint 6 integrates Polar.sh for subscription billing, enabling the SaaS busines
 **Type:** Full-Stack
 
 **Acceptance Criteria:**
+
 - [ ] Billing page shows table of past invoices
 - [ ] Each row shows: Date, Amount, Status (Paid/Failed), Download link
 - [ ] Download link redirects to Polar invoice PDF
@@ -165,6 +180,7 @@ Sprint 6 integrates Polar.sh for subscription billing, enabling the SaaS busines
 - [ ] Empty state shows "No invoices yet"
 
 **Technical Notes:**
+
 - Files to create:
   - `src/modules/billing/components/BillingHistory.tsx`
   - `convex/polar.ts` - Add `getInvoices` action
@@ -180,6 +196,7 @@ Sprint 6 integrates Polar.sh for subscription billing, enabling the SaaS busines
 **Type:** Full-Stack
 
 **Acceptance Criteria:**
+
 - [ ] Billing page shows "Cancel Subscription" button (active subs only)
 - [ ] Clicking shows confirmation dialog with consequences
 - [ ] Confirming sends cancellation request to Polar
@@ -188,6 +205,7 @@ Sprint 6 integrates Polar.sh for subscription billing, enabling the SaaS busines
 - [ ] Cancelled organizations cannot create new bookings
 
 **Technical Notes:**
+
 - Files to create:
   - `src/modules/billing/components/CancelDialog.tsx`
   - `convex/polar.ts` - Add `cancelSubscription` action
@@ -215,26 +233,30 @@ Sprint 6 integrates Polar.sh for subscription billing, enabling the SaaS busines
 ## Technical Considerations
 
 ### Webhook Security
+
 - Validate webhook signature using Polar secret
 - Store processed event IDs (deduplicate)
 - Return 200 OK for all events (even if duplicate)
 
 ### Subscription States
+
 ```
 trial → active → (payment_failed) → grace_period → suspended
                  → cancelled
 ```
 
 ### Middleware Logic
+
 ```typescript
-if (subscription.status === 'suspended') {
-  if (pathname !== '/[slug]/billing') {
-    redirect('/[slug]/billing')
+if (subscription.status === "suspended") {
+  if (pathname !== "/[slug]/billing") {
+    redirect("/[slug]/billing");
   }
 }
 ```
 
 ### Environment Variables
+
 - `POLAR_ACCESS_TOKEN` - Polar API key
 - `POLAR_WEBHOOK_SECRET` - Webhook signature validation
 - `POLAR_ORGANIZATION_ID` - Polar seller org ID
@@ -244,7 +266,7 @@ if (subscription.status === 'suspended') {
 - [ ] Checkout completion rate >80%
 - [ ] Webhook processing latency <2 seconds
 - [ ] Zero missed webhook events
-- [ ] Grace period reminder open rate >50% (Sprint 7)
+- [ ] Grace period reminder open rate >50% (Milestone7)
 
 ## Implementation Order
 

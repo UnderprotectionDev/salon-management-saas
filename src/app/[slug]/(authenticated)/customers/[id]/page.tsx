@@ -30,8 +30,8 @@ import {
   ACCOUNT_STATUS_LABELS,
   SOURCE_LABELS,
 } from "@/modules/customers/lib/constants";
-import { api } from "../../../../../convex/_generated/api";
-import type { Id } from "../../../../../convex/_generated/dataModel";
+import { api } from "../../../../../../convex/_generated/api";
+import type { Id } from "../../../../../../convex/_generated/dataModel";
 
 function CustomerDetailSkeleton() {
   return (
@@ -327,12 +327,14 @@ export default function CustomerDetailPage() {
       </Tabs>
 
       {/* Edit Dialog */}
-      <EditCustomerDialog
-        open={showEditDialog}
-        onOpenChange={setShowEditDialog}
-        customerId={showEditDialog ? customer._id : null}
-        organizationId={activeOrganization!._id}
-      />
+      {activeOrganization && (
+        <EditCustomerDialog
+          open={showEditDialog}
+          onOpenChange={setShowEditDialog}
+          customerId={showEditDialog ? customer._id : null}
+          organizationId={activeOrganization._id}
+        />
+      )}
 
       {/* Merge Dialog */}
       {activeOrganization && (

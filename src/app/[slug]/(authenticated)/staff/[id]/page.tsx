@@ -2,6 +2,7 @@
 
 import { useQuery } from "convex/react";
 import {
+  AlertTriangle,
   ArrowLeft,
   Calendar,
   CalendarClock,
@@ -13,6 +14,7 @@ import {
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useState } from "react";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -38,12 +40,14 @@ import {
 } from "@/modules/staff";
 import { DAY_LABELS, DAYS } from "@/modules/staff/lib/constants";
 import type { StaffSchedule } from "@/modules/staff/components/ScheduleEditor";
-import { api } from "../../../../../convex/_generated/api";
-import type { Id } from "../../../../../convex/_generated/dataModel";
+import { api } from "../../../../../../convex/_generated/api";
+import type { Id } from "../../../../../../convex/_generated/dataModel";
 
 function getInitials(name: string): string {
+  if (!name.trim()) return "??";
   return name
     .split(" ")
+    .filter(Boolean)
     .map((n) => n[0])
     .join("")
     .toUpperCase()
@@ -211,6 +215,34 @@ export default function StaffDetailPage() {
           </div>
         </CardContent>
       </Card>
+
+      {/* Warnings for incomplete configuration */}
+      {staff.status === "active" && (
+        <>
+          {!staff.defaultSchedule && (
+            <Alert variant="destructive">
+              <AlertTriangle className="size-4" />
+              <AlertTitle>Schedule Not Configured</AlertTitle>
+              <AlertDescription>
+                This staff member cannot be booked until a default schedule is
+                set. Go to the "Overview" tab and click "Edit Profile" to
+                configure their working hours.
+              </AlertDescription>
+            </Alert>
+          )}
+          {(!staff.serviceIds || staff.serviceIds.length === 0) && (
+            <Alert variant="destructive">
+              <AlertTriangle className="size-4" />
+              <AlertTitle>No Services Assigned</AlertTitle>
+              <AlertDescription>
+                This staff member cannot be booked until services are assigned.
+                Go to the "Overview" tab and click "Edit Profile" to assign
+                services.
+              </AlertDescription>
+            </Alert>
+          )}
+        </>
+      )}
 
       {/* Tabs */}
       <Tabs defaultValue="overview">

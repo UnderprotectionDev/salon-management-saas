@@ -48,6 +48,36 @@ export const get = publicQuery({
   },
 });
 
+/**
+ * List all organizations (for public salon directory)
+ * Public query - no authentication required
+ */
+export const listPublic = publicQuery({
+  args: {},
+  returns: v.array(
+    v.object({
+      _id: v.id("organization"),
+      _creationTime: v.number(),
+      name: v.string(),
+      slug: v.string(),
+      logo: v.optional(v.string()),
+      description: v.optional(v.string()),
+    }),
+  ),
+  handler: async (ctx) => {
+    const orgs = await ctx.db.query("organization").take(200);
+
+    return orgs.map((org) => ({
+      _id: org._id,
+      _creationTime: org._creationTime,
+      name: org.name,
+      slug: org.slug,
+      logo: org.logo,
+      description: org.description,
+    }));
+  },
+});
+
 // =============================================================================
 // Authenticated Queries
 // =============================================================================

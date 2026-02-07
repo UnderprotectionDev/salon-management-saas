@@ -404,4 +404,88 @@ export default defineSchema({
       searchField: "name",
       filterFields: ["organizationId"],
     }),
+
+  // Appointments — booking records
+  appointments: defineTable({
+    organizationId: v.id("organization"),
+    customerId: v.id("customers"),
+    staffId: v.id("staff"),
+    date: v.string(), // "YYYY-MM-DD"
+    startTime: v.number(), // Minutes from midnight (540 = 09:00)
+    endTime: v.number(),
+    status: v.union(
+      v.literal("pending"),
+      v.literal("confirmed"),
+      v.literal("checked_in"),
+      v.literal("in_progress"),
+      v.literal("completed"),
+      v.literal("cancelled"),
+      v.literal("no_show"),
+    ),
+    source: v.union(
+      v.literal("online"),
+      v.literal("walk_in"),
+      v.literal("phone"),
+      v.literal("staff"),
+    ),
+    confirmationCode: v.string(),
+    confirmedAt: v.optional(v.number()),
+    checkedInAt: v.optional(v.number()),
+    completedAt: v.optional(v.number()),
+    noShowAt: v.optional(v.number()),
+    cancelledAt: v.optional(v.number()),
+    cancelledBy: v.optional(
+      v.union(v.literal("customer"), v.literal("staff"), v.literal("system")),
+    ),
+    cancellationReason: v.optional(v.string()),
+    subtotal: v.number(), // kuruş
+    discount: v.optional(v.number()),
+    total: v.number(), // kuruş
+    paymentStatus: v.optional(
+      v.union(
+        v.literal("pending"),
+        v.literal("paid"),
+        v.literal("partial"),
+        v.literal("refunded"),
+      ),
+    ),
+    paymentMethod: v.optional(v.string()),
+    paidAt: v.optional(v.number()),
+    customerNotes: v.optional(v.string()),
+    staffNotes: v.optional(v.string()),
+    reminderSentAt: v.optional(v.number()),
+    confirmationSentAt: v.optional(v.number()),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_organization", ["organizationId"])
+    .index("by_org_date", ["organizationId", "date"])
+    .index("by_staff_date", ["staffId", "date"])
+    .index("by_customer", ["customerId"])
+    .index("by_confirmation", ["confirmationCode"])
+    .index("by_org_status", ["organizationId", "status"]),
+
+  // Appointment Services — services included in an appointment (junction table)
+  appointmentServices: defineTable({
+    appointmentId: v.id("appointments"),
+    serviceId: v.id("services"),
+    serviceName: v.string(), // Denormalized for history
+    duration: v.number(), // minutes
+    price: v.number(), // kuruş
+    staffId: v.id("staff"),
+  }).index("by_appointment", ["appointmentId"]),
+
+  // Slot Locks — temporary locks to prevent double booking
+  slotLocks: defineTable({
+    organizationId: v.id("organization"),
+    staffId: v.id("staff"),
+    date: v.string(),
+    startTime: v.number(),
+    endTime: v.number(),
+    sessionId: v.string(),
+    expiresAt: v.number(), // 2 minute TTL
+  })
+    .index("by_staff_date", ["staffId", "date"])
+    .index("by_expiry", ["expiresAt"])
+    .index("by_session", ["sessionId"]),
 });

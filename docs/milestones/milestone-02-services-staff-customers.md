@@ -1,10 +1,10 @@
 [PRD]
 
-# Sprint 2: Services, Staff & Customers
+# Milestone 2: Services, Staff & Customers
 
 ## Overview
 
-Sprint 2 establishes the core data entities required for booking operations: service catalog with pricing, staff profiles with schedules, and customer database. These three pillars form the foundation for the booking engine (Sprint 3-4).
+Milestone 2 establishes the core data entities required for booking operations: service catalog with pricing, staff profiles with schedules, and customer database. These three pillars form the foundation for the booking engine (Milestone 3-4).
 
 **Problem Statement:** Salon owners need to define their service offerings, manage staff availability, and maintain customer records before they can accept bookings.
 
@@ -44,18 +44,18 @@ Sprint 2 establishes the core data entities required for booking operations: ser
 
 **Requires completed:**
 
-- Sprint 1: Multi-tenant foundation (organizations, members, RLS)
-- Sprint 1.5: Enhanced multi-tenant features (staff management, settings)
+- Milestone 1: Multi-tenant foundation (organizations, members, RLS)
+- Milestone 1.5: Enhanced multi-tenant features (staff management, settings)
 
 **Provides foundation for:**
 
-- Sprint 3: Booking Engine Core (requires services, staff, customers)
-- Sprint 4: Booking Operations (requires all Sprint 2 entities)
+- Milestone 3: Booking Engine Core (requires services, staff, customers)
+- Milestone 4: Booking Operations (requires all Milestone 2 entities)
 
 **Blocks:**
 
-- Sprint 3-4 cannot start without service catalog and staff schedules
-- Sprint 5 dashboard requires these entities for metrics
+- Milestone 3-4 cannot start without service catalog and staff schedules
+- Milestone 5 dashboard requires these entities for metrics
 
 ## User Stories
 
@@ -126,7 +126,7 @@ Sprint 2 establishes the core data entities required for booking operations: ser
   - `src/modules/staff/components/ScheduleEditor.tsx` - Weekly schedule UI (enhance existing)
   - `src/modules/staff/components/ServiceAssignments.tsx` - Multi-select services
 - Existing patterns:
-  - Staff table already exists from Sprint 1
+  - Staff table already exists from Milestone 1
   - Use `adminMutation` for owner/admin editing
   - Use `authedMutation` for staff self-editing
   - Add `staffSchedule` table (many-to-many: staff ↔ weekdays)
@@ -134,7 +134,7 @@ Sprint 2 establishes the core data entities required for booking operations: ser
 - Validators:
   - `staffScheduleDocValidator`
   - `staffServiceDocValidator`
-  - Reuse `staffDocValidator` from Sprint 1
+  - Reuse `staffDocValidator` from Milestone 1
 
 ### US-006: Customer Database
 
@@ -227,24 +227,24 @@ Sprint 2 establishes the core data entities required for booking operations: ser
 - FR-2.12: Phone numbers must be unique per organization
 - FR-2.13: Email addresses must be unique per organization (if provided)
 - FR-2.14: Customer search must support partial matching (name, phone)
-- FR-2.15: Customer records must be soft-deleted (marked inactive)
+- FR-2.15: Customer records use hard-delete (soft-delete deferred until booking dependencies exist)
 - FR-2.16: Customer phone must be validated to Turkish mobile format
 
 ## Non-Goals (Out of Scope)
 
-- Service packages/bundles (planned for Sprint 8)
-- Staff commissions (planned for Sprint 8)
+- Service packages/bundles (planned for Milestone 8)
+- Staff commissions (planned for Milestone 8)
 - Customer loyalty programs (post-MVP)
 - Service add-ons or upsells (post-MVP)
 - Multi-location staff assignments (v2.0)
 - Customer payment methods storage (post-MVP, requires PCI compliance)
-- SMS notifications for customers (Sprint 7 focuses on email only)
+- SMS notifications for customers (Milestone 7 focuses on email only)
 
 ## Technical Considerations
 
 ### Database Schema Changes
 
-All tables already exist in `convex/schema.ts` from Sprint 1. Only junction tables need to be verified:
+All tables already exist in `convex/schema.ts` from Milestone 1. Only junction tables need to be verified:
 
 - `staffServices` (many-to-many: staff ↔ services)
 - Staff schedule is stored in `staff.schedule` field (JSON)
@@ -271,7 +271,7 @@ All tables already exist in `convex/schema.ts` from Sprint 1. Only junction tabl
 
 ## Success Metrics
 
-### Sprint 2 Completion Criteria
+### Milestone 2 Completion Criteria
 
 - [x] At least 3 service categories can be created
 - [x] At least 10 services can be created and organized
@@ -324,7 +324,7 @@ All tables already exist in `convex/schema.ts` from Sprint 1. Only junction tabl
 ## Open Questions
 
 - **Q:** Should services support multiple pricing tiers (e.g., junior vs senior stylist)?
-  - **A:** No, Sprint 2 keeps it simple. Staff-specific pricing is post-MVP.
+  - **A:** No, Milestone 2 keeps it simple. Staff-specific pricing is post-MVP.
 
 - **Q:** Should customer email be required or optional?
   - **A:** Optional. Phone is primary identifier for Turkish market.

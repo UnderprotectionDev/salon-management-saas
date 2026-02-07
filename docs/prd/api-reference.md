@@ -1,6 +1,6 @@
 # API Reference
 
-> **Last Updated:** 2026-02-06
+> **Last Updated:** 2026-02-07 (Milestone 3 complete)
 > **Status:** Active
 > **Version:** 1.0
 
@@ -43,6 +43,7 @@ This document defines the complete Convex API surface for the Salon Management S
 | Wrapper | Auth | Context Added | Use Case |
 |---------|------|---------------|----------|
 | `publicQuery` | None | — | Public data (org info by slug) |
+| `publicMutation` | None | — | Public operations (booking, slot locks) |
 | `maybeAuthedQuery` | Optional | `ctx.user \| null` | Works for authed/unauthed |
 | `authedQuery/Mutation` | Required | `ctx.user` | User-scoped data |
 | `orgQuery/Mutation` | Required + membership | `ctx.user`, `ctx.organizationId`, `ctx.member`, `ctx.staff` | All org-scoped operations |
@@ -85,7 +86,7 @@ export const get = orgQuery({
 
 ## Shared Validators
 
-> **File:** `convex/lib/validators.ts` (309 lines)
+> **File:** `convex/lib/validators.ts` (~716 lines)
 > **Status:** ✅ Implemented
 
 Centralized validator library for consistent type checking across all Convex functions.
@@ -107,6 +108,10 @@ Small, focused validators composed into larger validators:
 | `businessHoursValidator` | Object | Weekly schedule with open/close/closed fields | Organization operating hours |
 | `bookingSettingsValidator` | Object | Booking rules (advance time, slots, deposit, etc.) | Booking configuration |
 | `staffScheduleValidator` | Object | Weekly schedule with start/end/available fields | Staff availability |
+| `appointmentStatusValidator` | Union | `pending` \| `confirmed` \| `checked_in` \| `in_progress` \| `completed` \| `cancelled` \| `no_show` | Appointment lifecycle |
+| `appointmentSourceValidator` | Union | `online` \| `walk_in` \| `phone` \| `staff` | Booking source |
+| `cancelledByValidator` | Union | `customer` \| `staff` \| `system` | Who cancelled |
+| `paymentStatusValidator` | Union | `pending` \| `paid` \| `partial` \| `refunded` | Payment state |
 
 ### Document Validators
 
@@ -123,6 +128,19 @@ Include Convex system fields (`_id`, `_creationTime`):
 | `scheduleOverrideDocValidator` | Schedule override document | `_id`, `_creationTime` |
 | `timeOffRequestDocValidator` | Time-off request document | `_id`, `_creationTime` |
 | `staffOvertimeDocValidator` | Overtime entry document | `_id`, `_creationTime` |
+| `customerDocValidator` | Customer document | `_id`, `_creationTime` |
+| `customerListItemValidator` | Customer list item (subset) | `_id`, `_creationTime` |
+| `appointmentDocValidator` | Appointment document | `_id`, `_creationTime` |
+| `appointmentServiceDocValidator` | Appointment service junction | `_id`, `_creationTime` |
+| `slotLockDocValidator` | Slot lock document | `_id`, `_creationTime` |
+
+### Sub-Validators (Customer)
+
+| Validator | Type | Values | Usage |
+|-----------|------|--------|-------|
+| `customerAccountStatusValidator` | Union | `guest` \| `recognized` \| `prompted` \| `registered` | Customer lifecycle |
+| `customerSourceValidator` | Union | `online` \| `walk_in` \| `phone` \| `staff` \| `import` | Acquisition source |
+| `customerNotificationPreferencesValidator` | Object | `emailReminders`, `smsReminders` | Notification settings |
 
 ### Composite Validators
 
@@ -135,6 +153,11 @@ Enriched return types combining multiple tables:
 | `serviceWithCategoryValidator` | Service + category name | Extends with `categoryName` |
 | `serviceCategoryWithCountValidator` | Category + service count | Extends with `serviceCount` |
 | `timeOffRequestWithStaffValidator` | Time-off + staff info | Adds `staffName`, `approvedByName` |
+| `customerWithStaffValidator` | Customer + preferred staff name | Extends with `preferredStaffName` |
+| `availableSlotValidator` | Available time slot | `staffId`, `staffName`, `staffImageUrl?`, `startTime`, `endTime` |
+| `publicAppointmentValidator` | Public appointment view | `staffName`, `customerName`, `services[]`, `total` |
+| `userAppointmentValidator` | User's appointment view | `staffName`, `organizationName`, `organizationSlug`, `services[]` |
+| `appointmentWithDetailsValidator` | Enriched appointment | `customerName`, `customerPhone`, `staffName`, `services[]` |
 
 ---
 
@@ -219,6 +242,27 @@ export const update = ownerMutation({
 });
 ```
 
+### `organizations.listPublic`
+
+> **Status:** ✅ Implemented (Milestone 3)
+
+```typescript
+export const listPublic = publicQuery({
+  args: {},
+  returns: v.array(v.object({
+    _id: v.id("organization"),
+    _creationTime: v.number(),
+    name: v.string(),
+    slug: v.string(),
+    logo: v.optional(v.string()),
+    description: v.optional(v.string()),
+  })),
+  handler: async (ctx) => {
+    // Returns all organizations for salon directory
+  },
+});
+```
+
 ### `organizations.listMine`
 
 ```typescript
@@ -258,6 +302,29 @@ export const get = orgQuery({
   },
   returns: v.union(staffDocValidator, v.null()),
   handler: async (ctx, args) => { /* ... */ },
+});
+```
+
+### `staff.listPublicActive`
+
+> **Status:** ✅ Implemented (Milestone 3)
+
+```typescript
+export const listPublicActive = publicQuery({
+  args: {
+    organizationId: v.id("organization"),
+  },
+  returns: v.array(v.object({
+    _id: v.id("staff"),
+    name: v.string(),
+    imageUrl: v.optional(v.string()),
+    bio: v.optional(v.string()),
+    serviceIds: v.optional(v.array(v.id("services"))),
+  })),
+  handler: async (ctx, args) => {
+    // Returns active staff who have schedule AND services
+    // Minimal info for public booking UI
+  },
 });
 ```
 
@@ -498,6 +565,34 @@ export const assignStaff = adminMutation({
 });
 ```
 
+### `services.listPublic`
+
+> **Status:** ✅ Implemented (Milestone 3)
+
+```typescript
+export const listPublic = publicQuery({
+  args: {
+    organizationId: v.id("organization"),
+  },
+  returns: v.array(v.object({
+    _id: v.id("services"),
+    _creationTime: v.number(),
+    name: v.string(),
+    description: v.optional(v.string()),
+    duration: v.number(),
+    price: v.number(),
+    priceType: servicePriceTypeValidator,
+    imageUrl: v.optional(v.string()),
+    isPopular: v.boolean(),
+    categoryName: v.optional(v.string()),
+  })),
+  handler: async (ctx, args) => {
+    // Returns active, online-visible services with category names
+    // Sorted by sortOrder
+  },
+});
+```
+
 ### `services.getStaffForService`
 
 ```typescript
@@ -521,39 +616,38 @@ export const getStaffForService = orgQuery({
 
 ## Appointment & Booking APIs
 
-### `appointments.getAvailableSlots`
+> **Status:** ✅ Implemented (Milestone 3)
+> **Files:** `convex/appointments.ts` (801 lines), `convex/slots.ts` (206 lines), `convex/slotLocks.ts` (145 lines), `convex/appointmentServices.ts` (54 lines), `convex/crons.ts` (14 lines)
+
+### `slots.available`
 
 ```typescript
-export const getAvailableSlots = publicQuery({
+export const available = publicQuery({
   args: {
     organizationId: v.id("organization"),
     date: v.string(), // ISO date: "2024-03-15"
     serviceIds: v.array(v.id("services")),
     staffId: v.optional(v.id("staff")),
+    sessionId: v.optional(v.string()), // Excludes own locks
   },
-  returns: v.array(v.object({
-    staffId: v.id("staff"),
-    staffName: v.string(),
-    staffImageUrl: v.optional(v.string()),
-    startTime: v.number(), // Minutes from midnight
-    endTime: v.number(),
-    formattedStartTime: v.string(), // "14:30"
-    formattedEndTime: v.string(),
-  })),
+  returns: v.array(availableSlotValidator),
+  // availableSlotValidator = { staffId, staffName, staffImageUrl?, startTime, endTime }
   handler: async (ctx, args) => {
-    // Calculates available slots based on:
-    // 1. Service durations
-    // 2. Staff schedules (default + overrides + overtime)
-    // 3. Existing appointments
-    // 4. Active locks
+    // Algorithm:
+    // 1. Calculate total duration, round up to 15-min
+    // 2. Filter staff by service capability (ALL selected services)
+    // 3. Resolve schedule (default + overrides + overtime)
+    // 4. Generate 15-min increment slots within working hours
+    // 5. Filter out overlapping appointments and active locks
+    // 6. Sort by startTime then staffName
   },
 });
 ```
 
-### `appointments.acquireLock`
+### `slotLocks.acquire`
 
 ```typescript
-export const acquireLock = mutation({
+export const acquire = publicMutation({
   args: {
     organizationId: v.id("organization"),
     staffId: v.id("staff"),
@@ -567,8 +661,37 @@ export const acquireLock = mutation({
     expiresAt: v.number(),
   }),
   handler: async (ctx, args) => {
-    // Prevents double-booking
-    // 2-minute TTL
+    // One lock per session (releases previous)
+    // 2-minute TTL (120,000ms)
+    // Validates no conflicting locks or appointments
+  },
+});
+```
+
+### `slotLocks.release`
+
+```typescript
+export const release = publicMutation({
+  args: {
+    lockId: v.id("slotLocks"),
+    sessionId: v.string(),
+  },
+  returns: v.null(),
+  handler: async (ctx, args) => {
+    // Releases lock if owned by session
+  },
+});
+```
+
+### `slotLocks.cleanupExpired`
+
+```typescript
+export const cleanupExpired = internalMutation({
+  args: {},
+  returns: v.number(), // Count of deleted locks
+  handler: async (ctx) => {
+    // Called by cron every 1 minute
+    // Deletes locks where expiresAt < now()
   },
 });
 ```
@@ -576,7 +699,7 @@ export const acquireLock = mutation({
 ### `appointments.create`
 
 ```typescript
-export const create = mutation({
+export const create = publicMutation({
   args: {
     organizationId: v.id("organization"),
     staffId: v.id("staff"),
@@ -586,17 +709,12 @@ export const create = mutation({
     serviceIds: v.array(v.id("services")),
     customer: v.object({
       name: v.string(),
-      email: v.string(),
       phone: v.string(),
+      email: v.optional(v.string()),
       notes: v.optional(v.string()),
     }),
     sessionId: v.string(), // For lock verification
-    source: v.optional(v.union(
-      v.literal("online"),
-      v.literal("walk_in"),
-      v.literal("phone"),
-      v.literal("staff")
-    )),
+    source: v.optional(appointmentSourceValidator),
   },
   returns: v.object({
     appointmentId: v.id("appointments"),
@@ -605,7 +723,108 @@ export const create = mutation({
   }),
   handler: async (ctx, args) => {
     // Rate limited: createBooking
-    // Verifies lock, creates customer, schedules reminder
+    // Validates slot lock, staff schedule, service availability, conflicts
+    // Auto-creates or updates customer (phone lookup)
+    // Creates appointment + appointmentServices atomically
+    // Releases slot lock on success
+  },
+});
+```
+
+### `appointments.createByStaff`
+
+```typescript
+export const createByStaff = orgMutation({
+  args: {
+    staffId: v.id("staff"),
+    date: v.string(),
+    startTime: v.number(),
+    serviceIds: v.array(v.id("services")),
+    customerId: v.id("customers"),
+    source: v.union(
+      v.literal("walk_in"),
+      v.literal("phone"),
+      v.literal("staff"),
+    ),
+    customerNotes: v.optional(v.string()),
+    staffNotes: v.optional(v.string()),
+  },
+  returns: v.object({
+    appointmentId: v.id("appointments"),
+    confirmationCode: v.string(),
+  }),
+  handler: async (ctx, args) => {
+    // Staff-created bookings (walk-in, phone, staff)
+    // Skips slot lock validation
+    // Calculates endTime from service durations
+    // Status starts as "confirmed" (not "pending")
+  },
+});
+```
+
+### `appointments.getByConfirmationCode`
+
+```typescript
+export const getByConfirmationCode = publicQuery({
+  args: {
+    organizationId: v.id("organization"),
+    confirmationCode: v.string(),
+  },
+  returns: v.union(publicAppointmentValidator, v.null()),
+  // publicAppointmentValidator = { _id, date, startTime, endTime, status,
+  //   confirmationCode, staffName, staffImageUrl?, customerName,
+  //   customerNotes?, total, services: [{serviceName, duration, price}] }
+  handler: async (ctx, args) => {
+    // Public lookup by confirmation code (no auth required)
+  },
+});
+```
+
+### `appointments.listForCurrentUser`
+
+```typescript
+export const listForCurrentUser = authedQuery({
+  args: {},
+  returns: v.array(userAppointmentValidator),
+  // userAppointmentValidator = { _id, date, startTime, endTime, status,
+  //   confirmationCode, staffName, staffImageUrl?, total,
+  //   organizationName, organizationSlug, organizationLogo?,
+  //   services: [{serviceName, duration, price}] }
+  handler: async (ctx) => {
+    // Returns user's appointments across all organizations
+    // Matches by userId on customer records
+  },
+});
+```
+
+### `appointments.list`
+
+```typescript
+export const list = orgQuery({
+  args: {
+    statusFilter: v.optional(appointmentStatusValidator),
+  },
+  returns: v.array(appointmentWithDetailsValidator),
+  // appointmentWithDetailsValidator = appointmentDoc + { customerName,
+  //   customerPhone, customerEmail?, staffName, staffImageUrl?,
+  //   services: [{serviceId, serviceName, duration, price}] }
+  handler: async (ctx, args) => {
+    // Enriched with customer, staff, and service details
+    // Optional status filter
+  },
+});
+```
+
+### `appointments.get`
+
+```typescript
+export const get = orgQuery({
+  args: {
+    appointmentId: v.id("appointments"),
+  },
+  returns: v.union(appointmentWithDetailsValidator, v.null()),
+  handler: async (ctx, args) => {
+    // Single appointment with full enriched details
   },
 });
 ```
@@ -618,31 +837,11 @@ export const getByDate = orgQuery({
     date: v.string(),
     staffId: v.optional(v.id("staff")),
   },
-  returns: v.array(v.object({
-    _id: v.id("appointments"),
-    date: v.string(),
-    startTime: v.number(),
-    endTime: v.number(),
-    formattedTime: v.string(),
-    customer: v.object({
-      _id: v.id("customers"),
-      name: v.string(),
-      phone: v.string(),
-    }),
-    staff: v.object({
-      _id: v.id("staff"),
-      name: v.string(),
-      imageUrl: v.optional(v.string()),
-    }),
-    services: v.array(v.object({
-      name: v.string(),
-      duration: v.number(),
-    })),
-    status: v.string(),
-    total: v.number(),
-    source: v.string(),
-  })),
-  handler: async (ctx, args) => { /* ... */ },
+  returns: v.array(appointmentWithDetailsValidator),
+  handler: async (ctx, args) => {
+    // Appointments for a specific date, optionally filtered by staff
+    // Enriched with customer, staff, and service details
+  },
 });
 ```
 
@@ -653,16 +852,19 @@ export const updateStatus = orgMutation({
   args: {
     appointmentId: v.id("appointments"),
     status: v.union(
+      v.literal("confirmed"),
       v.literal("checked_in"),
       v.literal("in_progress"),
       v.literal("completed"),
-      v.literal("no_show")
+      v.literal("no_show"),
     ),
   },
   returns: v.object({ success: v.boolean() }),
   handler: async (ctx, args) => {
     // Validates status transition
-    // Updates customer stats if completed/no_show
+    // Updates timestamps (confirmedAt, checkedInAt, completedAt)
+    // On completion: updates customer totalVisits, totalSpent, lastVisitDate
+    // On no_show: increments customer noShowCount
   },
 });
 ```
@@ -670,21 +872,53 @@ export const updateStatus = orgMutation({
 ### `appointments.cancel`
 
 ```typescript
-export const cancel = mutation({
+export const cancel = orgMutation({
   args: {
     appointmentId: v.id("appointments"),
-    reason: v.string(),
-    cancelledBy: v.union(
-      v.literal("customer"),
-      v.literal("staff"),
-      v.literal("system")
-    ),
+    reason: v.optional(v.string()),
+    cancelledBy: cancelledByValidator,
   },
   returns: v.object({ success: v.boolean() }),
   handler: async (ctx, args) => {
-    // Rate limited: cancelBooking (5/hour per appointment)
-    // 2-hour cancellation policy for customers
-    // Releases slot, cancels reminder
+    // Rate limited: cancelBooking
+    // Sets cancelledAt, cancelledBy, cancellationReason
+    // Updates status to "cancelled"
+  },
+});
+```
+
+### `appointmentServices.createForAppointment`
+
+```typescript
+export const createForAppointment = internalMutation({
+  args: {
+    appointmentId: v.id("appointments"),
+    services: v.array(v.object({
+      serviceId: v.id("services"),
+      serviceName: v.string(),
+      duration: v.number(),
+      price: v.number(),
+      staffId: v.id("staff"),
+    })),
+  },
+  returns: v.null(),
+  handler: async (ctx, args) => {
+    // Creates junction table records for appointment services
+    // Called internally by appointments.create and createByStaff
+  },
+});
+```
+
+### `appointmentServices.getByAppointment`
+
+```typescript
+export const getByAppointment = orgQuery({
+  args: {
+    appointmentId: v.id("appointments"),
+  },
+  returns: v.array(appointmentServiceDocValidator),
+  handler: async (ctx, args) => {
+    // Returns all services for an appointment
   },
 });
 ```
@@ -693,69 +927,64 @@ export const cancel = mutation({
 
 ## Customer Management APIs
 
+> **Status:** ✅ Implemented (Milestone 2C)
+> **File:** `convex/customers.ts` (~520 lines)
+
 ### `customers.list`
 
 ```typescript
 export const list = orgQuery({
   args: {
     search: v.optional(v.string()),
-    sortBy: v.optional(v.union(
-      v.literal("name"),
-      v.literal("lastVisit"),
-      v.literal("totalSpent"),
-      v.literal("totalVisits")
-    )),
-    limit: v.optional(v.number()),
-    cursor: v.optional(v.string()),
+    accountStatus: v.optional(customerAccountStatusValidator),
   },
-  returns: v.object({
-    customers: v.array(v.object({
-      _id: v.id("customers"),
-      name: v.string(),
-      email: v.string(),
-      phone: v.string(),
-      totalVisits: v.number(),
-      totalSpent: v.number(),
-      lastVisitDate: v.optional(v.string()),
-      tags: v.array(v.string()),
-    })),
-    nextCursor: v.optional(v.string()),
-  }),
-  handler: async (ctx, args) => { /* ... */ },
+  returns: v.array(customerListItemValidator),
+  handler: async (ctx, args) => {
+    // Full-text search via searchIndex("search_customers") on name field
+    // Filters by accountStatus if provided
+    // Returns: _id, _creationTime, name, email, phone, accountStatus,
+    //          totalVisits, totalSpent, lastVisitDate, noShowCount, tags, source, createdAt
+  },
 });
 ```
 
-### `customers.getProfile`
+### `customers.get`
 
 ```typescript
-export const getProfile = orgQuery({
+export const get = orgQuery({
   args: {
     customerId: v.id("customers"),
   },
-  returns: v.object({
-    _id: v.id("customers"),
+  returns: v.union(customerWithStaffValidator, v.null()),
+  handler: async (ctx, args) => {
+    // Returns full customer document enriched with preferredStaffName
+    // Validates customer belongs to current organization
+  },
+});
+```
+
+### `customers.create`
+
+```typescript
+export const create = orgMutation({
+  args: {
     name: v.string(),
-    email: v.string(),
     phone: v.string(),
-    phoneVerified: v.boolean(),
-    preferredStaff: v.optional(v.object({
-      _id: v.id("staff"),
-      name: v.string(),
-    })),
-    notificationPreferences: v.object({
-      emailReminders: v.boolean(),
-      smsReminders: v.boolean(),
-    }),
-    stats: v.object({
-      totalVisits: v.number(),
-      totalSpent: v.number(),
-      noShowCount: v.number(),
-      memberSince: v.string(),
-    }),
-    customerNotes: v.optional(v.string()), // Customer-visible
-    staffNotes: v.optional(v.string()), // Staff-only
-  }),
-  handler: async (ctx, args) => { /* ... */ },
+    email: v.optional(v.string()),
+    preferredStaffId: v.optional(v.id("staff")),
+    customerNotes: v.optional(v.string()),
+    staffNotes: v.optional(v.string()),
+    tags: v.optional(v.array(v.string())),
+    source: v.optional(customerSourceValidator),
+  },
+  returns: v.id("customers"),
+  handler: async (ctx, args) => {
+    // Rate limited: createCustomer (30/hour per org)
+    // Validates Turkish phone format (+90 5XX XXX XX XX)
+    // Enforces phone uniqueness per organization (by_org_phone index)
+    // Enforces email uniqueness per organization if provided (by_org_email index)
+    // Initializes accountStatus: "guest", stats to 0
+  },
 });
 ```
 
@@ -769,17 +998,31 @@ export const update = orgMutation({
     email: v.optional(v.string()),
     phone: v.optional(v.string()),
     preferredStaffId: v.optional(v.id("staff")),
-    notificationPreferences: v.optional(v.object({
-      emailReminders: v.boolean(),
-      smsReminders: v.boolean(),
-    })),
     customerNotes: v.optional(v.string()),
     staffNotes: v.optional(v.string()),
     tags: v.optional(v.array(v.string())),
   },
-  returns: v.object({ success: v.boolean() }),
+  returns: customerDocValidator,
   handler: async (ctx, args) => {
-    // Separate permissions for customer vs staff notes
+    // Re-validates phone/email uniqueness if changed
+    // Validates preferredStaffId belongs to same organization
+    // Updates updatedAt timestamp
+  },
+});
+```
+
+### `customers.remove`
+
+```typescript
+export const remove = adminMutation({
+  args: {
+    customerId: v.id("customers"),
+  },
+  returns: v.null(),
+  handler: async (ctx, args) => {
+    // Admin/owner only
+    // Hard delete (no booking dependencies yet)
+    // Validates customer belongs to current organization
   },
 });
 ```
@@ -790,32 +1033,84 @@ export const update = orgMutation({
 export const advancedSearch = orgQuery({
   args: {
     query: v.optional(v.string()),
-    filters: v.optional(v.object({
-      lastVisit: v.optional(v.union(
-        v.literal("today"),
-        v.literal("7days"),
-        v.literal("30days"),
-        v.literal("90days"),
-        v.literal("over90days")
-      )),
-      totalVisits: v.optional(v.object({
-        min: v.optional(v.number()),
-        max: v.optional(v.number()),
-      })),
-      totalSpending: v.optional(v.object({
-        min: v.optional(v.number()),
-        max: v.optional(v.number()),
-      })),
-      tags: v.optional(v.array(v.string())),
-    })),
-    limit: v.optional(v.number()),
+    accountStatus: v.optional(customerAccountStatusValidator),
+    source: v.optional(customerSourceValidator),
+    totalVisitsMin: v.optional(v.number()),
+    totalVisitsMax: v.optional(v.number()),
+    totalSpentMin: v.optional(v.number()),
+    totalSpentMax: v.optional(v.number()),
+    noShowCountMin: v.optional(v.number()),
+    noShowCountMax: v.optional(v.number()),
+    tags: v.optional(v.array(v.string())),
+    lastVisitDays: v.optional(v.number()), // negative = "no visit in X days"
   },
   returns: v.object({
-    customers: v.array(/* ... */),
+    customers: v.array(customerListItemValidator),
     totalCount: v.number(),
   }),
-  handler: async (ctx, args) => { /* ... */ },
+  handler: async (ctx, args) => {
+    // Multi-criteria filtering on customer records
+    // Supports tag matching (array of strings)
+  },
 });
+```
+
+### `customers.merge`
+
+```typescript
+export const merge = adminMutation({
+  args: {
+    primaryCustomerId: v.id("customers"),
+    duplicateCustomerId: v.id("customers"),
+  },
+  returns: v.object({ success: v.boolean() }),
+  handler: async (ctx, args) => {
+    // Admin/owner only
+    // Combines stats: totalVisits, totalSpent, noShowCount (sum)
+    // Unions tags from both records (deduped)
+    // Picks latest lastVisitDate
+    // Merges notes (primary preferred, duplicate as fallback)
+    // Deletes duplicate record, updates primary
+  },
+});
+```
+
+### `customers.linkToCurrentUser`
+
+> **Status:** ✅ Implemented (Milestone 3)
+
+```typescript
+export const linkToCurrentUser = authedMutation({
+  args: {
+    customerId: v.id("customers"),
+  },
+  returns: v.object({ success: v.boolean() }),
+  handler: async (ctx, args) => {
+    // Links a guest customer record to the authenticated user
+    // Sets customer.userId to current user's ID
+  },
+});
+```
+
+### Customer Validators
+
+```typescript
+// convex/lib/validators.ts
+customerAccountStatusValidator  // "guest" | "recognized" | "prompted" | "registered"
+customerSourceValidator         // "online" | "walk_in" | "phone" | "staff" | "import"
+customerDocValidator            // Full document with _id, _creationTime, all fields
+customerListItemValidator       // Subset for list views (excludes detailed notes)
+customerWithStaffValidator      // Full doc + preferredStaffName enrichment
+customerNotificationPreferencesValidator // { emailReminders, smsReminders }
+```
+
+### Phone Validation
+
+```typescript
+// convex/lib/phone.ts
+isValidTurkishPhone(phone: string): boolean
+// Validates: +90 5XX XXX XX XX format
+// Regex: /^\+90 5\d{2} \d{3} \d{2} \d{2}$/
 ```
 
 ---
@@ -1376,8 +1671,8 @@ Rate limits configured using `@convex-dev/rate-limiter`:
 | `createOrganization` | 3/day | userId | New org creation |
 | `addMember` | 20/day | organizationId | Member additions |
 | `createService` | 50/day | organizationId | Service catalog |
-| `createBooking` | 10/hour | userId/sessionId | Booking creation |
-| `cancelBooking` | 5/hour | appointmentId | Per appointment |
+| `createBooking` | 10/hour | organizationId | Booking creation |
+| `cancelBooking` | 5/hour | organizationId | Cancellation limit |
 | `createScheduleOverride` | 30/day | organizationId | Schedule changes |
 | `createTimeOffRequest` | 5/day | staffId | Per staff member |
 | `createOvertime` | 10/day | staffId | Per staff member |
@@ -1401,42 +1696,41 @@ export const create = adminMutation({
 
 ## Scheduled Jobs
 
-### `schedulers.cleanupExpiredLocks`
+> **File:** `convex/crons.ts` (14 lines)
+> **Status:** ✅ Implemented (Milestone 3)
+
+### `slotLocks.cleanupExpired` (Cron)
 
 ```typescript
-// Runs every minute
-export const cleanupExpiredLocks = internalMutation({
-  handler: async (ctx) => {
-    const expired = await ctx.db
-      .query("slotLocks")
-      .withIndex("by_expiry")
-      .filter((q) => q.lt(q.field("expiresAt"), Date.now()))
-      .collect();
-
-    for (const lock of expired) {
-      await ctx.db.delete(lock._id);
-    }
-
-    return { deleted: expired.length };
-  },
-});
+// File: convex/crons.ts
+const crons = cronJobs();
+crons.interval(
+  "cleanup expired slot locks",
+  { minutes: 1 },
+  internal.slotLocks.cleanupExpired,
+);
+export default crons;
 ```
 
-### `schedulers.sendScheduledReminders`
+**Behavior:** Runs every 1 minute. Deletes all slot locks where `expiresAt < Date.now()`. Returns count of deleted locks.
+
+### `schedulers.sendScheduledReminders` (Planned)
 
 ```typescript
+// Planned for Milestone 7 (Email Notifications)
 // Runs every hour
 export const sendScheduledReminders = internalAction({
   handler: async (ctx) => {
     // Find appointments 24-25 hours from now
-    // Send reminder emails
+    // Send reminder emails via Resend
   },
 });
 ```
 
-### `schedulers.checkGracePeriods`
+### `schedulers.checkGracePeriods` (Planned)
 
 ```typescript
+// Planned for Milestone 6 (SaaS Billing)
 // Runs every hour
 export const checkGracePeriods = internalMutation({
   handler: async (ctx) => {

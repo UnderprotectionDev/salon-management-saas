@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { JetBrains_Mono, Playfair_Display, Poppins } from "next/font/google";
 import { getToken } from "@/lib/auth-server";
 import { ConvexClientProvider } from "@/modules/convex/providers/ConvexClientProvider";
-import { OrganizationProvider } from "@/modules/organization";
+import { OrganizationProvider } from "@/modules/organization/providers/OrganizationProvider";
 import "./globals.css";
 
 const poppins = Poppins({

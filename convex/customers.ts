@@ -2,6 +2,7 @@ import { ConvexError, v } from "convex/values";
 import type { Doc } from "./_generated/dataModel";
 import {
   adminMutation,
+  authedMutation,
   ErrorCode,
   orgMutation,
   orgQuery,
@@ -241,6 +242,7 @@ export const create = orgMutation({
     staffNotes: v.optional(v.string()),
     tags: v.optional(v.array(v.string())),
     source: v.optional(customerSourceValidator),
+    preferredStaffId: v.optional(v.id("staff")),
   },
   returns: v.id("customers"),
   handler: async (ctx, args) => {
@@ -294,6 +296,17 @@ export const create = orgMutation({
       }
     }
 
+    // Validate preferred staff belongs to org
+    if (args.preferredStaffId) {
+      const staff = await ctx.db.get(args.preferredStaffId);
+      if (!staff || staff.organizationId !== ctx.organizationId) {
+        throw new ConvexError({
+          code: ErrorCode.NOT_FOUND,
+          message: "Staff member not found",
+        });
+      }
+    }
+
     const now = Date.now();
     return await ctx.db.insert("customers", {
       organizationId: ctx.organizationId,
@@ -304,6 +317,7 @@ export const create = orgMutation({
       staffNotes: args.staffNotes,
       tags: args.tags,
       source: args.source,
+      preferredStaffId: args.preferredStaffId,
       accountStatus: "guest",
       totalVisits: 0,
       totalSpent: 0,
@@ -511,6 +525,53 @@ export const merge = adminMutation({
 
     // Delete duplicate
     await ctx.db.delete(args.duplicateCustomerId);
+
+    return { success: true };
+  },
+});
+
+// =============================================================================
+// Customer–User Linking
+// =============================================================================
+
+/**
+ * Link a customer record to the current authenticated user.
+ * Called after public booking to connect the appointment to the user's account.
+ */
+export const linkToCurrentUser = authedMutation({
+  args: {
+    customerId: v.id("customers"),
+  },
+  returns: v.object({ success: v.boolean() }),
+  handler: async (ctx, args) => {
+    const customer = await ctx.db.get(args.customerId);
+    if (!customer) {
+      return { success: false };
+    }
+
+    // Verify the user's email or phone matches the customer record
+    // This prevents cross-tenant linking by ensuring only the actual customer can link
+    const userEmail = ctx.user.email;
+    const emailMatches = userEmail && customer.email && userEmail === customer.email;
+    if (!emailMatches) {
+      return { success: false };
+    }
+
+    // Only link if not already linked to a different user
+    if (customer.userId && customer.userId !== ctx.user._id) {
+      return { success: false };
+    }
+
+    // Already linked to this user
+    if (customer.userId === ctx.user._id) {
+      return { success: true };
+    }
+
+    await ctx.db.patch(args.customerId, {
+      userId: ctx.user._id,
+      accountStatus: "registered",
+      updatedAt: Date.now(),
+    });
 
     return { success: true };
   },

@@ -23,7 +23,10 @@ import {
 } from "@/components/ui/empty";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { AppointmentStatusBadge } from "@/modules/booking";
+import { formatMinutesAsTime } from "@/modules/booking/lib/constants";
 import { InvitationBanner, useOrganizations } from "@/modules/organization";
+import { formatPrice } from "@/modules/services/lib/currency";
 import { api } from "../../../convex/_generated/api";
 
 // Time-based greeting
@@ -104,23 +107,130 @@ function DashboardSkeleton() {
   );
 }
 
+type UserAppointment = {
+  _id: string;
+  date: string;
+  startTime: number;
+  endTime: number;
+  status: string;
+  confirmationCode: string;
+  staffName: string;
+  total: number;
+  organizationName: string;
+  organizationSlug: string;
+  organizationLogo?: string;
+  services: Array<{ serviceName: string; duration: number; price: number }>;
+};
+
+function MyAppointmentsList({
+  appointments,
+  filter,
+}: {
+  appointments: UserAppointment[] | undefined;
+  filter: "upcoming" | "past";
+}) {
+  if (appointments === undefined) {
+    return (
+      <div className="space-y-3">
+        {[1, 2].map((i) => (
+          <Skeleton key={i} className="h-20 w-full rounded-lg" />
+        ))}
+      </div>
+    );
+  }
+
+  const now = new Date();
+  const today = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
+  const terminalStatuses = ["completed", "cancelled", "no_show"];
+
+  const filtered = appointments.filter((a) => {
+    if (filter === "upcoming") {
+      return a.date >= today && !terminalStatuses.includes(a.status);
+    }
+    return a.date < today || terminalStatuses.includes(a.status);
+  });
+
+  if (filtered.length === 0) {
+    return (
+      <Empty className="border rounded-lg">
+        <EmptyMedia variant="icon">
+          <Calendar className="size-5" />
+        </EmptyMedia>
+        <EmptyTitle>
+          {filter === "upcoming"
+            ? "No upcoming appointments"
+            : "No past appointments"}
+        </EmptyTitle>
+        <EmptyDescription>
+          {filter === "upcoming"
+            ? "Appointments you book will appear here."
+            : "Your completed appointments will be listed here."}
+        </EmptyDescription>
+        {filter === "upcoming" && (
+          <Button asChild className="mt-2">
+            <Link href="/">Find Salon</Link>
+          </Button>
+        )}
+      </Empty>
+    );
+  }
+
+  return (
+    <div className="space-y-3">
+      {filtered.map((appt) => (
+        <Link
+          key={appt._id}
+          href={`/${appt.organizationSlug}/appointment/${appt.confirmationCode}`}
+          className="block"
+        >
+          <Card className="hover:border-primary transition-colors cursor-pointer">
+            <CardContent className="py-4">
+              <div className="flex items-start justify-between gap-4">
+                <div className="flex items-start gap-3 min-w-0">
+                  <div className="mt-0.5 rounded-full bg-muted p-2">
+                    <Calendar className="size-4 text-muted-foreground" />
+                  </div>
+                  <div className="min-w-0">
+                    <div className="font-medium truncate">
+                      {appt.organizationName}
+                    </div>
+                    <div className="text-sm text-muted-foreground">
+                      {appt.date} &middot; {formatMinutesAsTime(appt.startTime)}{" "}
+                      – {formatMinutesAsTime(appt.endTime)}
+                    </div>
+                    <div className="text-sm text-muted-foreground">
+                      {appt.staffName} &middot;{" "}
+                      {appt.services.map((s) => s.serviceName).join(", ")}
+                    </div>
+                  </div>
+                </div>
+                <div className="flex flex-col items-end gap-1 shrink-0">
+                  <AppointmentStatusBadge status={appt.status} />
+                  <span className="text-sm font-medium">
+                    {formatPrice(appt.total)}
+                  </span>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </Link>
+      ))}
+    </div>
+  );
+}
+
 export default function DashboardPage() {
   const router = useRouter();
   const user = useQuery(api.users.getCurrentUser);
   const organizations = useOrganizations();
+  const myAppointments = useQuery(api.appointments.listForCurrentUser);
 
   // Handle redirects in useEffect to avoid side effects during render
   useEffect(() => {
     if (user === null) {
       router.replace("/sign-in");
-    } else if (
-      user !== undefined &&
-      organizations !== undefined &&
-      organizations.length === 0
-    ) {
-      router.replace("/onboarding");
     }
-  }, [user, organizations, router]);
+  }, [user, router]);
 
   // Loading state
   if (user === undefined || organizations === undefined) {
@@ -129,11 +239,6 @@ export default function DashboardPage() {
 
   // Not authenticated - show skeleton while redirecting
   if (user === null) {
-    return <DashboardSkeleton />;
-  }
-
-  // No organization - show skeleton while redirecting to onboarding
-  if (organizations.length === 0) {
     return <DashboardSkeleton />;
   }
 
@@ -198,29 +303,16 @@ export default function DashboardPage() {
                     <TabsTrigger value="past">Past</TabsTrigger>
                   </TabsList>
                   <TabsContent value="upcoming" className="mt-4">
-                    <Empty className="border rounded-lg">
-                      <EmptyMedia variant="icon">
-                        <Calendar className="size-5" />
-                      </EmptyMedia>
-                      <EmptyTitle>No appointments</EmptyTitle>
-                      <EmptyDescription>
-                        Appointments you book will appear here.
-                      </EmptyDescription>
-                      <Button asChild className="mt-2">
-                        <Link href="/explore">Find Salon</Link>
-                      </Button>
-                    </Empty>
+                    <MyAppointmentsList
+                      appointments={myAppointments}
+                      filter="upcoming"
+                    />
                   </TabsContent>
                   <TabsContent value="past" className="mt-4">
-                    <Empty className="border rounded-lg">
-                      <EmptyMedia variant="icon">
-                        <Calendar className="size-5" />
-                      </EmptyMedia>
-                      <EmptyTitle>No past appointments</EmptyTitle>
-                      <EmptyDescription>
-                        Your completed appointments will be listed here.
-                      </EmptyDescription>
-                    </Empty>
+                    <MyAppointmentsList
+                      appointments={myAppointments}
+                      filter="past"
+                    />
                   </TabsContent>
                 </Tabs>
               </CardContent>
@@ -269,23 +361,39 @@ export default function DashboardPage() {
         </div>
 
         {/* My Salons (For salon owners/staff) */}
-        {organizations && organizations.length > 0 && (
-          <Card>
-            <CardHeader>
-              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-                <div>
-                  <CardTitle>My Salons</CardTitle>
-                  <CardDescription>Salons you own or work at</CardDescription>
-                </div>
-                <Button asChild variant="outline" size="sm">
+        <Card>
+          <CardHeader>
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+              <div>
+                <CardTitle>My Salons</CardTitle>
+                <CardDescription>Salons you own or work at</CardDescription>
+              </div>
+              <Button asChild variant="outline" size="sm">
+                <Link href="/onboarding">
+                  <Plus className="mr-2 size-4" />
+                  New Salon
+                </Link>
+              </Button>
+            </div>
+          </CardHeader>
+          <CardContent>
+            {organizations.length === 0 ? (
+              <Empty className="border rounded-lg">
+                <EmptyMedia variant="icon">
+                  <Building2 className="size-5" />
+                </EmptyMedia>
+                <EmptyTitle>No salons yet</EmptyTitle>
+                <EmptyDescription>
+                  Create your first salon to get started.
+                </EmptyDescription>
+                <Button asChild className="mt-2">
                   <Link href="/onboarding">
                     <Plus className="mr-2 size-4" />
-                    New Salon
+                    Create Your First Salon
                   </Link>
                 </Button>
-              </div>
-            </CardHeader>
-            <CardContent>
+              </Empty>
+            ) : (
               <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
                 {organizations.map((org) => (
                   <Link key={org._id} href={`/${org.slug}/dashboard`}>
@@ -315,9 +423,9 @@ export default function DashboardPage() {
                   </Link>
                 ))}
               </div>
-            </CardContent>
-          </Card>
-        )}
+            )}
+          </CardContent>
+        </Card>
       </div>
     </div>
   );

@@ -767,16 +767,23 @@ convex/
 │
 ├── lib/                   # Shared backend utilities
 │   ├── audit.ts           # Audit logging helpers
+│   ├── confirmation.ts    # Confirmation code generator (40 lines)
+│   ├── dateTime.ts        # Date/time utilities (78 lines)
 │   ├── functions.ts       # Custom query/mutation wrappers (RLS)
+│   ├── phone.ts           # Turkish phone validation helper
 │   ├── rateLimits.ts      # Rate limiting utilities
 │   ├── relationships.ts   # Database relationship helpers
 │   ├── rls.ts             # Row-level security helpers
 │   ├── scheduleResolver.ts # Schedule resolution logic (163 lines)
-│   └── validators.ts      # Convex return validators
+│   └── validators.ts      # Convex return validators (~716 lines)
 │
+├── appointments.ts        # Appointment CRUD + booking (801 lines)
+├── appointmentServices.ts # Appointment-service junction (54 lines)
 ├── auth.config.ts         # Better Auth configuration
 ├── auth.ts                # Auth instance & options
 ├── convex.config.ts       # Convex deployment config
+├── crons.ts               # Scheduled jobs (14 lines)
+├── customers.ts           # Customer CRUD + search + merge (~500 lines)
 ├── files.ts               # File storage queries/mutations (logos, staff, services)
 ├── http.ts                # HTTP routes (auth endpoints)
 ├── invitations.ts         # Staff invitation management
@@ -786,6 +793,8 @@ convex/
 ├── scheduleOverrides.ts   # Schedule override CRUD (178 lines)
 ├── serviceCategories.ts   # Service category CRUD (188 lines)
 ├── services.ts            # Service CRUD + staff assignment (353 lines)
+├── slotLocks.ts           # Slot lock acquire/release/cleanup (145 lines)
+├── slots.ts               # Slot availability algorithm (206 lines)
 ├── staff.ts               # Staff profile queries/mutations
 ├── staffOvertime.ts       # Overtime management (155 lines)
 ├── timeOffRequests.ts     # Time-off request workflow (335 lines)
@@ -805,17 +814,33 @@ src/
 │   │   └── layout.tsx     # Auth layout (minimal, no sidebar)
 │   │
 │   ├── [slug]/            # Multi-tenant routes (org slug in URL)
-│   │   ├── dashboard/     # Dashboard page
-│   │   │   └── page.tsx
-│   │   ├── services/      # Service catalog
-│   │   │   └── page.tsx   # Services list with category sidebar
-│   │   ├── settings/      # Organization settings
-│   │   │   └── page.tsx
-│   │   ├── staff/         # Staff management
-│   │   │   ├── [id]/      # Staff detail/edit pages
-│   │   │   └── page.tsx   # Staff list page
+│   │   ├── (authenticated)/  # Protected routes (requires auth + membership)
+│   │   │   ├── appointments/  # Appointment management
+│   │   │   │   └── page.tsx
+│   │   │   ├── customers/     # Customer database
+│   │   │   │   ├── [id]/      # Customer detail
+│   │   │   │   └── page.tsx
+│   │   │   ├── dashboard/     # Dashboard page
+│   │   │   │   └── page.tsx
+│   │   │   ├── services/      # Service catalog
+│   │   │   │   └── page.tsx
+│   │   │   ├── settings/      # Organization settings
+│   │   │   │   └── page.tsx
+│   │   │   ├── staff/         # Staff management
+│   │   │   │   ├── [id]/      # Staff detail/edit
+│   │   │   │   └── page.tsx
+│   │   │   └── layout.tsx     # Authenticated layout (sidebar, header)
+│   │   │
+│   │   ├── (public)/          # Public routes (no auth required)
+│   │   │   ├── book/          # Public booking page
+│   │   │   │   └── page.tsx
+│   │   │   ├── appointment/   # Appointment lookup
+│   │   │   │   └── [code]/    # By confirmation code
+│   │   │   │       └── page.tsx
+│   │   │   └── layout.tsx     # Public layout (minimal)
+│   │   │
 │   │   ├── error.tsx      # Error boundary
-│   │   ├── layout.tsx     # Org layout (sidebar, header)
+│   │   ├── layout.tsx     # Org layout (shared)
 │   │   └── not-found.tsx  # 404 page
 │   │
 │   ├── api/               # API routes (if needed)
@@ -827,7 +852,7 @@ src/
 │   ├── favicon.ico        # Site favicon
 │   ├── globals.css        # Global styles & Tailwind imports
 │   ├── layout.tsx         # Root layout (providers, fonts)
-│   ├── page.tsx           # Landing page
+│   ├── page.tsx           # Salon directory (public listing)
 │   └── tw-animate.css     # Tailwind animation utilities
 │
 ├── components/            # Reusable components
@@ -859,6 +884,26 @@ src/
 │   │   ├── views/         # Auth page views
 │   │   └── index.ts       # Public exports
 │   │
+│   ├── booking/           # Booking engine module (Milestone 3)
+│   │   ├── components/    # Booking UI (12 components)
+│   │   │   ├── CreateAppointmentDialog.tsx  # Multi-step booking (275 lines)
+│   │   │   ├── AppointmentList.tsx          # List + filters (200)
+│   │   │   ├── BookingSummary.tsx            # Review before confirm (197)
+│   │   │   ├── TimeSlotGrid.tsx             # 15-min slot grid (141)
+│   │   │   ├── BookingForm.tsx              # Customer info form (119)
+│   │   │   ├── BookingConfirmation.tsx      # Confirmation screen (113)
+│   │   │   ├── ServiceSelector.tsx          # Multi-select services (110)
+│   │   │   ├── DatePicker.tsx               # Calendar date picker (94)
+│   │   │   ├── CancelAppointmentDialog.tsx  # Cancel form (89)
+│   │   │   ├── UpdateStatusDropdown.tsx     # Status change UI (83)
+│   │   │   ├── StaffSelector.tsx            # Staff picker (63)
+│   │   │   └── AppointmentStatusBadge.tsx   # Status badge (26)
+│   │   ├── hooks/
+│   │   │   └── useBookingFlow.ts            # Booking state management (110)
+│   │   ├── lib/
+│   │   │   └── constants.ts                 # Booking constants (29)
+│   │   └── index.ts
+│   │
 │   ├── convex/            # Convex integration
 │   │   └── ConvexClientProvider.tsx
 │   │
@@ -876,20 +921,34 @@ src/
 │   │   ├── lib/           # Currency utilities (formatPrice, kurusToLira)
 │   │   └── index.ts       # Public exports
 │   │
-│   └── staff/             # Staff management module
-│       ├── components/    # Staff components (dialogs, lists, forms)
-│       │   ├── AddStaffDialog.tsx
-│       │   ├── StaffTable.tsx
-│       │   ├── ScheduleEditor.tsx
-│       │   ├── ScheduleOverrideDialog.tsx
-│       │   ├── ScheduleOverrideList.tsx
-│       │   ├── TimeOffRequestForm.tsx
-│       │   ├── TimeOffRequestList.tsx
-│       │   ├── TimeOffApprovalPanel.tsx
-│       │   ├── OvertimeDialog.tsx
-│       │   └── OvertimeManager.tsx
+│   ├── staff/             # Staff management module
+│   │   ├── components/    # Staff components (dialogs, lists, forms)
+│   │   │   ├── AddStaffDialog.tsx
+│   │   │   ├── StaffTable.tsx
+│   │   │   ├── ScheduleEditor.tsx
+│   │   │   ├── ScheduleOverrideDialog.tsx
+│   │   │   ├── ScheduleOverrideList.tsx
+│   │   │   ├── TimeOffRequestForm.tsx
+│   │   │   ├── TimeOffRequestList.tsx
+│   │   │   ├── TimeOffApprovalPanel.tsx
+│   │   │   ├── OvertimeDialog.tsx
+│   │   │   └── OvertimeManager.tsx
+│   │   ├── lib/           # Shared utilities & constants
+│   │   │   └── constants.ts  # DAYS, TIME_OPTIONS, timeToMinutes
+│   │   └── index.ts
+│   │
+│   └── customers/         # Customer database module
+│       ├── components/    # Customer components
+│       │   ├── AddCustomerDialog.tsx
+│       │   ├── EditCustomerDialog.tsx
+│       │   ├── DeleteCustomerDialog.tsx
+│       │   ├── MergeCustomerDialog.tsx
+│       │   ├── CustomerTable.tsx
+│       │   ├── CustomerSearch.tsx
+│       │   └── CustomerStats.tsx
 │       ├── lib/           # Shared utilities & constants
-│       │   └── constants.ts  # DAYS, TIME_OPTIONS, timeToMinutes
+│       │   ├── constants.ts  # ACCOUNT_STATUS_LABELS, SOURCE_LABELS
+│       │   └── phone.ts      # turkishPhoneSchema, formatPhoneInput
 │       └── index.ts
 │
 └── middleware.ts          # Next.js middleware (auth protection)
@@ -897,17 +956,28 @@ src/
 
 ### Route Structure
 
-| Route | File Path | Description |
-|-------|-----------|-------------|
-| `/` | `src/app/page.tsx` | Landing page |
-| `/sign-in` | `src/app/(auth)/sign-in/page.tsx` | Sign-in page |
-| `/onboarding` | `src/app/onboarding/page.tsx` | Org creation wizard |
-| `/dashboard` | `src/app/dashboard/page.tsx` | Redirects to active org |
-| `/:slug/dashboard` | `src/app/[slug]/dashboard/page.tsx` | Org dashboard |
-| `/:slug/services` | `src/app/[slug]/services/page.tsx` | Service catalog |
-| `/:slug/settings` | `src/app/[slug]/settings/page.tsx` | Org settings |
-| `/:slug/staff` | `src/app/[slug]/staff/page.tsx` | Staff list |
-| `/:slug/staff/:id` | `src/app/[slug]/staff/[id]/page.tsx` | Staff detail/edit |
+| Route | File Path | Auth | Description |
+|-------|-----------|------|-------------|
+| `/` | `src/app/page.tsx` | Public | Salon directory |
+| `/sign-in` | `src/app/(auth)/sign-in/page.tsx` | Public | Sign-in page |
+| `/onboarding` | `src/app/onboarding/page.tsx` | Auth | Org creation wizard |
+| `/dashboard` | `src/app/dashboard/page.tsx` | Auth | Redirects to active org |
+| `/:slug/dashboard` | `[slug]/(authenticated)/dashboard/page.tsx` | Auth+Org | Org dashboard |
+| `/:slug/appointments` | `[slug]/(authenticated)/appointments/page.tsx` | Auth+Org | Appointment management |
+| `/:slug/services` | `[slug]/(authenticated)/services/page.tsx` | Auth+Org | Service catalog |
+| `/:slug/settings` | `[slug]/(authenticated)/settings/page.tsx` | Auth+Org | Org settings |
+| `/:slug/staff` | `[slug]/(authenticated)/staff/page.tsx` | Auth+Org | Staff list |
+| `/:slug/staff/:id` | `[slug]/(authenticated)/staff/[id]/page.tsx` | Auth+Org | Staff detail/edit |
+| `/:slug/customers` | `[slug]/(authenticated)/customers/page.tsx` | Auth+Org | Customer list + search |
+| `/:slug/customers/:id` | `[slug]/(authenticated)/customers/[id]/page.tsx` | Auth+Org | Customer detail |
+| `/:slug/book` | `[slug]/(public)/book/page.tsx` | Public | Public booking page |
+| `/:slug/appointment/:code` | `[slug]/(public)/appointment/[code]/page.tsx` | Public | Appointment lookup by code |
+
+**Route Groups:**
+- `(authenticated)` — Requires authentication and organization membership. Has sidebar layout.
+- `(public)` — No authentication required. Minimal layout for customer-facing pages.
+
+**Middleware:** `src/middleware.ts` protects authenticated routes and whitelists public booking routes (`/book`, `/appointment/`).
 
 ---
 

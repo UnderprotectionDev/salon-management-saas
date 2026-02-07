@@ -1,9 +1,10 @@
 [PRD]
-# Sprint 8: Reports & Analytics
+
+# Milestone 8: Reports & Analytics
 
 ## Overview
 
-Sprint 8 builds the reporting and analytics system for business insights. Includes revenue reports, staff performance analysis, customer analytics, date range filtering, and CSV export functionality.
+Milestone8 builds the reporting and analytics system for business insights. Includes revenue reports, staff performance analysis, customer analytics, date range filtering, and CSV export functionality.
 
 **Problem Statement:** Salon owners need detailed reports to track business performance, staff productivity, and customer behavior over time.
 
@@ -21,6 +22,7 @@ Sprint 8 builds the reporting and analytics system for business insights. Includ
 ## Quality Gates
 
 **Backend Stories (Convex):**
+
 - `bunx convex dev` - Type generation
 - `bun run lint` - Biome linting
 - All queries optimized with proper indexes
@@ -28,12 +30,14 @@ Sprint 8 builds the reporting and analytics system for business insights. Includ
 - Report queries handle large datasets (1000+ appointments)
 
 **Frontend Stories (React/Next.js):**
+
 - `bun run lint` - Biome linting
 - `bun run build` - Production build verification
 - Manual testing: Reports load in <2 seconds
 - Charts render correctly with real data
 
 **Full-Stack Stories:**
+
 - All backend + frontend quality gates
 - Date range filtering works correctly
 - CSV export downloads valid file
@@ -42,10 +46,12 @@ Sprint 8 builds the reporting and analytics system for business insights. Includ
 ## Dependencies
 
 **Requires completed:**
-- Sprint 4: Booking Operations (completed appointments for revenue)
-- Sprint 2: Services, Staff, Customers (entities for analytics)
+
+- Milestone4: Booking Operations (completed appointments for revenue)
+- Milestone2: Services, Staff, Customers (entities for analytics)
 
 **Provides foundation for:**
+
 - Future advanced BI features (v2.0)
 
 ## User Stories
@@ -59,6 +65,7 @@ Sprint 8 builds the reporting and analytics system for business insights. Includ
 **Type:** Full-Stack
 
 **Acceptance Criteria:**
+
 - [ ] Revenue report page with date range picker
 - [ ] Total revenue card shows sum for selected period
 - [ ] Revenue trend chart (line chart by day/week/month)
@@ -69,6 +76,7 @@ Sprint 8 builds the reporting and analytics system for business insights. Includ
 - [ ] Export to CSV button
 
 **Technical Notes:**
+
 - Files to create:
   - `convex/reports.ts` - Revenue query with aggregations
   - `src/app/[slug]/reports/revenue/page.tsx` - Revenue report page
@@ -90,9 +98,10 @@ Sprint 8 builds the reporting and analytics system for business insights. Includ
 **Type:** Full-Stack
 
 **Acceptance Criteria:**
+
 - [ ] Staff performance page with date range picker
 - [ ] Staff comparison table: Name, Total appointments, Completed, No-shows, Revenue, Utilization %
-- [ ] Utilization % = (actual hours worked / scheduled hours) * 100
+- [ ] Utilization % = (actual hours worked / scheduled hours) \* 100
   - **Definition:** "Scheduled hours" refers to the staff member's `defaultSchedule` working hours from the `staff` table, calculated across the selected date range
   - **Calculation:** Sum all hours from `defaultSchedule` entries that fall within the report's date range
   - **Fallback:** If `defaultSchedule` is empty or undefined, use organization's business hours (`organizationSettings.businessHours`) as the baseline
@@ -103,6 +112,7 @@ Sprint 8 builds the reporting and analytics system for business insights. Includ
 - [ ] Export to CSV button
 
 **Technical Notes:**
+
 - Files to create:
   - `convex/reports.ts` - Add `staffPerformance` query
   - `src/app/[slug]/reports/staff/page.tsx` - Staff performance page
@@ -112,7 +122,7 @@ Sprint 8 builds the reporting and analytics system for business insights. Includ
   - Completed: Count where status = "completed"
   - No-shows: Count where status = "no_show"
   - Revenue: Sum of completed appointment prices
-  - Utilization: (sum of appointment durations) / (scheduled hours * 60)
+  - Utilization: (sum of appointment durations) / (scheduled hours \* 60)
 - Use `shadcn/ui Table` with sorting
 
 ### US-034: Customer Analytics
@@ -124,6 +134,7 @@ Sprint 8 builds the reporting and analytics system for business insights. Includ
 **Type:** Full-Stack
 
 **Acceptance Criteria:**
+
 - [ ] Customer analytics page with date range picker
 - [ ] Total customers card (active customers with appointments)
 - [ ] New vs returning customers chart (bar chart by month)
@@ -133,6 +144,7 @@ Sprint 8 builds the reporting and analytics system for business insights. Includ
 - [ ] Export to CSV button
 
 **Technical Notes:**
+
 - Files to create:
   - `convex/reports.ts` - Add `customerAnalytics` query
   - `src/app/[slug]/reports/customers/page.tsx` - Customer analytics page
@@ -153,6 +165,7 @@ Sprint 8 builds the reporting and analytics system for business insights. Includ
 **Type:** Frontend
 
 **Acceptance Criteria:**
+
 - [ ] Date range picker component with presets (Today, Last 7 days, Last 30 days, This month, Last month, Custom)
 - [ ] Custom range allows selecting start and end dates
 - [ ] Selected range is displayed in human-readable format
@@ -161,6 +174,7 @@ Sprint 8 builds the reporting and analytics system for business insights. Includ
 - [ ] Date range persists in URL query params
 
 **Technical Notes:**
+
 - Files to create:
   - `src/components/DateRangePicker.tsx` - Reusable component
 - Use `shadcn/ui Calendar` + `Popover`
@@ -176,6 +190,7 @@ Sprint 8 builds the reporting and analytics system for business insights. Includ
 **Type:** Full-Stack
 
 **Acceptance Criteria:**
+
 - [ ] Export button on each report page
 - [ ] CSV includes all visible columns from current view
 - [ ] CSV respects current date range filter
@@ -184,6 +199,7 @@ Sprint 8 builds the reporting and analytics system for business insights. Includ
 - [ ] CSV uses UTF-8 encoding (Turkish character support)
 
 **Technical Notes:**
+
 - Files to create:
   - `convex/exports.ts` - CSV generation action
   - `src/components/ExportButton.tsx` - Export trigger
@@ -195,7 +211,7 @@ Sprint 8 builds the reporting and analytics system for business insights. Includ
 
 - FR-8.1: Reports only include "completed" appointments for revenue calculations
 - FR-8.2: Date range picker max range is 1 year
-- FR-8.3: Utilization % is calculated as (appointment hours / scheduled hours) * 100
+- FR-8.3: Utilization % is calculated as (appointment hours / scheduled hours) \* 100
 - FR-8.4: Retention rate counts customers with 2+ appointments in period
 - FR-8.5: CSV export respects organization timezone for date display
 - FR-8.6: All monetary values are displayed in Turkish Lira (₺)
@@ -213,21 +229,25 @@ Sprint 8 builds the reporting and analytics system for business insights. Includ
 ## Technical Considerations
 
 ### Performance
+
 - Report queries can be expensive (aggregations across large datasets)
 - Add composite indexes: `appointments.by_organization_status_date`
 - Consider caching for frequently accessed reports (1-hour TTL)
 - Paginate top customers table (show top 50)
 
 ### Aggregation Strategy
+
 - Use Convex queries with in-memory aggregation (acceptable for <10k appointments/month)
 - For larger datasets (future), consider pre-aggregated tables (daily rollups)
 
 ### Date Range Handling
+
 - All date comparisons use organization timezone
 - Convert user-selected dates to UTC for database queries
 - Display results in organization's local timezone
 
 ### CSV Generation
+
 - Server-side generation prevents client-side performance issues
 - Max CSV size: 10MB (approximately 50k rows)
 - For larger exports, use streaming CSV generation (post-MVP)

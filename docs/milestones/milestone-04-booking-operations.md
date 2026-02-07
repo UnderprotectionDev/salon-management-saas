@@ -1,9 +1,10 @@
 [PRD]
-# Sprint 4: Booking Engine - Operations
+
+# Milestone 4: Booking Engine - Operations
 
 ## Overview
 
-Sprint 4 completes the booking system with operational workflows: online booking wizard for customers, walk-in quick booking for staff, check-in/checkout operations, cancellations, rescheduling, and no-show tracking.
+Milestone 4 completes the booking system with operational workflows: online booking wizard for customers, walk-in quick booking for staff, check-in/checkout operations, cancellations, rescheduling, and no-show tracking.
 
 **Problem Statement:** Appointments need full lifecycle management from creation through completion, with different flows for online customers vs walk-in clients.
 
@@ -21,18 +22,21 @@ Sprint 4 completes the booking system with operational workflows: online booking
 ## Quality Gates
 
 **Backend Stories (Convex):**
+
 - `bunx convex dev` - Type generation and schema validation
 - `bun run lint` - Biome linting
 - All mutations use custom wrappers
 - All functions have `returns:` validators
 
 **Frontend Stories (React/Next.js):**
+
 - `bun run lint` - Biome linting
 - `bun run build` - Production build verification
 - Manual E2E testing of booking wizard (all 7 steps)
 - OTP flow tested with valid/invalid codes
 
 **Full-Stack Stories:**
+
 - All backend + frontend quality gates
 - Complete booking flow works end-to-end
 - Walk-in booking creates appointment instantly
@@ -41,12 +45,14 @@ Sprint 4 completes the booking system with operational workflows: online booking
 ## Dependencies
 
 **Requires completed:**
-- Sprint 3: Booking Engine Core (slot availability, appointment creation)
-- Sprint 2: Customers (customer records)
+
+- Milestone 3: Booking Engine Core (slot availability, appointment creation)
+- Milestone 2: Customers (customer records)
 
 **Provides foundation for:**
-- Sprint 5: Dashboard (displays appointments with status)
-- Sprint 7: Email Notifications (triggers on booking/cancellation)
+
+- Milestone 5: Dashboard (displays appointments with status)
+- Milestone 7: Email Notifications (triggers on booking/cancellation)
 
 ## User Stories
 
@@ -59,6 +65,7 @@ Sprint 4 completes the booking system with operational workflows: online booking
 **Type:** Full-Stack
 
 **Acceptance Criteria:**
+
 - [ ] Step 1: Service selection (multi-select)
 - [ ] Step 2: Staff selection (or "any available")
 - [ ] Step 3: Date selection (calendar, 30 days ahead)
@@ -72,6 +79,7 @@ Sprint 4 completes the booking system with operational workflows: online booking
 - [ ] Slot lock is created on step 4, released if user abandons
 
 **Technical Notes:**
+
 - Files to create:
   - `src/app/[slug]/book/page.tsx` - Wizard container
   - `src/modules/booking/components/BookingWizard.tsx` - Step orchestrator
@@ -92,8 +100,9 @@ Sprint 4 completes the booking system with operational workflows: online booking
 **Type:** Full-Stack
 
 **Acceptance Criteria:**
+
 - [ ] System generates 6-digit OTP code when customer enters phone
-- [ ] OTP is sent via SMS (mock for MVP, real SMS in Sprint 7 enhancement)
+- [ ] OTP is sent via SMS (mock for MVP, real SMS in Milestone7 enhancement)
 - [ ] OTP expires after 5 minutes
 - [ ] Customer can request resend (max 3 attempts)
 - [ ] Customer enters OTP in input field
@@ -103,6 +112,7 @@ Sprint 4 completes the booking system with operational workflows: online booking
 - [ ] Successful OTP verification transitions appointment from "pending" to "confirmed" status
 
 **Technical Notes:**
+
 - Files to create:
   - `convex/otp.ts` - OTP generation, validation, cleanup
   - `src/modules/booking/components/OTPInput.tsx` - 6-digit input
@@ -119,6 +129,7 @@ Sprint 4 completes the booking system with operational workflows: online booking
 **Type:** Full-Stack
 
 **Acceptance Criteria:**
+
 - [ ] Single-form view with all fields (customer, service, staff, time)
 - [ ] Defaults: current staff, current time
 - [ ] Customer lookup by phone (autocomplete)
@@ -128,6 +139,7 @@ Sprint 4 completes the booking system with operational workflows: online booking
 - [ ] Accessible from dashboard quick actions
 
 **Technical Notes:**
+
 - Files to create:
   - `src/modules/booking/components/WalkInForm.tsx`
   - `convex/appointments.ts` - Add `createWalkIn` mutation
@@ -147,6 +159,7 @@ Sprint 4 completes the booking system with operational workflows: online booking
 **Type:** Backend + UI
 
 **Acceptance Criteria:**
+
 - [ ] Staff can mark "confirmed" appointment as "checked_in"
 - [ ] Staff can mark "checked_in" appointment as "completed"
 - [ ] Check-in allowed 15 minutes before appointment
@@ -154,6 +167,7 @@ Sprint 4 completes the booking system with operational workflows: online booking
 - [ ] Status transitions are validated (no skipping states)
 
 **Technical Notes:**
+
 - Files to modify:
   - `convex/appointments.ts` - Add `checkIn`, `checkOut` mutations
   - Add buttons to appointment detail modal
@@ -168,6 +182,7 @@ Sprint 4 completes the booking system with operational workflows: online booking
 **Type:** Full-Stack
 
 **Acceptance Criteria:**
+
 - [ ] Customer can cancel appointment up to 2 hours before start time
 - [ ] Staff can cancel appointment at any time
 - [ ] Cancellation shows confirmation dialog
@@ -177,6 +192,7 @@ Sprint 4 completes the booking system with operational workflows: online booking
 - [ ] Cancellation reason is optional (free text)
 
 **Technical Notes:**
+
 - Files to modify:
   - `convex/appointments.ts` - Add `cancel`, `markNoShow` mutations
 - Add `cancellationReason` field to appointments table
@@ -191,6 +207,7 @@ Sprint 4 completes the booking system with operational workflows: online booking
 **Type:** Full-Stack
 
 **Acceptance Criteria:**
+
 - [ ] Reschedule shows available slots for same service/staff combination
 - [ ] New slot is validated for availability
 - [ ] Original slot is released
@@ -200,10 +217,11 @@ Sprint 4 completes the booking system with operational workflows: online booking
 - [ ] Staff can reschedule at any time
 
 **Technical Notes:**
+
 - Files to create:
   - `convex/appointments.ts` - Add `reschedule` mutation
   - `src/modules/appointments/components/RescheduleModal.tsx`
-- Reuse slot availability query from Sprint 3
+- Reuse slot availability query from Milestone3
 - Add `rescheduledFrom` and `rescheduledTo` fields
 
 ## Functional Requirements
@@ -218,15 +236,16 @@ Sprint 4 completes the booking system with operational workflows: online booking
 
 ## Non-Goals (Out of Scope)
 
-- Real SMS sending (Sprint 7 integration, MVP uses console log)
-- Email confirmation (Sprint 7)
+- Real SMS sending (Milestone7 integration, MVP uses console log)
+- Email confirmation (Milestone7)
 - Customer payment/deposits (post-MVP)
 - Recurring appointment booking (v2.0)
-- Booking via customer portal (Sprint 9)
+- Booking via customer portal (Milestone9)
 
 ## Technical Considerations
 
 ### State Machine
+
 ```
 pending ─────> confirmed ─────> checked_in ─────> completed
    │                │                 │
@@ -235,15 +254,18 @@ pending ─────> confirmed ─────> checked_in ─────> 
 ```
 
 ### OTP Security
+
 - Store OTP as hashed value (bcrypt)
 - Rate limit OTP generation and validation
 - Cleanup expired OTPs via cron (every 10 minutes)
 
 ### Cancellation Policy
+
 - Enforce 2-hour rule: `startTime - now() >= 2 hours`
 - Staff override: Use `orgMutation` with elevated permissions to bypass policy for admin/owner roles
 
 **Mutation Wrapper Definitions:**
+
 - `orgMutation`: Organization-scoped operations with automatic membership verification
 - `adminMutation`: Elevated admin/owner-only operations (e.g., staff management, sensitive settings)
 
