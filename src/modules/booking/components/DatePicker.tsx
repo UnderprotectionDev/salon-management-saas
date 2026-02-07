@@ -20,16 +20,14 @@ function groupDatesByMonth(dates: string[]): MonthGroup[] {
 
   for (const dateStr of dates) {
     const d = new Date(`${dateStr}T00:00:00`);
-    const label = d.toLocaleDateString("tr-TR", {
+    const label = d.toLocaleDateString("en-US", {
       month: "long",
       year: "numeric",
     });
-    // Capitalize first letter
-    const capitalizedLabel = label.charAt(0).toUpperCase() + label.slice(1);
 
-    if (capitalizedLabel !== currentKey) {
-      currentKey = capitalizedLabel;
-      currentGroup = { label: capitalizedLabel, dates: [] };
+    if (label !== currentKey) {
+      currentKey = label;
+      currentGroup = { label, dates: [] };
       groups.push(currentGroup);
     }
     currentGroup!.dates.push(dateStr);
@@ -56,7 +54,7 @@ export function DatePicker({ selectedDate, onDateSelect }: DatePickerProps) {
   return (
     <div className="space-y-3">
       <p className="text-sm text-muted-foreground">
-        Randevu için bir tarih seçin
+        Select a date for appointment
       </p>
       {monthGroups.map((group) => (
         <div key={group.label} className="space-y-2">
@@ -67,10 +65,10 @@ export function DatePicker({ selectedDate, onDateSelect }: DatePickerProps) {
               const isToday = d.getTime() === today.getTime();
               const isTomorrow = d.getTime() === tomorrow.getTime();
               const dayName = isToday
-                ? "Bugün"
+                ? "Today"
                 : isTomorrow
-                  ? "Yarın"
-                  : d.toLocaleDateString("tr-TR", { weekday: "short" });
+                  ? "Tomorrow"
+                  : d.toLocaleDateString("en-US", { weekday: "short" });
               const dayNum = d.getDate();
               const isSelected = selectedDate === date;
 

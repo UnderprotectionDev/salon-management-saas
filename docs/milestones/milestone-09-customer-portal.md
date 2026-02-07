@@ -54,7 +54,7 @@ Milestone9 builds the customer-facing self-service portal with magic link authen
 
 **Provides foundation for:**
 
-- Future customer features (loyalty programs, reviews) - v2.0
+- None (milestone completes customer portal scope)
 
 ## User Stories
 
@@ -187,7 +187,7 @@ Milestone9 builds the customer-facing self-service portal with magic link authen
 - Files to modify:
   - `src/app/[slug]/book/page.tsx` - Accept query params for pre-fill
 - Query params: `?services={ids}&staff={id}&customer={id}`
-- Pre-fill steps 1-2, customer starts at step 3 (date selection)
+- Pre-fill steps 1-2, customer starts at step 3 (date & time selection)
 
 ### US-038: Customer Profile Settings
 
@@ -223,13 +223,13 @@ Milestone9 builds the customer-facing self-service portal with magic link authen
 
 ## Non-Goals (Out of Scope)
 
-- Customer reviews/ratings - v2.0
-- Customer loyalty program - v2.0
-- Customer payment methods storage - Post-MVP (requires PCI compliance)
-- Notification preferences (opt-in/out) - Post-MVP
-- Multiple profiles per email (family accounts) - v2.0
-- Social login (Google, Facebook) - Post-MVP
-- Two-factor authentication - Post-MVP
+- Customer reviews/ratings
+- Customer loyalty program
+- Customer payment methods storage (requires PCI compliance)
+- Notification preferences (opt-in/opt-out)
+- Multiple profiles per email (family accounts)
+- Social login (Google, Facebook)
+- Two-factor authentication
 
 ## Technical Considerations
 

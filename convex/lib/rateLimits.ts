@@ -163,6 +163,16 @@ export const rateLimiter = new RateLimiter(components.rateLimiter, {
     rate: 3,
     period: HOUR,
   },
+
+  /**
+   * Randevu yeniden planlama limiti
+   * Saatte max 3 yeniden planlama
+   */
+  rescheduleBooking: {
+    kind: "token bucket",
+    rate: 3,
+    period: HOUR,
+  },
 });
 
 // Re-export time constants for use elsewhere

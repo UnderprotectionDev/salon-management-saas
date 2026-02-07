@@ -246,8 +246,8 @@ export const createProfile = authedMutation({
       wednesday: { available: true, start: "09:00", end: "17:00" },
       thursday: { available: true, start: "09:00", end: "17:00" },
       friday: { available: true, start: "09:00", end: "17:00" },
-      saturday: { available: false, start: null, end: null },
-      sunday: { available: false, start: null, end: null },
+      saturday: { available: false, start: "", end: "" },
+      sunday: { available: false, start: "", end: "" },
     };
 
     const staffId = await ctx.db.insert("staff", {
@@ -430,8 +430,8 @@ export const migrateStaffSchedules = internalMutation({
       wednesday: { available: true, start: "09:00", end: "17:00" },
       thursday: { available: true, start: "09:00", end: "17:00" },
       friday: { available: true, start: "09:00", end: "17:00" },
-      saturday: { available: false, start: null, end: null },
-      sunday: { available: false, start: null, end: null },
+      saturday: { available: false, start: "", end: "" },
+      sunday: { available: false, start: "", end: "" },
     };
 
     let migrated = 0;

@@ -190,8 +190,7 @@ Milestone7 integrates Resend for email notifications with React Email templates.
 
 ## Non-Goals (Out of Scope)
 
-- SMS notifications (v2.0 - requires separate provider)
-- WhatsApp notifications (v2.0)
+- WhatsApp notifications (out of scope)
 - Email customization/templates per organization (all use default)
 - Email unsubscribe functionality (transactional emails exempt)
 - Email analytics dashboard (use Resend dashboard)

@@ -411,21 +411,6 @@ export const customerSourceValidator = v.union(
   v.literal("import"),
 );
 
-/** Customer notification preferences */
-export const customerNotificationPreferencesValidator = v.object({
-  emailReminders: v.boolean(),
-  smsReminders: v.boolean(),
-});
-
-/** Customer KVKK consent */
-export const customerConsentsValidator = v.object({
-  dataProcessing: v.boolean(),
-  marketing: v.boolean(),
-  dataProcessingAt: v.optional(v.number()),
-  marketingAt: v.optional(v.number()),
-  withdrawnAt: v.optional(v.number()),
-});
-
 /** Customer document validator */
 export const customerDocValidator = v.object({
   _id: v.id("customers"),
@@ -438,7 +423,6 @@ export const customerDocValidator = v.object({
   phoneVerified: v.optional(v.boolean()),
   accountStatus: v.optional(customerAccountStatusValidator),
   preferredStaffId: v.optional(v.id("staff")),
-  notificationPreferences: v.optional(customerNotificationPreferencesValidator),
   totalVisits: v.optional(v.number()),
   totalSpent: v.optional(v.number()),
   lastVisitDate: v.optional(v.string()),
@@ -447,7 +431,6 @@ export const customerDocValidator = v.object({
   staffNotes: v.optional(v.string()),
   tags: v.optional(v.array(v.string())),
   source: v.optional(customerSourceValidator),
-  consents: v.optional(customerConsentsValidator),
   createdAt: v.number(),
   updatedAt: v.number(),
 });
@@ -469,6 +452,14 @@ export const customerListItemValidator = v.object({
   createdAt: v.number(),
 });
 
+/** Customer search result (lightweight for phone autocomplete) */
+export const customerSearchResultValidator = v.object({
+  _id: v.id("customers"),
+  name: v.string(),
+  phone: v.string(),
+  email: v.optional(v.string()),
+});
+
 /** Customer with preferred staff (enriched for detail page) */
 export const customerWithStaffValidator = v.object({
   _id: v.id("customers"),
@@ -482,7 +473,6 @@ export const customerWithStaffValidator = v.object({
   accountStatus: v.optional(customerAccountStatusValidator),
   preferredStaffId: v.optional(v.id("staff")),
   preferredStaffName: v.optional(v.string()),
-  notificationPreferences: v.optional(customerNotificationPreferencesValidator),
   totalVisits: v.optional(v.number()),
   totalSpent: v.optional(v.number()),
   lastVisitDate: v.optional(v.string()),
@@ -491,7 +481,6 @@ export const customerWithStaffValidator = v.object({
   staffNotes: v.optional(v.string()),
   tags: v.optional(v.array(v.string())),
   source: v.optional(customerSourceValidator),
-  consents: v.optional(customerConsentsValidator),
   createdAt: v.number(),
   updatedAt: v.number(),
 });
@@ -556,6 +545,18 @@ export const paymentStatusValidator = v.union(
   v.literal("refunded"),
 );
 
+/** Reschedule history entry */
+export const rescheduleHistoryEntryValidator = v.object({
+  fromDate: v.string(),
+  fromStartTime: v.number(),
+  fromEndTime: v.number(),
+  toDate: v.string(),
+  toStartTime: v.number(),
+  toEndTime: v.number(),
+  rescheduledBy: v.union(v.literal("customer"), v.literal("staff")),
+  rescheduledAt: v.number(),
+});
+
 /** Appointment document validator */
 export const appointmentDocValidator = v.object({
   _id: v.id("appointments"),
@@ -586,6 +587,9 @@ export const appointmentDocValidator = v.object({
   staffNotes: v.optional(v.string()),
   reminderSentAt: v.optional(v.number()),
   confirmationSentAt: v.optional(v.number()),
+  rescheduledAt: v.optional(v.number()),
+  rescheduleCount: v.optional(v.number()),
+  rescheduleHistory: v.optional(v.array(rescheduleHistoryEntryValidator)),
   createdAt: v.number(),
   updatedAt: v.number(),
 });
@@ -631,14 +635,20 @@ export const publicAppointmentValidator = v.object({
   startTime: v.number(),
   endTime: v.number(),
   status: appointmentStatusValidator,
+  source: appointmentSourceValidator,
   confirmationCode: v.string(),
   staffName: v.string(),
   staffImageUrl: v.optional(v.string()),
+  staffId: v.id("staff"),
   customerName: v.string(),
+  customerPhone: v.string(),
   customerNotes: v.optional(v.string()),
+  cancelledAt: v.optional(v.number()),
+  rescheduleCount: v.optional(v.number()),
   total: v.number(),
   services: v.array(
     v.object({
+      serviceId: v.id("services"),
       serviceName: v.string(),
       duration: v.number(),
       price: v.number(),
@@ -699,6 +709,9 @@ export const appointmentWithDetailsValidator = v.object({
   staffNotes: v.optional(v.string()),
   reminderSentAt: v.optional(v.number()),
   confirmationSentAt: v.optional(v.number()),
+  rescheduledAt: v.optional(v.number()),
+  rescheduleCount: v.optional(v.number()),
+  rescheduleHistory: v.optional(v.array(rescheduleHistoryEntryValidator)),
   createdAt: v.number(),
   updatedAt: v.number(),
   // Enriched fields

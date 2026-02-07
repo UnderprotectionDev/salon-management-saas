@@ -308,35 +308,35 @@ Same interface as staff schedule editor, but for business-wide defaults.
 | Cancellation window | Number | 2 hours | How late customers can cancel |
 | Slot duration | Number | 15 min | Booking slot increments |
 | Allow staff selection | Boolean | true | Let customers choose staff |
-| Require phone verification | Boolean | true | OTP for online bookings |
 
 ---
 
 ## Core Booking Engine
 
 > **Priority:** P0 (MVP Must-Have)
-> **Status:** ✅ Implemented (Milestone 3)
+> **Status:** ✅ Implemented (Milestones 3 & 4)
 > **Owner:** Backend Team
 > **Dependencies:** Multi-tenancy, Staff Management, Service Catalog
 
-The core booking engine handles appointment creation, slot availability calculation, conflict prevention, and the complete booking lifecycle.
+The core booking engine handles appointment creation, slot availability calculation, conflict prevention, and the complete booking lifecycle including cancellation, rescheduling, and customer self-service operations.
 
-> **Implementation:** `convex/appointments.ts` (801 lines), `convex/slots.ts` (206 lines), `convex/slotLocks.ts` (145 lines), `convex/appointmentServices.ts` (54 lines), `convex/crons.ts` (14 lines), `convex/lib/confirmation.ts` (40 lines), `convex/lib/dateTime.ts` (78 lines). Frontend: 15 files in `src/modules/booking/` (1,667 lines).
+> **Implementation:** `convex/appointments.ts` (1,223 lines), `convex/slots.ts` (206 lines), `convex/slotLocks.ts` (145 lines), `convex/appointmentServices.ts` (54 lines), `convex/crons.ts` (14 lines), `convex/lib/confirmation.ts` (40 lines), `convex/lib/dateTime.ts` (94 lines). Frontend: 16 files in `src/modules/booking/` (1,824 lines).
 
 ### Key Business Rules
 
 | Rule | Description | Status |
 |------|-------------|--------|
 | **Multi-Service** | Sequential execution, single staff per appointment (M3) | ✅ |
-| **Cancellation** | Cancel with reason and cancelledBy tracking | ✅ |
+| **Cancellation** | Cancel with reason and cancelledBy tracking (staff + customer self-service) | ✅ |
+| **Rescheduling** | Reschedule with history tracking (staff + customer self-service, 2hr policy) | ✅ |
+| **No-Show** | Only markable after appointment start time (frontend + backend validation) | ✅ |
 | **Walk-In** | Staff-created booking via `createByStaff` (walk_in source) | ✅ |
-| **Pricing Display** | Starting price format ("₺150'den başlayan") | ✅ |
+| **Pricing Display** | Starting price format ("Starting from ₺150") | ✅ |
+| **Customer Self-Service** | Cancel/reschedule via confirmation code + phone verification | ✅ |
 | **Reminders** | Single email 24 hours before appointment | 📋 Planned (M7) |
 | **Different staff per service** | Each service assigned to different staff | 📋 Planned (post-MVP) |
 
 ### Booking State Machine
-
-> **Note:** OTP verification (`pending_verification` state) was deferred from M3. The flow goes directly from slot lock to appointment creation.
 
 ```mermaid
 stateDiagram-v2
@@ -418,7 +418,7 @@ interface AppointmentService {
 
 ### Slot Availability Algorithm
 
-> **Implementation:** `convex/slots.ts` (206 lines), `convex/lib/dateTime.ts` (78 lines)
+> **Implementation:** `convex/slots.ts` (206 lines), `convex/lib/dateTime.ts` (94 lines)
 
 **Query:** `slots.available` (publicQuery)
 
@@ -475,19 +475,16 @@ interface AppointmentService {
 
 1. **Service Selection** - Multi-select with duration/price (`ServiceSelector.tsx`)
 2. **Staff Selection** - "Any Available" or specific staff (`StaffSelector.tsx`)
-3. **Date Selection** - Calendar date picker (`DatePicker.tsx`)
-4. **Time Selection** - 15-min increment grid with real-time availability (`TimeSlotGrid.tsx`)
-5. **Customer Information** - Name, phone (Turkish format), email, notes (`BookingForm.tsx`)
-6. **Review & Confirm** - Summary with pricing breakdown (`BookingSummary.tsx`)
-7. **Confirmation** - Confirmation code display (`BookingConfirmation.tsx`)
-
-> **Note:** OTP verification (originally step 6) was deferred. Booking goes directly from customer info to confirmation.
+3. **Date & Time Selection** - Calendar date picker + 15-min time slot grid in single view (`DateTimePicker.tsx`)
+4. **Customer Information** - Name, phone (Turkish format), email, notes (`BookingForm.tsx`)
+5. **Review & Confirm** - Summary with pricing breakdown (`BookingSummary.tsx`)
+6. **Confirmation** - Confirmation code display (`BookingConfirmation.tsx`)
 
 ### Walk-In Quick Booking
 
-> **Implementation:** `appointments.createByStaff` (orgMutation) via `CreateAppointmentDialog.tsx` (275 lines)
+> **Implementation:** `appointments.createByStaff` (orgMutation) via `CreateAppointmentDialog.tsx` (459 lines)
 
-For walk-in customers, staff can create bookings with the `CreateAppointmentDialog` component.
+For walk-in customers, staff can create bookings with the `CreateAppointmentDialog` component. Includes customer combobox with search, inline new customer creation, and default staff/time selection.
 
 | Field | Required | Notes |
 |-------|----------|-------|
@@ -513,7 +510,6 @@ For walk-in customers, staff can create bookings with the `CreateAppointmentDial
 Services with variable pricing display as starting prices:
 
 ```
-"Saç Kesimi" - ₺150'den başlayan
 "Hair Cut" - Starting from ₺150
 ```
 
@@ -521,9 +517,9 @@ Services with variable pricing display as starting prices:
 | Scenario | Display |
 |----------|---------|
 | Fixed price | `₺150` |
-| Variable price | `₺150'den başlayan` / `Starting from ₺150` |
+| Variable price | `Starting from ₺150` |
 | Price range | `₺150 - ₺300` (optional) |
-| Free service | `Ücretsiz` / `Free` |
+| Free service | `Free` |
 
 ### Reminder System
 
@@ -562,7 +558,7 @@ stateDiagram-v2
     Prompted --> Recognized: Skips account creation
     Registered --> [*]
 
-    Guest: Phone + OTP verified
+    Guest: Phone provided
     Recognized: Pre-filled info, no account
     Prompted: "Create account for benefits" shown
     Registered: Full account access
@@ -571,7 +567,7 @@ stateDiagram-v2
 **Booking by Account State:**
 | Visit | Account State | Experience |
 |-------|---------------|------------|
-| 1st | Guest | Book with phone + OTP, no account |
+| 1st | Guest | Book with phone, no account |
 | 2nd | Recognized | Phone recognized, info pre-filled |
 | 3rd+ | Prompted | Banner: "Create account to view history" |
 | After signup | Registered | Full portal access, booking history |
@@ -645,7 +641,6 @@ customers: defineTable({
   name: v.string(),
   email: v.string(),
   phone: v.string(),
-  phoneVerified: v.boolean(),
 
   // Account Status
   accountStatus: v.union(

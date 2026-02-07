@@ -607,12 +607,10 @@ flowchart TB
     Staff{Select Staff?}
     AnyStaff[Any Available]
     SpecificStaff[Choose Staff]
-    Date[Select Date]
-    Time[Select Time Slot]
+    DateTime[Select Date & Time]
     SlotAvailable{Slot Available?}
     Lock[Acquire Slot Lock]
     Info[Enter Contact Info]
-    OTP[Verify Phone OTP]
     Confirm[Confirm Booking]
     Success([Booking Confirmed])
 
@@ -621,15 +619,14 @@ flowchart TB
     Select --> Staff
     Staff -->|Yes| SpecificStaff
     Staff -->|No| AnyStaff
-    SpecificStaff --> Date
-    AnyStaff --> Date
-    Date --> Time
-    Time --> SlotAvailable
-    SlotAvailable -->|No| Date
+    SpecificStaff --> DateTime
+    AnyStaff --> DateTime
+    DateTime --> SlotAvailable
+    SlotAvailable -->|No| DateTime
     SlotAvailable -->|Yes| Lock
     Lock --> Info
-    Info --> OTP
-    OTP --> Confirm
+    Info --> Confirm
+    Note right of Info: No OTP verification (deferred)
     Confirm --> Success
 ```
 
@@ -728,7 +725,7 @@ stateDiagram-v2
     Prompted --> Recognized: Skips
     Registered --> [*]
 
-    Guest: Phone + OTP verified
+    Guest: Phone provided (unverified)
     Recognized: Info pre-filled
     Prompted: Account creation banner
     Registered: Full portal access

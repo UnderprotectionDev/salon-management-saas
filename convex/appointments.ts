@@ -2,7 +2,11 @@ import { ConvexError, v } from "convex/values";
 import type { Doc, Id } from "./_generated/dataModel";
 import type { DatabaseReader } from "./_generated/server";
 import { ensureUniqueCode } from "./lib/confirmation";
-import { isOverlapping, timeStringToMinutes } from "./lib/dateTime";
+import {
+  dateTimeToEpoch,
+  isOverlapping,
+  timeStringToMinutes,
+} from "./lib/dateTime";
 import {
   authedQuery,
   ErrorCode,
@@ -55,6 +59,106 @@ async function enrichAppointment(
       price: s.price,
     })),
   };
+}
+
+// =============================================================================
+// Helper: Validate slot availability for a staff member
+// =============================================================================
+
+async function validateSlotAvailability(
+  ctx: { db: DatabaseReader },
+  params: {
+    staffId: Id<"staff">;
+    date: string;
+    startTime: number;
+    endTime: number;
+    excludeAppointmentId?: Id<"appointments">;
+  },
+) {
+  const { staffId, date, startTime, endTime, excludeAppointmentId } = params;
+
+  // Verify staff schedule
+  const staff = await ctx.db.get(staffId);
+  if (!staff || staff.status !== "active") {
+    throw new ConvexError({
+      code: ErrorCode.NOT_FOUND,
+      message: "Staff member not found or inactive",
+    });
+  }
+
+  const override = await ctx.db
+    .query("scheduleOverrides")
+    .withIndex("by_staff_date", (q) =>
+      q.eq("staffId", staffId).eq("date", date),
+    )
+    .first();
+
+  const overtimeEntries = await ctx.db
+    .query("staffOvertime")
+    .withIndex("by_staff_date", (q) =>
+      q.eq("staffId", staffId).eq("date", date),
+    )
+    .collect();
+
+  const resolved = resolveSchedule({
+    date,
+    defaultSchedule: staff.defaultSchedule ?? undefined,
+    override: override ?? null,
+    overtimeEntries,
+  });
+
+  // Build working windows
+  const windows: Array<{ start: number; end: number }> = [];
+  if (
+    resolved.available &&
+    resolved.effectiveStart &&
+    resolved.effectiveEnd
+  ) {
+    windows.push({
+      start: timeStringToMinutes(resolved.effectiveStart),
+      end: timeStringToMinutes(resolved.effectiveEnd),
+    });
+  }
+  for (const ot of resolved.overtimeWindows) {
+    windows.push({
+      start: timeStringToMinutes(ot.start),
+      end: timeStringToMinutes(ot.end),
+    });
+  }
+
+  const fitsInWindow = windows.some(
+    (w) => startTime >= w.start && endTime <= w.end,
+  );
+  if (!fitsInWindow) {
+    throw new ConvexError({
+      code: ErrorCode.VALIDATION_ERROR,
+      message: "Selected time is outside staff working hours",
+    });
+  }
+
+  // Check for conflicting appointments
+  const existingAppts = await ctx.db
+    .query("appointments")
+    .withIndex("by_staff_date", (q) =>
+      q.eq("staffId", staffId).eq("date", date),
+    )
+    .collect();
+  const activeAppts = existingAppts.filter(
+    (a) =>
+      a.status !== "cancelled" &&
+      a.status !== "no_show" &&
+      a._id !== excludeAppointmentId,
+  );
+  for (const appt of activeAppts) {
+    if (isOverlapping(startTime, endTime, appt.startTime, appt.endTime)) {
+      throw new ConvexError({
+        code: ErrorCode.ALREADY_EXISTS,
+        message: "This time slot is no longer available",
+      });
+    }
+  }
+
+  return staff;
 }
 
 // =============================================================================
@@ -120,64 +224,13 @@ export const create = publicMutation({
       });
     }
 
-    // 3. Verify staff schedule
-    const staff = await ctx.db.get(args.staffId);
-    if (!staff || staff.status !== "active") {
-      throw new ConvexError({
-        code: ErrorCode.NOT_FOUND,
-        message: "Staff member not found or inactive",
-      });
-    }
-
-    const override = await ctx.db
-      .query("scheduleOverrides")
-      .withIndex("by_staff_date", (q) =>
-        q.eq("staffId", args.staffId).eq("date", args.date),
-      )
-      .first();
-
-    const overtimeEntries = await ctx.db
-      .query("staffOvertime")
-      .withIndex("by_staff_date", (q) =>
-        q.eq("staffId", args.staffId).eq("date", args.date),
-      )
-      .collect();
-
-    const resolved = resolveSchedule({
+    // 3. Validate staff schedule + slot availability
+    const staff = await validateSlotAvailability(ctx, {
+      staffId: args.staffId,
       date: args.date,
-      defaultSchedule: staff.defaultSchedule ?? undefined,
-      override: override ?? null,
-      overtimeEntries,
+      startTime: args.startTime,
+      endTime: args.endTime,
     });
-
-    // Build working windows
-    const windows: Array<{ start: number; end: number }> = [];
-    if (
-      resolved.available &&
-      resolved.effectiveStart &&
-      resolved.effectiveEnd
-    ) {
-      windows.push({
-        start: timeStringToMinutes(resolved.effectiveStart),
-        end: timeStringToMinutes(resolved.effectiveEnd),
-      });
-    }
-    for (const ot of resolved.overtimeWindows) {
-      windows.push({
-        start: timeStringToMinutes(ot.start),
-        end: timeStringToMinutes(ot.end),
-      });
-    }
-
-    const fitsInWindow = windows.some(
-      (w) => args.startTime >= w.start && args.endTime <= w.end,
-    );
-    if (!fitsInWindow) {
-      throw new ConvexError({
-        code: ErrorCode.VALIDATION_ERROR,
-        message: "Selected time is outside staff working hours",
-      });
-    }
 
     // 4. Verify at least one service selected
     if (args.serviceIds.length === 0) {
@@ -194,32 +247,6 @@ export const create = publicMutation({
         throw new ConvexError({
           code: ErrorCode.VALIDATION_ERROR,
           message: "Staff cannot perform one or more selected services",
-        });
-      }
-    }
-
-    // 5. Check for conflicting appointments
-    const existingAppts = await ctx.db
-      .query("appointments")
-      .withIndex("by_staff_date", (q) =>
-        q.eq("staffId", args.staffId).eq("date", args.date),
-      )
-      .collect();
-    const activeAppts = existingAppts.filter(
-      (a) => a.status !== "cancelled" && a.status !== "no_show",
-    );
-    for (const appt of activeAppts) {
-      if (
-        isOverlapping(
-          args.startTime,
-          args.endTime,
-          appt.startTime,
-          appt.endTime,
-        )
-      ) {
-        throw new ConvexError({
-          code: ErrorCode.ALREADY_EXISTS,
-          message: "This time slot is no longer available",
         });
       }
     }
@@ -355,13 +382,19 @@ export const getByConfirmationCode = publicQuery({
       startTime: enriched.startTime,
       endTime: enriched.endTime,
       status: enriched.status,
+      source: enriched.source,
       confirmationCode: enriched.confirmationCode,
       staffName: enriched.staffName,
       staffImageUrl: enriched.staffImageUrl,
+      staffId: enriched.staffId,
       customerName: enriched.customerName,
+      customerPhone: enriched.customerPhone,
       customerNotes: enriched.customerNotes,
+      cancelledAt: enriched.cancelledAt,
+      rescheduleCount: enriched.rescheduleCount,
       total: enriched.total,
       services: enriched.services.map((s) => ({
+        serviceId: s.serviceId,
         serviceName: s.serviceName,
         duration: s.duration,
         price: s.price,
@@ -743,6 +776,31 @@ export const updateStatus = orgMutation({
     }
 
     const now = Date.now();
+    const appointmentEpoch = dateTimeToEpoch(
+      appointment.date,
+      appointment.startTime,
+    );
+
+    // Check-in: only allowed 15 minutes before appointment start
+    if (args.status === "checked_in") {
+      const fifteenMinBefore = appointmentEpoch - 15 * 60 * 1000;
+      if (now < fifteenMinBefore) {
+        throw new ConvexError({
+          code: ErrorCode.VALIDATION_ERROR,
+          message: "Check-in is only allowed 15 minutes before appointment time",
+        });
+      }
+    }
+
+    // No-show: only allowed after appointment start time
+    if (args.status === "no_show") {
+      if (now < appointmentEpoch) {
+        throw new ConvexError({
+          code: ErrorCode.VALIDATION_ERROR,
+          message: "No-show can only be marked after the appointment start time",
+        });
+      }
+    }
     const updates: Record<string, unknown> = {
       status: args.status,
       updatedAt: now,
@@ -827,6 +885,338 @@ export const cancel = orgMutation({
       cancellationReason: args.reason,
       updatedAt: now,
     });
+
+    return { success: true };
+  },
+});
+
+// =============================================================================
+// Customer Self-Service (Public)
+// =============================================================================
+
+/**
+ * Cancel an appointment by customer (public).
+ * Requires confirmation code + phone for identity verification.
+ * Enforces 2-hour cancellation policy.
+ */
+export const cancelByCustomer = publicMutation({
+  args: {
+    organizationId: v.id("organization"),
+    confirmationCode: v.string(),
+    phone: v.string(),
+    reason: v.optional(v.string()),
+  },
+  returns: v.object({ success: v.boolean() }),
+  handler: async (ctx, args) => {
+    // Rate limit
+    const { ok, retryAfter } = await rateLimiter.limit(ctx, "cancelBooking", {
+      key: args.organizationId,
+    });
+    if (!ok) {
+      throw new ConvexError({
+        code: ErrorCode.RATE_LIMITED,
+        message: `Cancellation limit exceeded. Try again in ${Math.ceil((retryAfter ?? 60000) / 1000)} seconds.`,
+      });
+    }
+
+    // Look up appointment
+    const appointment = await ctx.db
+      .query("appointments")
+      .withIndex("by_confirmation", (q) =>
+        q.eq("confirmationCode", args.confirmationCode),
+      )
+      .first();
+
+    if (!appointment || appointment.organizationId !== args.organizationId) {
+      throw new ConvexError({
+        code: ErrorCode.NOT_FOUND,
+        message: "Appointment not found",
+      });
+    }
+
+    // Verify identity: phone must match customer
+    const customer = await ctx.db.get(appointment.customerId);
+    if (!customer || customer.phone !== args.phone) {
+      throw new ConvexError({
+        code: ErrorCode.FORBIDDEN,
+        message: "Phone number does not match appointment records",
+      });
+    }
+
+    // Only allow cancellation of non-terminal statuses
+    const terminalStatuses = ["completed", "cancelled", "no_show"];
+    if (terminalStatuses.includes(appointment.status)) {
+      throw new ConvexError({
+        code: ErrorCode.VALIDATION_ERROR,
+        message: `Cannot cancel a ${appointment.status} appointment`,
+      });
+    }
+
+    // Enforce 2-hour cancellation policy
+    const appointmentEpoch = dateTimeToEpoch(
+      appointment.date,
+      appointment.startTime,
+    );
+    const twoHoursBefore = appointmentEpoch - 2 * 60 * 60 * 1000;
+    if (Date.now() > twoHoursBefore) {
+      throw new ConvexError({
+        code: ErrorCode.VALIDATION_ERROR,
+        message:
+          "Appointments can only be cancelled at least 2 hours before the start time",
+      });
+    }
+
+    const now = Date.now();
+    await ctx.db.patch(appointment._id, {
+      status: "cancelled",
+      cancelledAt: now,
+      cancelledBy: "customer",
+      cancellationReason: args.reason,
+      updatedAt: now,
+    });
+
+    return { success: true };
+  },
+});
+
+// =============================================================================
+// Staff Reschedule
+// =============================================================================
+
+/**
+ * Reschedule an appointment (staff action).
+ * Changes date/time, optionally changes staff.
+ * Keeps same confirmation code.
+ */
+export const reschedule = orgMutation({
+  args: {
+    appointmentId: v.id("appointments"),
+    newDate: v.string(),
+    newStartTime: v.number(),
+    newEndTime: v.number(),
+    newStaffId: v.optional(v.id("staff")),
+  },
+  returns: v.object({ success: v.boolean() }),
+  handler: async (ctx, args) => {
+    const appointment = await ctx.db.get(args.appointmentId);
+    if (!appointment || appointment.organizationId !== ctx.organizationId) {
+      throw new ConvexError({
+        code: ErrorCode.NOT_FOUND,
+        message: "Appointment not found",
+      });
+    }
+
+    // Only pending/confirmed can be rescheduled
+    if (appointment.status !== "pending" && appointment.status !== "confirmed") {
+      throw new ConvexError({
+        code: ErrorCode.VALIDATION_ERROR,
+        message: `Cannot reschedule a ${appointment.status} appointment`,
+      });
+    }
+
+    const targetStaffId = args.newStaffId ?? appointment.staffId;
+
+    // Validate slot availability (exclude self from conflict check)
+    const staff = await validateSlotAvailability(ctx, {
+      staffId: targetStaffId,
+      date: args.newDate,
+      startTime: args.newStartTime,
+      endTime: args.newEndTime,
+      excludeAppointmentId: appointment._id,
+    });
+
+    // If changing staff, verify new staff can perform all services
+    if (args.newStaffId && args.newStaffId !== appointment.staffId) {
+      const apptServices = await ctx.db
+        .query("appointmentServices")
+        .withIndex("by_appointment", (q) =>
+          q.eq("appointmentId", appointment._id),
+        )
+        .collect();
+
+      const staffServiceIds = staff.serviceIds ?? [];
+      for (const as of apptServices) {
+        if (!staffServiceIds.includes(as.serviceId)) {
+          throw new ConvexError({
+            code: ErrorCode.VALIDATION_ERROR,
+            message: "New staff member cannot perform all booked services",
+          });
+        }
+      }
+
+      // Update appointment service records with new staffId
+      for (const as of apptServices) {
+        await ctx.db.patch(as._id, { staffId: args.newStaffId });
+      }
+    }
+
+    const now = Date.now();
+    const historyEntry = {
+      fromDate: appointment.date,
+      fromStartTime: appointment.startTime,
+      fromEndTime: appointment.endTime,
+      toDate: args.newDate,
+      toStartTime: args.newStartTime,
+      toEndTime: args.newEndTime,
+      rescheduledBy: "staff" as const,
+      rescheduledAt: now,
+    };
+
+    await ctx.db.patch(appointment._id, {
+      date: args.newDate,
+      startTime: args.newStartTime,
+      endTime: args.newEndTime,
+      staffId: targetStaffId,
+      rescheduledAt: now,
+      rescheduleCount: (appointment.rescheduleCount ?? 0) + 1,
+      rescheduleHistory: [
+        ...(appointment.rescheduleHistory ?? []),
+        historyEntry,
+      ],
+      updatedAt: now,
+    });
+
+    return { success: true };
+  },
+});
+
+// =============================================================================
+// Customer Reschedule (Public)
+// =============================================================================
+
+/**
+ * Reschedule an appointment by customer (public).
+ * Requires confirmation code + phone for identity verification.
+ * Enforces 2-hour policy. Cannot change staff.
+ */
+export const rescheduleByCustomer = publicMutation({
+  args: {
+    organizationId: v.id("organization"),
+    confirmationCode: v.string(),
+    phone: v.string(),
+    newDate: v.string(),
+    newStartTime: v.number(),
+    newEndTime: v.number(),
+    sessionId: v.string(),
+  },
+  returns: v.object({ success: v.boolean() }),
+  handler: async (ctx, args) => {
+    // Rate limit
+    const { ok, retryAfter } = await rateLimiter.limit(
+      ctx,
+      "rescheduleBooking",
+      { key: args.organizationId },
+    );
+    if (!ok) {
+      throw new ConvexError({
+        code: ErrorCode.RATE_LIMITED,
+        message: `Reschedule limit exceeded. Try again in ${Math.ceil((retryAfter ?? 60000) / 1000)} seconds.`,
+      });
+    }
+
+    // Look up appointment
+    const appointment = await ctx.db
+      .query("appointments")
+      .withIndex("by_confirmation", (q) =>
+        q.eq("confirmationCode", args.confirmationCode),
+      )
+      .first();
+
+    if (!appointment || appointment.organizationId !== args.organizationId) {
+      throw new ConvexError({
+        code: ErrorCode.NOT_FOUND,
+        message: "Appointment not found",
+      });
+    }
+
+    // Verify identity
+    const customer = await ctx.db.get(appointment.customerId);
+    if (!customer || customer.phone !== args.phone) {
+      throw new ConvexError({
+        code: ErrorCode.FORBIDDEN,
+        message: "Phone number does not match appointment records",
+      });
+    }
+
+    // Only pending/confirmed
+    if (appointment.status !== "pending" && appointment.status !== "confirmed") {
+      throw new ConvexError({
+        code: ErrorCode.VALIDATION_ERROR,
+        message: `Cannot reschedule a ${appointment.status} appointment`,
+      });
+    }
+
+    // Enforce 2-hour policy
+    const appointmentEpoch = dateTimeToEpoch(
+      appointment.date,
+      appointment.startTime,
+    );
+    const twoHoursBefore = appointmentEpoch - 2 * 60 * 60 * 1000;
+    if (Date.now() > twoHoursBefore) {
+      throw new ConvexError({
+        code: ErrorCode.VALIDATION_ERROR,
+        message:
+          "Appointments can only be rescheduled at least 2 hours before the start time",
+      });
+    }
+
+    // Validate slot lock ownership
+    const locks = await ctx.db
+      .query("slotLocks")
+      .withIndex("by_session", (q) => q.eq("sessionId", args.sessionId))
+      .collect();
+    const myLock = locks.find(
+      (l) =>
+        l.staffId === appointment.staffId &&
+        l.date === args.newDate &&
+        l.startTime === args.newStartTime &&
+        l.endTime === args.newEndTime &&
+        l.expiresAt > Date.now(),
+    );
+    if (!myLock) {
+      throw new ConvexError({
+        code: ErrorCode.VALIDATION_ERROR,
+        message:
+          "Slot lock expired or not found. Please select a time slot again.",
+      });
+    }
+
+    // Validate slot availability (exclude self from conflict check)
+    await validateSlotAvailability(ctx, {
+      staffId: appointment.staffId,
+      date: args.newDate,
+      startTime: args.newStartTime,
+      endTime: args.newEndTime,
+      excludeAppointmentId: appointment._id,
+    });
+
+    const now = Date.now();
+    const historyEntry = {
+      fromDate: appointment.date,
+      fromStartTime: appointment.startTime,
+      fromEndTime: appointment.endTime,
+      toDate: args.newDate,
+      toStartTime: args.newStartTime,
+      toEndTime: args.newEndTime,
+      rescheduledBy: "customer" as const,
+      rescheduledAt: now,
+    };
+
+    await ctx.db.patch(appointment._id, {
+      date: args.newDate,
+      startTime: args.newStartTime,
+      endTime: args.newEndTime,
+      rescheduledAt: now,
+      rescheduleCount: (appointment.rescheduleCount ?? 0) + 1,
+      rescheduleHistory: [
+        ...(appointment.rescheduleHistory ?? []),
+        historyEntry,
+      ],
+      updatedAt: now,
+    });
+
+    // Delete the slot lock
+    await ctx.db.delete(myLock._id);
 
     return { success: true };
   },

@@ -13,26 +13,60 @@ import {
 import { api } from "../../../../convex/_generated/api";
 import type { Id } from "../../../../convex/_generated/dataModel";
 
-const TRANSITIONS: Record<string, { label: string; value: string }[]> = {
-  pending: [{ label: "Confirm", value: "confirmed" }],
-  confirmed: [{ label: "Check In", value: "checked_in" }],
-  checked_in: [{ label: "Start Service", value: "in_progress" }],
-  in_progress: [{ label: "Complete", value: "completed" }],
+const TRANSITIONS: Record<
+  string,
+  { label: string; value: string; variant?: "destructive" }[]
+> = {
+  pending: [
+    { label: "Confirm", value: "confirmed" },
+    { label: "No Show", value: "no_show", variant: "destructive" },
+  ],
+  confirmed: [
+    { label: "Check In", value: "checked_in" },
+    { label: "No Show", value: "no_show", variant: "destructive" },
+  ],
+  checked_in: [
+    { label: "Start Service", value: "in_progress" },
+    { label: "No Show", value: "no_show", variant: "destructive" },
+  ],
+  in_progress: [
+    { label: "Complete", value: "completed" },
+    { label: "No Show", value: "no_show", variant: "destructive" },
+  ],
 };
 
 type UpdateStatusDropdownProps = {
   appointmentId: Id<"appointments">;
   organizationId: Id<"organization">;
   currentStatus: string;
+  appointmentDate: string;
+  appointmentStartTime: number;
 };
 
 export function UpdateStatusDropdown({
   appointmentId,
   organizationId,
   currentStatus,
+  appointmentDate,
+  appointmentStartTime,
 }: UpdateStatusDropdownProps) {
   const updateStatus = useMutation(api.appointments.updateStatus);
-  const actions = TRANSITIONS[currentStatus];
+  let actions = TRANSITIONS[currentStatus];
+
+  // Check if appointment is in the past
+  const appointmentDateTime = new Date(`${appointmentDate}T00:00:00`);
+  appointmentDateTime.setHours(
+    Math.floor(appointmentStartTime / 60),
+    appointmentStartTime % 60,
+    0,
+    0,
+  );
+  const isPastAppointment = appointmentDateTime.getTime() < Date.now();
+
+  // Filter out "No Show" option if appointment hasn't started yet
+  if (!isPastAppointment && actions) {
+    actions = actions.filter((a) => a.value !== "no_show");
+  }
 
   if (!actions || actions.length === 0) return null;
 
@@ -49,18 +83,6 @@ export function UpdateStatusDropdown({
     }
   };
 
-  if (actions.length === 1) {
-    return (
-      <Button
-        size="sm"
-        variant="outline"
-        onClick={() => handleStatusChange(actions[0].value)}
-      >
-        {actions[0].label}
-      </Button>
-    );
-  }
-
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
@@ -73,6 +95,9 @@ export function UpdateStatusDropdown({
           <DropdownMenuItem
             key={action.value}
             onClick={() => handleStatusChange(action.value)}
+            className={
+              action.variant === "destructive" ? "text-destructive" : undefined
+            }
           >
             {action.label}
           </DropdownMenuItem>

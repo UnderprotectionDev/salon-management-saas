@@ -259,56 +259,6 @@ export default function CustomerDetailPage() {
               </CardContent>
             </Card>
           </div>
-
-          {/* Notification Preferences */}
-          {customer.notificationPreferences && (
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-base">
-                  Notification Preferences
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="flex gap-4 text-sm">
-                  <span>
-                    Email reminders:{" "}
-                    {customer.notificationPreferences.emailReminders
-                      ? "On"
-                      : "Off"}
-                  </span>
-                  <span>
-                    SMS reminders:{" "}
-                    {customer.notificationPreferences.smsReminders
-                      ? "On"
-                      : "Off"}
-                  </span>
-                </div>
-              </CardContent>
-            </Card>
-          )}
-
-          {/* KVKK Consent */}
-          {customer.consents && (
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-base">KVKK Consent</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="flex gap-4 text-sm">
-                  <span>
-                    Data Processing:{" "}
-                    {customer.consents.dataProcessing
-                      ? "Granted"
-                      : "Not granted"}
-                  </span>
-                  <span>
-                    Marketing:{" "}
-                    {customer.consents.marketing ? "Granted" : "Not granted"}
-                  </span>
-                </div>
-              </CardContent>
-            </Card>
-          )}
         </TabsContent>
 
         {/* Activity Tab */}

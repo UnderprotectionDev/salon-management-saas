@@ -72,6 +72,16 @@ export function getTodayDateString(): string {
 }
 
 /**
+ * Convert a date string + minutes from midnight to epoch milliseconds.
+ * Used for time-based policy checks (e.g., 2-hour cancellation window).
+ * "2025-01-15" + 540 → epoch ms for 2025-01-15 09:00 UTC
+ */
+export function dateTimeToEpoch(date: string, minutesFromMidnight: number): number {
+  const ms = new Date(`${date}T00:00:00Z`).getTime();
+  return ms + minutesFromMidnight * 60 * 1000;
+}
+
+/**
  * Add days to a date string and return "YYYY-MM-DD".
  */
 export function addDays(dateStr: string, days: number): string {

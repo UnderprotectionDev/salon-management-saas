@@ -236,9 +236,8 @@ Milestone 2 establishes the core data entities required for booking operations: 
 - Staff commissions (planned for Milestone 8)
 - Customer loyalty programs (post-MVP)
 - Service add-ons or upsells (post-MVP)
-- Multi-location staff assignments (v2.0)
-- Customer payment methods storage (post-MVP, requires PCI compliance)
-- SMS notifications for customers (Milestone 7 focuses on email only)
+- Multi-location staff assignments (out of scope)
+- Customer payment methods storage (out of scope, requires PCI compliance)
 
 ## Technical Considerations
 

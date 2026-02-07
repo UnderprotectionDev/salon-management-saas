@@ -55,11 +55,11 @@ convex/              # Backend functions and schema
 │   ├── rateLimits.ts # Rate limiting config
 │   ├── scheduleResolver.ts # Schedule resolution logic (163 lines)
 │   ├── confirmation.ts # Confirmation code generator (40 lines)
-│   ├── dateTime.ts  # Date/time utilities (78 lines)
+│   ├── dateTime.ts  # Date/time utilities (94 lines)
 │   ├── phone.ts     # Turkish phone validation helper
 │   ├── relationships.ts # Database relationship helpers
 │   └── rls.ts       # Row-level security helpers
-├── appointments.ts  # Appointment CRUD + booking (801 lines)
+├── appointments.ts  # Appointment CRUD + booking + reschedule (~1200 lines)
 ├── appointmentServices.ts # Appointment-service junction (54 lines)
 ├── auth.ts          # Auth instance and options
 ├── crons.ts         # Scheduled jobs - slot lock cleanup (14 lines)
@@ -70,7 +70,7 @@ convex/              # Backend functions and schema
 ├── users.ts         # User queries (getCurrentUser)
 ├── serviceCategories.ts # Service category CRUD (188 lines)
 ├── services.ts      # Service CRUD + staff assignment (353 lines)
-├── customers.ts     # Customer CRUD + search + merge (~500 lines)
+├── customers.ts     # Customer CRUD + search + merge (~600 lines)
 ├── scheduleOverrides.ts # Schedule override CRUD (178 lines)
 ├── timeOffRequests.ts # Time-off workflow (335 lines)
 ├── staffOvertime.ts # Overtime management (155 lines)
@@ -90,7 +90,7 @@ src/
 └── modules/         # Feature modules (domain-driven)
     ├── convex/      # ConvexClientProvider
     ├── auth/        # Auth components, layouts, views
-    ├── booking/     # Booking engine (12 components, 1 hook, 1,667 lines)
+    ├── booking/     # Booking engine (16 components, 1 hook, 1,824 lines)
     ├── organization/ # OrganizationProvider, OrganizationSwitcher
     ├── customers/   # Customer database, search, merge
     ├── services/    # Service catalog, categories, pricing
@@ -215,43 +215,44 @@ export const create = adminMutation({
 });
 ```
 
-**Available rate limits:** `createInvitation`, `resendInvitation`, `createOrganization`, `addMember`, `createService`, `createCustomer`, `createScheduleOverride`, `createTimeOffRequest`, `createOvertime`, `createBooking`, `cancelBooking`
+**Available rate limits:** `createInvitation`, `resendInvitation`, `createOrganization`, `addMember`, `createService`, `createCustomer`, `createScheduleOverride`, `createTimeOffRequest`, `createOvertime`, `createBooking`, `cancelBooking`, `rescheduleBooking`
 
 ## Key Files
 
-| File                             | Purpose                                                             |
-| -------------------------------- | ------------------------------------------------------------------- |
-| `convex/schema.ts`               | Database schema (creates types after `bunx convex dev`)             |
-| `convex/lib/functions.ts`        | Custom function wrappers (CRITICAL - use these, not base functions) |
-| `convex/lib/validators.ts`       | Shared return type validators (~716 lines)                          |
-| `convex/lib/rateLimits.ts`       | Rate limiting configuration                                         |
-| `convex/appointments.ts`         | Appointment CRUD + booking (801 lines)                              |
-| `convex/slots.ts`                | Slot availability algorithm (206 lines)                             |
-| `convex/slotLocks.ts`            | Slot lock acquire/release/cleanup (145 lines)                       |
-| `convex/appointmentServices.ts`  | Appointment-service junction (54 lines)                             |
-| `convex/crons.ts`                | Scheduled jobs - slot lock cleanup (14 lines)                       |
-| `convex/lib/confirmation.ts`     | Confirmation code generator (40 lines)                              |
-| `convex/lib/dateTime.ts`         | Date/time utilities (78 lines)                                      |
-| `convex/users.ts`                | User queries (getCurrentUser)                                       |
-| `convex/serviceCategories.ts`    | Service category CRUD                                               |
-| `convex/services.ts`             | Service CRUD + staff assignment                                     |
-| `convex/scheduleOverrides.ts`    | Schedule override management                                        |
-| `convex/timeOffRequests.ts`      | Time-off request workflow                                           |
-| `convex/staffOvertime.ts`        | Overtime management                                                 |
-| `convex/customers.ts`            | Customer CRUD + search + merge                                      |
-| `convex/lib/phone.ts`            | Turkish phone validation helper                                     |
-| `convex/lib/scheduleResolver.ts` | Schedule resolution combining default + overrides + overtime        |
-| `convex/files.ts`                | File storage/upload (logos, staff images, service images)           |
-| `convex/betterAuth/auth.ts`      | Better Auth instance and options                                    |
-| `convex/http.ts`                 | HTTP router with auth routes                                        |
-| `src/lib/auth-client.ts`         | Client-side auth hooks (authClient)                                 |
-| `src/lib/auth-server.ts`         | Server-side auth helpers (isAuthenticated, getToken)                |
-| `src/app/layout.tsx`             | Root layout with ConvexClientProvider                               |
-| `src/lib/utils.ts`               | `cn()` utility for className merging                                |
-| `components.json`                | shadcn/ui configuration (New York style)                            |
-| `src/middleware.ts`              | Auth middleware for protected routes                                |
-| `src/modules/organization/`      | OrganizationProvider, hooks, OrganizationSwitcher                   |
-| `src/modules/booking/`           | Booking engine components, hooks, utilities                         |
+**Backend (start here when adding/modifying features):**
+
+| File                        | Purpose                                                             |
+| --------------------------- | ------------------------------------------------------------------- |
+| `convex/schema.ts`          | Database schema (types regenerate via `bunx convex dev`)            |
+| `convex/lib/functions.ts`   | Custom function wrappers + `ErrorCode` enum (CRITICAL)              |
+| `convex/lib/validators.ts`  | Shared return type validators (~730 lines)                          |
+| `convex/lib/rateLimits.ts`  | Rate limiting configuration                                         |
+
+**Frontend (key infrastructure):**
+
+| File                              | Purpose                                              |
+| --------------------------------- | ---------------------------------------------------- |
+| `src/lib/auth-client.ts`          | Client-side auth hooks (`authClient`)                |
+| `src/lib/auth-server.ts`          | Server-side auth helpers (`isAuthenticated`)         |
+| `src/modules/organization/`       | OrganizationProvider, hooks, OrganizationSwitcher    |
+| `src/middleware.ts`               | Auth middleware for protected routes                 |
+
+Domain-specific backend files (`convex/appointments.ts`, `convex/customers.ts`, `convex/services.ts`, etc.) follow the same patterns — use the Architecture tree above to find them.
+
+## Domain Conventions
+
+- **Pricing:** Stored as kuruş integers (15000 = ₺150.00). Convert at UI with `formatPrice()`.
+- **Phone numbers:** Turkish format (+90 5XX XXX XX XX). Validated via `convex/lib/phone.ts`.
+- **Confirmation codes:** 6-char alphanumeric (excludes 0/O/I/1). Generated by `convex/lib/confirmation.ts`.
+- **Soft vs hard delete:** Services use soft-delete (`status: "inactive"`). Customers use hard-delete.
+- **Schedule resolution:** `convex/lib/scheduleResolver.ts` merges default schedule + overrides + overtime for a given day.
+- **Slot locks:** Temporary locks (cleaned up by cron every 1 min) prevent double-booking during the booking flow.
+
+## Error Handling
+
+Functions throw `ConvexError` with an `ErrorCode` enum from `convex/lib/functions.ts`:
+
+`UNAUTHENTICATED`, `FORBIDDEN`, `ADMIN_REQUIRED`, `OWNER_REQUIRED`, `NOT_FOUND`, `ALREADY_EXISTS`, `VALIDATION_ERROR`, `INVALID_INPUT`, `RATE_LIMITED`, `INTERNAL_ERROR`
 
 ## Code Style
 
@@ -273,22 +274,6 @@ BETTER_AUTH_SECRET=...           # Better Auth secret key
 ```
 
 ## Critical Gotchas
-
-### Convex Function Wrappers
-
-**⚠️ ALWAYS use custom wrappers from `convex/lib/functions.ts`**
-
-- ❌ Don't use base `query()` or `mutation()` - they bypass auth/RLS
-- ✅ Use `publicQuery`, `authedQuery`, `orgQuery`, `adminMutation`, etc.
-- Functions with `orgQuery`/`orgMutation` don't need `organizationId` in args (auto-injected)
-
-### Return Validators
-
-**⚠️ ALL queries/mutations MUST have `returns:` validators**
-
-- Shared validators in `convex/lib/validators.ts`
-- Document validators include `_id` and `_creationTime`
-- Missing validators will cause type errors
 
 ### Better Auth
 
@@ -345,12 +330,8 @@ bunx convex dev
 5. Add components: `src/modules/[feature]/components/`
 6. Export public API: `src/modules/[feature]/index.ts`
 
-### Common Mistakes to Avoid
+### TanStack Form
 
-1. **Using base `query()`/`mutation()`** instead of custom wrappers
-2. **Forgetting `returns:` validators** on Convex functions
-3. **Adding `organizationId` to args** when using `orgQuery`/`orgMutation` (auto-injected)
-4. **Not running `bunx convex dev`** after schema changes
-5. **Using `useMemo`/`useCallback`** with React Compiler enabled
-6. **Editing `convex/_generated/`** or `convex/betterAuth/schema.ts`
-7. **Calling `form.reset()` during render** — use `key={id}` to force remount instead (TanStack Form)
+- `form.state.values` is NOT reactive for rendering — use `form.Subscribe` for reactive UI (e.g., disabled buttons)
+- Don't call `form.reset()` during render — use `key={id}` prop to force remount with new defaults
+- When passing partial data to an edit dialog, fetch the full doc via `useQuery(api.xxx.get)` inside the dialog
