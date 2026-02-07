@@ -74,7 +74,7 @@ erDiagram
 | Time-Off Requests | ✅ Implemented | Milestone 2B | Request/approve/reject workflow |
 | Staff Overtime | ✅ Implemented | Milestone 2B | Overtime slot management |
 | Customers | ✅ Implemented | Milestone 2C | Full CRUD, search, merge, phone validation |
-| Appointments & Slot Locks | ✅ Implemented | Milestone 3 | Full CRUD, slot availability, locking, cron cleanup |
+| Appointments & Slot Locks | ✅ Implemented | Milestones 3 & 4 | Full CRUD, slot availability, locking, cron cleanup, cancel/reschedule self-service |
 | Products & Inventory | 📋 Planned | Milestone 8+ | Schema exists, APIs pending |
 | Notifications | 📋 Planned | Milestone 7 | Schema exists, APIs pending |
 | Subscriptions (Polar) | 📋 Planned | Milestone 6 | Schema exists, APIs pending |
@@ -552,7 +552,6 @@ customers: defineTable({
   name: v.string(),
   email: v.string(),
   phone: v.string(),
-  phoneVerified: v.boolean(),
 
   // Account Status (Hybrid Model)
   accountStatus: v.union(
@@ -566,7 +565,6 @@ customers: defineTable({
   preferredStaffId: v.optional(v.id("staff")),
   notificationPreferences: v.object({
     emailReminders: v.boolean(),
-    smsReminders: v.boolean(),
   }),
 
   // Stats (denormalized)
@@ -690,9 +688,26 @@ appointments: defineTable({
   customerNotes: v.optional(v.string()),
   staffNotes: v.optional(v.string()),
 
+  // No-show
+  noShowAt: v.optional(v.number()),
+
   // Notifications
   reminderSentAt: v.optional(v.number()),
   confirmationSentAt: v.optional(v.number()),
+
+  // Reschedule tracking
+  rescheduledAt: v.optional(v.number()),
+  rescheduleCount: v.optional(v.number()),
+  rescheduleHistory: v.optional(v.array(v.object({
+    fromDate: v.string(),
+    fromStartTime: v.number(),
+    fromEndTime: v.number(),
+    toDate: v.string(),
+    toStartTime: v.number(),
+    toEndTime: v.number(),
+    rescheduledBy: v.union(v.literal("customer"), v.literal("staff")),
+    rescheduledAt: v.number(),
+  }))),
 
   createdAt: v.number(),
   updatedAt: v.number(),
@@ -720,7 +735,7 @@ pending → confirmed → checked_in → in_progress → completed
        ↘ no_show
 ```
 
-**Implementation:** ✅ Implemented (Milestone 3)
+**Implementation:** ✅ Implemented (Milestones 3 & 4)
 
 ---
 
@@ -980,7 +995,7 @@ estimatedDuration: v.number(), // Now required
 - `convex/lib/validators.ts` - Document validators for return types (~716 lines)
 - `convex/lib/scheduleResolver.ts` - Schedule resolution logic (163 lines)
 - `convex/lib/confirmation.ts` - Confirmation code generator (40 lines)
-- `convex/lib/dateTime.ts` - Date/time utilities (78 lines)
+- `convex/lib/dateTime.ts` - Date/time utilities (94 lines)
 - `convex/organizations.ts` - Organization CRUD operations
 - `convex/members.ts` - Member management
 - `convex/staff.ts` - Staff profile management
@@ -990,8 +1005,8 @@ estimatedDuration: v.number(), // Now required
 - `convex/scheduleOverrides.ts` - Schedule override CRUD (178 lines)
 - `convex/timeOffRequests.ts` - Time-off request workflow (335 lines)
 - `convex/staffOvertime.ts` - Overtime management (155 lines)
-- `convex/customers.ts` - Customer CRUD + search + merge (~500 lines)
-- `convex/appointments.ts` - Appointment CRUD + booking (801 lines)
+- `convex/customers.ts` - Customer CRUD + search + merge + phone autocomplete (609 lines)
+- `convex/appointments.ts` - Appointment CRUD + booking + cancel/reschedule self-service (1,223 lines)
 - `convex/appointmentServices.ts` - Appointment-service junction (54 lines)
 - `convex/slots.ts` - Slot availability algorithm (206 lines)
 - `convex/slotLocks.ts` - Slot lock management (145 lines)

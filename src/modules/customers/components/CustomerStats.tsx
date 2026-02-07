@@ -17,7 +17,7 @@ export function CustomerStats({
   noShowCount,
   createdAt,
 }: CustomerStatsProps) {
-  const memberSince = new Date(createdAt).toLocaleDateString("tr-TR", {
+  const memberSince = new Date(createdAt).toLocaleDateString("en-US", {
     year: "numeric",
     month: "short",
   });

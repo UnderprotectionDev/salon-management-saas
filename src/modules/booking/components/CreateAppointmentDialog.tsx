@@ -1,11 +1,19 @@
 "use client";
 
 import { useMutation, useQuery } from "convex/react";
-import { Loader2, Plus } from "lucide-react";
-import { useState } from "react";
+import { Check, ChevronsUpDown, Loader2, Plus, UserPlus } from "lucide-react";
+import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
+import {
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+} from "@/components/ui/command";
 import {
   Dialog,
   DialogContent,
@@ -13,7 +21,13 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
 import {
   Select,
   SelectContent,
@@ -22,6 +36,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
+import { useCurrentStaff } from "@/modules/organization";
 import { formatPrice } from "@/modules/services/lib/currency";
 import { api } from "../../../../convex/_generated/api";
 import type { Id } from "../../../../convex/_generated/dataModel";
@@ -32,12 +47,20 @@ type CreateAppointmentDialogProps = {
   date: string;
 };
 
+function getNearestQuarterHour(): string {
+  const now = new Date();
+  const minutes = now.getHours() * 60 + now.getMinutes();
+  const rounded = Math.ceil(minutes / 15) * 15;
+  return String(Math.max(360, Math.min(rounded, 1320))); // Clamp to 06:00–22:00
+}
+
 export function CreateAppointmentDialog({
   organizationId,
   date,
 }: CreateAppointmentDialogProps) {
   const [open, setOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const currentStaff = useCurrentStaff();
 
   // Form state
   const [customerId, setCustomerId] = useState<Id<"customers"> | "">("");
@@ -49,11 +72,22 @@ export function CreateAppointmentDialog({
   );
   const [notes, setNotes] = useState("");
 
+  // Customer selection state
+  const [customerComboOpen, setCustomerComboOpen] = useState(false);
+  const [selectedCustomerLabel, setSelectedCustomerLabel] = useState("");
+
+  // New customer inline form
+  const [showNewCustomer, setShowNewCustomer] = useState(false);
+  const [newCustomerName, setNewCustomerName] = useState("");
+  const [newCustomerPhone, setNewCustomerPhone] = useState("");
+  const [newCustomerEmail, setNewCustomerEmail] = useState("");
+
   // Queries
   const customers = useQuery(
     api.customers.list,
     open ? { organizationId } : "skip",
   );
+
   const staff = useQuery(
     api.staff.listActive,
     open ? { organizationId } : "skip",
@@ -64,6 +98,21 @@ export function CreateAppointmentDialog({
   );
 
   const createByStaff = useMutation(api.appointments.createByStaff);
+  const createCustomer = useMutation(api.customers.create);
+
+  // Default staff to current user's staff profile
+  useEffect(() => {
+    if (open && currentStaff && !staffId) {
+      setStaffId(currentStaff._id);
+    }
+  }, [open, currentStaff, staffId]);
+
+  // Default start time to nearest quarter hour
+  useEffect(() => {
+    if (open && !startTime) {
+      setStartTime(getNearestQuarterHour());
+    }
+  }, [open, startTime]);
 
   const resetForm = () => {
     setCustomerId("");
@@ -72,6 +121,11 @@ export function CreateAppointmentDialog({
     setStartTime("");
     setSource("walk_in");
     setNotes("");
+    setSelectedCustomerLabel("");
+    setShowNewCustomer(false);
+    setNewCustomerName("");
+    setNewCustomerPhone("");
+    setNewCustomerEmail("");
   };
 
   const toggleService = (id: Id<"services">) => {
@@ -86,8 +140,41 @@ export function CreateAppointmentDialog({
     timeOptions.push({ value: m, label: formatMinutesAsTime(m) });
   }
 
+  const handleSelectCustomer = (customer: {
+    _id: Id<"customers">;
+    name: string;
+    phone: string;
+  }) => {
+    setCustomerId(customer._id);
+    setSelectedCustomerLabel(`${customer.name} — ${customer.phone}`);
+    setCustomerComboOpen(false);
+    setShowNewCustomer(false);
+  };
+
   const handleSubmit = async () => {
-    if (!customerId || !staffId || serviceIds.length === 0 || !startTime) {
+    // If creating inline customer
+    let finalCustomerId = customerId;
+    if (showNewCustomer && !customerId) {
+      if (!newCustomerName.trim() || !newCustomerPhone.trim()) {
+        toast.error("Name and phone are required");
+        return;
+      }
+      try {
+        const newId = await createCustomer({
+          organizationId,
+          name: newCustomerName.trim(),
+          phone: newCustomerPhone.trim(),
+          email: newCustomerEmail.trim() || undefined,
+          source: "walk_in",
+        });
+        finalCustomerId = newId;
+      } catch (error: any) {
+        toast.error(error?.data?.message ?? "Failed to create customer");
+        return;
+      }
+    }
+
+    if (!finalCustomerId || !staffId || serviceIds.length === 0 || !startTime) {
       toast.error("Please fill in all required fields");
       return;
     }
@@ -100,7 +187,7 @@ export function CreateAppointmentDialog({
         date,
         startTime: Number(startTime),
         serviceIds,
-        customerId: customerId as Id<"customers">,
+        customerId: finalCustomerId as Id<"customers">,
         source,
         staffNotes: notes || undefined,
       });
@@ -134,24 +221,121 @@ export function CreateAppointmentDialog({
         </DialogHeader>
 
         <div className="space-y-4 pt-2">
-          {/* Customer */}
+          {/* Customer - Combobox */}
           <div className="space-y-2">
             <Label>Customer *</Label>
-            <Select
-              value={customerId}
-              onValueChange={(v) => setCustomerId(v as Id<"customers">)}
-            >
-              <SelectTrigger>
-                <SelectValue placeholder="Select customer" />
-              </SelectTrigger>
-              <SelectContent>
-                {customers?.map((c) => (
-                  <SelectItem key={c._id} value={c._id}>
-                    {c.name} - {c.phone}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            {selectedCustomerLabel && !showNewCustomer ? (
+              <div className="flex items-center gap-2">
+                <div className="flex-1 rounded-md border px-3 py-2 text-sm">
+                  {selectedCustomerLabel}
+                </div>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => {
+                    setCustomerId("");
+                    setSelectedCustomerLabel("");
+                  }}
+                >
+                  Change
+                </Button>
+              </div>
+            ) : showNewCustomer ? (
+              <div className="space-y-2 rounded-md border p-3">
+                <div className="flex items-center justify-between">
+                  <span className="text-sm font-medium">New Customer</span>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => {
+                      setShowNewCustomer(false);
+                      setNewCustomerName("");
+                      setNewCustomerPhone("");
+                      setNewCustomerEmail("");
+                    }}
+                  >
+                    Cancel
+                  </Button>
+                </div>
+                <Input
+                  value={newCustomerName}
+                  onChange={(e) => setNewCustomerName(e.target.value)}
+                  placeholder="Name *"
+                />
+                <Input
+                  value={newCustomerPhone}
+                  onChange={(e) => setNewCustomerPhone(e.target.value)}
+                  placeholder="+90 5XX XXX XX XX *"
+                />
+                <Input
+                  value={newCustomerEmail}
+                  onChange={(e) => setNewCustomerEmail(e.target.value)}
+                  placeholder="Email (optional)"
+                />
+              </div>
+            ) : (
+              <Popover
+                open={customerComboOpen}
+                onOpenChange={setCustomerComboOpen}
+              >
+                <PopoverTrigger asChild>
+                  <Button
+                    variant="outline"
+                    role="combobox"
+                    aria-expanded={customerComboOpen}
+                    className="w-full justify-between"
+                  >
+                    Select customer...
+                    <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-[var(--radix-popover-trigger-width)] p-0">
+                  <Command>
+                    <CommandInput placeholder="Search name or phone..." />
+                    <CommandList>
+                      <CommandEmpty>No customer found.</CommandEmpty>
+                      <CommandGroup>
+                        {customers?.map((customer) => (
+                          <CommandItem
+                            key={customer._id}
+                            value={`${customer.name} ${customer.phone}`}
+                            onSelect={() => handleSelectCustomer(customer)}
+                          >
+                            <Check
+                              className={`mr-2 h-4 w-4 ${
+                                customerId === customer._id
+                                  ? "opacity-100"
+                                  : "opacity-0"
+                              }`}
+                            />
+                            <div className="flex-1">
+                              <div className="font-medium">{customer.name}</div>
+                              <div className="text-xs text-muted-foreground">
+                                {customer.phone}
+                              </div>
+                            </div>
+                          </CommandItem>
+                        ))}
+                      </CommandGroup>
+                      <CommandGroup>
+                        <CommandItem
+                          onSelect={() => {
+                            setShowNewCustomer(true);
+                            setCustomerComboOpen(false);
+                          }}
+                          className="border-t"
+                        >
+                          <UserPlus className="mr-2 h-4 w-4" />
+                          Create new customer
+                        </CommandItem>
+                      </CommandGroup>
+                    </CommandList>
+                  </Command>
+                </PopoverContent>
+              </Popover>
+            )}
           </div>
 
           {/* Staff */}
@@ -182,7 +366,7 @@ export function CreateAppointmentDialog({
             <Label>Services *</Label>
             {!staffId && (
               <p className="text-sm text-muted-foreground">
-                Select a staff member first
+                Select staff first
               </p>
             )}
             <div className="max-h-48 overflow-y-auto space-y-1 rounded-md border p-3">
@@ -204,7 +388,7 @@ export function CreateAppointmentDialog({
                     />
                     <span className="flex-1 text-sm">{service.name}</span>
                     <span className="text-xs text-muted-foreground">
-                      {service.duration}min · {formatPrice(service.price)}
+                      {service.duration}dk · {formatPrice(service.price)}
                     </span>
                   </label>
                 ))}

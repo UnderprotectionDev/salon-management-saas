@@ -25,7 +25,7 @@ export function StaffSelector({
     return (
       <div className="text-center py-8">
         <p className="text-muted-foreground">
-          Bu hizmetler için uygun personel bulunamadı.
+          No staff available for these services.
         </p>
       </div>
     );

@@ -460,15 +460,15 @@ Milestone 1 establishes the complete multi-tenant architecture with organization
 
 ## Non-Goals (Out of Scope)
 
-- Multi-location support (single location per organization) - v2.0
-- Custom branding/white-labeling - Post-MVP
-- API keys for third-party integrations - v2.0
-- Organization billing (Milestone6)
-- Email notifications (Milestone7)
-- Advanced permissions (beyond owner/admin/member) - Post-MVP
-- Video uploads - Images only for MVP
-- Custom file storage provider - Use Convex storage
-- Audit log viewer UI (table exists, UI in Milestone8)
+- Multi-location support — single location per organization
+- Custom branding/white-labeling
+- API keys for third-party integrations
+- Organization billing — deferred to Milestone 6
+- Email notifications — deferred to Milestone 7
+- Advanced permissions — beyond owner/admin/member
+- Video uploads — images only for MVP
+- Custom file storage provider — use Convex storage
+- Audit log viewer UI — table exists, UI deferred to Milestone 8
 
 ## Technical Considerations
 

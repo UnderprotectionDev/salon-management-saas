@@ -159,7 +159,7 @@ Turkish beauty salons face several operational challenges:
 | **Data Retention** | 30 days after subscription ends |
 | **Reactivation** | Immediate upon successful payment |
 
-> **Note:** This is for platform subscription billing only. Customer payment processing (salon's customers paying for appointments) is planned for v2.0.
+> **Note:** This is for platform subscription billing only. Customer payment processing (salon's customers paying for appointments) is not part of MVP scope.
 
 ---
 
@@ -317,7 +317,7 @@ Salon data belongs to the salon. Clear export options and no vendor lock-in prac
 
 1. Target users have reliable internet access
 2. Smartphones are the primary device for customers
-3. Email is acceptable for notifications (SMS as P2)
+3. Email is acceptable for notifications
 4. Single location per tenant is sufficient for MVP
 5. Online payment processing can be deferred to post-MVP
 
@@ -329,7 +329,7 @@ Salon data belongs to the salon. Clear export options and no vendor lock-in prac
 
 | Scenario | Behavior |
 |----------|----------|
-| First booking | Customer books as **guest** (phone + OTP verification) |
+| First booking | Customer books as **guest** (phone number required, no verification) |
 | Repeat customer | System recognizes phone number, pre-fills info |
 | 3+ bookings | Customer receives **account creation prompt** |
 | Account benefits | View history, manage preferences, faster booking |
@@ -367,12 +367,7 @@ Salon data belongs to the salon. Clear export options and no vendor lock-in prac
 
 ### Location Model
 
-| Capability | MVP | v2.0+ |
-|------------|-----|-------|
-| Single location per salon | ✅ | ✅ |
-| Multi-location support | ❌ | ✅ |
-
-**MVP Constraint:** Each organization = one physical location. Multi-location chains create separate accounts or wait for v2.0.
+**MVP Constraint:** Each organization = one physical location. Multi-location chains must create separate accounts.
 
 ### Role Hierarchy
 
@@ -403,7 +398,7 @@ Staff (Employee)
 | Convex scalability | High | Low | Monitor usage, have migration plan |
 | Competition enters market | Medium | Medium | Build strong customer relationships, local market focus |
 | KVKK compliance issues | High | Low | Legal review, data handling policies |
-| No-show rate doesn't improve | Medium | Medium | Implement OTP verification, deposits (v2.0) |
+| No-show rate doesn't improve | Medium | Medium | Focus on email reminders and customer communication |
 | Support capacity | Medium | Medium | Self-service resources, prioritized support channels |
 | Payment failures | High | Medium | 7-day grace period, multiple retry attempts, clear communication |
 | High churn rate | High | Medium | Yearly discount incentive, engagement tracking, proactive outreach |
@@ -541,7 +536,6 @@ Acceptance Criteria:
 - [ ] Can select staff member or use "any available"
 - [ ] Can add multiple services to one appointment
 - [ ] Appointment created with status "checked_in" (already arrived)
-- [ ] Skips OTP verification (staff-initiated booking)
 - [ ] Customer record created/linked automatically by phone
 - [ ] Booking completed within 30 seconds
 
@@ -702,18 +696,15 @@ Acceptance Criteria:
 - [ ] System shows available time slots
 - [ ] Can select date and time
 - [ ] Prompted to enter contact info (phone, email)
-- [ ] Must verify phone with OTP
 - [ ] Receives confirmation after booking
 
 **Booking Flow:**
 1. Select service(s)
 2. Select staff (optional - "Any available" default)
-3. Select date
-4. Select available time slot
-5. Enter customer info
-6. Verify phone with OTP
-7. Confirm booking
-8. Receive confirmation
+3. Select date and time (calendar + available slots shown together)
+4. Enter customer info
+5. Confirm booking
+6. Receive confirmation
 
 #### US-022: View Available Slots [P0]
 
@@ -1025,22 +1016,6 @@ try {
 [I need more time] [Complete now]
 ```
 
-#### EC-003: OTP Verification Timeout
-
-**Scenario:** Customer doesn't enter OTP within 5-minute window.
-
-**Handling:**
-1. Code expires after 5 minutes
-2. Show "Code expired" message
-3. Offer "Resend code" button (60-second cooldown between sends)
-4. Slot lock released after OTP timeout
-5. Customer must restart booking flow
-
-**Rate Limits:**
-- Max 3 verification attempts per code
-- Max 5 codes sent per phone per hour
-- 60-second minimum between code requests
-
 ### Payment Edge Cases - SaaS Subscription (MVP)
 
 #### EC-PAY-001: Card Declined During Checkout
@@ -1164,8 +1139,6 @@ if (existingEvent) {
 |------|---------|--------|
 | `SLOT_UNAVAILABLE` | "This time slot is no longer available. Please select another time." | Show slot picker |
 | `LOCK_EXPIRED` | "Your slot reservation expired. Please select a time again." | Restart flow |
-| `INVALID_OTP` | "Incorrect code. Please try again." | Clear input, focus |
-| `OTP_EXPIRED` | "Code expired. Click 'Resend' to get a new code." | Show resend button |
 | `RATE_LIMITED` | "Too many attempts. Please wait [X] seconds." | Show countdown |
 | `PERMISSION_DENIED` | "You don't have permission to perform this action." | N/A |
 | `NOT_FOUND` | "The requested resource was not found." | Redirect to safe page |
@@ -1183,155 +1156,12 @@ Detailed technical messages should:
 
 ---
 
-## Future Roadmap
+## Future Enhancements
 
-This section outlines features planned for post-MVP releases.
+> **⚠️ Note:** Post-MVP features have been moved to a separate document as there is no guarantee they will be implemented. Focus remains on MVP success and customer feedback.
 
-### Version Overview
-
-| Version | Focus | Target |
-|---------|-------|--------|
-| v1.0 (MVP) | Core booking, staff management, **SaaS billing** | Initial release |
-| v1.1 | Enhanced notifications, Turkish i18n | Post-MVP quick wins |
-| v1.2 | Customer loyalty, advanced analytics | Growth features |
-| v2.0 | Customer payments, multi-location | Major expansion |
-| v2.x | AI features, marketplace | Future vision |
-
-> **Note:** SaaS subscription billing via Polar.sh is included in MVP (v1.0). Customer payment processing (deposits, prepayments for appointments) is planned for v2.0.
-
-### P2 Features (v1.1 - v1.2)
-
-**SMS Notifications (v1.1)**
-- Integration with Turkish SMS provider (Netgsm, Iletimerkezi)
-- SMS templates for: confirmation, reminder, cancellation
-- Opt-in/opt-out per customer
-- Character limit handling (Turkish characters)
-- Delivery status tracking
-- Cost tracking per organization
-
-**WhatsApp Integration (v1.2)**
-- WhatsApp Business API integration
-- Template messages (pre-approved)
-- Interactive booking confirmations
-- Quick reply buttons for confirm/cancel
-- Higher open rates than SMS
-
-**Waitlist Management (v1.1)**
-- Customer can request specific date/time/staff
-- Notification when slot becomes available
-- First-come-first-served or priority-based
-- Auto-expire waitlist entries after 24h
-- Admin can manually offer slots to waitlist
-
-**Recurring Appointments (v1.2)**
-- Set recurrence: weekly, bi-weekly, monthly
-- Choose end date or number of occurrences
-- Manage series (edit single vs all)
-- Conflict detection for future dates
-- Bulk cancellation of series
-
-**Advanced Analytics (v1.2)**
-- Revenue forecasting (based on bookings)
-- Staff utilization heatmaps
-- Customer cohort analysis
-- Service performance trends
-- Peak hours analysis
-- No-show prediction
-
-**Customer Loyalty Program (v1.2)**
-- Points-based system to encourage repeat visits
-- Earn points per visit (configurable rate)
-- Redeem points for discounts
-- Tier levels (Bronze, Silver, Gold)
-- Points expiration policy
-
-### P3 Features (v2.0+)
-
-**Customer Payment Processing (v2.0)**
-- One-time appointment payments via @polar-sh/sdk
-- Deposit collection (% of service price)
-- Full prepayment option
-- Refund processing
-- Receipt/invoice generation for customers
-- Financial reporting for salon owners
-
-> **Note:** Platform subscription billing is P0 and implemented in MVP via Polar.sh. This section covers customer-facing payments only.
-
-**Multi-Location Support (v2.0)**
-- Single organization with multiple physical locations
-- Staff assigned to specific location(s)
-- Services per location (optional)
-- Location-specific business hours
-- Customer chooses location when booking
-- Consolidated reporting across locations
-
-**Online Payments for Products (v2.1)**
-- Product catalog with online purchasing
-- Shopping cart
-- Shipping or in-store pickup
-- Order management
-- Integration with existing product inventory
-
-**Mobile Applications (v2.x)**
-- React Native for code sharing with web
-- Push notifications
-- Offline appointment viewing
-- Biometric login
-- Camera for profile photos
-
-> **Note:** There is no PWA currently. The web app is a standard Next.js application.
-
-**AI-Powered Features (v2.x)**
-- Smart Scheduling: suggest optimal times based on staff efficiency
-- No-Show Prediction: flag high-risk bookings, require deposit
-- Service Recommendations: suggest add-on services
-- Demand Forecasting: predict busy periods
-
-**Marketplace / Discovery (v3.0)**
-- Public salon directory
-- Search by location, service, rating
-- Customer reviews and ratings
-- Featured salon listings (paid)
-- Booking directly from marketplace
-
-### Technical Debt & Infrastructure
-
-**Performance Optimization (Ongoing)**
-- Database query optimization
-- Image CDN for photos
-- Edge caching for static content
-- Bundle size reduction
-- Core Web Vitals monitoring
-
-**Monitoring & Observability (v1.1)**
-- Structured logging
-- Performance dashboards
-- Alerting for anomalies
-- Error rate monitoring
-- User session recording (privacy-compliant)
-
-**Security Enhancements (v1.1)**
-- ~~Rate limiting per endpoint~~ (Already implemented via `convex/lib/rateLimits.ts`)
-- Brute force protection
-- Security audit
-- Penetration testing
-- SOC 2 preparation
-
-**Developer Experience (Ongoing)**
-- Comprehensive API documentation
-- SDK for integrations
-- Webhook system for events
-- Sandbox environment for testing
-
-### Version Release Cadence
-
-| Type | Frequency | Contents |
-|------|-----------|----------|
-| Patch (x.x.1) | As needed | Bug fixes, security patches |
-| Minor (x.1.0) | Monthly | New features, improvements |
-| Major (2.0.0) | Yearly | Breaking changes, major features |
-
-All releases follow semantic versioning principles.
+For ideas about potential future enhancements (customer payments, multi-location, mobile apps, AI features, etc.), see:
+- **[Future Enhancements](./future-enhancements.md)** - Deferred post-MVP ideas
 
 ---
 
@@ -1344,3 +1174,4 @@ All releases follow semantic versioning principles.
 - [Features](./features.md) - Detailed feature specifications
 - [Design System](./design-system.md) - UI/UX patterns
 - [Glossary](./glossary.md) - Domain terminology
+- [Future Enhancements](./future-enhancements.md) - Deferred post-MVP ideas

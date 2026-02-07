@@ -141,7 +141,7 @@ Milestone 3 implements the heart of the application: the slot availability algor
 
 **Implementation Notes:**
 
-- `convex/appointments.ts` (801 lines) - 9 exported functions:
+- `convex/appointments.ts` (1,223 lines as of M4) - 12 exported functions:
   - `create` (publicMutation) - public booking with customer info, slot lock validation
   - `createByStaff` (orgMutation) - staff-created bookings (walk-in, phone, staff)
   - `getByConfirmationCode` (publicQuery) - lookup by confirmation code
@@ -151,6 +151,9 @@ Milestone 3 implements the heart of the application: the slot availability algor
   - `getByDate` (orgQuery) - appointments for a specific date
   - `updateStatus` (orgMutation) - status transitions with validation
   - `cancel` (orgMutation) - cancellation with reason and cancelledBy
+  - `cancelByCustomer` (publicMutation) - customer self-service cancel (M4)
+  - `reschedule` (orgMutation) - staff reschedule with history (M4)
+  - `rescheduleByCustomer` (publicMutation) - customer self-service reschedule (M4)
 - `convex/appointmentServices.ts` (54 lines) - `createForAppointment` (internalMutation), `getByAppointment` (orgQuery)
 - `convex/lib/confirmation.ts` (40 lines) - `generateConfirmationCode()`, `ensureUniqueCode(db, orgId)`
 - Confirmation code: 6 chars, uppercase alphanumeric, excludes 0/O/I/1
@@ -215,13 +218,12 @@ Milestone 3 implements the heart of the application: the slot availability algor
 
 - ~~Customer authentication (Milestone 9 - Customer Portal)~~ → Partially addressed: `listForCurrentUser` for authed users
 - Email confirmation (Milestone 7 - Email Notifications)
-- Payment collection (post-MVP)
-- Recurring appointments (v2.0)
-- Waitlist management (v2.0)
-- Group bookings (post-MVP)
+- Payment collection (out of scope)
+- Recurring appointments (out of scope)
+- Waitlist management (out of scope)
+- Group bookings (out of scope)
 - Appointment reminders (Milestone 7)
 - Buffer time configuration (hardcoded to 0 for MVP)
-- OTP verification (deferred - not implemented in M3)
 - Different staff per service in multi-service bookings (single staff per appointment in M3)
 
 ## Success Metrics
@@ -293,8 +295,7 @@ Milestone 3 implements the heart of the application: the slot availability algor
 
 ### Deviations from Original Plan
 
-1. **No OTP verification** - Deferred from M3. Booking flow goes directly from customer info to confirmation.
-2. **Single staff per appointment** - Multi-service bookings use one staff member for all services (not different staff per service as originally planned).
+1. **Single staff per appointment** - Multi-service bookings use one staff member for all services (not different staff per service as originally planned).
 3. **Staff-created bookings added** - `createByStaff` (orgMutation) was not in original plan but implemented for walk-in, phone, and staff-initiated bookings.
 4. **Public APIs added** - `listPublic` queries for organizations, services, staff were added to support the unauthenticated booking flow.
 5. **Route group restructuring** - Flat `[slug]/` routes reorganized into `(authenticated)` and `(public)` route groups.

@@ -13,7 +13,7 @@ import {
   customerAccountStatusValidator,
   customerDocValidator,
   customerListItemValidator,
-  customerNotificationPreferencesValidator,
+  customerSearchResultValidator,
   customerSourceValidator,
   customerWithStaffValidator,
 } from "./lib/validators";
@@ -224,6 +224,40 @@ export const advancedSearch = orgQuery({
   },
 });
 
+/**
+ * Search customers by phone prefix (for walk-in autocomplete).
+ * Returns up to 10 matching results.
+ */
+export const searchByPhone = orgQuery({
+  args: {
+    phonePrefix: v.string(),
+  },
+  returns: v.array(customerSearchResultValidator),
+  handler: async (ctx, args) => {
+    if (args.phonePrefix.length < 3) {
+      return [];
+    }
+
+    const customers = await ctx.db
+      .query("customers")
+      .withIndex("by_organization", (q) =>
+        q.eq("organizationId", ctx.organizationId),
+      )
+      .collect();
+
+    const filtered = customers
+      .filter((c) => c.phone.includes(args.phonePrefix))
+      .slice(0, 10);
+
+    return filtered.map((c) => ({
+      _id: c._id,
+      name: c.name,
+      phone: c.phone,
+      email: c.email,
+    }));
+  },
+});
+
 // =============================================================================
 // Mutations
 // =============================================================================
@@ -342,9 +376,6 @@ export const update = orgMutation({
     customerNotes: v.optional(v.string()),
     staffNotes: v.optional(v.string()),
     tags: v.optional(v.array(v.string())),
-    notificationPreferences: v.optional(
-      customerNotificationPreferencesValidator,
-    ),
   },
   returns: customerDocValidator,
   handler: async (ctx, args) => {

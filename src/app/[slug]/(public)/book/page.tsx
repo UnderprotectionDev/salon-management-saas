@@ -15,6 +15,7 @@ import {
   BookingForm,
   BookingSummary,
   BookingConfirmation,
+  SlotLockCountdown,
   useBookingFlow,
   BOOKING_STEPS,
   STEP_LABELS,
@@ -231,8 +232,8 @@ export default function BookingPage() {
                     staffId={state.staffId}
                     selectedStartTime={state.slotStartTime}
                     sessionId={state.sessionId}
-                    onSlotSelect={(start, end, lockId) => {
-                      setSlot(start, end, lockId);
+                    onSlotSelect={(start, end, lockId, lockExpiresAt) => {
+                      setSlot(start, end, lockId, lockExpiresAt);
                     }}
                   />
                 )}
@@ -249,19 +250,33 @@ export default function BookingPage() {
 
             {/* Step 4: Customer Info */}
             {state.step === "info" && (
-              <BookingForm
-                initialValues={{
-                  name: state.customerName || session.data?.user?.name || "",
-                  phone: state.customerPhone,
-                  email: state.customerEmail || session.data?.user?.email || "",
-                  notes: state.customerNotes,
-                }}
-                onSubmit={(values) => {
-                  setCustomerInfo(values);
-                  setStep("confirm");
-                }}
-                onBack={() => setStep("datetime")}
-              />
+              <div className="space-y-4">
+                {state.lockExpiresAt && (
+                  <div className="flex items-center justify-between">
+                    <p className="text-sm text-muted-foreground">
+                      Time slot reserved for:
+                    </p>
+                    <SlotLockCountdown
+                      expiresAt={state.lockExpiresAt}
+                      onExpired={() => setStep("datetime")}
+                    />
+                  </div>
+                )}
+                <BookingForm
+                  initialValues={{
+                    name: state.customerName || session.data?.user?.name || "",
+                    phone: state.customerPhone,
+                    email:
+                      state.customerEmail || session.data?.user?.email || "",
+                    notes: state.customerNotes,
+                  }}
+                  onSubmit={(values) => {
+                    setCustomerInfo(values);
+                    setStep("confirm");
+                  }}
+                  onBack={() => setStep("datetime")}
+                />
+              </div>
             )}
 
             {/* Step 5: Summary & Confirm */}
@@ -271,6 +286,18 @@ export default function BookingPage() {
               state.date !== null &&
               state.slotStartTime !== null &&
               state.slotEndTime !== null && (
+                <div className="space-y-4">
+                  {state.lockExpiresAt && (
+                    <div className="flex items-center justify-between">
+                      <p className="text-sm text-muted-foreground">
+                        Time slot reserved for:
+                      </p>
+                      <SlotLockCountdown
+                        expiresAt={state.lockExpiresAt}
+                        onExpired={() => setStep("datetime")}
+                      />
+                    </div>
+                  )}
                 <BookingSummary
                   organizationId={organization._id}
                   services={selectedServices}
@@ -305,6 +332,7 @@ export default function BookingPage() {
                     })
                   }
                 />
+                </div>
               )}
           </CardContent>
         </Card>

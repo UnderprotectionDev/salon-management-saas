@@ -25,6 +25,7 @@ import type { Id } from "../../../../convex/_generated/dataModel";
 import { formatMinutesAsTime } from "../lib/constants";
 import { AppointmentStatusBadge } from "./AppointmentStatusBadge";
 import { CancelAppointmentDialog } from "./CancelAppointmentDialog";
+import { RescheduleDialog } from "./RescheduleDialog";
 import { UpdateStatusDropdown } from "./UpdateStatusDropdown";
 
 type AppointmentListProps = {
@@ -179,13 +180,30 @@ export function AppointmentList({
                 <TableCell className="text-right">
                   <div className="flex items-center justify-end gap-1">
                     {appt.status !== "cancelled" &&
-                      appt.status !== "completed" && (
+                      appt.status !== "completed" &&
+                      appt.status !== "no_show" && (
                         <>
                           <UpdateStatusDropdown
                             appointmentId={appt._id}
                             organizationId={organizationId}
                             currentStatus={appt.status}
+                            appointmentDate={appt.date}
+                            appointmentStartTime={appt.startTime}
                           />
+                          {(appt.status === "pending" ||
+                            appt.status === "confirmed") && (
+                            <RescheduleDialog
+                              appointmentId={appt._id}
+                              organizationId={organizationId}
+                              currentDate={appt.date}
+                              currentStartTime={appt.startTime}
+                              currentEndTime={appt.endTime}
+                              staffId={appt.staffId}
+                              serviceIds={appt.services.map(
+                                (s) => s.serviceId,
+                              )}
+                            />
+                          )}
                           <CancelAppointmentDialog
                             appointmentId={appt._id}
                             organizationId={organizationId}

@@ -20,6 +20,7 @@ type TimeSlotGridProps = {
     startTime: number,
     endTime: number,
     lockId: Id<"slotLocks"> | null,
+    lockExpiresAt?: number | null,
   ) => void;
 };
 
@@ -55,7 +56,7 @@ export function TimeSlotGrid({
         endTime: slot.endTime,
         sessionId,
       });
-      onSlotSelect(slot.startTime, slot.endTime, result.lockId);
+      onSlotSelect(slot.startTime, slot.endTime, result.lockId, result.expiresAt);
     } catch (error: any) {
       toast.error(error?.data?.message ?? "Failed to reserve time slot");
     } finally {

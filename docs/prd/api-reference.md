@@ -1,6 +1,6 @@
 # API Reference
 
-> **Last Updated:** 2026-02-07 (Milestone 3 complete)
+> **Last Updated:** 2026-02-07 (Milestone 4 complete)
 > **Status:** Active
 > **Version:** 1.0
 
@@ -140,7 +140,7 @@ Include Convex system fields (`_id`, `_creationTime`):
 |-----------|------|--------|-------|
 | `customerAccountStatusValidator` | Union | `guest` \| `recognized` \| `prompted` \| `registered` | Customer lifecycle |
 | `customerSourceValidator` | Union | `online` \| `walk_in` \| `phone` \| `staff` \| `import` | Acquisition source |
-| `customerNotificationPreferencesValidator` | Object | `emailReminders`, `smsReminders` | Notification settings |
+| `customerNotificationPreferencesValidator` | Object | `emailReminders` | Notification settings |
 
 ### Composite Validators
 
@@ -616,8 +616,8 @@ export const getStaffForService = orgQuery({
 
 ## Appointment & Booking APIs
 
-> **Status:** ✅ Implemented (Milestone 3)
-> **Files:** `convex/appointments.ts` (801 lines), `convex/slots.ts` (206 lines), `convex/slotLocks.ts` (145 lines), `convex/appointmentServices.ts` (54 lines), `convex/crons.ts` (14 lines)
+> **Status:** ✅ Implemented (Milestones 3 & 4)
+> **Files:** `convex/appointments.ts` (1,223 lines), `convex/slots.ts` (206 lines), `convex/slotLocks.ts` (145 lines), `convex/appointmentServices.ts` (54 lines), `convex/crons.ts` (14 lines)
 
 ### `slots.available`
 
@@ -887,6 +887,73 @@ export const cancel = orgMutation({
 });
 ```
 
+### `appointments.cancelByCustomer`
+
+```typescript
+export const cancelByCustomer = publicMutation({
+  args: {
+    organizationId: v.id("organization"),
+    confirmationCode: v.string(),
+    phone: v.string(),
+    reason: v.optional(v.string()),
+  },
+  returns: v.object({ success: v.boolean() }),
+  handler: async (ctx, args) => {
+    // Rate limited: cancelBooking
+    // Verifies identity: confirmationCode + phone match
+    // Enforces 2-hour cancellation policy
+    // Sets cancelledBy: "customer"
+  },
+});
+```
+
+### `appointments.reschedule`
+
+```typescript
+export const reschedule = orgMutation({
+  args: {
+    appointmentId: v.id("appointments"),
+    newDate: v.string(),
+    newStartTime: v.number(),
+    newEndTime: v.number(),
+    newStaffId: v.optional(v.id("staff")),
+  },
+  returns: v.object({ success: v.boolean() }),
+  handler: async (ctx, args) => {
+    // Rate limited: rescheduleBooking (3/hour)
+    // Validates new slot availability via validateSlotAvailability()
+    // Updates appointment date/time, optionally staff
+    // Tracks reschedule history (from/to dates, times, who)
+    // Increments rescheduleCount, sets rescheduledAt
+    // Preserves confirmation code
+  },
+});
+```
+
+### `appointments.rescheduleByCustomer`
+
+```typescript
+export const rescheduleByCustomer = publicMutation({
+  args: {
+    organizationId: v.id("organization"),
+    confirmationCode: v.string(),
+    phone: v.string(),
+    newDate: v.string(),
+    newStartTime: v.number(),
+    newEndTime: v.number(),
+    sessionId: v.string(),
+  },
+  returns: v.object({ success: v.boolean() }),
+  handler: async (ctx, args) => {
+    // Rate limited: rescheduleBooking (3/hour)
+    // Verifies identity: confirmationCode + phone match
+    // Enforces 2-hour reschedule policy
+    // Validates new slot availability
+    // Tracks reschedule history with rescheduledBy: "customer"
+  },
+});
+```
+
 ### `appointmentServices.createForAppointment`
 
 ```typescript
@@ -927,8 +994,8 @@ export const getByAppointment = orgQuery({
 
 ## Customer Management APIs
 
-> **Status:** ✅ Implemented (Milestone 2C)
-> **File:** `convex/customers.ts` (~520 lines)
+> **Status:** ✅ Implemented (Milestones 2C & 4)
+> **File:** `convex/customers.ts` (609 lines)
 
 ### `customers.list`
 
@@ -1101,7 +1168,7 @@ customerSourceValidator         // "online" | "walk_in" | "phone" | "staff" | "i
 customerDocValidator            // Full document with _id, _creationTime, all fields
 customerListItemValidator       // Subset for list views (excludes detailed notes)
 customerWithStaffValidator      // Full doc + preferredStaffName enrichment
-customerNotificationPreferencesValidator // { emailReminders, smsReminders }
+customerNotificationPreferencesValidator // { emailReminders }
 ```
 
 ### Phone Validation

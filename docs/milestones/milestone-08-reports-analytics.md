@@ -52,7 +52,7 @@ Milestone8 builds the reporting and analytics system for business insights. Incl
 
 **Provides foundation for:**
 
-- Future advanced BI features (v2.0)
+- None (milestone completes analytics scope)
 
 ## User Stories
 
@@ -218,12 +218,12 @@ Milestone8 builds the reporting and analytics system for business insights. Incl
 
 ## Non-Goals (Out of Scope)
 
-- Advanced BI dashboards (Tableau-like) - v2.0
+- Advanced BI dashboards (Tableau-like)
 - Real-time analytics (reports are near-real-time, not live)
-- Predictive analytics (AI-powered forecasting) - v2.0
+- Predictive analytics (AI-powered forecasting)
 - Custom report builder - Predefined reports only for MVP
 - Email report scheduling (daily/weekly digest) - Post-MVP
-- Multi-location comparison - v2.0
+- Multi-location comparison
 - Goal setting and tracking - Post-MVP
 
 ## Technical Considerations

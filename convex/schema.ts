@@ -357,12 +357,6 @@ export default defineSchema({
     ),
     // Preferences
     preferredStaffId: v.optional(v.id("staff")),
-    notificationPreferences: v.optional(
-      v.object({
-        emailReminders: v.boolean(),
-        smsReminders: v.boolean(),
-      }),
-    ),
     // Stats (denormalized)
     totalVisits: v.optional(v.number()),
     totalSpent: v.optional(v.number()),
@@ -381,16 +375,6 @@ export default defineSchema({
         v.literal("staff"),
         v.literal("import"),
       ),
-    ),
-    // KVKK Consent
-    consents: v.optional(
-      v.object({
-        dataProcessing: v.boolean(),
-        marketing: v.boolean(),
-        dataProcessingAt: v.optional(v.number()),
-        marketingAt: v.optional(v.number()),
-        withdrawnAt: v.optional(v.number()),
-      }),
     ),
     createdAt: v.number(),
     updatedAt: v.number(),
@@ -455,6 +439,23 @@ export default defineSchema({
     staffNotes: v.optional(v.string()),
     reminderSentAt: v.optional(v.number()),
     confirmationSentAt: v.optional(v.number()),
+    // Reschedule tracking
+    rescheduledAt: v.optional(v.number()),
+    rescheduleCount: v.optional(v.number()),
+    rescheduleHistory: v.optional(
+      v.array(
+        v.object({
+          fromDate: v.string(),
+          fromStartTime: v.number(),
+          fromEndTime: v.number(),
+          toDate: v.string(),
+          toStartTime: v.number(),
+          toEndTime: v.number(),
+          rescheduledBy: v.union(v.literal("customer"), v.literal("staff")),
+          rescheduledAt: v.number(),
+        }),
+      ),
+    ),
     createdAt: v.number(),
     updatedAt: v.number(),
   })

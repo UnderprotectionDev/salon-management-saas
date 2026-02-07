@@ -10,6 +10,10 @@ export { AppointmentList } from "./components/AppointmentList";
 export { UpdateStatusDropdown } from "./components/UpdateStatusDropdown";
 export { CancelAppointmentDialog } from "./components/CancelAppointmentDialog";
 export { CreateAppointmentDialog } from "./components/CreateAppointmentDialog";
+export { SlotLockCountdown } from "./components/SlotLockCountdown";
+export { RescheduleDialog } from "./components/RescheduleDialog";
+export { PublicCancelDialog } from "./components/PublicCancelDialog";
+export { PublicRescheduleDialog } from "./components/PublicRescheduleDialog";
 export { useBookingFlow } from "./hooks/useBookingFlow";
 export {
   formatMinutesAsTime,

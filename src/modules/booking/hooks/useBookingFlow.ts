@@ -12,6 +12,7 @@ export type BookingState = {
   slotStartTime: number | null;
   slotEndTime: number | null;
   lockId: Id<"slotLocks"> | null;
+  lockExpiresAt: number | null;
   customerName: string;
   customerPhone: string;
   customerEmail: string;
@@ -31,6 +32,7 @@ export function useBookingFlow() {
     slotStartTime: null,
     slotEndTime: null,
     lockId: null,
+    lockExpiresAt: null,
     customerName: "",
     customerPhone: "",
     customerEmail: "",
@@ -53,18 +55,21 @@ export function useBookingFlow() {
       slotStartTime: null,
       slotEndTime: null,
       lockId: null,
+      lockExpiresAt: null,
     }));
 
   const setSlot = (
     startTime: number,
     endTime: number,
     lockId: Id<"slotLocks"> | null,
+    lockExpiresAt?: number | null,
   ) =>
     setState((s) => ({
       ...s,
       slotStartTime: startTime,
       slotEndTime: endTime,
       lockId,
+      lockExpiresAt: lockExpiresAt ?? null,
     }));
 
   const setCustomerInfo = (info: {
@@ -90,6 +95,7 @@ export function useBookingFlow() {
       slotStartTime: null,
       slotEndTime: null,
       lockId: null,
+      lockExpiresAt: null,
       customerName: "",
       customerPhone: "",
       customerEmail: "",

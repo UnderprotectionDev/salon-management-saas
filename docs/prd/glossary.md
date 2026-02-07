@@ -197,10 +197,6 @@ An architecture where a single application instance serves multiple organization
 
 A Convex function that modifies database state. Runs in a transaction ensuring ACID properties.
 
-### OTP (One-Time Password) (Planned)
-
-A temporary code (usually 6 digits) sent via SMS or email to verify user identity. Originally planned for booking verification in Milestone 3 but deferred. Booking currently proceeds without OTP verification.
-
 ### Query (Convex)
 
 A Convex function that reads data from the database. Can be subscribed to for real-time updates.
@@ -250,7 +246,6 @@ See [Organization](#organization).
 | KVKK | Kişisel Verilerin Korunması Kanunu | Turkish data protection law (similar to GDPR) |
 | MRR | Monthly Recurring Revenue | Monthly subscription revenue |
 | MVP | Minimum Viable Product | First functional product version |
-| OTP | One-Time Password | Temporary verification code |
 | P0/P1/P2/P3 | Priority levels | Feature priority classification |
 | PCI DSS | Payment Card Industry Data Security Standard | Card payment security requirements |
 | PRD | Product Requirements Document | Feature specifications |
@@ -260,7 +255,6 @@ See [Organization](#organization).
 | SaaS | Software as a Service | Cloud-based software delivery |
 | SDK | Software Development Kit | Developer tools package |
 | SEO | Search Engine Optimization | Improving search visibility |
-| SMS | Short Message Service | Text messaging |
 | SSR | Server-Side Rendering | Rendering on the server |
 | TRY | Turkish Lira | Currency code |
 | TTL | Time To Live | Expiration duration |
