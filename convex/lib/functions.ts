@@ -5,6 +5,7 @@ import {
 } from "convex-helpers/server/customFunctions";
 import type { Doc, Id } from "../_generated/dataModel";
 import {
+  internalMutation as baseInternalMutation,
   mutation as baseMutation,
   query as baseQuery,
 } from "../_generated/server";
@@ -99,6 +100,17 @@ async function getAuthUser(ctx: { db: unknown; auth: unknown }) {
  * });
  */
 export const publicQuery = customQuery(baseQuery, {
+  args: {},
+  input: async (_ctx, _args) => {
+    return { ctx: {}, args: {} };
+  },
+});
+
+/**
+ * Mutation that does NOT require authentication.
+ * Use for public operations like booking creation.
+ */
+export const publicMutation = customMutation(baseMutation, {
   args: {},
   input: async (_ctx, _args) => {
     return { ctx: {}, args: {} };
@@ -502,3 +514,13 @@ export const ownerMutation = customMutation(baseMutation, {
     };
   },
 });
+
+// =============================================================================
+// Internal Functions
+// =============================================================================
+
+/**
+ * Internal mutation - for system/cron jobs only
+ * Re-export from base for consistency
+ */
+export const internalMutation = baseInternalMutation;

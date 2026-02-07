@@ -20,7 +20,7 @@ import {
 } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useOrganization } from "@/modules/organization";
-import { api } from "../../../../convex/_generated/api";
+import { api } from "../../../../../convex/_generated/api";
 
 type StatCardProps = {
   title: string;
@@ -71,6 +71,15 @@ export default function DashboardPage() {
     activeOrganization ? { organizationId: activeOrganization._id } : "skip",
   );
 
+  const now = new Date();
+  const today = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
+  const todayAppts = useQuery(
+    api.appointments.getByDate,
+    activeOrganization
+      ? { organizationId: activeOrganization._id, date: today }
+      : "skip",
+  );
+
   const isLoading = staffList === undefined || settings === undefined;
   const slug = activeOrganization?.slug;
 
@@ -93,10 +102,10 @@ export default function DashboardPage() {
         />
         <StatCard
           title="Today's Appointments"
-          value={0}
-          description="Coming in Sprint 3"
+          value={todayAppts?.length ?? 0}
+          description={`${todayAppts?.filter((a) => a.status === "pending").length ?? 0} pending`}
           icon={<Calendar className="size-4" />}
-          loading={false}
+          loading={todayAppts === undefined}
         />
         <StatCard
           title="This Week"
@@ -121,20 +130,20 @@ export default function DashboardPage() {
             <CardDescription>Common tasks for your salon</CardDescription>
           </CardHeader>
           <CardContent className="grid gap-2">
-            <Button variant="outline" className="w-full justify-start" asChild>
-              <Link href={`/${slug}/staff`}>
+            <Button variant="outline" className="w-full justify-start" asChild disabled={!slug}>
+              <Link href={slug ? `/${slug}/staff` : "#"}>
                 <Users className="mr-2 size-4" />
                 Manage Staff
               </Link>
             </Button>
-            <Button variant="outline" className="w-full justify-start" asChild>
-              <Link href={`/${slug}/settings?tab=team`}>
+            <Button variant="outline" className="w-full justify-start" asChild disabled={!slug}>
+              <Link href={slug ? `/${slug}/settings?tab=team` : "#"}>
                 <UserPlus className="mr-2 size-4" />
                 Invite Team Members
               </Link>
             </Button>
-            <Button variant="outline" className="w-full justify-start" asChild>
-              <Link href={`/${slug}/settings`}>
+            <Button variant="outline" className="w-full justify-start" asChild disabled={!slug}>
+              <Link href={slug ? `/${slug}/settings` : "#"}>
                 <Settings className="mr-2 size-4" />
                 Salon Settings
               </Link>

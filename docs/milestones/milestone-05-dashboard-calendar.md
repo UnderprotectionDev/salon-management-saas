@@ -1,9 +1,10 @@
 [PRD]
-# Sprint 5: Admin Dashboard & Calendar
+
+# Milestone 5: Admin Dashboard & Calendar
 
 ## Overview
 
-Sprint 5 builds the primary staff interface: admin dashboard with metrics and today's schedule, plus calendar views (day/week) with drag-and-drop rescheduling capabilities.
+Milestone5 builds the primary staff interface: admin dashboard with metrics and today's schedule, plus calendar views (day/week) with drag-and-drop rescheduling capabilities.
 
 **Problem Statement:** Staff need a centralized view of daily operations, upcoming appointments, and business metrics.
 
@@ -21,6 +22,7 @@ Sprint 5 builds the primary staff interface: admin dashboard with metrics and to
 ## Quality Gates
 
 **Backend Stories (Convex):**
+
 - `bunx convex dev` - Type generation
 - `bun run lint` - Biome linting
 - All queries use custom wrappers
@@ -28,12 +30,14 @@ Sprint 5 builds the primary staff interface: admin dashboard with metrics and to
 - Metrics queries optimized with indexes
 
 **Frontend Stories (React/Next.js):**
+
 - `bun run lint` - Biome linting
 - `bun run build` - Production build verification
 - Manual testing: Dashboard loads in <1 second
 - Calendar drag-drop tested with multiple appointments
 
 **Full-Stack Stories:**
+
 - All backend + frontend quality gates
 - Real-time metrics update automatically
 - Calendar updates when appointment status changes
@@ -42,11 +46,13 @@ Sprint 5 builds the primary staff interface: admin dashboard with metrics and to
 ## Dependencies
 
 **Requires completed:**
-- Sprint 4: Booking Operations (appointments with all statuses)
-- Sprint 2: Staff, Services, Customers (for metrics aggregation)
+
+- Milestone4: Booking Operations (appointments with all statuses)
+- Milestone2: Staff, Services, Customers (for metrics aggregation)
 
 **Provides foundation for:**
-- Sprint 8: Reports & Analytics (dashboard is simplified version)
+
+- Milestone8: Reports & Analytics (dashboard is simplified version)
 
 ## User Stories
 
@@ -59,6 +65,7 @@ Sprint 5 builds the primary staff interface: admin dashboard with metrics and to
 **Type:** Full-Stack
 
 **Acceptance Criteria:**
+
 - [ ] Dashboard shows metric cards: Total appointments today, Completed, Upcoming, No-shows, Walk-ins
 - [ ] Week-over-week comparison shows percentage change
 - [ ] Monthly revenue metric with percentage change
@@ -68,6 +75,7 @@ Sprint 5 builds the primary staff interface: admin dashboard with metrics and to
 - [ ] Dashboard is organization-scoped (only current org's data)
 
 **Technical Notes:**
+
 - Files to create:
   - `convex/analytics.ts` - Dashboard metrics query
   - `src/app/[slug]/dashboard/page.tsx` - Dashboard page
@@ -89,6 +97,7 @@ Sprint 5 builds the primary staff interface: admin dashboard with metrics and to
 **Type:** Full-Stack
 
 **Acceptance Criteria:**
+
 - [ ] Day view shows single date with staff columns (vertical timeline)
 - [ ] Week view shows 7 days with staff columns (grid layout)
 - [ ] Each appointment block shows: time, customer name, service
@@ -99,6 +108,7 @@ Sprint 5 builds the primary staff interface: admin dashboard with metrics and to
 - [ ] Real-time updates add/remove appointment blocks automatically
 
 **Technical Notes:**
+
 - Files to create:
   - `src/app/[slug]/calendar/page.tsx` - Calendar page with view toggle
   - `src/modules/calendar/components/DayView.tsx`
@@ -120,6 +130,7 @@ Sprint 5 builds the primary staff interface: admin dashboard with metrics and to
 **Type:** Full-Stack
 
 **Acceptance Criteria:**
+
 - [ ] Staff can drag appointment block to new time slot
 - [ ] Drop validation: New slot must be within staff working hours
 - [ ] Drop validation: New slot must not overlap with existing appointment
@@ -130,13 +141,14 @@ Sprint 5 builds the primary staff interface: admin dashboard with metrics and to
 - [ ] Dragging locked during validation/update
 
 **Technical Notes:**
+
 - Files to modify:
   - `src/modules/calendar/components/DayView.tsx` - Add drag handlers
-  - Reuse `convex/appointments.ts` `reschedule` mutation from Sprint 4
+  - Reuse `convex/appointments.ts` `reschedule` mutation from Milestone4
 - Libraries:
   - `@dnd-kit/core` for drag-and-drop
   - Optimistic updates for smooth UX
-- Validation reuses slot availability logic from Sprint 3
+- Validation reuses slot availability logic from Milestone3
 
 ### US-033: Notification System
 
@@ -147,6 +159,7 @@ Sprint 5 builds the primary staff interface: admin dashboard with metrics and to
 **Type:** Full-Stack
 
 **Acceptance Criteria:**
+
 - [ ] Notification bell icon in header shows unread count badge
 - [ ] Clicking bell opens notification panel
 - [ ] Notifications show: icon, message, timestamp, read/unread status
@@ -156,6 +169,7 @@ Sprint 5 builds the primary staff interface: admin dashboard with metrics and to
 - [ ] Notifications auto-refresh in real-time
 
 **Technical Notes:**
+
 - Files to create:
   - `convex/notifications.ts` - CRUD + queries
   - `src/components/NotificationBell.tsx`
@@ -177,7 +191,7 @@ Sprint 5 builds the primary staff interface: admin dashboard with metrics and to
 
 ## Non-Goals (Out of Scope)
 
-- Month view calendar (add in Sprint 8)
+- Month view calendar (add in Milestone8)
 - Multi-staff filter on calendar (show all staff for MVP)
 - Appointment creation via calendar click (use quick actions)
 - Export calendar to external formats (post-MVP)
@@ -186,16 +200,19 @@ Sprint 5 builds the primary staff interface: admin dashboard with metrics and to
 ## Technical Considerations
 
 ### Performance
+
 - Calendar query optimization: Limit to visible date range only
 - Metrics caching: Use Convex's built-in query caching
 - Pagination for notifications (load 20 at a time)
 
 ### Real-Time Updates
+
 - Convex handles subscriptions automatically
 - Calendar re-renders only when appointments in view change
 - Optimistic updates for drag-drop (rollback on error)
 
 ### Drag-and-Drop UX
+
 - Visual feedback: Ghost image of appointment block
 - Invalid drop zones: Red border/cursor
 - Loading state during validation/update

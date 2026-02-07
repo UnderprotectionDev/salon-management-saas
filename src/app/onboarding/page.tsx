@@ -143,12 +143,27 @@ export default function OnboardingPage() {
 
   const progress = (currentStep / STEPS.length) * 100;
 
-  const canProceed = () => {
+  const canProceed = (values: OnboardingFormData) => {
     if (currentStep === 1) {
-      const name = form.getFieldValue("name");
-      const slug = form.getFieldValue("slug");
-      return name.length >= 2 && slug.length >= 2;
+      // Step 1: Basic Info - name and slug required and valid
+      const nameValid = nameSchema.safeParse(values.name).success;
+      const slugValid = slugSchema.safeParse(values.slug).success;
+      return nameValid && slugValid;
     }
+
+    if (currentStep === 2) {
+      // Step 2: Location - email must be valid if provided
+      if (values.email) {
+        return emailSchema.safeParse(values.email).success;
+      }
+      return true;
+    }
+
+    if (currentStep === 3) {
+      // Step 3: Business Hours - always can proceed
+      return true;
+    }
+
     return true;
   };
 
@@ -188,12 +203,34 @@ export default function OnboardingPage() {
     }
   };
 
-  const handleNext = () => {
+  const handleNext = async () => {
+    // Validate current step before proceeding
+    if (currentStep === 1) {
+      const values = form.state.values;
+
+      // Validate name
+      const nameResult = nameSchema.safeParse(values.name);
+      if (!nameResult.success) {
+        toast.error(
+          nameResult.error.issues[0]?.message || "Invalid salon name",
+        );
+        return;
+      }
+
+      // Validate slug
+      const slugResult = slugSchema.safeParse(values.slug);
+      if (!slugResult.success) {
+        toast.error(slugResult.error.issues[0]?.message || "Invalid URL slug");
+        return;
+      }
+    }
+
     if (currentStep === 3) {
       // Step 3 → 4: Create org first, then show logo step
-      handleCreateOrganization();
+      await handleCreateOrganization();
       return;
     }
+
     if (currentStep < STEPS.length) {
       setCurrentStep(currentStep + 1);
     }
@@ -559,42 +596,61 @@ export default function OnboardingPage() {
         </Card>
 
         {/* Navigation */}
-        <div className="flex justify-between mt-6">
-          <Button
-            variant="outline"
-            onClick={handleBack}
-            disabled={currentStep === 1 || currentStep === 4 || isCreating}
-          >
-            <ArrowLeft className="size-4 mr-2" />
-            Back
-          </Button>
+        <form.Subscribe
+          selector={(state) => ({
+            values: state.values,
+            canSubmit: state.canSubmit,
+          })}
+        >
+          {(state) => {
+            const isValid = canProceed(state.values);
+            return (
+              <div>
+                <div className="flex justify-between mt-6">
+                  <Button
+                    variant="outline"
+                    onClick={handleBack}
+                    disabled={
+                      currentStep === 1 || currentStep === 4 || isCreating
+                    }
+                  >
+                    <ArrowLeft className="size-4 mr-2" />
+                    Back
+                  </Button>
 
-          {currentStep === 4 ? (
-            <Button onClick={handleFinish}>
-              <Check className="size-4 mr-2" />
-              {createdOrgId ? "Finish" : "Skip"}
-            </Button>
-          ) : currentStep === 3 ? (
-            <Button onClick={handleNext} disabled={isCreating || !canProceed()}>
-              {isCreating ? (
-                <>
-                  <Loader2 className="size-4 mr-2 animate-spin" />
-                  Creating...
-                </>
-              ) : (
-                <>
-                  Next
-                  <ArrowRight className="size-4 ml-2" />
-                </>
-              )}
-            </Button>
-          ) : (
-            <Button onClick={handleNext} disabled={!canProceed()}>
-              Next
-              <ArrowRight className="size-4 ml-2" />
-            </Button>
-          )}
-        </div>
+                  {currentStep === 4 ? (
+                    <Button onClick={handleFinish}>
+                      <Check className="size-4 mr-2" />
+                      {createdOrgId ? "Finish" : "Skip"}
+                    </Button>
+                  ) : currentStep === 3 ? (
+                    <Button
+                      onClick={handleNext}
+                      disabled={isCreating || !isValid}
+                    >
+                      {isCreating ? (
+                        <>
+                          <Loader2 className="size-4 mr-2 animate-spin" />
+                          Creating...
+                        </>
+                      ) : (
+                        <>
+                          Next
+                          <ArrowRight className="size-4 ml-2" />
+                        </>
+                      )}
+                    </Button>
+                  ) : (
+                    <Button onClick={handleNext} disabled={!isValid}>
+                      Next
+                      <ArrowRight className="size-4 ml-2" />
+                    </Button>
+                  )}
+                </div>
+              </div>
+            );
+          }}
+        </form.Subscribe>
       </div>
     </div>
   );

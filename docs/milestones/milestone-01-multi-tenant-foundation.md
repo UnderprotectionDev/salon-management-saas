@@ -1,9 +1,10 @@
 [PRD]
-# Sprint 1: Multi-Tenant Foundation
+
+# Milestone 1: Multi-Tenant Foundation
 
 ## Overview
 
-Sprint 1 establishes the complete multi-tenant architecture with organization management, member roles, staff profiles, row-level security, file storage, and comprehensive management UIs. This sprint transforms the application from single-user to a full-featured multi-tenant SaaS platform.
+Milestone 1 establishes the complete multi-tenant architecture with organization management, member roles, staff profiles, row-level security, file storage, and comprehensive management UIs. This milestone transforms the application from single-user to a full-featured multi-tenant SaaS platform.
 
 **Problem Statement:** The application needs a multi-tenant structure where multiple salon organizations can operate independently with their own data, members, staff, and assets (logos, images).
 
@@ -11,7 +12,8 @@ Sprint 1 establishes the complete multi-tenant architecture with organization ma
 
 ## Goals
 
-**Phase 1: Foundation (Sprint 1.0)**
+**Phase 1: Foundation (Milestone 1.0)**
+
 - Create multi-tenant database schema with organization isolation
 - Build onboarding wizard for new salon creation
 - Implement member management with roles
@@ -19,7 +21,8 @@ Sprint 1 establishes the complete multi-tenant architecture with organization ma
 - Build business hours editor
 - Implement row-level security (RLS) with custom function wrappers
 
-**Phase 2: Enhancements (Sprint 1.5)**
+**Phase 2: Enhancements (Milestone 1.5)**
+
 - Complete staff profile management UI (edit, schedule, image upload)
 - Build member management UI (list, role change, remove, leave)
 - Build invitation management UI (list, cancel, resend)
@@ -31,6 +34,7 @@ Sprint 1 establishes the complete multi-tenant architecture with organization ma
 ## Quality Gates
 
 **Backend Stories (Convex):**
+
 - `bunx convex dev` - Type generation and schema validation
 - `bun run lint` - Biome linting (filter out `_generated/` errors)
 - All mutations use custom wrappers from `convex/lib/functions.ts`
@@ -39,6 +43,7 @@ Sprint 1 establishes the complete multi-tenant architecture with organization ma
 - File storage implements 3-step upload flow (generate URL → upload → store metadata)
 
 **Frontend Stories (React/Next.js):**
+
 - `bun run lint` - Biome linting
 - `bun run build` - Production build verification
 - Manual verification in browser (`bun run dev`)
@@ -46,6 +51,7 @@ Sprint 1 establishes the complete multi-tenant architecture with organization ma
 - Image uploads work with progress indicators
 
 **Full-Stack Stories:**
+
 - All backend + frontend quality gates
 - Onboarding flow works end-to-end
 - Organization switcher changes context correctly
@@ -58,14 +64,17 @@ Sprint 1 establishes the complete multi-tenant architecture with organization ma
 ## Dependencies
 
 **Requires completed:**
-- Pre-Sprint: Better Auth integration with Google OAuth
-- Pre-Sprint: UI library setup (56 shadcn/ui components)
+
+- Pre-Milestone: Better Auth integration with Google OAuth
+- Pre-Milestone: UI library setup (56 shadcn/ui components)
 
 **Provides foundation for:**
-- ALL subsequent sprints (Sprint 2-9 depend on multi-tenant foundation)
+
+- ALL subsequent milestones (Milestone 2-9 depend on multi-tenant foundation)
 
 **Blocks:**
-- No sprint can proceed without multi-tenant foundation
+
+- No milestone can proceed without multi-tenant foundation
 
 ## User Stories
 
@@ -78,6 +87,7 @@ Sprint 1 establishes the complete multi-tenant architecture with organization ma
 **Type:** Full-Stack
 
 **Acceptance Criteria:**
+
 - [x] User is redirected to `/onboarding` after sign-in if no organization exists
 - [x] Wizard step 1: Enter salon name, address, contact info
 - [x] Wizard step 2: Set business hours for each day of week
@@ -89,6 +99,7 @@ Sprint 1 establishes the complete multi-tenant architecture with organization ma
 - [x] Organization slug is auto-generated from salon name (lowercase, hyphenated)
 
 **Technical Notes:**
+
 - Files created:
   - `convex/organizations.ts` - Organization CRUD mutations and queries
   - `convex/members.ts` - Member management
@@ -110,6 +121,7 @@ Sprint 1 establishes the complete multi-tenant architecture with organization ma
 **Type:** Full-Stack
 
 **Acceptance Criteria:**
+
 - [x] Owner can set open/close times for each day of week
 - [x] Owner can mark specific days as closed
 - [x] Owner can optionally set lunch break times
@@ -119,6 +131,7 @@ Sprint 1 establishes the complete multi-tenant architecture with organization ma
 - [x] Time format is 24-hour (HH:mm)
 
 **Technical Notes:**
+
 - Files: `src/app/[slug]/settings/page.tsx`, `src/components/business-hours/BusinessHoursEditor.tsx`
 - Database: `organizationSettings.businessHours` (JSON field)
 - Use `adminMutation` (owner/admin only)
@@ -132,9 +145,10 @@ Sprint 1 establishes the complete multi-tenant architecture with organization ma
 **Type:** Full-Stack
 
 **Acceptance Criteria:**
+
 - [x] Owner can send invitation with email and role (admin/member)
 - [x] Invitation creates record with unique token
-- [x] Invitation email is sent (console log for MVP, real email in Sprint 7)
+- [x] Invitation email is sent (console log for MVP, real email in Milestone7)
 - [x] Invitation link: `{SITE_URL}/invitations/accept?token={token}`
 - [x] Recipient clicks link and is redirected to accept page
 - [x] Accepting invitation creates member and staff records
@@ -143,6 +157,7 @@ Sprint 1 establishes the complete multi-tenant architecture with organization ma
 - [x] Invitations can be cancelled or resent
 
 **Technical Notes:**
+
 - Files: `convex/invitations.ts`, `src/app/invitations/accept/page.tsx`
 - Database: `invitation` table
 - Invitation token: `crypto.randomUUID()` (36 characters)
@@ -157,6 +172,7 @@ Sprint 1 establishes the complete multi-tenant architecture with organization ma
 **Type:** Frontend
 
 **Acceptance Criteria:**
+
 - [x] Header shows organization switcher dropdown
 - [x] Dropdown lists all organizations user belongs to
 - [x] Selecting organization navigates to `/{slug}/dashboard`
@@ -165,6 +181,7 @@ Sprint 1 establishes the complete multi-tenant architecture with organization ma
 - [x] URL slug determines active organization
 
 **Technical Notes:**
+
 - Files: `src/modules/organization/OrganizationProvider.tsx`, `src/modules/organization/components/OrganizationSwitcher.tsx`
 - Context provides: `activeOrganization`, `organizations`, `currentStaff`, `currentRole`
 
@@ -177,6 +194,7 @@ Sprint 1 establishes the complete multi-tenant architecture with organization ma
 **Type:** Backend
 
 **Acceptance Criteria:**
+
 - [x] All queries automatically filter by `organizationId`
 - [x] Custom function wrappers enforce membership checks
 - [x] `orgQuery`/`orgMutation` auto-inject `organizationId` from args
@@ -185,6 +203,7 @@ Sprint 1 establishes the complete multi-tenant architecture with organization ma
 - [x] Attempting to access other org's data returns error
 
 **Technical Notes:**
+
 - Files: `convex/lib/functions.ts`, `convex/lib/rls.ts`
 - Custom wrappers: `publicQuery`, `maybeAuthedQuery`, `authedQuery/Mutation`, `orgQuery/Mutation`, `adminQuery/Mutation`, `ownerQuery/Mutation`
 
@@ -197,6 +216,7 @@ Sprint 1 establishes the complete multi-tenant architecture with organization ma
 **Type:** Backend
 
 **Acceptance Criteria:**
+
 - [x] Routes matching `/{slug}/*` require authentication
 - [x] Unauthenticated users are redirected to `/sign-in`
 - [x] After sign-in, users are redirected back to intended page
@@ -204,6 +224,7 @@ Sprint 1 establishes the complete multi-tenant architecture with organization ma
 - [x] Onboarding route is protected but doesn't require org membership
 
 **Technical Notes:**
+
 - File: `src/middleware.ts`
 - Protected patterns: `/{slug}/*`
 - Public routes: `/`, `/sign-in`, `/onboarding`
@@ -217,6 +238,7 @@ Sprint 1 establishes the complete multi-tenant architecture with organization ma
 **Type:** Full-Stack
 
 **Acceptance Criteria:**
+
 - [x] Staff detail page at `/{slug}/staff/[id]` shows profile info
 - [x] Profile displays: name, email, phone, bio, image, role, schedule
 - [x] "Edit Profile" button opens edit form
@@ -226,6 +248,7 @@ Sprint 1 establishes the complete multi-tenant architecture with organization ma
 - [x] Changes save with optimistic updates
 
 **Technical Notes:**
+
 - Files: `src/app/[slug]/staff/[id]/page.tsx`, `src/modules/staff/components/StaffProfileForm.tsx`, `src/modules/staff/components/ScheduleEditor.tsx`
 - Backend: `convex/staff.ts` - Add `updateProfile` mutation
 - Use `authedMutation` for self-editing, `adminMutation` for admin editing
@@ -239,6 +262,7 @@ Sprint 1 establishes the complete multi-tenant architecture with organization ma
 **Type:** Frontend
 
 **Acceptance Criteria:**
+
 - [x] Settings page shows "Invitations" section
 - [x] Invitations list shows: email, role, status, invited date, expiry date
 - [x] Each invitation has "Cancel" and "Resend" buttons
@@ -248,6 +272,7 @@ Sprint 1 establishes the complete multi-tenant architecture with organization ma
 - [x] Empty state shows "No pending invitations"
 
 **Technical Notes:**
+
 - Files: `src/modules/settings/components/InvitationsList.tsx`
 - Backend APIs: `api.invitations.list`, `api.invitations.cancel`, `api.invitations.resend`
 - Rate limiting: `resendInvitation` (5/hour per org)
@@ -261,6 +286,7 @@ Sprint 1 establishes the complete multi-tenant architecture with organization ma
 **Type:** Frontend
 
 **Acceptance Criteria:**
+
 - [x] Settings page shows "Members" section
 - [x] Members list shows: name, email, role, joined date
 - [x] Each member has role dropdown (owner cannot be changed)
@@ -271,6 +297,7 @@ Sprint 1 establishes the complete multi-tenant architecture with organization ma
 - [x] Leaving organization redirects to dashboard or onboarding
 
 **Technical Notes:**
+
 - Files: `src/modules/settings/components/MembersList.tsx`
 - Backend APIs: `api.members.list`, `api.members.updateRole`, `api.members.remove`, `api.members.leave`
 
@@ -283,6 +310,7 @@ Sprint 1 establishes the complete multi-tenant architecture with organization ma
 **Type:** Full-Stack
 
 **Acceptance Criteria:**
+
 - [x] Settings page shows "Transfer Ownership" section (owner only)
 - [x] Owner selects new owner from member dropdown
 - [x] Transfer requires 2-step confirmation
@@ -291,6 +319,7 @@ Sprint 1 establishes the complete multi-tenant architecture with organization ma
 - [x] Only one owner allowed per organization (enforced)
 
 **Technical Notes:**
+
 - Files: `src/modules/settings/components/TransferOwnershipDialog.tsx`, `convex/members.ts` - Add `transferOwnership` mutation
 - Use `ownerMutation` (owner only)
 
@@ -303,6 +332,7 @@ Sprint 1 establishes the complete multi-tenant architecture with organization ma
 **Type:** Frontend
 
 **Acceptance Criteria:**
+
 - [x] Settings page has tabs: General, Contact, Address, Members, Invitations
 - [x] General tab: Organization name, slug (read-only), logo upload
 - [x] Contact tab: Phone, email, website
@@ -312,6 +342,7 @@ Sprint 1 establishes the complete multi-tenant architecture with organization ma
 - [x] Success toast notification after save
 
 **Technical Notes:**
+
 - Files: `src/modules/settings/components/GeneralInfoForm.tsx`, `ContactInfoForm.tsx`, `AddressForm.tsx`
 - Use shadcn/ui Tabs component
 - Backend mutation: `api.organizations.update`
@@ -325,6 +356,7 @@ Sprint 1 establishes the complete multi-tenant architecture with organization ma
 **Type:** Backend
 
 **Acceptance Criteria:**
+
 - [x] 3-step upload flow: Generate URL → Upload to storage → Save metadata
 - [x] Generate signed upload URL with expiry (1 hour)
 - [x] Upload directly to Convex storage from client
@@ -335,6 +367,7 @@ Sprint 1 establishes the complete multi-tenant architecture with organization ma
 - [x] Deletion removes file from storage and database
 
 **Technical Notes:**
+
 - Files: `convex/files.ts` (192 lines), `src/components/logo-upload/LogoUpload.tsx`
 - Mutations: `generateUploadUrl`, `saveFileMetadata`, `deleteFile`
 - Rate limiting: `generateUploadUrl` (20/hour per org)
@@ -348,6 +381,7 @@ Sprint 1 establishes the complete multi-tenant architecture with organization ma
 **Type:** Full-Stack
 
 **Acceptance Criteria:**
+
 - [x] Settings General tab has logo upload area
 - [x] Shows current logo if exists
 - [x] Drag-and-drop or click to upload
@@ -358,6 +392,7 @@ Sprint 1 establishes the complete multi-tenant architecture with organization ma
 - [x] Logo appears in organization switcher
 
 **Technical Notes:**
+
 - File: `src/components/logo-upload/LogoUpload.tsx`
 - Upload flow: Select → Validate → Generate URL → Upload → Save metadata → Update org record → Delete old
 
@@ -370,6 +405,7 @@ Sprint 1 establishes the complete multi-tenant architecture with organization ma
 **Type:** Backend
 
 **Acceptance Criteria:**
+
 - [x] All queries/mutations have `returns:` property
 - [x] Shared validators defined in `convex/lib/validators.ts`
 - [x] Document validators include `_id` and `_creationTime`
@@ -378,6 +414,7 @@ Sprint 1 establishes the complete multi-tenant architecture with organization ma
 - [x] Validators documented with JSDoc comments
 
 **Technical Notes:**
+
 - File: `convex/lib/validators.ts` (231 lines)
 - Pattern: Sub-validators, document validators, composite validators
 - Used in all query/mutation definitions with `returns:` property
@@ -391,6 +428,7 @@ Sprint 1 establishes the complete multi-tenant architecture with organization ma
 **Type:** Backend
 
 **Acceptance Criteria:**
+
 - [x] Rate limiter configured for all creation operations
 - [x] Invitation creation: 10/hour per organization
 - [x] Invitation resend: 5/hour per organization
@@ -401,6 +439,7 @@ Sprint 1 establishes the complete multi-tenant architecture with organization ma
 - [x] Rate limits use token bucket or fixed window algorithm
 
 **Technical Notes:**
+
 - File: `convex/lib/rateLimits.ts` (104 lines)
 - Uses `@convex-dev/rate-limiter` package
 - Usage: `await rateLimiter.limit(ctx, "createInvitation", { key: ctx.organizationId })`
@@ -424,18 +463,19 @@ Sprint 1 establishes the complete multi-tenant architecture with organization ma
 - Multi-location support (single location per organization) - v2.0
 - Custom branding/white-labeling - Post-MVP
 - API keys for third-party integrations - v2.0
-- Organization billing (Sprint 6)
-- Email notifications (Sprint 7)
+- Organization billing (Milestone6)
+- Email notifications (Milestone7)
 - Advanced permissions (beyond owner/admin/member) - Post-MVP
 - Video uploads - Images only for MVP
 - Custom file storage provider - Use Convex storage
-- Audit log viewer UI (table exists, UI in Sprint 8)
+- Audit log viewer UI (table exists, UI in Milestone8)
 
 ## Technical Considerations
 
 ### Database Schema Design
+
 ```typescript
-// Core tables created in Sprint 1
+// Core tables created in Milestone 1
 organization: defineTable({
   name: v.string(),
   slug: v.string(),
@@ -501,7 +541,9 @@ files: defineTable({
 ```
 
 ### Custom Function Wrappers
+
 Located in `convex/lib/functions.ts`:
+
 - Wrap standard Convex `query()` and `mutation()`
 - Add authentication checks via Better Auth
 - Add membership and role validation
@@ -510,6 +552,7 @@ Located in `convex/lib/functions.ts`:
 - Throw `ConvexError` with structured error codes
 
 ### File Storage Architecture
+
 - **Storage Provider**: Convex built-in file storage
 - **Upload Pattern**: Client → Convex signed URL → Storage
 - **Metadata**: Stored in `files` table for querying
@@ -517,6 +560,7 @@ Located in `convex/lib/functions.ts`:
 - **Deletion**: Cascade delete (remove from storage + database)
 
 ### Rate Limiting Strategy
+
 - **Library**: `@convex-dev/rate-limiter`
 - **Algorithms**: Token Bucket (smooth) and Fixed Window (simple)
 - **Keys**: Scoped by organizationId or userId
@@ -540,82 +584,98 @@ Located in `convex/lib/functions.ts`:
 ## Implementation Order
 
 ### Phase 1: Database Schema (1-2 hours) ✅
+
 1. Define all tables in `convex/schema.ts`
 2. Run `bunx convex dev` to generate types
 3. Verify indexes are created
 
 ### Phase 2: Custom Function Wrappers (2-3 hours) ✅
+
 1. Create `convex/lib/functions.ts`
 2. Implement all custom wrappers
 3. Add error handling with `ConvexError`
 
 ### Phase 3: Backend Mutations (3-4 hours) ✅
+
 1. Create organization, member, staff, invitation CRUD
 2. Add return validators to `convex/lib/validators.ts` (231 lines)
 
 ### Phase 4: Onboarding Wizard (3-4 hours) ✅
+
 1. Create onboarding page and forms
 2. Build business hours editor component
 3. Wire up form submission
 
 ### Phase 5: Organization Context (2-3 hours) ✅
+
 1. Create OrganizationProvider
 2. Create useOrganization() hook
 3. Build OrganizationSwitcher component
 
 ### Phase 6: Invitation Flow (2-3 hours) ✅
+
 1. Build invitation acceptance page
 2. Add invitation banner
 3. Test full invitation flow
 
 ### Phase 7: Middleware & Protection (1-2 hours) ✅
+
 1. Create middleware with auth checks
 2. Configure public/protected routes
 
 ### Phase 8: Settings Page (2 hours) ✅
+
 1. Create settings layout with tabs
 2. Add business hours editor
 3. Add organization info editors
 
 ### Phase 9: Return Validators & Rate Limiting (3-4 hours) ✅
+
 1. Create `convex/lib/validators.ts` (231 lines)
 2. Create `convex/lib/rateLimits.ts` (104 lines)
 3. Add validators to all existing functions
 4. Add rate limit checks to creation mutations
 
 ### Phase 10: File Storage Backend (3-4 hours) ✅
+
 1. Create `convex/files.ts` (192 lines)
 2. Implement 3-step upload flow
 3. Add file validators
 
 ### Phase 11: Logo Upload UI (2-3 hours) ✅
+
 1. Create LogoUpload component
 2. Implement drag-and-drop
 3. Add to Settings General tab
 
 ### Phase 12: Staff Profile Management (3-4 hours) ✅
+
 1. Create staff detail page
 2. Build profile edit form
 3. Build schedule editor
 4. Add staff image upload
 
 ### Phase 13: Member & Invitation Management UI (3-4 hours) ✅
+
 1. Create MembersList component
 2. Add role change, remove member
 3. Create InvitationsList component
 4. Add cancel/resend buttons
 
 ### Phase 14: Ownership Transfer (2-3 hours) ✅
+
 1. Create transferOwnership mutation
 2. Create TransferOwnershipDialog
 3. Implement 2-step confirmation
 
 ### Phase 15: Settings Sub-Forms (2-3 hours) ✅
+
 1. Create GeneralInfoForm, ContactInfoForm, AddressForm
 2. Add tabs to Settings page
 3. Wire up update mutations
 
 ### Phase 16: Integration & Testing (3-4 hours) ✅
+
 1. Test all flows end-to-end
 2. Verify RLS enforcement
 3. Test file upload flow
@@ -624,13 +684,14 @@ Located in `convex/lib/functions.ts`:
 
 ## Completion Summary
 
-**Completion Date:** 2026-02-06 (Combined Sprint 1 + 1.5)
+**Completion Date:** 2026-02-06 (Combined Milestone 1 + 1.5)
 
 **Status:** ✅ COMPLETED
 
 **Deliverables Completed:**
 
-**Foundation (Sprint 1.0):**
+**Foundation (Milestone 1.0):**
+
 - ✅ Database schema with 6 core tables
 - ✅ Custom function wrappers with RLS enforcement
 - ✅ Onboarding wizard (2-step flow)
@@ -639,7 +700,8 @@ Located in `convex/lib/functions.ts`:
 - ✅ Organization switcher
 - ✅ Protected routes middleware
 
-**Enhancements (Sprint 1.5):**
+**Enhancements (Milestone 1.5):**
+
 - ✅ Staff profile detail page & edit form
 - ✅ Staff schedule editor
 - ✅ File storage system (192 lines in `convex/files.ts`)
@@ -652,6 +714,7 @@ Located in `convex/lib/functions.ts`:
 - ✅ Rate limiting configuration (104 lines in `convex/lib/rateLimits.ts`)
 
 **Total Lines of Code Added:**
+
 - `convex/lib/validators.ts`: 231 lines
 - `convex/lib/rateLimits.ts`: 104 lines
 - `convex/files.ts`: 192 lines
@@ -659,6 +722,7 @@ Located in `convex/lib/functions.ts`:
 - Frontend components: ~1,200 lines
 
 **Key Learnings:**
+
 - Custom function wrappers are critical for RLS enforcement
 - Organization slug must be validated for uniqueness
 - Invitation tokens should be cryptographically secure (UUID)
@@ -668,7 +732,7 @@ Located in `convex/lib/functions.ts`:
 - Ownership transfer requires extra confirmation due to irreversibility
 - Optimistic updates improve perceived performance
 
-**Next Sprint:**
-Sprint 2 will build on this foundation to add service catalog, staff service assignments, and customer database management.
+**Next Milestone:**
+Milestone 2 will build on this foundation to add service catalog, staff service assignments, and customer database management.
 
 [/PRD]

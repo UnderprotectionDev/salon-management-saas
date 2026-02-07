@@ -517,3 +517,202 @@ export const invitationWithOrgValidator = v.object({
   organizationName: v.string(),
   organizationSlug: v.string(),
 });
+
+// =============================================================================
+// Appointment Validators
+// =============================================================================
+
+/** Appointment status */
+export const appointmentStatusValidator = v.union(
+  v.literal("pending"),
+  v.literal("confirmed"),
+  v.literal("checked_in"),
+  v.literal("in_progress"),
+  v.literal("completed"),
+  v.literal("cancelled"),
+  v.literal("no_show"),
+);
+
+/** Appointment source */
+export const appointmentSourceValidator = v.union(
+  v.literal("online"),
+  v.literal("walk_in"),
+  v.literal("phone"),
+  v.literal("staff"),
+);
+
+/** Cancelled by: customer | staff | system */
+export const cancelledByValidator = v.union(
+  v.literal("customer"),
+  v.literal("staff"),
+  v.literal("system"),
+);
+
+/** Payment status */
+export const paymentStatusValidator = v.union(
+  v.literal("pending"),
+  v.literal("paid"),
+  v.literal("partial"),
+  v.literal("refunded"),
+);
+
+/** Appointment document validator */
+export const appointmentDocValidator = v.object({
+  _id: v.id("appointments"),
+  _creationTime: v.number(),
+  organizationId: v.id("organization"),
+  customerId: v.id("customers"),
+  staffId: v.id("staff"),
+  date: v.string(),
+  startTime: v.number(),
+  endTime: v.number(),
+  status: appointmentStatusValidator,
+  source: appointmentSourceValidator,
+  confirmationCode: v.string(),
+  confirmedAt: v.optional(v.number()),
+  checkedInAt: v.optional(v.number()),
+  completedAt: v.optional(v.number()),
+  noShowAt: v.optional(v.number()),
+  cancelledAt: v.optional(v.number()),
+  cancelledBy: v.optional(cancelledByValidator),
+  cancellationReason: v.optional(v.string()),
+  subtotal: v.number(),
+  discount: v.optional(v.number()),
+  total: v.number(),
+  paymentStatus: v.optional(paymentStatusValidator),
+  paymentMethod: v.optional(v.string()),
+  paidAt: v.optional(v.number()),
+  customerNotes: v.optional(v.string()),
+  staffNotes: v.optional(v.string()),
+  reminderSentAt: v.optional(v.number()),
+  confirmationSentAt: v.optional(v.number()),
+  createdAt: v.number(),
+  updatedAt: v.number(),
+});
+
+/** Appointment service (junction) document validator */
+export const appointmentServiceDocValidator = v.object({
+  _id: v.id("appointmentServices"),
+  _creationTime: v.number(),
+  appointmentId: v.id("appointments"),
+  serviceId: v.id("services"),
+  serviceName: v.string(),
+  duration: v.number(),
+  price: v.number(),
+  staffId: v.id("staff"),
+});
+
+/** Slot lock document validator */
+export const slotLockDocValidator = v.object({
+  _id: v.id("slotLocks"),
+  _creationTime: v.number(),
+  organizationId: v.id("organization"),
+  staffId: v.id("staff"),
+  date: v.string(),
+  startTime: v.number(),
+  endTime: v.number(),
+  sessionId: v.string(),
+  expiresAt: v.number(),
+});
+
+/** Available slot for booking UI */
+export const availableSlotValidator = v.object({
+  staffId: v.id("staff"),
+  staffName: v.string(),
+  staffImageUrl: v.optional(v.string()),
+  startTime: v.number(),
+  endTime: v.number(),
+});
+
+/** Public appointment view (excludes sensitive fields) */
+export const publicAppointmentValidator = v.object({
+  _id: v.id("appointments"),
+  date: v.string(),
+  startTime: v.number(),
+  endTime: v.number(),
+  status: appointmentStatusValidator,
+  confirmationCode: v.string(),
+  staffName: v.string(),
+  staffImageUrl: v.optional(v.string()),
+  customerName: v.string(),
+  customerNotes: v.optional(v.string()),
+  total: v.number(),
+  services: v.array(
+    v.object({
+      serviceName: v.string(),
+      duration: v.number(),
+      price: v.number(),
+    }),
+  ),
+});
+
+/** User-facing appointment view (for My Appointments on customer dashboard) */
+export const userAppointmentValidator = v.object({
+  _id: v.id("appointments"),
+  date: v.string(),
+  startTime: v.number(),
+  endTime: v.number(),
+  status: appointmentStatusValidator,
+  confirmationCode: v.string(),
+  staffName: v.string(),
+  staffImageUrl: v.optional(v.string()),
+  total: v.number(),
+  organizationName: v.string(),
+  organizationSlug: v.string(),
+  organizationLogo: v.optional(v.string()),
+  services: v.array(
+    v.object({
+      serviceName: v.string(),
+      duration: v.number(),
+      price: v.number(),
+    }),
+  ),
+});
+
+/** Appointment with enriched details (customer, staff, services) */
+export const appointmentWithDetailsValidator = v.object({
+  _id: v.id("appointments"),
+  _creationTime: v.number(),
+  organizationId: v.id("organization"),
+  customerId: v.id("customers"),
+  staffId: v.id("staff"),
+  date: v.string(),
+  startTime: v.number(),
+  endTime: v.number(),
+  status: appointmentStatusValidator,
+  source: appointmentSourceValidator,
+  confirmationCode: v.string(),
+  confirmedAt: v.optional(v.number()),
+  checkedInAt: v.optional(v.number()),
+  completedAt: v.optional(v.number()),
+  noShowAt: v.optional(v.number()),
+  cancelledAt: v.optional(v.number()),
+  cancelledBy: v.optional(cancelledByValidator),
+  cancellationReason: v.optional(v.string()),
+  subtotal: v.number(),
+  discount: v.optional(v.number()),
+  total: v.number(),
+  paymentStatus: v.optional(paymentStatusValidator),
+  paymentMethod: v.optional(v.string()),
+  paidAt: v.optional(v.number()),
+  customerNotes: v.optional(v.string()),
+  staffNotes: v.optional(v.string()),
+  reminderSentAt: v.optional(v.number()),
+  confirmationSentAt: v.optional(v.number()),
+  createdAt: v.number(),
+  updatedAt: v.number(),
+  // Enriched fields
+  customerName: v.string(),
+  customerPhone: v.string(),
+  customerEmail: v.optional(v.string()),
+  staffName: v.string(),
+  staffImageUrl: v.optional(v.string()),
+  services: v.array(
+    v.object({
+      serviceId: v.id("services"),
+      serviceName: v.string(),
+      duration: v.number(),
+      price: v.number(),
+    }),
+  ),
+});

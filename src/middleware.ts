@@ -4,8 +4,12 @@ import { NextResponse } from "next/server";
 // Public routes that don't require authentication
 const publicRoutes = ["/", "/sign-in", "/sign-up", "/api/auth"];
 
+// Regex for public booking page: /[slug]/book
+const PUBLIC_BOOKING_REGEX = /^\/[^/]+\/book$/;
+
 // Check if the path starts with any public route
 function isPublicRoute(path: string): boolean {
+  if (PUBLIC_BOOKING_REGEX.test(path)) return true;
   return publicRoutes.some(
     (route) =>
       path === route || (route !== "/" && path.startsWith(`${route}/`)),

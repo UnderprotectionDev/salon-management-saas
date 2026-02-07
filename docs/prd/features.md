@@ -1,6 +1,6 @@
 # Features
 
-> **Last Updated:** 2026-02-06
+> **Last Updated:** 2026-02-07
 > **Status:** Active
 
 This document provides a comprehensive overview of all features in the Salon Management SaaS platform, organized by functional area.
@@ -315,35 +315,44 @@ Same interface as staff schedule editor, but for business-wide defaults.
 ## Core Booking Engine
 
 > **Priority:** P0 (MVP Must-Have)
+> **Status:** ✅ Implemented (Milestone 3)
 > **Owner:** Backend Team
 > **Dependencies:** Multi-tenancy, Staff Management, Service Catalog
 
 The core booking engine handles appointment creation, slot availability calculation, conflict prevention, and the complete booking lifecycle.
 
+> **Implementation:** `convex/appointments.ts` (801 lines), `convex/slots.ts` (206 lines), `convex/slotLocks.ts` (145 lines), `convex/appointmentServices.ts` (54 lines), `convex/crons.ts` (14 lines), `convex/lib/confirmation.ts` (40 lines), `convex/lib/dateTime.ts` (78 lines). Frontend: 15 files in `src/modules/booking/` (1,667 lines).
+
 ### Key Business Rules
 
-| Rule | Description |
-|------|-------------|
-| **Multi-Service** | Sequential execution, different staff per service allowed |
-| **Cancellation** | Free cancellation up to 2 hours before appointment |
-| **Walk-In** | Quick booking form (name + phone only) |
-| **Pricing Display** | Starting price format ("₺150'den başlayan") |
-| **Reminders** | Single email 24 hours before appointment |
+| Rule | Description | Status |
+|------|-------------|--------|
+| **Multi-Service** | Sequential execution, single staff per appointment (M3) | ✅ |
+| **Cancellation** | Cancel with reason and cancelledBy tracking | ✅ |
+| **Walk-In** | Staff-created booking via `createByStaff` (walk_in source) | ✅ |
+| **Pricing Display** | Starting price format ("₺150'den başlayan") | ✅ |
+| **Reminders** | Single email 24 hours before appointment | 📋 Planned (M7) |
+| **Different staff per service** | Each service assigned to different staff | 📋 Planned (post-MVP) |
 
 ### Booking State Machine
+
+> **Note:** OTP verification (`pending_verification` state) was deferred from M3. The flow goes directly from slot lock to appointment creation.
 
 ```mermaid
 stateDiagram-v2
     [*] --> SlotSelected: Customer selects time
     SlotSelected --> Locked: Lock acquired (2min TTL)
     Locked --> Released: Timeout/Cancel
-    Locked --> PendingVerification: Customer info submitted
-    PendingVerification --> Confirmed: Verified (OTP planned)
-    PendingVerification --> Released: Verification timeout (5min)
+    Locked --> Pending: Customer info submitted (online)
+    Locked --> Confirmed: Staff creates booking
+    Pending --> Confirmed: Admin confirms
+    Pending --> Cancelled: Cancel
     Confirmed --> CheckedIn: Customer arrives
     Confirmed --> Cancelled: User/Admin cancels
-    Confirmed --> NoShow: 15min past, not arrived
-    CheckedIn --> Completed: Service finished
+    Confirmed --> NoShow: Not arrived
+    CheckedIn --> InProgress: Service starts
+    CheckedIn --> NoShow: Customer leaves
+    InProgress --> Completed: Service finished
     Completed --> [*]
     Cancelled --> [*]
     NoShow --> [*]
@@ -352,22 +361,25 @@ stateDiagram-v2
 
 **State Definitions:**
 
-| State | Description | Actions Available |
-|-------|-------------|-------------------|
-| `slot_selected` | User viewing slot | Select different slot |
-| `locked` | Temporary hold (2min) | Complete booking, cancel |
-| `pending_verification` | Awaiting OTP verification | Verify, resend, cancel |
-| `confirmed` | Booking complete | Check-in, cancel, reschedule |
-| `checked_in` | Customer arrived | Complete, no-show |
-| `completed` | Service rendered | None (final) |
-| `cancelled` | Appointment cancelled | None (final) |
-| `no_show` | Customer didn't arrive | None (final) |
+| State | Description | Actions Available | Status |
+|-------|-------------|-------------------|--------|
+| `slot_selected` | User viewing slot | Select different slot | UI state |
+| `locked` | Temporary hold (2min TTL) | Complete booking, release lock | `slotLocks` table |
+| `pending` | Online booking created | Confirm, cancel | ✅ Implemented |
+| `confirmed` | Booking confirmed / staff-created | Check-in, cancel | ✅ Implemented |
+| `checked_in` | Customer arrived | Start service, no-show | ✅ Implemented |
+| `in_progress` | Service being performed | Complete | ✅ Implemented |
+| `completed` | Service rendered (updates customer stats) | None (terminal) | ✅ Implemented |
+| `cancelled` | Appointment cancelled (tracks reason + who) | None (terminal) | ✅ Implemented |
+| `no_show` | Customer didn't arrive (increments noShowCount) | None (terminal) | ✅ Implemented |
 
 ### Multi-Service Booking Model
 
+> **M3 Implementation:** Single staff per appointment. All services are performed by the same staff member sequentially. Different staff per service is planned for post-MVP.
+
 #### Sequential Execution
 
-Services are executed back-to-back, not in parallel.
+Services are executed back-to-back by the same staff member.
 
 ```mermaid
 gantt
@@ -376,114 +388,125 @@ gantt
     axisFormat %H:%M
     section Booking
     Haircut (Staff A)     :a1, 14:00, 45m
-    Hair Coloring (Staff B) :a2, after a1, 60m
+    Hair Coloring (Staff A) :a2, after a1, 60m
     Blow Dry (Staff A)    :a3, after a2, 30m
 ```
 
-#### Different Staff Per Service
-
-Each service can be assigned to a different staff member:
+#### Implementation (M3)
 
 ```typescript
-interface MultiServiceBooking {
+// appointmentServices junction table (denormalized)
+interface AppointmentService {
   appointmentId: Id<"appointments">;
-  totalDuration: number; // Sum of all durations
-  services: Array<{
-    serviceId: Id<"services">;
-    staffId: Id<"staff">; // Can differ per service
-    duration: number;
-    startTime: number; // Calculated sequentially
-    endTime: number;
-    order: number; // 1, 2, 3...
-  }>;
+  serviceId: Id<"services">;
+  serviceName: string; // Denormalized for display
+  duration: number;
+  price: number; // In kuruş
+  staffId: Id<"staff">; // Same staff for all services in M3
 }
 ```
 
-**Constraints:**
-| Constraint | Rule |
-|------------|------|
-| Max services per booking | 5 |
-| Gap between services | 0 minutes (back-to-back) |
-| Staff overlap | Same staff can do multiple services if available |
-| "Any Available" | System optimizes staff assignment |
+**Constraints (M3):**
+| Constraint | Rule | Status |
+|------------|------|--------|
+| Multiple services per booking | Unlimited | ✅ |
+| Gap between services | 0 minutes (back-to-back) | ✅ |
+| Staff per appointment | Single staff for all services | ✅ |
+| Duration rounding | Rounded up to nearest 15-min | ✅ |
+| "Any Available" staff | Filter by service capability | ✅ |
+| Different staff per service | Each service assigned to different staff | 📋 Post-MVP |
 
 ### Slot Availability Algorithm
 
+> **Implementation:** `convex/slots.ts` (206 lines), `convex/lib/dateTime.ts` (78 lines)
+
+**Query:** `slots.available` (publicQuery)
+
 **Inputs:**
 ```typescript
-interface SlotAvailabilityInput {
-  organizationId: Id<"organizations">;
-  date: string; // ISO date: "2024-03-15"
-  serviceIds: Id<"services">[];
-  staffId?: Id<"staff">; // Optional
+// slots.available args
+{
+  organizationId: v.id("organization"),
+  date: v.string(),        // "2024-03-15"
+  serviceIds: v.array(v.id("services")),
+  staffId: v.optional(v.id("staff")),
+  sessionId: v.optional(v.string()), // Excludes own locks
 }
 ```
 
-**Algorithm:**
+**Algorithm (actual implementation):**
 ```
-1. Calculate total duration from selected services
-2. Get staff working hours for the date
-3. For each staff member:
-   a. Get their schedule
-   b. Get existing appointments
-   c. Get active locks
-   d. Calculate available windows
-4. Generate 15-minute slot options
-5. Filter out slots extending past closing time
-6. Return combined slots across eligible staff
+1. Calculate total duration from selected services, round up to 15-min
+2. Filter staff who can perform ALL selected services
+3. Optionally filter to specific staffId
+4. For each eligible staff member:
+   a. Resolve schedule (default + overrides + overtime via scheduleResolver)
+   b. Get existing appointments for the date
+   c. Get active slot locks (excluding own session)
+   d. Generate 15-minute increment slots within working hours
+   e. Filter out slots overlapping with appointments or locks
+5. Sort by startTime, then by staffName
+6. Return as availableSlotValidator array
 ```
+
+**Returns:** `{ staffId, staffName, staffImageUrl?, startTime, endTime }[]`
 
 ### Slot Locking (Double-Booking Prevention)
 
-```typescript
-slotLocks: defineTable({
-  organizationId: v.id("organization"),
-  staffId: v.id("staff"),
-  date: v.string(),
-  startTime: v.number(), // minutes from midnight
-  endTime: v.number(),
-  sessionId: v.string(), // Browser session identifier
-  expiresAt: v.number(), // Unix timestamp
-})
-```
+> **Implementation:** `convex/slotLocks.ts` (145 lines), `convex/crons.ts` (14 lines)
 
-**Lock Acquisition Flow:**
-1. Check for existing appointment in slot
-2. Check for existing lock (not ours)
-3. Create or update lock (2-minute TTL)
-4. Return lock ID and expiration
+**Functions:**
+- `slotLocks.acquire` (publicMutation) - Create/replace lock
+- `slotLocks.release` (publicMutation) - Release by session
+- `slotLocks.cleanupExpired` (internalMutation) - Cron cleanup
 
-**Cleanup:** Cron job runs every minute to delete expired locks
+**Lock Acquisition Flow (actual):**
+1. Release any existing locks for same session (one lock per session)
+2. Check for conflicting appointments in slot
+3. Check for existing lock by another session
+4. Create lock with 2-minute TTL (120,000ms)
+5. Return lock ID and expiration timestamp
+
+**Cleanup:** `convex/crons.ts` runs `slotLocks.cleanupExpired` every 1 minute
 
 ### Booking Flow (Step-by-Step)
 
-1. **Service Selection** - Multi-select with duration/price
-2. **Staff Selection** - "Any Available" or specific staff
-3. **Date Selection** - Calendar with availability indicators
-4. **Time Selection** - 15-min increment grid
-5. **Customer Information** - Name, phone, email, notes
-6. **OTP Verification** - 6-digit code (planned Sprint 3-4)
-7. **Confirmation** - Summary with confirmation number
+> **Implementation:** `src/modules/booking/hooks/useBookingFlow.ts` manages state across steps.
+
+1. **Service Selection** - Multi-select with duration/price (`ServiceSelector.tsx`)
+2. **Staff Selection** - "Any Available" or specific staff (`StaffSelector.tsx`)
+3. **Date Selection** - Calendar date picker (`DatePicker.tsx`)
+4. **Time Selection** - 15-min increment grid with real-time availability (`TimeSlotGrid.tsx`)
+5. **Customer Information** - Name, phone (Turkish format), email, notes (`BookingForm.tsx`)
+6. **Review & Confirm** - Summary with pricing breakdown (`BookingSummary.tsx`)
+7. **Confirmation** - Confirmation code display (`BookingConfirmation.tsx`)
+
+> **Note:** OTP verification (originally step 6) was deferred. Booking goes directly from customer info to confirmation.
 
 ### Walk-In Quick Booking
 
-For walk-in customers, staff can create quick bookings with minimal information.
+> **Implementation:** `appointments.createByStaff` (orgMutation) via `CreateAppointmentDialog.tsx` (275 lines)
+
+For walk-in customers, staff can create bookings with the `CreateAppointmentDialog` component.
 
 | Field | Required | Notes |
 |-------|----------|-------|
-| Customer Name | Yes | 2-100 characters |
-| Phone Number | Yes | Turkish format (+90...) |
-| Service(s) | Yes | Pre-selected or quick pick |
-| Staff | Auto | Current staff or selected |
-| Start Time | Auto | "Now" or next available |
+| Customer | Yes | Select existing customer from dropdown |
+| Service(s) | Yes | Multi-select from active services |
+| Staff | Yes | Staff member to assign |
+| Date | Yes | Defaults to today |
+| Start Time | Yes | Select from available slots |
+| Source | Yes | `walk_in`, `phone`, or `staff` |
 
-**Walk-In vs Online:**
-| Aspect | Online Booking | Walk-In |
-|--------|----------------|---------|
-| OTP Required | Yes | No (staff verified) |
-| Initial Status | `confirmed` | `checked_in` |
-| Reminder Email | Yes (24h before) | No |
-| Created By | Customer | Staff |
+**Walk-In vs Online (actual implementation):**
+| Aspect | Online Booking (`create`) | Staff Booking (`createByStaff`) |
+|--------|---------------------------|----------------------------------|
+| Auth Required | No (`publicMutation`) | Yes (`orgMutation`) |
+| Slot Lock | Required (validates session) | Not required (skipped) |
+| Initial Status | `pending` | `confirmed` |
+| Customer Info | Inline form (auto-creates) | Select existing customer |
+| Source | `online` | `walk_in` / `phone` / `staff` |
+| Reminder Email | Planned (M7) | No |
 
 ### Price Display Format
 

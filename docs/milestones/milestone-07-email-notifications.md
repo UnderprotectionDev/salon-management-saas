@@ -1,9 +1,10 @@
 [PRD]
-# Sprint 7: Email Notifications (Resend)
+
+# Milestone 7: Email Notifications (Resend)
 
 ## Overview
 
-Sprint 7 integrates Resend for email notifications with React Email templates. Covers booking confirmations, reminders, cancellations, staff invitations, and payment failure alerts.
+Milestone7 integrates Resend for email notifications with React Email templates. Covers booking confirmations, reminders, cancellations, staff invitations, and payment failure alerts.
 
 **Problem Statement:** Users need email notifications for important events (bookings, reminders, payment issues) to stay informed and reduce no-shows.
 
@@ -16,24 +17,27 @@ Sprint 7 integrates Resend for email notifications with React Email templates. C
 - Send booking confirmation immediately after creation
 - Schedule 24-hour advance reminders
 - Send cancellation notifications
-- Send payment failure emails (Sprint 6 integration)
+- Send payment failure emails (Milestone6 integration)
 - Include ICS calendar attachments for appointments
 
 ## Quality Gates
 
 **Backend Stories (Convex):**
+
 - `bunx convex dev` - Type generation
 - `bun run lint` - Biome linting
 - All email actions handle errors gracefully
 - Email templates render correctly in preview
 
 **Frontend Stories (React Email):**
+
 - `bun run lint` - Biome linting on email templates
 - Email preview in browser: `npm run email:dev` (if using React Email tooling)
 - Test emails sent to real addresses (Gmail, Outlook)
 - Responsive design tested on mobile
 
 **Full-Stack Stories:**
+
 - All backend + frontend quality gates
 - Booking confirmation sent within 10 seconds
 - Reminder scheduler runs daily at 09:00
@@ -42,12 +46,14 @@ Sprint 7 integrates Resend for email notifications with React Email templates. C
 ## Dependencies
 
 **Requires completed:**
-- Sprint 4: Booking Operations (appointment lifecycle triggers)
-- Sprint 6: SaaS Billing (payment failure triggers)
-- Sprint 1.5: Invitations (invitation emails)
+
+- Milestone4: Booking Operations (appointment lifecycle triggers)
+- Milestone6: SaaS Billing (payment failure triggers)
+- Milestone1.5: Invitations (invitation emails)
 
 **Provides foundation for:**
-- Sprint 9: Customer Portal (magic link emails)
+
+- Milestone9: Customer Portal (magic link emails)
 
 ## User Stories
 
@@ -60,6 +66,7 @@ Sprint 7 integrates Resend for email notifications with React Email templates. C
 **Type:** Full-Stack
 
 **Acceptance Criteria:**
+
 - [ ] Email sent immediately after appointment creation
 - [ ] Email includes: Salon name/logo, Appointment date/time, Services, Staff name, Confirmation code, Cancellation link
 - [ ] Email includes ICS calendar attachment
@@ -68,6 +75,7 @@ Sprint 7 integrates Resend for email notifications with React Email templates. C
 - [ ] Email sent to customer's email address (if provided)
 
 **Technical Notes:**
+
 - Files to create:
   - `convex/email.ts` - Resend action wrapper
   - `src/emails/BookingConfirmation.tsx` - React Email template
@@ -86,6 +94,7 @@ Sprint 7 integrates Resend for email notifications with React Email templates. C
 **Type:** Backend + Email Template
 
 **Acceptance Criteria:**
+
 - [ ] Reminder sent exactly 24 hours before appointment start time
 - [ ] Reminder includes: Appointment details, Reschedule link, Cancellation link
 - [ ] Scheduler runs daily at 09:00 UTC
@@ -94,6 +103,7 @@ Sprint 7 integrates Resend for email notifications with React Email templates. C
 - [ ] Failed sends are retried (up to 3 attempts)
 
 **Technical Notes:**
+
 - Files to create:
   - `src/emails/Reminder.tsx` - React Email template
   - `convex/schedulers.ts` - Reminder scheduler
@@ -111,12 +121,14 @@ Sprint 7 integrates Resend for email notifications with React Email templates. C
 **Type:** Email Template
 
 **Acceptance Criteria:**
+
 - [ ] Email sent when appointment status changes to "cancelled"
 - [ ] Email includes: Cancellation reason (if provided), Original appointment details, "Book again" link
 - [ ] Email tone is empathetic and helpful
 - [ ] Email sent to customer and staff member
 
 **Technical Notes:**
+
 - Files to create:
   - `src/emails/Cancellation.tsx` - React Email template
 - Trigger: After `appointments.cancel` mutation succeeds
@@ -128,15 +140,17 @@ Sprint 7 integrates Resend for email notifications with React Email templates. C
 
 **Complexity:** Low
 
-**Type:** Email Template (already implemented in Sprint 1.5, enhance with React Email)
+**Type:** Email Template (already implemented in Milestone1.5, enhance with React Email)
 
 **Acceptance Criteria:**
+
 - [ ] Email sent when invitation is created
 - [ ] Email includes: Organization name/logo, Inviter name, Accept/decline links, Expiration date
 - [ ] Accept link includes invitation token
 - [ ] Email uses React Email template (migrate from existing)
 
 **Technical Notes:**
+
 - Files to modify:
   - `convex/invitations.ts` - Replace email sending with React Email
 - Files to create:
@@ -152,16 +166,18 @@ Sprint 7 integrates Resend for email notifications with React Email templates. C
 **Type:** Email Template
 
 **Acceptance Criteria:**
+
 - [ ] Email sent when `payment.failed` webhook received
 - [ ] Email includes: Failure reason, Grace period end date, "Update payment" link (Polar portal)
 - [ ] Email sent on Day 1, 3, 5, 7 of grace period
 - [ ] Email tone is urgent but professional
 
 **Technical Notes:**
+
 - Files to create:
   - `src/emails/PaymentFailed.tsx` - React Email template
-- Trigger: Sprint 6 webhook handler + grace period cron
-- Link to Polar customer portal (from Sprint 6)
+- Trigger: Milestone6 webhook handler + grace period cron
+- Link to Polar customer portal (from Milestone6)
 
 ## Functional Requirements
 
@@ -184,11 +200,13 @@ Sprint 7 integrates Resend for email notifications with React Email templates. C
 ## Technical Considerations
 
 ### Resend Setup
+
 - Environment variable: `RESEND_API_KEY`
 - From address: `no-reply@yourdomain.com` (requires domain verification)
 - Reply-to: Organization email (from settings)
 
 ### Email Template Best Practices
+
 - Plain text fallback for all HTML emails
 - Inline CSS (email clients don't support external styles)
 - Max width: 600px (mobile-friendly)
@@ -196,6 +214,7 @@ Sprint 7 integrates Resend for email notifications with React Email templates. C
 - Test in Gmail, Outlook, Apple Mail
 
 ### ICS Calendar Format
+
 ```ics
 BEGIN:VCALENDAR
 VERSION:2.0
@@ -212,12 +231,14 @@ END:VCALENDAR
 ```
 
 ### Scheduler Logic
+
 - Run daily at 09:00 UTC (adjust for timezone)
 - Find appointments: `startTime BETWEEN now()+23h AND now()+25h`
 - Filter: `status IN ['pending', 'confirmed']`
 - Store sent reminder IDs in `emailLogs` table
 
 ### Error Handling
+
 - Resend API errors: Log and retry
 - Invalid email addresses: Log but don't crash
 - Missing customer email: Skip (phone-only customers)
@@ -239,7 +260,7 @@ END:VCALENDAR
 5. **Booking Confirmation** (1 hour): Trigger from appointment creation
 6. **Cancellation Email** (1 hour): Trigger from cancellation mutation
 7. **Reminder Scheduler** (2 hours): Cron job + scheduler logic
-8. **Payment Failure Email** (1 hour): Integrate with Sprint 6 webhooks
+8. **Payment Failure Email** (1 hour): Integrate with Milestone6 webhooks
 9. **Staff Invitation** (1 hour): Migrate existing email to React Email
 10. **Testing** (2 hours): Send test emails, verify delivery, check spam
 

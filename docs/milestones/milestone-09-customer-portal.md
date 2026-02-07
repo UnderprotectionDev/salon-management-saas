@@ -1,9 +1,10 @@
 [PRD]
-# Sprint 9: Customer Portal
+
+# Milestone 9: Customer Portal
 
 ## Overview
 
-Sprint 9 builds the customer-facing self-service portal with magic link authentication, appointment history, rescheduling, and cancellation capabilities.
+Milestone9 builds the customer-facing self-service portal with magic link authentication, appointment history, rescheduling, and cancellation capabilities.
 
 **Problem Statement:** Customers need a way to view their appointments, reschedule, and cancel without contacting the salon, reducing administrative burden on staff.
 
@@ -21,6 +22,7 @@ Sprint 9 builds the customer-facing self-service portal with magic link authenti
 ## Quality Gates
 
 **Backend Stories (Convex):**
+
 - `bunx convex dev` - Type generation
 - `bun run lint` - Biome linting
 - All mutations use custom wrappers
@@ -28,12 +30,14 @@ Sprint 9 builds the customer-facing self-service portal with magic link authenti
 - Token expiration enforced (15-minute TTL)
 
 **Frontend Stories (React/Next.js):**
+
 - `bun run lint` - Biome linting
 - `bun run build` - Production build verification
 - Manual testing: Magic link login flow works
 - Manual testing: Reschedule flow completes successfully
 
 **Full-Stack Stories:**
+
 - All backend + frontend quality gates
 - Customer can log in via magic link
 - Customer can view appointment history
@@ -43,11 +47,13 @@ Sprint 9 builds the customer-facing self-service portal with magic link authenti
 ## Dependencies
 
 **Requires completed:**
-- Sprint 4: Booking Operations (appointment lifecycle, reschedule/cancel mutations)
-- Sprint 7: Email Notifications (magic link email)
-- Sprint 3: Booking Engine Core (slot availability for rescheduling)
+
+- Milestone4: Booking Operations (appointment lifecycle, reschedule/cancel mutations)
+- Milestone7: Email Notifications (magic link email)
+- Milestone3: Booking Engine Core (slot availability for rescheduling)
 
 **Provides foundation for:**
+
 - Future customer features (loyalty programs, reviews) - v2.0
 
 ## User Stories
@@ -61,6 +67,7 @@ Sprint 9 builds the customer-facing self-service portal with magic link authenti
 **Type:** Full-Stack
 
 **Acceptance Criteria:**
+
 - [ ] Customer enters email or phone on login page
 - [ ] System sends magic link email to customer's address
 - [ ] Magic link includes secure token (UUID)
@@ -70,6 +77,7 @@ Sprint 9 builds the customer-facing self-service portal with magic link authenti
 - [ ] Customer session persists for 30 days (cookie)
 
 **Technical Notes:**
+
 - Files to create:
   - `convex/customerAuth.ts` - Magic link generation, validation
   - `src/app/[slug]/portal/login/page.tsx` - Login page
@@ -89,6 +97,7 @@ Sprint 9 builds the customer-facing self-service portal with magic link authenti
 **Type:** Full-Stack
 
 **Acceptance Criteria:**
+
 - [ ] Portal home page shows active appointments (upcoming + pending)
 - [ ] Each appointment card shows: Date, Time, Service(s), Staff, Status, Confirmation code
 - [ ] Active appointments have "Reschedule" and "Cancel" buttons
@@ -97,6 +106,7 @@ Sprint 9 builds the customer-facing self-service portal with magic link authenti
 - [ ] Appointments are sorted by date (newest first)
 
 **Technical Notes:**
+
 - Files to create:
   - `convex/customers.ts` - Add `getAppointmentHistory` query
   - `src/app/[slug]/portal/appointments/page.tsx` - Appointments list
@@ -113,21 +123,23 @@ Sprint 9 builds the customer-facing self-service portal with magic link authenti
 **Type:** Full-Stack
 
 **Acceptance Criteria:**
+
 - [ ] Clicking "Reschedule" opens reschedule modal
 - [ ] Modal shows current appointment details
 - [ ] Customer can select new date (30 days ahead)
 - [ ] Customer can select new time slot (same service/duration)
-- [ ] New slot availability uses same logic as initial booking (Sprint 3)
+- [ ] New slot availability uses same logic as initial booking (Milestone3)
 - [ ] Customer can select "any available staff" or keep same staff
 - [ ] Rescheduling respects 2-hour policy (cannot reschedule within 2 hours of start)
 - [ ] Confirming reschedule updates appointment and sends confirmation email
 
 **Technical Notes:**
+
 - Files to create:
   - `src/app/[slug]/portal/reschedule/[id]/page.tsx` - Reschedule flow
   - `src/modules/portal/components/RescheduleModal.tsx`
-- Reuse slot availability query from Sprint 3
-- Reuse `appointments.reschedule` mutation from Sprint 4
+- Reuse slot availability query from Milestone3
+- Reuse `appointments.reschedule` mutation from Milestone4
 - Policy check: `startTime - now() >= 2 hours`
 
 ### US-027.2: Self-Service Cancellation
@@ -139,6 +151,7 @@ Sprint 9 builds the customer-facing self-service portal with magic link authenti
 **Type:** Full-Stack
 
 **Acceptance Criteria:**
+
 - [ ] Clicking "Cancel" opens confirmation dialog
 - [ ] Dialog shows cancellation policy (2-hour rule)
 - [ ] Dialog asks for optional cancellation reason
@@ -147,9 +160,10 @@ Sprint 9 builds the customer-facing self-service portal with magic link authenti
 - [ ] Cancelled appointment disappears from active list, appears in past list
 
 **Technical Notes:**
+
 - Files to create:
   - `src/modules/portal/components/CancelModal.tsx`
-- Reuse `appointments.cancel` mutation from Sprint 4
+- Reuse `appointments.cancel` mutation from Milestone4
 - Add `cancelledByCustomer` flag to distinguish from staff cancellations
 
 ### US-027.3: Book Again
@@ -161,6 +175,7 @@ Sprint 9 builds the customer-facing self-service portal with magic link authenti
 **Type:** Full-Stack
 
 **Acceptance Criteria:**
+
 - [ ] "Book Again" button on past appointments
 - [ ] Clicking redirects to booking wizard with pre-filled service and staff
 - [ ] Customer selects new date and time
@@ -168,6 +183,7 @@ Sprint 9 builds the customer-facing self-service portal with magic link authenti
 - [ ] New appointment is created with same services and staff preference
 
 **Technical Notes:**
+
 - Files to modify:
   - `src/app/[slug]/book/page.tsx` - Accept query params for pre-fill
 - Query params: `?services={ids}&staff={id}&customer={id}`
@@ -182,12 +198,14 @@ Sprint 9 builds the customer-facing self-service portal with magic link authenti
 **Type:** Full-Stack
 
 **Acceptance Criteria:**
+
 - [ ] Customer can edit: Name, Phone, Email
 - [ ] Changes update customer record in database
 - [ ] Phone and email validation (same as booking flow)
 - [ ] Profile page shows account info (creation date, total appointments)
 
 **Technical Notes:**
+
 - Files to create:
   - `src/app/[slug]/portal/profile/page.tsx` - Profile page
   - `convex/customers.ts` - Add `updateProfile` mutation
@@ -216,18 +234,21 @@ Sprint 9 builds the customer-facing self-service portal with magic link authenti
 ## Technical Considerations
 
 ### Authentication Architecture
+
 - Separate auth system from staff (Better Auth customer component)
 - Customer sessions use different cookie name: `customer_session`
 - Customer context provider: `useCustomer()` hook
 - Middleware checks customer session for `/portal/*` routes
 
 ### Security
+
 - Magic link tokens are single-use (delete after login)
 - Tokens are cryptographically secure (crypto.randomUUID)
 - Customer can only access their own appointments (filter by customerId)
 - Rate limiting on magic link generation (5/hour per email)
 
 ### URL Structure
+
 ```
 /{slug}/portal/login           # Magic link entry
 /{slug}/portal/auth?token=...  # Magic link validation
@@ -237,7 +258,8 @@ Sprint 9 builds the customer-facing self-service portal with magic link authenti
 ```
 
 ### Email Integration
-- Magic link email uses React Email template (Sprint 7)
+
+- Magic link email uses React Email template (Milestone7)
 - Send via Resend action
 - Email subject: "Your login link for {Organization Name}"
 

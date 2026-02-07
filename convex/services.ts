@@ -1,6 +1,11 @@
 import { ConvexError, v } from "convex/values";
 import type { Doc } from "./_generated/dataModel";
-import { adminMutation, ErrorCode, orgQuery } from "./lib/functions";
+import {
+  adminMutation,
+  ErrorCode,
+  orgQuery,
+  publicQuery,
+} from "./lib/functions";
 import { rateLimiter } from "./lib/rateLimits";
 import {
   serviceDocValidator,
@@ -9,6 +14,59 @@ import {
   serviceWithCategoryValidator,
   staffDocValidator,
 } from "./lib/validators";
+
+// =============================================================================
+// Public Queries
+// =============================================================================
+
+/**
+ * List active, online-visible services for public booking page.
+ * No authentication required.
+ */
+export const listPublic = publicQuery({
+  args: { organizationId: v.id("organization") },
+  returns: v.array(serviceWithCategoryValidator),
+  handler: async (ctx, args) => {
+    const services = await ctx.db
+      .query("services")
+      .withIndex("by_org_status", (q) =>
+        q.eq("organizationId", args.organizationId).eq("status", "active"),
+      )
+      .collect();
+
+    // Only show online-visible services
+    const onlineServices = services.filter((s) => s.showOnline);
+
+    // Fetch category names
+    const categoryIds = [
+      ...new Set(
+        onlineServices
+          .map((s) => s.categoryId)
+          .filter(
+            (id): id is NonNullable<typeof id> =>
+              id !== undefined && id !== null,
+          ),
+      ),
+    ];
+    const categories = await Promise.all(
+      categoryIds.map((id) => ctx.db.get(id)),
+    );
+    const categoryMap = new Map(
+      categories
+        .filter((c): c is NonNullable<typeof c> => c !== null)
+        .map((c) => [c._id, c.name]),
+    );
+
+    return onlineServices
+      .map((service) => ({
+        ...service,
+        categoryName: service.categoryId
+          ? categoryMap.get(service.categoryId)
+          : undefined,
+      }))
+      .sort((a, b) => a.sortOrder - b.sortOrder);
+  },
+});
 
 // =============================================================================
 // Queries

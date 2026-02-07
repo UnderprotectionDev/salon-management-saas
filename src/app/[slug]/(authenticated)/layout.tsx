@@ -12,7 +12,7 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import {
@@ -39,7 +39,11 @@ import {
   SidebarTrigger,
 } from "@/components/ui/sidebar";
 import { authClient } from "@/lib/auth-client";
-import { OrganizationSwitcher, useOrganization } from "@/modules/organization";
+import {
+  OrganizationProvider,
+  OrganizationSwitcher,
+  useOrganization,
+} from "@/modules/organization";
 
 const menuItems = [
   {
@@ -56,7 +60,6 @@ const menuItems = [
     title: "Appointments",
     icon: Calendar,
     href: "/appointments",
-    disabled: true,
   },
   {
     title: "Services",
@@ -75,14 +78,14 @@ const menuItems = [
   },
 ];
 
-export default function SalonLayout({
+function AuthenticatedLayoutContent({
   children,
 }: {
   children: React.ReactNode;
 }) {
   const params = useParams();
   const router = useRouter();
-  const slug = params.slug as string;
+  const slug = typeof params.slug === "string" ? params.slug : "";
   const {
     activeOrganization,
     organizations,
@@ -91,6 +94,7 @@ export default function SalonLayout({
   } = useOrganization();
 
   const { data: session } = authClient.useSession();
+  const [isRedirecting, setIsRedirecting] = useState(false);
 
   // Find organization by slug and set as active
   useEffect(() => {
@@ -101,6 +105,7 @@ export default function SalonLayout({
       setActiveOrganization(org);
     } else if (!org && organizations.length > 0) {
       // Redirect to first org if slug doesn't match
+      setIsRedirecting(true);
       router.push(`/${organizations[0].slug}/dashboard`);
     }
   }, [
@@ -113,7 +118,7 @@ export default function SalonLayout({
   ]);
 
   // Loading state
-  if (isLoading) {
+  if (isLoading || isRedirecting) {
     return (
       <div className="flex min-h-screen items-center justify-center">
         <div className="text-muted-foreground">Loading...</div>
@@ -139,8 +144,12 @@ export default function SalonLayout({
   }
 
   const handleSignOut = async () => {
-    await authClient.signOut();
-    router.push("/sign-in");
+    try {
+      await authClient.signOut();
+      router.push("/sign-in");
+    } catch (error) {
+      console.error("Sign out failed:", error);
+    }
   };
 
   return (
@@ -156,11 +165,7 @@ export default function SalonLayout({
               <SidebarMenu>
                 {menuItems.map((item) => (
                   <SidebarMenuItem key={item.title}>
-                    <SidebarMenuButton
-                      asChild
-                      disabled={item.disabled}
-                      tooltip={item.disabled ? "Coming soon" : undefined}
-                    >
+                    <SidebarMenuButton asChild>
                       <Link href={`/${slug}${item.href}`}>
                         <item.icon className="size-4" />
                         <span>{item.title}</span>
@@ -221,5 +226,17 @@ export default function SalonLayout({
         <main className="flex-1 p-4 lg:p-6">{children}</main>
       </SidebarInset>
     </SidebarProvider>
+  );
+}
+
+export default function AuthenticatedLayout({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
+  return (
+    <OrganizationProvider>
+      <AuthenticatedLayoutContent>{children}</AuthenticatedLayoutContent>
+    </OrganizationProvider>
   );
 }

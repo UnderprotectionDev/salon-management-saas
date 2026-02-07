@@ -51,15 +51,22 @@ convex/              # Backend functions and schema
 ├── betterAuth/      # Better Auth component (schema, auth config)
 ├── lib/
 │   ├── functions.ts # Custom query/mutation wrappers with auth & RLS
-│   ├── validators.ts # Return type validators (~500 lines)
+│   ├── validators.ts # Return type validators (~716 lines)
 │   ├── rateLimits.ts # Rate limiting config
 │   ├── scheduleResolver.ts # Schedule resolution logic (163 lines)
+│   ├── confirmation.ts # Confirmation code generator (40 lines)
+│   ├── dateTime.ts  # Date/time utilities (78 lines)
 │   ├── phone.ts     # Turkish phone validation helper
 │   ├── relationships.ts # Database relationship helpers
 │   └── rls.ts       # Row-level security helpers
+├── appointments.ts  # Appointment CRUD + booking (801 lines)
+├── appointmentServices.ts # Appointment-service junction (54 lines)
 ├── auth.ts          # Auth instance and options
+├── crons.ts         # Scheduled jobs - slot lock cleanup (14 lines)
 ├── http.ts          # HTTP router with auth routes
 ├── files.ts         # File storage mutations (253 lines)
+├── slots.ts         # Slot availability algorithm (206 lines)
+├── slotLocks.ts     # Slot lock acquire/release/cleanup (145 lines)
 ├── users.ts         # User queries (getCurrentUser)
 ├── serviceCategories.ts # Service category CRUD (188 lines)
 ├── services.ts      # Service CRUD + staff assignment (353 lines)
@@ -73,6 +80,8 @@ src/
 ├── app/             # Next.js App Router pages
 │   ├── (auth)/      # Auth pages (sign-in) - no layout nesting
 │   ├── [slug]/      # Multi-tenant routes (org slug in URL)
+│   │   ├── (authenticated)/ # Protected routes (dashboard, staff, services, etc.)
+│   │   └── (public)/        # Public routes (book, appointment/[code])
 │   ├── onboarding/  # New user org creation
 │   └── dashboard/   # Redirect to active org
 ├── components/ui/   # shadcn/ui components (56+)
@@ -81,6 +90,7 @@ src/
 └── modules/         # Feature modules (domain-driven)
     ├── convex/      # ConvexClientProvider
     ├── auth/        # Auth components, layouts, views
+    ├── booking/     # Booking engine (12 components, 1 hook, 1,667 lines)
     ├── organization/ # OrganizationProvider, OrganizationSwitcher
     ├── customers/   # Customer database, search, merge
     ├── services/    # Service catalog, categories, pricing
@@ -94,11 +104,14 @@ docs/prd/            # Product Requirements Documentation
 ### Route Groups & Multi-Tenancy
 
 - `(auth)/` — Route group (no URL segment). Auth pages with minimal layout.
-- `[slug]/` — Dynamic segment for organization slug. All org-scoped pages use this prefix.
+- `[slug]/(authenticated)/` — Protected org routes (dashboard, staff, services, customers, appointments, settings). Requires auth + org membership.
+- `[slug]/(public)/` — Public org routes (book, appointment/[code]). No auth required.
 - `onboarding/` — First-time user flow to create an organization.
 - `dashboard/` — Redirects to user's active organization dashboard.
+- `/` — Salon directory (public listing of organizations).
 
 **User Flow:** Sign in → No orgs? → `/onboarding` → Create org → `/{slug}/dashboard`
+**Public Booking:** `/{slug}/book` → Select services → Pick time → Enter info → Confirmation code
 
 **Multi-Tenancy:** Every table includes `organizationId` for tenant isolation. Custom function wrappers (`orgQuery`, `orgMutation`) automatically enforce this via RLS.
 
@@ -118,6 +131,7 @@ Use hooks from `@/modules/organization`:
 | Wrapper                | Auth                   | Context Added                                               | Use Case                              |
 | ---------------------- | ---------------------- | ----------------------------------------------------------- | ------------------------------------- |
 | `publicQuery`          | None                   | —                                                           | Public data (org info by slug)        |
+| `publicMutation`       | None                   | —                                                           | Public operations (booking, slot locks) |
 | `maybeAuthedQuery`     | Optional               | `ctx.user \| null`                                          | Works for authed/unauthed users       |
 | `authedQuery/Mutation` | Required               | `ctx.user`                                                  | User-scoped data (profile, orgs list) |
 | `orgQuery/Mutation`    | Required + membership  | `ctx.user`, `ctx.organizationId`, `ctx.member`, `ctx.staff` | All org-scoped operations             |
@@ -201,7 +215,7 @@ export const create = adminMutation({
 });
 ```
 
-**Available rate limits:** `createInvitation`, `resendInvitation`, `createOrganization`, `addMember`, `createService`, `createBooking`, `cancelBooking`, `createScheduleOverride`, `createTimeOffRequest`, `createOvertime`
+**Available rate limits:** `createInvitation`, `resendInvitation`, `createOrganization`, `addMember`, `createService`, `createCustomer`, `createScheduleOverride`, `createTimeOffRequest`, `createOvertime`, `createBooking`, `cancelBooking`
 
 ## Key Files
 
@@ -209,8 +223,15 @@ export const create = adminMutation({
 | -------------------------------- | ------------------------------------------------------------------- |
 | `convex/schema.ts`               | Database schema (creates types after `bunx convex dev`)             |
 | `convex/lib/functions.ts`        | Custom function wrappers (CRITICAL - use these, not base functions) |
-| `convex/lib/validators.ts`       | Shared return type validators                                       |
+| `convex/lib/validators.ts`       | Shared return type validators (~716 lines)                          |
 | `convex/lib/rateLimits.ts`       | Rate limiting configuration                                         |
+| `convex/appointments.ts`         | Appointment CRUD + booking (801 lines)                              |
+| `convex/slots.ts`                | Slot availability algorithm (206 lines)                             |
+| `convex/slotLocks.ts`            | Slot lock acquire/release/cleanup (145 lines)                       |
+| `convex/appointmentServices.ts`  | Appointment-service junction (54 lines)                             |
+| `convex/crons.ts`                | Scheduled jobs - slot lock cleanup (14 lines)                       |
+| `convex/lib/confirmation.ts`     | Confirmation code generator (40 lines)                              |
+| `convex/lib/dateTime.ts`         | Date/time utilities (78 lines)                                      |
 | `convex/users.ts`                | User queries (getCurrentUser)                                       |
 | `convex/serviceCategories.ts`    | Service category CRUD                                               |
 | `convex/services.ts`             | Service CRUD + staff assignment                                     |
@@ -230,6 +251,7 @@ export const create = adminMutation({
 | `components.json`                | shadcn/ui configuration (New York style)                            |
 | `src/middleware.ts`              | Auth middleware for protected routes                                |
 | `src/modules/organization/`      | OrganizationProvider, hooks, OrganizationSwitcher                   |
+| `src/modules/booking/`           | Booking engine components, hooks, utilities                         |
 
 ## Code Style
 

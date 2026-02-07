@@ -3,7 +3,9 @@ import {
   authedMutation,
   authedQuery,
   ErrorCode,
+  internalMutation,
   orgQuery,
+  publicQuery,
 } from "./lib/functions";
 import { resolveScheduleRange } from "./lib/scheduleResolver";
 import {
@@ -11,6 +13,52 @@ import {
   staffScheduleValidator,
   staffStatusValidator,
 } from "./lib/validators";
+
+// =============================================================================
+// Public Queries
+// =============================================================================
+
+/**
+ * List active staff for public booking page.
+ * Returns minimal info (no auth required).
+ * Filters out staff who can't be booked (no schedule or no services).
+ */
+export const listPublicActive = publicQuery({
+  args: { organizationId: v.id("organization") },
+  returns: v.array(
+    v.object({
+      _id: v.id("staff"),
+      name: v.string(),
+      imageUrl: v.optional(v.string()),
+      bio: v.optional(v.string()),
+      serviceIds: v.optional(v.array(v.id("services"))),
+    }),
+  ),
+  handler: async (ctx, args) => {
+    const staff = await ctx.db
+      .query("staff")
+      .withIndex("organizationId_status", (q) =>
+        q.eq("organizationId", args.organizationId).eq("status", "active"),
+      )
+      .collect();
+
+    // Filter out staff who can't be booked
+    const bookableStaff = staff.filter((s) => {
+      const hasSchedule =
+        s.defaultSchedule !== undefined && s.defaultSchedule !== null;
+      const hasServices = s.serviceIds !== undefined && s.serviceIds.length > 0;
+      return hasSchedule && hasServices;
+    });
+
+    return bookableStaff.map((s) => ({
+      _id: s._id,
+      name: s.name,
+      imageUrl: s.imageUrl,
+      bio: s.bio,
+      serviceIds: s.serviceIds,
+    }));
+  },
+});
 
 // =============================================================================
 // Queries
@@ -132,7 +180,7 @@ export const createProfile = authedMutation({
     bio: v.optional(v.string()),
     status: v.optional(staffStatusValidator),
     serviceIds: v.optional(v.array(v.id("services"))),
-    defaultSchedule: staffScheduleValidator,
+    defaultSchedule: v.optional(staffScheduleValidator),
   },
   returns: v.id("staff"),
   handler: async (ctx, args) => {
@@ -191,6 +239,17 @@ export const createProfile = authedMutation({
 
     const now = Date.now();
 
+    // If no schedule provided, use sensible default (9-5 Mon-Fri)
+    const defaultSchedule = args.defaultSchedule ?? {
+      monday: { available: true, start: "09:00", end: "17:00" },
+      tuesday: { available: true, start: "09:00", end: "17:00" },
+      wednesday: { available: true, start: "09:00", end: "17:00" },
+      thursday: { available: true, start: "09:00", end: "17:00" },
+      friday: { available: true, start: "09:00", end: "17:00" },
+      saturday: { available: false, start: null, end: null },
+      sunday: { available: false, start: null, end: null },
+    };
+
     const staffId = await ctx.db.insert("staff", {
       userId: args.userId,
       organizationId: args.organizationId,
@@ -202,7 +261,7 @@ export const createProfile = authedMutation({
       bio: args.bio,
       status: args.status ?? "active",
       serviceIds: args.serviceIds ?? [],
-      defaultSchedule: args.defaultSchedule,
+      defaultSchedule,
       createdAt: now,
       updatedAt: now,
     });
@@ -224,7 +283,7 @@ export const updateProfile = authedMutation({
     bio: v.optional(v.string()),
     status: v.optional(staffStatusValidator),
     serviceIds: v.optional(v.array(v.string())),
-    defaultSchedule: staffScheduleValidator,
+    defaultSchedule: v.optional(staffScheduleValidator),
   },
   returns: v.id("staff"),
   handler: async (ctx, args) => {
@@ -344,5 +403,45 @@ export const getResolvedSchedule = orgQuery({
       overrides: filteredOverrides,
       overtimeEntries: filteredOvertime,
     });
+  },
+});
+
+// =============================================================================
+// Data Migration
+// =============================================================================
+
+/**
+ * Migrate existing staff to have default schedules.
+ * Populates default 9-5 Mon-Fri schedule for active staff without schedules.
+ * This is a one-time migration to fix the booking flow.
+ */
+export const migrateStaffSchedules = internalMutation({
+  args: {},
+  returns: v.object({
+    migrated: v.number(),
+    total: v.number(),
+  }),
+  handler: async (ctx) => {
+    const allStaff = await ctx.db.query("staff").collect();
+
+    const defaultSchedule = {
+      monday: { available: true, start: "09:00", end: "17:00" },
+      tuesday: { available: true, start: "09:00", end: "17:00" },
+      wednesday: { available: true, start: "09:00", end: "17:00" },
+      thursday: { available: true, start: "09:00", end: "17:00" },
+      friday: { available: true, start: "09:00", end: "17:00" },
+      saturday: { available: false, start: null, end: null },
+      sunday: { available: false, start: null, end: null },
+    };
+
+    let migrated = 0;
+    for (const staff of allStaff) {
+      if (!staff.defaultSchedule) {
+        await ctx.db.patch(staff._id, { defaultSchedule });
+        migrated++;
+      }
+    }
+
+    return { migrated, total: allStaff.length };
   },
 });

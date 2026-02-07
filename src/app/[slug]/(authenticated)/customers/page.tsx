@@ -11,7 +11,7 @@ import {
   CustomerSearch,
   CustomerTable,
 } from "@/modules/customers";
-import { api } from "../../../../convex/_generated/api";
+import { api } from "../../../../../convex/_generated/api";
 
 export default function CustomersPage() {
   const { activeOrganization, currentRole } = useOrganization();

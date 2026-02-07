@@ -20,7 +20,7 @@ import {
   InvitationsList,
   MembersList,
 } from "@/modules/settings";
-import { api } from "../../../../convex/_generated/api";
+import { api } from "../../../../../convex/_generated/api";
 
 function SettingsSkeleton() {
   return (
@@ -53,7 +53,7 @@ export default function SettingsPage() {
     activeOrganization ? { organizationId: activeOrganization._id } : "skip",
   );
 
-  if (!activeOrganization || settings === undefined) {
+  if (!activeOrganization || settings === undefined || settings === null) {
     return <SettingsSkeleton />;
   }
 

@@ -10,7 +10,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useOrganization } from "@/modules/organization";
 import { AddStaffDialog } from "@/modules/staff";
-import { api } from "../../../../convex/_generated/api";
+import { api } from "../../../../../convex/_generated/api";
 
 function getInitials(name: string): string {
   return name
@@ -38,7 +38,7 @@ function getStatusColor(
 
 export default function StaffPage() {
   const params = useParams();
-  const slug = params.slug as string;
+  const slug = typeof params.slug === "string" ? params.slug : "";
   const { activeOrganization } = useOrganization();
 
   const staffList = useQuery(

@@ -1,6 +1,6 @@
 # Database Schema
 
-> **Last Updated:** 2026-02-06
+> **Last Updated:** 2026-02-07
 > **Status:** Active
 
 This document contains the complete Convex database schema for the Salon Management SaaS. All tables include multi-tenancy support through `organizationId`.
@@ -63,21 +63,21 @@ erDiagram
 
 ## Implementation Status
 
-| Section | Status | Sprint | Notes |
-|---------|--------|--------|-------|
-| Organization & Settings | ✅ Implemented | Sprint 1 | Full CRUD, business hours, settings |
-| Member & Invitation | ✅ Implemented | Sprint 1 | Role management, invitation lifecycle |
-| Staff | ✅ Implemented | Sprint 1 | Profile management, schedule, service assignments |
-| Audit Logs | ⚠️ Partial | Sprint 1.5 | Table ✅, Helper functions ❌ (planned) |
+| Section | Status | Milestone | Notes |
+|---------|--------|-----------|-------|
+| Organization & Settings | ✅ Implemented | Milestone 1 | Full CRUD, business hours, settings |
+| Member & Invitation | ✅ Implemented | Milestone 1 | Role management, invitation lifecycle |
+| Staff | ✅ Implemented | Milestone 1 | Profile management, schedule, service assignments |
+| Audit Logs | ⚠️ Partial | Milestone 1.5 | Table ✅, Helper functions ❌ (planned) |
 | Services & Categories | ✅ Implemented | Milestone 2A | Full CRUD, staff assignment, image upload |
 | Schedule Overrides | ✅ Implemented | Milestone 2B | CRUD + schedule resolution |
 | Time-Off Requests | ✅ Implemented | Milestone 2B | Request/approve/reject workflow |
 | Staff Overtime | ✅ Implemented | Milestone 2B | Overtime slot management |
-| Customers | ✅ Implemented | Milestone 3 | Full CRUD, search, merge |
-| Appointments & Slot Locks | 📋 Planned | Sprint 3-4 | Schema exists, APIs pending |
-| Products & Inventory | 📋 Planned | Sprint 2+ | Schema exists, APIs pending |
-| Notifications | 📋 Planned | Sprint 5 | Schema exists, APIs pending |
-| Subscriptions (Polar) | 📋 Planned | Sprint 6 | Schema exists, APIs pending |
+| Customers | ✅ Implemented | Milestone 2C | Full CRUD, search, merge, phone validation |
+| Appointments & Slot Locks | ✅ Implemented | Milestone 3 | Full CRUD, slot availability, locking, cron cleanup |
+| Products & Inventory | 📋 Planned | Milestone 8+ | Schema exists, APIs pending |
+| Notifications | 📋 Planned | Milestone 7 | Schema exists, APIs pending |
+| Subscriptions (Polar) | 📋 Planned | Milestone 6 | Schema exists, APIs pending |
 | Security Events | 📋 Planned | TBD | Schema exists, APIs pending |
 
 ---
@@ -621,7 +621,7 @@ customers: defineTable({
 - `by_org_status` - Filter by account status
 - `search_customers` - Full-text search on name
 
-**Implementation:** ✅ Full CRUD, search, merge (Milestone 3)
+**Implementation:** ✅ Full CRUD, search, merge (Milestone 2C)
 
 ---
 
@@ -720,7 +720,7 @@ pending → confirmed → checked_in → in_progress → completed
        ↘ no_show
 ```
 
-**Implementation:** 📋 Planned (Sprint 3-4)
+**Implementation:** ✅ Implemented (Milestone 3)
 
 ---
 
@@ -760,10 +760,18 @@ slotLocks: defineTable({
 })
   .index("by_staff_date", ["staffId", "date"])
   .index("by_expiry", ["expiresAt"])
+  .index("by_session", ["sessionId"])
 ```
 
+**Indexes:**
+- `by_staff_date` - Find locks for a staff member on a date
+- `by_expiry` - Cleanup expired locks (cron job)
+- `by_session` - Find/release locks by browser session
+
 **Purpose:** 2-minute TTL locks for booking flow
-**Cleanup:** Automated via scheduled job
+**Cleanup:** Automated via cron job (`slotLocks.cleanupExpired` every 1 minute)
+
+**Implementation:** ✅ Implemented (Milestone 3)
 
 ---
 
@@ -820,7 +828,7 @@ products: defineTable({
   })
 ```
 
-**Implementation:** 📋 Planned (Sprint 2+)
+**Implementation:** 📋 Planned (Milestone 8+)
 
 ---
 
@@ -860,7 +868,7 @@ organizationSubscriptions: defineTable({
   .index("by_status", ["status"])
 ```
 
-**Implementation:** 📋 Planned (Sprint 6)
+**Implementation:** 📋 Planned (Milestone 6)
 
 ---
 
@@ -969,8 +977,10 @@ estimatedDuration: v.number(), // Now required
 
 **Implementation Files:**
 - `convex/schema.ts` - Full schema definition
-- `convex/lib/validators.ts` - Document validators for return types (309 lines)
+- `convex/lib/validators.ts` - Document validators for return types (~716 lines)
 - `convex/lib/scheduleResolver.ts` - Schedule resolution logic (163 lines)
+- `convex/lib/confirmation.ts` - Confirmation code generator (40 lines)
+- `convex/lib/dateTime.ts` - Date/time utilities (78 lines)
 - `convex/organizations.ts` - Organization CRUD operations
 - `convex/members.ts` - Member management
 - `convex/staff.ts` - Staff profile management
@@ -981,5 +991,10 @@ estimatedDuration: v.number(), // Now required
 - `convex/timeOffRequests.ts` - Time-off request workflow (335 lines)
 - `convex/staffOvertime.ts` - Overtime management (155 lines)
 - `convex/customers.ts` - Customer CRUD + search + merge (~500 lines)
+- `convex/appointments.ts` - Appointment CRUD + booking (801 lines)
+- `convex/appointmentServices.ts` - Appointment-service junction (54 lines)
+- `convex/slots.ts` - Slot availability algorithm (206 lines)
+- `convex/slotLocks.ts` - Slot lock management (145 lines)
+- `convex/crons.ts` - Scheduled jobs (14 lines)
 - `convex/users.ts` - User queries (getCurrentUser)
 - `convex/files.ts` - File uploads: logos, staff images, service images (253 lines)

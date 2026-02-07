@@ -8,11 +8,16 @@
  * @module
  */
 
+import type * as appointmentServices from "../appointmentServices.js";
+import type * as appointments from "../appointments.js";
 import type * as auth from "../auth.js";
+import type * as crons from "../crons.js";
 import type * as customers from "../customers.js";
 import type * as files from "../files.js";
 import type * as http from "../http.js";
 import type * as invitations from "../invitations.js";
+import type * as lib_confirmation from "../lib/confirmation.js";
+import type * as lib_dateTime from "../lib/dateTime.js";
 import type * as lib_functions from "../lib/functions.js";
 import type * as lib_phone from "../lib/phone.js";
 import type * as lib_rateLimits from "../lib/rateLimits.js";
@@ -25,6 +30,8 @@ import type * as organizations from "../organizations.js";
 import type * as scheduleOverrides from "../scheduleOverrides.js";
 import type * as serviceCategories from "../serviceCategories.js";
 import type * as services from "../services.js";
+import type * as slotLocks from "../slotLocks.js";
+import type * as slots from "../slots.js";
 import type * as staff from "../staff.js";
 import type * as staffOvertime from "../staffOvertime.js";
 import type * as timeOffRequests from "../timeOffRequests.js";
@@ -37,11 +44,16 @@ import type {
 } from "convex/server";
 
 declare const fullApi: ApiFromModules<{
+  appointmentServices: typeof appointmentServices;
+  appointments: typeof appointments;
   auth: typeof auth;
+  crons: typeof crons;
   customers: typeof customers;
   files: typeof files;
   http: typeof http;
   invitations: typeof invitations;
+  "lib/confirmation": typeof lib_confirmation;
+  "lib/dateTime": typeof lib_dateTime;
   "lib/functions": typeof lib_functions;
   "lib/phone": typeof lib_phone;
   "lib/rateLimits": typeof lib_rateLimits;
@@ -54,6 +66,8 @@ declare const fullApi: ApiFromModules<{
   scheduleOverrides: typeof scheduleOverrides;
   serviceCategories: typeof serviceCategories;
   services: typeof services;
+  slotLocks: typeof slotLocks;
+  slots: typeof slots;
   staff: typeof staff;
   staffOvertime: typeof staffOvertime;
   timeOffRequests: typeof timeOffRequests;
