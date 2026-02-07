@@ -1,12 +1,26 @@
 # Design System
 
-> **Last Updated:** 2026-02-04
+> **Last Updated:** 2026-02-06
 > **Status:** Active
 > **UI Framework:** shadcn/ui (New York style)
 
-## Overview
+This document defines the visual design language, component patterns, UI guidelines, and user flows for the Salon Management SaaS platform.
 
-This document defines the visual design language, component patterns, and UI guidelines for the Salon Management SaaS platform.
+---
+
+## Table of Contents
+
+1. [Design Principles](#design-principles)
+2. [Color System](#color-system)
+3. [Typography](#typography)
+4. [Spacing System](#spacing-system)
+5. [Component Library](#component-library)
+6. [Layout Patterns](#layout-patterns)
+7. [Mobile Considerations](#mobile-considerations)
+8. [Loading & Empty States](#loading--empty-states)
+9. [Animation Guidelines](#animation-guidelines)
+10. [Accessibility](#accessibility)
+11. [User Flows](#user-flows)
 
 ---
 
@@ -30,7 +44,7 @@ Follow WCAG 2.1 AA guidelines. Ensure color contrast, keyboard navigation, and s
 
 ### 5. Turkish Market Fit
 
-Respect cultural conventions for Turkish users: right-to-left currency placement (₺150), date formats (DD.MM.YYYY), 24-hour time.
+Respect cultural conventions: right-to-left currency (₺150), date format (DD.MM.YYYY), 24-hour time.
 
 ---
 
@@ -41,11 +55,11 @@ Respect cultural conventions for Turkish users: right-to-left currency placement
 ```css
 /* CSS Variables - defined in globals.css */
 :root {
-  /* Primary - Used for CTAs, links, active states */
+  /* Primary - CTAs, links, active states */
   --primary: oklch(0.55 0.15 250); /* Blue */
   --primary-foreground: oklch(0.98 0 0);
 
-  /* Secondary - Used for secondary actions */
+  /* Secondary - Secondary actions */
   --secondary: oklch(0.95 0.01 250);
   --secondary-foreground: oklch(0.20 0 0);
 
@@ -57,7 +71,7 @@ Respect cultural conventions for Turkish users: right-to-left currency placement
   --destructive: oklch(0.55 0.20 25); /* Red */
   --destructive-foreground: oklch(0.98 0 0);
 
-  /* Success - Confirmations, completed states */
+  /* Success - Confirmations */
   --success: oklch(0.60 0.15 145); /* Green */
   --success-foreground: oklch(0.98 0 0);
 
@@ -65,24 +79,18 @@ Respect cultural conventions for Turkish users: right-to-left currency placement
   --warning: oklch(0.75 0.15 85); /* Amber */
   --warning-foreground: oklch(0.20 0 0);
 }
-
-.dark {
-  --primary: oklch(0.65 0.15 250);
-  --primary-foreground: oklch(0.10 0 0);
-  /* ... dark mode variants */
-}
 ```
 
 ### Semantic Color Usage
 
 | Color | Use Case | Example |
 |-------|----------|---------|
-| Primary | CTAs, links, focus states | "Book Now" button |
+| Primary | CTAs, links, focus | "Book Now" button |
 | Secondary | Secondary actions | "Cancel" button |
-| Destructive | Delete actions, errors | "Delete appointment" |
-| Success | Confirmations, completed | "Booking confirmed" |
-| Warning | Alerts, low stock | "Low inventory" badge |
-| Muted | Disabled states, placeholders | Disabled input |
+| Destructive | Delete, errors | "Delete appointment" |
+| Success | Confirmations | "Booking confirmed" |
+| Warning | Alerts | "Low inventory" |
+| Muted | Disabled, placeholders | Disabled input |
 
 ### Appointment Status Colors
 
@@ -189,7 +197,7 @@ const statusColors = {
 // Outline button
 <Button variant="outline">Edit</Button>
 
-// Ghost button (for icons, minimal actions)
+// Ghost button (minimal)
 <Button variant="ghost" size="icon">
   <MoreHorizontal className="h-4 w-4" />
 </Button>
@@ -199,10 +207,10 @@ const statusColors = {
 ```
 
 **Button Sizes:**
-- `default` - Standard button (h-10)
+- `default` - Standard (h-10)
 - `sm` - Compact (h-9)
 - `lg` - Large CTA (h-11)
-- `icon` - Square icon button (h-10 w-10)
+- `icon` - Square icon (h-10 w-10)
 
 ### Form Elements
 
@@ -217,7 +225,7 @@ const statusColors = {
 <div className="space-y-2">
   <Label htmlFor="email">Email</Label>
   <Input id="email" className="border-destructive" />
-  <p className="text-sm text-destructive">Invalid email address</p>
+  <p className="text-sm text-destructive">Invalid email</p>
 </div>
 
 // Select
@@ -279,7 +287,7 @@ const statusColors = {
 <Badge variant="destructive">Cancelled</Badge>
 <Badge variant="outline">Draft</Badge>
 
-// Custom status badges
+// Custom status
 <Badge className="bg-green-100 text-green-800">Confirmed</Badge>
 <Badge className="bg-yellow-100 text-yellow-800">Checked In</Badge>
 ```
@@ -295,15 +303,15 @@ const statusColors = {
     <DialogHeader>
       <DialogTitle>Cancel Appointment</DialogTitle>
       <DialogDescription>
-        Are you sure you want to cancel this appointment?
+        Are you sure you want to cancel?
       </DialogDescription>
     </DialogHeader>
     <div className="py-4">
       {/* Form fields */}
     </div>
     <DialogFooter>
-      <Button variant="outline">Keep Appointment</Button>
-      <Button variant="destructive">Cancel Appointment</Button>
+      <Button variant="outline">Keep</Button>
+      <Button variant="destructive">Cancel</Button>
     </DialogFooter>
   </DialogContent>
 </Dialog>
@@ -356,14 +364,11 @@ const statusColors = {
 │            │                                                │
 │            │  ┌─────────────────────────────────────────┐  │
 │            │  │ Content                                 │  │
-│            │  │                                         │  │
 │            │  └─────────────────────────────────────────┘  │
-│            │                                                │
 └────────────┴────────────────────────────────────────────────┘
 ```
 
 ```tsx
-// Layout component
 export function DashboardLayout({ children }: { children: React.ReactNode }) {
   return (
     <div className="min-h-screen bg-background">
@@ -387,16 +392,12 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
 │  Progress: [1]──[2]──[3]──[4]──[5]                         │
 │                                                             │
 │  ┌───────────────────────────────────────────────────────┐ │
-│  │                                                       │ │
-│  │  Step Content                                         │ │
-│  │  (centered, max-w-2xl)                                │ │
-│  │                                                       │ │
+│  │  Step Content (centered, max-w-2xl)                   │ │
 │  └───────────────────────────────────────────────────────┘ │
 │                                                             │
 │  ┌───────────────────────────────────────────────────────┐ │
 │  │ [Back]                                   [Continue]   │ │
 │  └───────────────────────────────────────────────────────┘ │
-│                                                             │
 └─────────────────────────────────────────────────────────────┘
 ```
 
@@ -406,12 +407,11 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
 ┌─────────────────────────────────────────────────────────────┐
 │ [< Prev]  March 2024  [Next >]    [Day][Week][Month]       │
 ├───────────┬─────────────────────────────────────────────────┤
-│ Time      │ Staff columns (horizontal scroll on mobile)     │
+│ Time      │ Staff columns (horizontal scroll)              │
 ├───────────┼─────────┬─────────┬─────────┬─────────┬────────┤
 │ 09:00     │ █████   │         │         │ █████   │        │
 │ 09:30     │ █████   │         │ ████    │         │        │
 │ 10:00     │         │ ████    │ ████    │         │        │
-│ ...       │         │         │         │         │        │
 └───────────┴─────────┴─────────┴─────────┴─────────┴────────┘
 ```
 
@@ -421,14 +421,13 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
 
 ### Touch Targets
 
-- Minimum touch target: 44x44px
-- Recommended spacing between targets: 8px
-- Interactive elements should be easily tappable
+- Minimum: 44x44px
+- Recommended spacing: 8px
+- Interactive elements easily tappable
 
 ### Responsive Breakpoints
 
 ```css
-/* Tailwind defaults */
 sm: 640px   /* Small tablets */
 md: 768px   /* Tablets */
 lg: 1024px  /* Desktop */
@@ -439,7 +438,7 @@ xl: 1280px  /* Large desktop */
 ### Mobile Navigation
 
 ```tsx
-// Bottom navigation for mobile (booking flow)
+// Bottom navigation (booking flow)
 <nav className="fixed bottom-0 left-0 right-0 md:hidden border-t bg-background p-4">
   <div className="flex justify-between">
     <Button variant="outline" onClick={goBack}>Back</Button>
@@ -447,7 +446,7 @@ xl: 1280px  /* Large desktop */
   </div>
 </nav>
 
-// Hamburger menu for mobile (dashboard)
+// Hamburger menu (dashboard)
 <Sheet>
   <SheetTrigger asChild>
     <Button variant="ghost" size="icon" className="md:hidden">
@@ -462,7 +461,7 @@ xl: 1280px  /* Large desktop */
 
 ---
 
-## Loading States
+## Loading & Empty States
 
 ### Skeleton Components
 
@@ -472,13 +471,6 @@ xl: 1280px  /* Large desktop */
   <Skeleton className="h-4 w-3/4 mb-2" />
   <Skeleton className="h-4 w-1/2" />
 </Card>
-
-// Table skeleton
-<TableRow>
-  <TableCell><Skeleton className="h-4 w-24" /></TableCell>
-  <TableCell><Skeleton className="h-4 w-32" /></TableCell>
-  <TableCell><Skeleton className="h-6 w-16" /></TableCell>
-</TableRow>
 
 // List skeleton
 {Array.from({ length: 5 }).map((_, i) => (
@@ -507,9 +499,7 @@ xl: 1280px  /* Large desktop */
 </div>
 ```
 
----
-
-## Empty States
+### Empty States
 
 ```tsx
 // No data
@@ -525,13 +515,11 @@ xl: 1280px  /* Large desktop */
 // Search no results
 <div className="text-center py-8">
   <Search className="h-8 w-8 text-muted-foreground mx-auto mb-2" />
-  <p className="text-muted-foreground">No results found for "{query}"</p>
+  <p className="text-muted-foreground">No results for "{query}"</p>
 </div>
 ```
 
----
-
-## Error States
+### Error States
 
 ```tsx
 // Inline error
@@ -554,7 +542,7 @@ xl: 1280px  /* Large desktop */
   <AlertTriangle className="h-12 w-12 text-destructive mb-4" />
   <h3 className="text-lg font-medium">Something went wrong</h3>
   <p className="text-sm text-muted-foreground mb-4">
-    We couldn't load this page. Please try again.
+    We couldn't load this page.
   </p>
   <Button onClick={retry}>Retry</Button>
 </div>
@@ -579,8 +567,8 @@ transition: transform 300ms ease, opacity 300ms ease;
 
 ### Motion Principles
 
-1. **Keep it subtle** - Animations should enhance, not distract
-2. **Use sparingly** - Reserve motion for meaningful state changes
+1. **Keep it subtle** - Enhance, don't distract
+2. **Use sparingly** - Reserve for meaningful changes
 3. **Respect preferences** - Honor `prefers-reduced-motion`
 
 ```tsx
@@ -592,13 +580,264 @@ transition: transform 300ms ease, opacity 300ms ease;
 
 ---
 
-## Accessibility Checklist
+## Accessibility
+
+### Checklist
 
 - [ ] Color contrast ratio ≥ 4.5:1 for text
 - [ ] Focus indicators visible on all interactive elements
 - [ ] All images have alt text
 - [ ] Form inputs have associated labels
-- [ ] Error messages are announced to screen readers
+- [ ] Error messages announced to screen readers
 - [ ] Keyboard navigation works throughout
 - [ ] Skip links for main content
 - [ ] ARIA labels where semantic HTML insufficient
+
+---
+
+## User Flows
+
+### Customer Booking Flow
+
+```mermaid
+flowchart TB
+    Start([Customer visits salon page])
+    Browse[Browse Services]
+    Select[Select Service(s)]
+    Staff{Select Staff?}
+    AnyStaff[Any Available]
+    SpecificStaff[Choose Staff]
+    Date[Select Date]
+    Time[Select Time Slot]
+    SlotAvailable{Slot Available?}
+    Lock[Acquire Slot Lock]
+    Info[Enter Contact Info]
+    OTP[Verify Phone OTP]
+    Confirm[Confirm Booking]
+    Success([Booking Confirmed])
+
+    Start --> Browse
+    Browse --> Select
+    Select --> Staff
+    Staff -->|Yes| SpecificStaff
+    Staff -->|No| AnyStaff
+    SpecificStaff --> Date
+    AnyStaff --> Date
+    Date --> Time
+    Time --> SlotAvailable
+    SlotAvailable -->|No| Date
+    SlotAvailable -->|Yes| Lock
+    Lock --> Info
+    Info --> OTP
+    OTP --> Confirm
+    Confirm --> Success
+```
+
+### Staff Onboarding Flow
+
+```mermaid
+flowchart TB
+    Start([Owner invites staff])
+    EnterDetails[Enter Details]
+    Send[Send Invitation]
+    Email[Email Sent]
+    Wait{Staff Accepts?}
+    Accept[Click Link]
+    CreateAccount[Create Account]
+    Activate[Account Activated]
+    Ready([Staff Ready])
+
+    Start --> EnterDetails
+    EnterDetails --> Send
+    Send --> Email
+    Email --> Wait
+    Wait -->|Yes| Accept
+    Accept --> CreateAccount
+    CreateAccount --> Activate
+    Activate --> Ready
+```
+
+### Time-Off Approval Flow
+
+```mermaid
+flowchart TB
+    Start([Staff requests time-off])
+    Submit[Submit Request]
+    Pending[Status: Pending]
+    CheckAppts{Has Appointments?}
+    Decision{Admin Decision}
+    Approved[Status: Approved]
+    Rejected[Status: Rejected]
+    HandleAppts{Handle Appointments}
+    Reassign[Reassign to Other Staff]
+    Cancel[Cancel with Notice]
+    ApplyOverrides[Create Schedule Overrides]
+    Done([Complete])
+
+    Start --> Submit
+    Submit --> Pending
+    Pending --> CheckAppts
+    CheckAppts --> Decision
+    Decision -->|Approve| Approved
+    Decision -->|Reject| Rejected
+    Approved --> HandleAppts
+    HandleAppts -->|Reassign| Reassign
+    HandleAppts -->|Cancel| Cancel
+    Reassign --> ApplyOverrides
+    Cancel --> ApplyOverrides
+    ApplyOverrides --> Done
+```
+
+### Walk-in Quick Booking
+
+```mermaid
+flowchart TB
+    Start([Customer walks in])
+    OpenForm[Click "Walk-in"]
+    Name[Enter Name]
+    Phone[Enter Phone]
+    Service[Select Service]
+    Staff{Assign Staff?}
+    AnyAvailable[Any Available]
+    Specific[Choose Staff]
+    Create[Create Appointment]
+    Status[Status: checked_in]
+    Done([Walk-in Registered])
+
+    Start --> OpenForm
+    OpenForm --> Name
+    Name --> Phone
+    Phone --> Service
+    Service --> Staff
+    Staff -->|No| AnyAvailable
+    Staff -->|Yes| Specific
+    AnyAvailable --> Create
+    Specific --> Create
+    Create --> Status
+    Status --> Done
+```
+
+### Hybrid Account Journey
+
+```mermaid
+stateDiagram-v2
+    [*] --> Guest: First booking
+    Guest --> Recognized: 2nd booking
+    Recognized --> Prompted: 3rd booking
+    Prompted --> Registered: Creates account
+    Prompted --> Recognized: Skips
+    Registered --> [*]
+
+    Guest: Phone + OTP verified
+    Recognized: Info pre-filled
+    Prompted: Account creation banner
+    Registered: Full portal access
+```
+
+### Subscription Checkout Flow
+
+```mermaid
+flowchart TB
+    Start([Owner opens billing])
+    ViewPlans[View Plans]
+    SelectPlan{Select Period}
+    Monthly[Monthly]
+    Yearly[Yearly - 15% off]
+    CreateCheckout[Create Checkout]
+    Redirect[Redirect to Polar]
+    EnterCard[Enter Payment]
+    Processing[Process Payment]
+    Success{Payment OK?}
+    Webhook[Receive Webhook]
+    Activate[Activate Org]
+    Dashboard([Return to Dashboard])
+    Failed[Payment Failed]
+    Retry{Try Again?}
+
+    Start --> ViewPlans
+    ViewPlans --> SelectPlan
+    SelectPlan -->|Monthly| Monthly
+    SelectPlan -->|Yearly| Yearly
+    Monthly --> CreateCheckout
+    Yearly --> CreateCheckout
+    CreateCheckout --> Redirect
+    Redirect --> EnterCard
+    EnterCard --> Processing
+    Processing --> Success
+    Success -->|Yes| Webhook
+    Success -->|No| Failed
+    Webhook --> Activate
+    Activate --> Dashboard
+    Failed --> Retry
+    Retry -->|Yes| EnterCard
+```
+
+### Failed Payment Recovery
+
+```mermaid
+flowchart TB
+    Start([Payment fails])
+    SetPastDue[Set: past_due]
+    StartGrace[Start 7-day grace]
+    Day1[Day 1: Full access]
+    Day3[Day 3: Reminder]
+    Day5[Day 5: Warning]
+    Day7[Day 7: Final notice]
+    UpdatePayment{Owner updates?}
+    RetryPayment[Retry Payment]
+    PaymentSuccess{Success?}
+    Recovered([Recovery Success])
+    GraceExpires[Grace expires]
+    Suspend[Set: suspended]
+    LockAccess[Lock access]
+    Suspended([Suspended])
+
+    Start --> SetPastDue
+    SetPastDue --> StartGrace
+    StartGrace --> Day1
+    Day1 --> Day3
+    Day3 --> Day5
+    Day5 --> Day7
+    UpdatePayment -->|Yes| RetryPayment
+    RetryPayment --> PaymentSuccess
+    PaymentSuccess -->|Yes| Recovered
+    Day7 --> GraceExpires
+    GraceExpires --> Suspend
+    Suspend --> LockAccess
+    LockAccess --> Suspended
+```
+
+### Real-Time Slot Update
+
+```mermaid
+sequenceDiagram
+    participant C1 as Customer A
+    participant C2 as Customer B
+    participant App as Next.js
+    participant Convex
+
+    Note over C1,C2: Both viewing 14:00 slot
+
+    C1->>App: Select 14:00
+    App->>Convex: acquireSlotLock(14:00)
+    Convex->>Convex: Create lock (2min TTL)
+    Convex-->>App: Lock acquired
+    Convex-->>App: Subscription update
+    App-->>C2: Slot shows "Being booked"
+
+    C2->>App: Try to select 14:00
+    App-->>C2: Slot unavailable
+
+    C1->>App: Complete booking
+    App->>Convex: createAppointment()
+    Convex->>Convex: Delete lock
+    Convex-->>App: Subscription update
+    App-->>C2: Slot shows as booked
+```
+
+---
+
+## Navigation
+
+- [← Back to README](./README.md)
+- [Features →](./features.md)

@@ -7,6 +7,7 @@ import {
   LogOut,
   Scissors,
   Settings,
+  UserRound,
   Users,
 } from "lucide-react";
 import Link from "next/link";
@@ -61,6 +62,11 @@ const menuItems = [
     title: "Services",
     icon: Scissors,
     href: "/services",
+  },
+  {
+    title: "Customers",
+    icon: UserRound,
+    href: "/customers",
   },
   {
     title: "Settings",

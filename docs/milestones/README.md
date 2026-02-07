@@ -7,7 +7,7 @@ This directory contains detailed Product Requirements Documents for each milesto
 | Milestone | Name | User Stories | Complexity | Status |
 |-----------|------|-------------|------------|--------|
 | 1 | Multi-Tenant Foundation | US-001, US-030, US-001.1-001.13 | High | ✅ Completed |
-| 2 | Services, Staff & Customers | US-002, US-003, US-006, US-030 | Medium-High | 📋 Pending |
+| 2 | Services, Staff & Customers | US-002, US-003, US-006, US-030 | Medium-High | ✅ Completed |
 | 3 | Booking Engine - Core | US-020, US-021, US-022, US-031 | High | 📋 Pending |
 | 4 | Booking Operations | US-010-015, US-025 | High | 📋 Pending |
 | 5 | Dashboard & Calendar | US-004, US-010 | Medium-High | 📋 Pending |
@@ -76,11 +76,11 @@ Each milestone PRD follows this format:
 
 ## Next Milestone
 
-**Start with Milestone 2: Services, Staff & Customers**
+**Start with Milestone 3: Booking Engine - Core**
 
-This milestone establishes the core data entities (services, staff, customers) required for the booking engine.
+All prerequisites are complete (services, staff schedules, customers). This milestone implements available slot calculation, slot locking, and appointment creation.
 
-See: [milestone-02-services-staff-customers.md](./milestone-02-services-staff-customers.md)
+See: [milestone-03-booking-engine-core.md](./milestone-03-booking-engine-core.md)
 
 ## Architecture Notes
 
@@ -104,6 +104,6 @@ All milestone PRDs reference the existing codebase architecture:
 When completing a milestone:
 
 1. Mark user stories as complete in the PRD
-2. Update the roadmap in `docs/prd/06-implementation-roadmap.md`
+2. Update the current sprint status in `docs/prd/README.md`
 3. Update the main README in `docs/prd/README.md`
 4. Document any architectural decisions or deviations

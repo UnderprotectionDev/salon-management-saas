@@ -336,4 +336,72 @@ export default defineSchema({
   })
     .index("by_staff_date", ["staffId", "date"])
     .index("by_org_date", ["organizationId", "date"]),
+
+  // Customers
+  customers: defineTable({
+    organizationId: v.id("organization"),
+    userId: v.optional(v.string()),
+    // Contact
+    name: v.string(),
+    email: v.optional(v.string()),
+    phone: v.string(),
+    phoneVerified: v.optional(v.boolean()),
+    // Account Status
+    accountStatus: v.optional(
+      v.union(
+        v.literal("guest"),
+        v.literal("recognized"),
+        v.literal("prompted"),
+        v.literal("registered"),
+      ),
+    ),
+    // Preferences
+    preferredStaffId: v.optional(v.id("staff")),
+    notificationPreferences: v.optional(
+      v.object({
+        emailReminders: v.boolean(),
+        smsReminders: v.boolean(),
+      }),
+    ),
+    // Stats (denormalized)
+    totalVisits: v.optional(v.number()),
+    totalSpent: v.optional(v.number()),
+    lastVisitDate: v.optional(v.string()),
+    noShowCount: v.optional(v.number()),
+    // Notes
+    customerNotes: v.optional(v.string()),
+    staffNotes: v.optional(v.string()),
+    tags: v.optional(v.array(v.string())),
+    // Source
+    source: v.optional(
+      v.union(
+        v.literal("online"),
+        v.literal("walk_in"),
+        v.literal("phone"),
+        v.literal("staff"),
+        v.literal("import"),
+      ),
+    ),
+    // KVKK Consent
+    consents: v.optional(
+      v.object({
+        dataProcessing: v.boolean(),
+        marketing: v.boolean(),
+        dataProcessingAt: v.optional(v.number()),
+        marketingAt: v.optional(v.number()),
+        withdrawnAt: v.optional(v.number()),
+      }),
+    ),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_organization", ["organizationId"])
+    .index("by_org_email", ["organizationId", "email"])
+    .index("by_org_phone", ["organizationId", "phone"])
+    .index("by_user", ["userId"])
+    .index("by_org_status", ["organizationId", "accountStatus"])
+    .searchIndex("search_customers", {
+      searchField: "name",
+      filterFields: ["organizationId"],
+    }),
 });

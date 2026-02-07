@@ -277,10 +277,10 @@ export const reject = adminMutation({
     }
 
     // Allow rejecting both pending and approved requests
-    if (request.status === "rejected" || request.status === "cancelled") {
+    if (request.status === "rejected") {
       throw new ConvexError({
         code: ErrorCode.VALIDATION_ERROR,
-        message: "This request has already been rejected or cancelled",
+        message: "This request has already been rejected",
       });
     }
 
@@ -345,10 +345,10 @@ export const cancel = orgMutation({
       });
     }
 
-    if (request.status === "rejected" || request.status === "cancelled") {
+    if (request.status === "rejected") {
       throw new ConvexError({
         code: ErrorCode.VALIDATION_ERROR,
-        message: "This request has already been rejected or cancelled",
+        message: "This request has already been rejected",
       });
     }
 
@@ -370,11 +370,8 @@ export const cancel = orgMutation({
       }
     }
 
-    // Mark as cancelled instead of deleting
-    await ctx.db.patch(args.requestId, {
-      status: "cancelled",
-      updatedAt: Date.now(),
-    });
+    // Delete the cancelled request
+    await ctx.db.delete(args.requestId);
 
     return true;
   },

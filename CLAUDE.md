@@ -33,13 +33,15 @@ Multi-tenant salon management platform with real-time booking, staff scheduling,
 ## Documentation
 
 **Comprehensive PRD available in `docs/prd/`:**
-- [Product Overview](docs/prd/01-product-overview.md) - Vision, goals, personas
-- [System Architecture](docs/prd/04-technical/architecture.md) - Tech stack, multi-tenancy, security
-- [Convex Schema](docs/prd/04-technical/convex-schema.md) - Complete database schema
-- [API Contracts](docs/prd/04-technical/api-contracts.md) - Function signatures, validators, rate limits
-- [File Hierarchy](docs/prd/04-technical/file-hierarchy.md) - Detailed project structure
-- [Implementation Roadmap](docs/prd/06-implementation-roadmap.md) - Milestone planning and status
-- [Glossary](docs/prd/appendix/glossary.md) - Domain terminology (organization/salon/tenant)
+
+- [Product Overview](docs/prd/product-overview.md) - Vision, goals, personas, user stories
+- [Database Schema](docs/prd/database-schema.md) - Complete Convex schema with examples
+- [API Reference](docs/prd/api-reference.md) - Function signatures, validators, rate limits
+- [System Architecture](docs/prd/system-architecture.md) - Tech stack, multi-tenancy, security, file structure
+- [Features](docs/prd/features.md) - All feature specifications (booking, staff, admin, customer, products)
+- [Design System](docs/prd/design-system.md) - UI components, user flows, accessibility
+- [Glossary](docs/prd/glossary.md) - Domain terminology (organization/salon/tenant)
+- [Milestones](docs/milestones/README.md) - Implementation roadmap and progress tracking
 
 ## Architecture
 
@@ -49,9 +51,10 @@ convex/              # Backend functions and schema
 ├── betterAuth/      # Better Auth component (schema, auth config)
 ├── lib/
 │   ├── functions.ts # Custom query/mutation wrappers with auth & RLS
-│   ├── validators.ts # Return type validators (309 lines)
-│   ├── rateLimits.ts # Rate limiting config (118 lines)
+│   ├── validators.ts # Return type validators (~500 lines)
+│   ├── rateLimits.ts # Rate limiting config
 │   ├── scheduleResolver.ts # Schedule resolution logic (163 lines)
+│   ├── phone.ts     # Turkish phone validation helper
 │   ├── relationships.ts # Database relationship helpers
 │   └── rls.ts       # Row-level security helpers
 ├── auth.ts          # Auth instance and options
@@ -60,6 +63,7 @@ convex/              # Backend functions and schema
 ├── users.ts         # User queries (getCurrentUser)
 ├── serviceCategories.ts # Service category CRUD (188 lines)
 ├── services.ts      # Service CRUD + staff assignment (353 lines)
+├── customers.ts     # Customer CRUD + search + merge (~500 lines)
 ├── scheduleOverrides.ts # Schedule override CRUD (178 lines)
 ├── timeOffRequests.ts # Time-off workflow (335 lines)
 ├── staffOvertime.ts # Overtime management (155 lines)
@@ -78,6 +82,7 @@ src/
     ├── convex/      # ConvexClientProvider
     ├── auth/        # Auth components, layouts, views
     ├── organization/ # OrganizationProvider, OrganizationSwitcher
+    ├── customers/   # Customer database, search, merge
     ├── services/    # Service catalog, categories, pricing
     ├── settings/    # Settings forms & sub-pages
     └── staff/       # Staff management components
@@ -110,22 +115,24 @@ Use hooks from `@/modules/organization`:
 
 **Critical:** Always use custom wrappers from `convex/lib/functions.ts` instead of base `query()`/`mutation()`:
 
-| Wrapper | Auth | Context Added | Use Case |
-| --- | --- | --- | --- |
-| `publicQuery` | None | — | Public data (org info by slug) |
-| `maybeAuthedQuery` | Optional | `ctx.user \| null` | Works for authed/unauthed users |
-| `authedQuery/Mutation` | Required | `ctx.user` | User-scoped data (profile, orgs list) |
-| `orgQuery/Mutation` | Required + membership | `ctx.user`, `ctx.organizationId`, `ctx.member`, `ctx.staff` | All org-scoped operations |
-| `adminQuery/Mutation` | Required + admin/owner | Same as org + role check | Staff management, settings |
-| `ownerQuery/Mutation` | Required + owner only | Same as org + owner check | Billing, org deletion |
+| Wrapper                | Auth                   | Context Added                                               | Use Case                              |
+| ---------------------- | ---------------------- | ----------------------------------------------------------- | ------------------------------------- |
+| `publicQuery`          | None                   | —                                                           | Public data (org info by slug)        |
+| `maybeAuthedQuery`     | Optional               | `ctx.user \| null`                                          | Works for authed/unauthed users       |
+| `authedQuery/Mutation` | Required               | `ctx.user`                                                  | User-scoped data (profile, orgs list) |
+| `orgQuery/Mutation`    | Required + membership  | `ctx.user`, `ctx.organizationId`, `ctx.member`, `ctx.staff` | All org-scoped operations             |
+| `adminQuery/Mutation`  | Required + admin/owner | Same as org + role check                                    | Staff management, settings            |
+| `ownerQuery/Mutation`  | Required + owner only  | Same as org + owner check                                   | Billing, org deletion                 |
 
 **Key behavior:**
+
 - `orgQuery`/`orgMutation` **auto-inject** `organizationId` from args
 - Functions using these wrappers **don't need** `organizationId` in their own args
 - Membership and role checks are automatic
 - All throw structured `ConvexError` with `ErrorCode` on failure
 
 **Example:**
+
 ```typescript
 // ✅ Correct - orgQuery handles organizationId automatically
 export const list = orgQuery({
@@ -133,8 +140,11 @@ export const list = orgQuery({
   returns: v.array(staffDocValidator),
   handler: async (ctx, args) => {
     // ctx.organizationId is available, membership already verified
-    return ctx.db.query("staff")
-      .withIndex("organizationId", q => q.eq("organizationId", ctx.organizationId))
+    return ctx.db
+      .query("staff")
+      .withIndex("organizationId", (q) =>
+        q.eq("organizationId", ctx.organizationId),
+      )
       .collect();
   },
 });
@@ -158,6 +168,7 @@ export const list = query({
 - Composite validators for enriched query results (e.g., `organizationWithRoleValidator`)
 
 **Example:**
+
 ```typescript
 import { staffDocValidator, staffStatusValidator } from "./lib/validators";
 
@@ -178,7 +189,7 @@ Rate limits configured in `convex/lib/rateLimits.ts` using `@convex-dev/rate-lim
 import { rateLimiter } from "./lib/rateLimits";
 
 export const create = adminMutation({
-  args: { email: v.string(), /* ... */ },
+  args: { email: v.string() /* ... */ },
   handler: async (ctx, args) => {
     // Check rate limit before creating
     await rateLimiter.limit(ctx, "createInvitation", {
@@ -194,29 +205,31 @@ export const create = adminMutation({
 
 ## Key Files
 
-| File | Purpose |
-| --- | --- |
-| `convex/schema.ts` | Database schema (creates types after `bunx convex dev`) |
-| `convex/lib/functions.ts` | Custom function wrappers (CRITICAL - use these, not base functions) |
-| `convex/lib/validators.ts` | Shared return type validators |
-| `convex/lib/rateLimits.ts` | Rate limiting configuration |
-| `convex/users.ts` | User queries (getCurrentUser) |
-| `convex/serviceCategories.ts` | Service category CRUD |
-| `convex/services.ts` | Service CRUD + staff assignment |
-| `convex/scheduleOverrides.ts` | Schedule override management |
-| `convex/timeOffRequests.ts` | Time-off request workflow |
-| `convex/staffOvertime.ts` | Overtime management |
-| `convex/lib/scheduleResolver.ts` | Schedule resolution combining default + overrides + overtime |
-| `convex/files.ts` | File storage/upload (logos, staff images, service images) |
-| `convex/betterAuth/auth.ts` | Better Auth instance and options |
-| `convex/http.ts` | HTTP router with auth routes |
-| `src/lib/auth-client.ts` | Client-side auth hooks (authClient) |
-| `src/lib/auth-server.ts` | Server-side auth helpers (isAuthenticated, getToken) |
-| `src/app/layout.tsx` | Root layout with ConvexClientProvider |
-| `src/lib/utils.ts` | `cn()` utility for className merging |
-| `components.json` | shadcn/ui configuration (New York style) |
-| `src/middleware.ts` | Auth middleware for protected routes |
-| `src/modules/organization/` | OrganizationProvider, hooks, OrganizationSwitcher |
+| File                             | Purpose                                                             |
+| -------------------------------- | ------------------------------------------------------------------- |
+| `convex/schema.ts`               | Database schema (creates types after `bunx convex dev`)             |
+| `convex/lib/functions.ts`        | Custom function wrappers (CRITICAL - use these, not base functions) |
+| `convex/lib/validators.ts`       | Shared return type validators                                       |
+| `convex/lib/rateLimits.ts`       | Rate limiting configuration                                         |
+| `convex/users.ts`                | User queries (getCurrentUser)                                       |
+| `convex/serviceCategories.ts`    | Service category CRUD                                               |
+| `convex/services.ts`             | Service CRUD + staff assignment                                     |
+| `convex/scheduleOverrides.ts`    | Schedule override management                                        |
+| `convex/timeOffRequests.ts`      | Time-off request workflow                                           |
+| `convex/staffOvertime.ts`        | Overtime management                                                 |
+| `convex/customers.ts`            | Customer CRUD + search + merge                                      |
+| `convex/lib/phone.ts`            | Turkish phone validation helper                                     |
+| `convex/lib/scheduleResolver.ts` | Schedule resolution combining default + overrides + overtime        |
+| `convex/files.ts`                | File storage/upload (logos, staff images, service images)           |
+| `convex/betterAuth/auth.ts`      | Better Auth instance and options                                    |
+| `convex/http.ts`                 | HTTP router with auth routes                                        |
+| `src/lib/auth-client.ts`         | Client-side auth hooks (authClient)                                 |
+| `src/lib/auth-server.ts`         | Server-side auth helpers (isAuthenticated, getToken)                |
+| `src/app/layout.tsx`             | Root layout with ConvexClientProvider                               |
+| `src/lib/utils.ts`               | `cn()` utility for className merging                                |
+| `components.json`                | shadcn/ui configuration (New York style)                            |
+| `src/middleware.ts`              | Auth middleware for protected routes                                |
+| `src/modules/organization/`      | OrganizationProvider, hooks, OrganizationSwitcher                   |
 
 ## Code Style
 

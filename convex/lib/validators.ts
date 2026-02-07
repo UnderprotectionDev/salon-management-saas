@@ -390,6 +390,116 @@ export const staffOvertimeDocValidator = v.object({
   createdAt: v.number(),
 });
 
+// =============================================================================
+// Customer Validators
+// =============================================================================
+
+/** Customer account status: guest | recognized | prompted | registered */
+export const customerAccountStatusValidator = v.union(
+  v.literal("guest"),
+  v.literal("recognized"),
+  v.literal("prompted"),
+  v.literal("registered"),
+);
+
+/** Customer source: online | walk_in | phone | staff | import */
+export const customerSourceValidator = v.union(
+  v.literal("online"),
+  v.literal("walk_in"),
+  v.literal("phone"),
+  v.literal("staff"),
+  v.literal("import"),
+);
+
+/** Customer notification preferences */
+export const customerNotificationPreferencesValidator = v.object({
+  emailReminders: v.boolean(),
+  smsReminders: v.boolean(),
+});
+
+/** Customer KVKK consent */
+export const customerConsentsValidator = v.object({
+  dataProcessing: v.boolean(),
+  marketing: v.boolean(),
+  dataProcessingAt: v.optional(v.number()),
+  marketingAt: v.optional(v.number()),
+  withdrawnAt: v.optional(v.number()),
+});
+
+/** Customer document validator */
+export const customerDocValidator = v.object({
+  _id: v.id("customers"),
+  _creationTime: v.number(),
+  organizationId: v.id("organization"),
+  userId: v.optional(v.string()),
+  name: v.string(),
+  email: v.optional(v.string()),
+  phone: v.string(),
+  phoneVerified: v.optional(v.boolean()),
+  accountStatus: v.optional(customerAccountStatusValidator),
+  preferredStaffId: v.optional(v.id("staff")),
+  notificationPreferences: v.optional(customerNotificationPreferencesValidator),
+  totalVisits: v.optional(v.number()),
+  totalSpent: v.optional(v.number()),
+  lastVisitDate: v.optional(v.string()),
+  noShowCount: v.optional(v.number()),
+  customerNotes: v.optional(v.string()),
+  staffNotes: v.optional(v.string()),
+  tags: v.optional(v.array(v.string())),
+  source: v.optional(customerSourceValidator),
+  consents: v.optional(customerConsentsValidator),
+  createdAt: v.number(),
+  updatedAt: v.number(),
+});
+
+/** Customer list item (lightweight for table display) */
+export const customerListItemValidator = v.object({
+  _id: v.id("customers"),
+  _creationTime: v.number(),
+  name: v.string(),
+  email: v.optional(v.string()),
+  phone: v.string(),
+  accountStatus: v.optional(customerAccountStatusValidator),
+  totalVisits: v.optional(v.number()),
+  totalSpent: v.optional(v.number()),
+  lastVisitDate: v.optional(v.string()),
+  noShowCount: v.optional(v.number()),
+  tags: v.optional(v.array(v.string())),
+  source: v.optional(customerSourceValidator),
+  createdAt: v.number(),
+});
+
+/** Customer with preferred staff (enriched for detail page) */
+export const customerWithStaffValidator = v.object({
+  _id: v.id("customers"),
+  _creationTime: v.number(),
+  organizationId: v.id("organization"),
+  userId: v.optional(v.string()),
+  name: v.string(),
+  email: v.optional(v.string()),
+  phone: v.string(),
+  phoneVerified: v.optional(v.boolean()),
+  accountStatus: v.optional(customerAccountStatusValidator),
+  preferredStaffId: v.optional(v.id("staff")),
+  preferredStaffName: v.optional(v.string()),
+  notificationPreferences: v.optional(customerNotificationPreferencesValidator),
+  totalVisits: v.optional(v.number()),
+  totalSpent: v.optional(v.number()),
+  lastVisitDate: v.optional(v.string()),
+  noShowCount: v.optional(v.number()),
+  customerNotes: v.optional(v.string()),
+  staffNotes: v.optional(v.string()),
+  tags: v.optional(v.array(v.string())),
+  source: v.optional(customerSourceValidator),
+  consents: v.optional(customerConsentsValidator),
+  createdAt: v.number(),
+  updatedAt: v.number(),
+});
+
+// =============================================================================
+// Invitation Composite Validators
+// =============================================================================
+
 /** Invitation with organization info (for getPendingForCurrentUser) */
 export const invitationWithOrgValidator = v.object({
   _id: v.id("invitation"),
