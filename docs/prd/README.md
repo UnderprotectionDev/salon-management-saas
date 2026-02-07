@@ -1,233 +1,189 @@
-# Salon Management SaaS - Product Requirements Document
+# Salon Management SaaS - Product Requirements Documentation
 
-> **Version:** 1.3.0
-> **Last Updated:** 2026-02-06
-> **Status:** Active Development (Sprint 2A ✅ Done, Sprint 2B 📋 Next)
+> **Last Updated:** 2026-02-07
+> **Current Milestone:** 2 - Services, Staff & Customers ✅ COMPLETED
 
-## Executive Overview
-
-A modern, cloud-based salon management platform designed for Turkish beauty salons. The system enables online appointment booking, staff schedule management, customer relationship tracking, and business analytics through a real-time, multi-tenant architecture.
-
-### Key Value Propositions
-
-- **For Salon Owners:** Streamlined operations, reduced no-shows, actionable business insights
-- **For Staff:** Efficient schedule management, clear daily workflow
-- **For Customers:** 24/7 online booking, appointment reminders, seamless experience
+Welcome to the PRD for the multi-tenant salon management platform. This documentation is optimized for AI navigation and human readability.
 
 ---
 
 ## Quick Navigation
 
-| Document                                          | Description                              |
-| ------------------------------------------------- | ---------------------------------------- |
-| [01 - Product Overview](./01-product-overview.md) | Vision, goals, personas, success metrics |
-| [02 - User Stories](./02-user-stories.md)         | Complete user stories by persona         |
-
-### Feature Specifications
-
-| Document                                                    | Priority | Description                                       |
-| ----------------------------------------------------------- | -------- | ------------------------------------------------- |
-| [Core Booking](./03-features/core-booking.md)               | P0       | Appointment engine, slot management, booking flow |
-| [Staff Management](./03-features/staff-management.md)       | P0       | Staff profiles, schedules, shifts                 |
-| [Customer Portal](./03-features/customer-portal.md)         | P1       | Customer-facing booking & account                 |
-| [Admin Dashboard](./03-features/admin-dashboard.md)         | P0       | Business owner panel & analytics                  |
-| [Products & Inventory](./03-features/products-inventory.md) | P1       | Product showcase & stock management               |
-
-### Technical Documentation
-
-| Document                                           | Description                               |
-| -------------------------------------------------- | ----------------------------------------- |
-| [Architecture](./04-technical/architecture.md)     | System design, tech stack, infrastructure |
-| [Convex Schema](./04-technical/convex-schema.md)   | Database schema with complete examples    |
-| [API Contracts](./04-technical/api-contracts.md)   | Function signatures & TypeScript types    |
-| [File Hierarchy](./04-technical/file-hierarchy.md) | Project structure & organization          |
-| [Security](./04-technical/security.md)             | Security requirements & compliance        |
-
-### UX/UI Guidelines
-
-| Document                                     | Description                     |
-| -------------------------------------------- | ------------------------------- |
-| [Design System](./05-ux-ui/design-system.md) | UI tokens, components, patterns |
-| [User Flows](./05-ux-ui/user-flows.md)       | Flow diagrams (Mermaid)         |
-
-### Implementation
-
-| Document                                                 | Description                       |
-| -------------------------------------------------------- | --------------------------------- |
-| [Implementation Roadmap](./06-implementation-roadmap.md) | Sprint-based MVP development plan |
-
-### Appendix
-
-| Document                                       | Description                      |
-| ---------------------------------------------- | -------------------------------- |
-| [Glossary](./appendix/glossary.md)             | Domain terminology & definitions |
-| [Edge Cases](./appendix/edge-cases.md)         | Edge cases & error handling      |
-| [Future Roadmap](./appendix/future-roadmap.md) | V2+ features & roadmap           |
-
----
-
-## Priority Classification
-
-| Priority | Definition       | Target Release |
-| -------- | ---------------- | -------------- |
-| **P0**   | MVP Must-Have    | v1.0           |
-| **P1**   | MVP Nice-to-Have | v1.0           |
-| **P2**   | Post-MVP         | v1.1           |
-| **P3**   | Future           | v2.0+          |
-
-### P0 Features (MVP Must-Have)
-
-- Authentication & Authorization (Better Auth)
-- Multi-tenant Organization Setup
-- Service Catalog Management
-- Staff Profile & Schedule Management
-- Appointment Booking Engine
-- Basic Admin Dashboard
-- SaaS Subscription Billing (Polar.sh)
-
-### P1 Features (MVP Nice-to-Have)
-
-- Products & Inventory Management
-- Customer Self-Service Portal
-- Basic Reports & Analytics
-- Email Notifications (Resend)
-
-### P2 Features (Post-MVP)
-
-- SMS Notifications
-- WhatsApp Integration
-- Waitlist Management
-- Recurring Appointments
-
-### P3 Features (Future)
-
-- Customer Payment Processing (Deposits/Prepayments)
-- Multi-location Support
-- AI-powered Recommendations
-- Advanced Analytics & BI
+| Document | Purpose | Status |
+|----------|---------|--------|
+| [Product Overview](./product-overview.md) | Vision, personas, business model, success metrics | ✅ Complete |
+| [Database Schema](./database-schema.md) | Complete Convex schema with all tables | ✅ Complete |
+| [API Reference](./api-reference.md) | All Convex functions, validators, rate limits | ✅ Complete |
+| [System Architecture](./system-architecture.md) | Tech stack, multi-tenancy, security, deployment | ✅ Complete |
+| [Features](./features.md) | All feature specifications and user stories | ✅ Complete |
+| [Design System](./design-system.md) | UI components, patterns, user flows | ✅ Complete |
+| [Glossary](./glossary.md) | Domain terminology and conventions | ✅ Complete |
 
 ---
 
 ## Tech Stack Summary
 
-| Layer           | Technology                                        |
-| --------------- | ------------------------------------------------- |
-| Frontend        | Next.js 16 (App Router), React 19, React Compiler |
-| UI Components   | shadcn/ui (New York style), Tailwind CSS v4       |
-| Backend         | Convex (database, functions, real-time)           |
-| Authentication  | Better Auth with Convex adapter                   |
-| Payments        | Polar.sh (@convex-dev/polar, @polar-sh/sdk)       |
-| Email           | Resend + React Email                              |
-| Monitoring      | Sentry                                            |
-| Package Manager | Bun                                               |
-| Code Quality    | Biome                                             |
+**Frontend:**
+- Next.js 16 (App Router, React Server Components)
+- React 19 (with React Compiler)
+- Tailwind CSS v4
+- shadcn/ui (New York style, 56+ components)
+- TanStack Form + Zod validation
+
+**Backend:**
+- Convex (database, functions, real-time subscriptions)
+- convex-helpers (RLS, triggers, rate limiting)
+- Better Auth (@convex-dev/better-auth with Convex adapter)
+
+**Payments:**
+- Polar.sh (@convex-dev/polar) - planned
+
+**Tools:**
+- Bun (package manager)
+- Biome (linter/formatter)
 
 ---
 
-## Localization
+## Current Sprint Status
 
-| Aspect      | Configuration                                      |
-| ----------- | -------------------------------------------------- |
-| UI Language | English (default)                                  |
-| Currency    | Turkish Lira (TRY) - ₺                             |
-| Timezone    | Europe/Istanbul (default, configurable per tenant) |
-| Date Format | DD.MM.YYYY                                         |
-| Time Format | 24-hour (HH:mm)                                    |
-| i18n Ready  | Yes - Turkish support planned for v1.1             |
+### Milestone 2: Services, Staff & Customers ✅ COMPLETED (2026-02-07)
+
+**Phase 2A - Service Catalog:**
+- `convex/serviceCategories.ts` (188 lines) - category CRUD with sortOrder
+- `convex/services.ts` (353 lines) - service CRUD, staff assignment, soft-delete
+- `convex/files.ts` (253 lines) - file storage including service images
+- Pricing in kuruş integers (15000 = ₺150.00), `formatPrice()` at UI
+- Frontend: 9 components in `src/modules/services/components/`
+
+**Phase 2B - Staff Enhancements:**
+- `convex/scheduleOverrides.ts` (178 lines) - date-specific schedule changes
+- `convex/timeOffRequests.ts` (335 lines) - approval workflow
+- `convex/staffOvertime.ts` (155 lines) - overtime management
+- `convex/lib/scheduleResolver.ts` (163 lines) - default → overrides → overtime resolution
+- Staff Detail Tabs: Overview, Schedule Overrides, Time Off, Overtime
+
+**Phase 2C - Customer Database:**
+- `convex/customers.ts` (~500 lines) - CRUD, search, advanced search, merge
+- `convex/lib/phone.ts` - Turkish phone validation (+90 5XX XXX XX XX)
+- Phone/email uniqueness per org via indexes
+- Full-text search via `searchIndex("search_customers")` on name field
+- Customer merge (combines stats, tags, latest visit date)
+- Frontend: 7 components in `src/modules/customers/components/`
+
+**Technical Highlights:**
+- Permission model: orgMutation + handler-level check (self OR admin/owner)
+- Time-off approval auto-creates schedule overrides (type="time_off")
+- Rate limits: createScheduleOverride (30/day org), createTimeOffRequest (5/day staff), createOvertime (10/day staff)
+- Staff-service assignment via `staff.serviceIds: v.array(v.id("services"))`
+
+### Next Milestone: 3 - Booking Engine Core 📋 Pending
+
+**Planned Features:**
+- Available slot calculation (service duration, staff schedule, existing bookings)
+- Slot locking mechanism (2-minute TTL, cron cleanup)
+- Appointment creation (multi-service, confirmation code)
+- Real-time slot updates via Convex subscriptions
+
+See: [milestone-03-booking-engine-core.md](/docs/milestones/milestone-03-booking-engine-core.md)
 
 ---
 
-## Document Conventions
+## Priority Map
 
-### Requirement IDs
+### P0: MVP Must-Have (Milestones 1-5)
+- Multi-tenant foundation ✅
+- Service catalog ✅
+- Staff management ✅
+- Customer base ✅
+- Booking engine 📋
+- Admin dashboard 📋
+- Subscription billing 📋
 
-- **FR-XXX:** Functional Requirement
-- **NFR-XXX:** Non-Functional Requirement
-- **US-XXX:** User Story
-- **TC-XXX:** Test Case
+### P1: MVP Nice-to-Have (Milestones 6-7)
+- Email notifications
+- Advanced reports
+- Analytics dashboard
 
-### Status Indicators
-
-- `[P0]` `[P1]` `[P2]` `[P3]` - Priority levels
-- `[MVP]` - Included in MVP
-- `[FUTURE]` - Post-MVP feature
-- `[DEPRECATED]` - No longer planned
-
-### Code Examples
-
-All code examples use TypeScript and follow the project's conventions:
-
-- Convex functions with complete type definitions
-- React components with proper typing
-- API contracts with input/output schemas
+### P2: Post-MVP (Milestones 8-9)
+- Customer portal
+- Products & inventory
+- Mobile app (PWA)
 
 ---
 
-## Current Progress
+## Key Architectural Decisions
 
-| Sprint                                | Status      | Completion Date |
-| ------------------------------------- | ----------- | --------------- |
-| Pre-Sprint (Auth, UI)                 | ✅ Done     | 2026-02-04      |
-| Sprint 1 (Multi-Tenant Complete)      | ✅ Done     | 2026-02-06      |
-| Sprint 2A (Service Catalog)           | ✅ Done     | 2026-02-06      |
-| Sprint 2B (Staff Management)          | 📋 Next     | -               |
-| Sprint 2C (Customer Base)             | 📋 Next     | -               |
-| Sprint 3 (Booking Engine Core)        | 📋 Pending  | -               |
-| Sprint 4 (Booking Operations)         | 📋 Pending  | -               |
-| Sprint 5 (Dashboard & Calendar)       | 📋 Pending  | -               |
-| Sprint 6 (SaaS Billing)              | 📋 Pending  | -               |
-| Sprint 7 (Email Notifications)        | 📋 Pending  | -               |
-| Sprint 8 (Reports & Analytics)        | 📋 Pending  | -               |
-| Sprint 9 (Customer Portal)            | 📋 Pending  | -               |
+### Multi-Tenancy
+- Every table includes `organizationId` for tenant isolation
+- Custom function wrappers (`orgQuery`, `adminMutation`) enforce RLS automatically
+- Terminology: "organization" in code/database, "salon" in UI, "tenant" in architecture docs
 
-### Completed Sprints
+### Authentication & Authorization
+- Better Auth with Google OAuth (primary method)
+- Custom function wrappers: `publicQuery`, `authedQuery`, `orgQuery`, `adminMutation`, `ownerMutation`
+- 3 roles: Owner > Admin > Member (no "Receptionist" role)
+- Role on `member` table, profile on `staff` table (separation of concerns)
 
-**Sprint 1 (Multi-Tenant Foundation - Complete):**
+### Data Validation
+- All queries/mutations have `returns:` validators (309 lines in `convex/lib/validators.ts`)
+- Document validators include `_id` and `_creationTime` system fields
+- `v.optional()` in args, bare validator in return types
 
-*Foundation Phase (Sprint 1.0):*
-- ✅ Database schema (organization, member, invitation, staff, organizationSettings, files)
-- ✅ Onboarding wizard with auto-redirect
-- ✅ Business hours editor (Settings page)
-- ✅ Staff invitation system (backend)
-- ✅ Organization switcher
-- ✅ Protected routes & custom function wrappers (RLS)
-- ✅ UI standardization (English)
+### Rate Limiting
+- Token bucket and fixed window strategies
+- Configuration in `convex/lib/rateLimits.ts` (118 lines)
+- Per-organization and per-user limits
 
-*Enhancement Phase (Sprint 1.5):*
-- ✅ Staff profile detail page & edit form
-- ✅ Staff schedule editor
-- ✅ File storage system (253 lines)
-- ✅ Logo upload component
-- ✅ Members & invitations management UI
-- ✅ Ownership transfer with 2-step confirmation
-- ✅ Settings sub-forms (General, Contact, Address)
-- ✅ Return validators infrastructure (309 lines)
-- ✅ Rate limiting configuration (118 lines)
+---
 
-**Sprint 2A (Service Catalog):**
-- ✅ Service categories CRUD with inline sidebar management
-- ✅ Services CRUD with category filtering (353 lines backend)
-- ✅ Service image upload
-- ✅ Staff-service assignment
-- ✅ Pricing in kuruş (₺) with formatPrice utility
-- ✅ Role-based UI (admin/owner CRUD, member read-only)
-- ✅ 9 frontend components + currency utility
-- ✅ Circular dependency fix (users.ts extracted from auth.ts)
+## Documentation Structure
 
-### Sprint PRDs (Detailed Documentation)
+This PRD follows an **Ultra-Flat** structure (8 files) optimized for AI navigation:
 
-For detailed user stories, acceptance criteria, and implementation tasks, see:
+```
+docs/prd/
+├── README.md              # This file - navigation hub
+├── product-overview.md    # Vision, personas, business model
+├── database-schema.md     # Complete Convex schema
+├── api-reference.md       # All Convex functions
+├── system-architecture.md # Tech stack, deployment, security
+├── features.md            # Feature specs + user stories
+├── design-system.md       # UI/UX patterns + flows
+└── glossary.md            # Domain terminology
+```
 
-**Completed Sprints:**
-- [Sprint 1: Multi-Tenant Foundation (Complete)](../tasks/sprint-01-multi-tenant-foundation.md) ✅
-- [Sprint 2A: Service Catalog (Complete)](../tasks/sprint-02-services-staff-customers.md) ✅
+**Design Principles:**
+- Minimal nesting (max 1 level)
+- Consolidated related content
+- Easy AI context loading
+- Clear separation: PRD (requirements) vs milestones (implementation tracking)
 
-**Pending Sprints:**
-- [Sprint 2B/2C: Staff & Customers](../tasks/sprint-02-services-staff-customers.md)
-- [Sprint 3: Booking Engine - Core](../tasks/sprint-03-booking-engine-core.md)
-- [Sprint 4: Booking Engine - Operations](../tasks/sprint-04-booking-operations.md)
-- [Sprint 5: Admin Dashboard & Calendar](../tasks/sprint-05-dashboard-calendar.md)
-- [Sprint 6: SaaS Billing (Polar.sh)](../tasks/sprint-06-saas-billing.md)
-- [Sprint 7: Email Notifications (Resend)](../tasks/sprint-07-email-notifications.md)
-- [Sprint 8: Reports & Analytics](../tasks/sprint-08-reports-analytics.md)
-- [Sprint 9: Customer Portal](../tasks/sprint-09-customer-portal.md)
+---
+
+## Quick Links
+
+**For Developers:**
+- [Database Schema](./database-schema.md#tables) - all tables with fields
+- [API Reference](./api-reference.md#convex-functions) - function signatures
+- [System Architecture](./system-architecture.md#tech-stack) - tech decisions
+
+**For Product Managers:**
+- [Product Overview](./product-overview.md#vision) - product vision
+- [Features](./features.md#feature-specifications) - feature details
+- [User Stories](./features.md#user-stories) - all user stories
+
+**For Designers:**
+- [Design System](./design-system.md#component-library) - UI components
+- [User Flows](./design-system.md#user-flows) - journey diagrams
+- [Accessibility](./design-system.md#accessibility) - WCAG guidelines
+
+---
+
+## Getting Started
+
+1. Read [Product Overview](./product-overview.md) to understand the vision
+2. Review [Database Schema](./database-schema.md) for data model
+3. Check [Features](./features.md) for detailed specifications
+4. Consult [Glossary](./glossary.md) for terminology
+
+For implementation details, see `/docs/milestones/` directory.

@@ -153,9 +153,6 @@ export function TimeOffRequestList() {
                   {request.status === "rejected" && (
                     <Badge variant="destructive">Rejected</Badge>
                   )}
-                  {request.status === "cancelled" && (
-                    <Badge variant="secondary">Cancelled</Badge>
-                  )}
                 </div>
 
                 {/* Reason */}

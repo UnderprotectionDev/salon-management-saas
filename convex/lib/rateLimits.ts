@@ -125,6 +125,21 @@ export const rateLimiter = new RateLimiter(components.rateLimiter, {
   },
 
   // ==========================================================================
+  // Customer Limits
+  // ==========================================================================
+
+  /**
+   * Müşteri oluşturma limiti (organizasyon başına)
+   * Saatte max 30, burst için 10 ekstra
+   */
+  createCustomer: {
+    kind: "token bucket",
+    rate: 30,
+    period: HOUR,
+    capacity: 40,
+  },
+
+  // ==========================================================================
   // Future: Booking Limits (ileride kullanılacak)
   // ==========================================================================
 

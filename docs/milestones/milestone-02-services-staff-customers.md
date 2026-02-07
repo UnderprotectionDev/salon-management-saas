@@ -69,14 +69,14 @@ Sprint 2 establishes the core data entities required for booking operations: ser
 
 **Acceptance Criteria:**
 
-- [ ] Salon owner can create service categories (e.g., "Hair Care", "Nail Services")
-- [ ] Salon owner can create services with name, description, price (TRY), duration (minutes)
-- [ ] Services are organized by category in the UI
-- [ ] Salon owner can edit and delete services/categories
-- [ ] Services list displays price formatted as Turkish Lira (₺)
-- [ ] Duration is displayed in human-readable format (e.g., "1h 30m")
-- [ ] Categories can be reordered
-- [ ] Services within categories can be reordered
+- [x] Salon owner can create service categories (e.g., "Hair Care", "Nail Services")
+- [x] Salon owner can create services with name, description, price (TRY), duration (minutes)
+- [x] Services are organized by category in the UI
+- [x] Salon owner can edit and delete services/categories
+- [x] Services list displays price formatted as Turkish Lira (₺)
+- [x] Duration is displayed in human-readable format (e.g., "1h 30m")
+- [x] Categories can be reordered
+- [x] Services within categories can be reordered
 
 **Technical Notes:**
 
@@ -107,14 +107,14 @@ Sprint 2 establishes the core data entities required for booking operations: ser
 
 **Acceptance Criteria:**
 
-- [ ] Salon owner can view list of all staff members
-- [ ] Salon owner can edit staff profiles (name, bio, phone, image)
-- [ ] Salon owner can set staff working hours (different from business hours)
-- [ ] Salon owner can assign services to staff members
-- [ ] Staff members can edit their own profiles
-- [ ] Staff schedule shows weekly working hours in visual format
-- [ ] Staff can be marked as active/inactive
-- [ ] Inactive staff don't appear in booking flows
+- [x] Salon owner can view list of all staff members
+- [x] Salon owner can edit staff profiles (name, bio, phone, image)
+- [x] Salon owner can set staff working hours (different from business hours)
+- [x] Salon owner can assign services to staff members
+- [x] Staff members can edit their own profiles
+- [x] Staff schedule shows weekly working hours in visual format
+- [x] Staff can be marked as active/inactive
+- [x] Inactive staff don't appear in booking flows
 
 **Technical Notes:**
 
@@ -146,13 +146,13 @@ Sprint 2 establishes the core data entities required for booking operations: ser
 
 **Acceptance Criteria:**
 
-- [ ] Salon owner can manually add customers (name, phone, email)
-- [ ] Salon owner can search customers by name or phone
-- [ ] Phone numbers are validated (Turkish format: +90 5XX XXX XX XX)
-- [ ] Customer list shows name, phone, last appointment date
-- [ ] Customer detail page shows profile and appointment history (empty for now)
-- [ ] Customers can be edited and soft-deleted (marked inactive)
-- [ ] Duplicate phone numbers are prevented within same organization
+- [x] Salon owner can manually add customers (name, phone, email)
+- [x] Salon owner can search customers by name or phone
+- [x] Phone numbers are validated (Turkish format: +90 5XX XXX XX XX)
+- [x] Customer list shows name, phone, last appointment date
+- [x] Customer detail page shows profile and appointment history (empty for now)
+- [x] Customers can be edited and deleted
+- [x] Duplicate phone numbers are prevented within same organization
 
 **Technical Notes:**
 
@@ -183,11 +183,11 @@ Sprint 2 establishes the core data entities required for booking operations: ser
 
 **Acceptance Criteria:**
 
-- [ ] Salon owner can assign multiple services to a staff member
-- [ ] Salon owner can remove service assignments
-- [ ] Staff detail page shows assigned services
-- [ ] Mutation validates that both staff and service belong to same organization
-- [ ] Mutation prevents duplicate assignments
+- [x] Salon owner can assign multiple services to a staff member
+- [x] Salon owner can remove service assignments
+- [x] Staff detail page shows assigned services
+- [x] Mutation validates that both staff and service belong to same organization
+- [x] Mutation prevents duplicate assignments
 
 **Technical Notes:**
 
@@ -273,13 +273,13 @@ All tables already exist in `convex/schema.ts` from Sprint 1. Only junction tabl
 
 ### Sprint 2 Completion Criteria
 
-- [ ] At least 3 service categories can be created
-- [ ] At least 10 services can be created and organized
-- [ ] Staff schedules can be configured for all staff members
-- [ ] At least 20 customers can be added and searched
-- [ ] All CRUD operations work without errors
-- [ ] All forms validate inputs correctly
-- [ ] Price formatting displays correctly (₺1.234,56)
+- [x] At least 3 service categories can be created
+- [x] At least 10 services can be created and organized
+- [x] Staff schedules can be configured for all staff members
+- [x] At least 20 customers can be added and searched
+- [x] All CRUD operations work without errors
+- [x] All forms validate inputs correctly
+- [x] Price formatting displays correctly (₺1.234,56)
 
 ### Performance Targets
 
