@@ -40,7 +40,21 @@ export const subscriptionStatusValidator = v.union(
   v.literal("past_due"),
   v.literal("canceled"),
   v.literal("unpaid"),
+  v.literal("suspended"),
+  v.literal("pending_payment"),
 );
+
+/** Subscription detail (for billing page) */
+export const subscriptionDetailValidator = v.object({
+  status: subscriptionStatusValidator,
+  plan: v.optional(v.string()),
+  polarSubscriptionId: v.optional(v.string()),
+  trialEndsAt: v.optional(v.number()),
+  currentPeriodEnd: v.optional(v.number()),
+  gracePeriodEndsAt: v.optional(v.number()),
+  suspendedAt: v.optional(v.number()),
+  cancelledAt: v.optional(v.number()),
+});
 
 /** Address object */
 export const addressValidator = v.optional(
@@ -170,6 +184,13 @@ export const organizationSettingsDocValidator = v.object({
   bookingSettings: bookingSettingsValidator,
   subscriptionStatus: v.optional(subscriptionStatusValidator),
   subscriptionPlan: v.optional(v.string()),
+  polarSubscriptionId: v.optional(v.string()),
+  polarCustomerId: v.optional(v.string()),
+  trialEndsAt: v.optional(v.number()),
+  currentPeriodEnd: v.optional(v.number()),
+  gracePeriodEndsAt: v.optional(v.number()),
+  suspendedAt: v.optional(v.number()),
+  cancelledAt: v.optional(v.number()),
   createdAt: v.number(),
   updatedAt: v.number(),
 });
@@ -677,6 +698,18 @@ export const userAppointmentValidator = v.object({
       price: v.number(),
     }),
   ),
+});
+
+// =============================================================================
+// Product Benefits Validators
+// =============================================================================
+
+/** Product benefits document validator */
+export const productBenefitsDocValidator = v.object({
+  _id: v.id("productBenefits"),
+  _creationTime: v.number(),
+  polarProductId: v.string(),
+  benefits: v.array(v.string()),
 });
 
 // =============================================================================

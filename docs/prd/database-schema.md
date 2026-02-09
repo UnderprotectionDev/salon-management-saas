@@ -34,8 +34,8 @@ erDiagram
 | appointments, appointmentServices, slotLocks | ✅ | M3-M4 |
 | auditLogs | ⚠️ Partial | Table exists, helpers pending |
 | products, productCategories, inventoryTransactions | 📋 | M8+ |
-| notifications | 📋 | M7 |
-| organizationSubscriptions, subscriptionEvents | 📋 | M6 |
+| notifications | ✅ | M5 |
+| productBenefits | ✅ | M6 |
 
 ## Core Tables
 
@@ -49,8 +49,9 @@ erDiagram
 - `timezone?: string` ("Europe/Istanbul"), `currency?: string`, `locale?: string`
 - `businessHours?: {monday..sunday: {open, close, closed}}`
 - `bookingSettings?: {minAdvanceBookingMinutes?, maxAdvanceBookingDays?, slotDurationMinutes?, bufferBetweenBookingsMinutes?, allowOnlineBooking?, cancellationPolicyHours?}`
-- `subscriptionStatus?: active|trialing|past_due|canceled|unpaid`
-- Index: `organizationId`
+- `subscriptionStatus?: active|trialing|past_due|canceled|unpaid|suspended|pending_payment`
+- `subscriptionPlan?, polarSubscriptionId?, polarCustomerId?, trialEndsAt?, currentPeriodEnd?, gracePeriodEndsAt?, suspendedAt?, cancelledAt?`
+- Indexes: `organizationId`, `by_polar_subscription` (on `polarSubscriptionId`)
 
 ### `member`
 - `organizationId, userId: string, role: owner|admin|member`
@@ -133,13 +134,17 @@ erDiagram
 - Indexes: `by_staff_date`, `by_expiry`, `by_session`
 - 2-min TTL, cleaned up by cron every 1 minute.
 
+## Billing Tables
+
+### `productBenefits` (M6)
+- `polarProductId: string`, `benefits: array(string)`
+- Index: `polarProductId`
+- Synced from Polar API via `polarSync.triggerSync`
+
 ## Planned Tables
 
 ### `products` / `productCategories` / `inventoryTransactions` (M8+)
 Schema exists in PRD. Products with pricing, inventory tracking, supplier info.
-
-### `organizationSubscriptions` / `subscriptionEvents` (M6)
-Polar.sh subscription tracking with status, plan, billing period.
 
 ### `auditLogs`
 - `organizationId, userId, action, resourceType, resourceId?, details?, ipAddress?, timestamp`
@@ -157,3 +162,5 @@ Polar.sh subscription tracking with status, plan, billing period.
 | Staff schedule | `appointments.by_staff_date` |
 | Customer by phone | `customers.by_org_phone` |
 | Appointment by code | `appointments.by_confirmation` |
+| Subscription by Polar ID | `organizationSettings.by_polar_subscription` |
+| Product benefits | `productBenefits.polarProductId` |

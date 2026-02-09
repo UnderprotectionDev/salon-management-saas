@@ -173,6 +173,20 @@ export const rateLimiter = new RateLimiter(components.rateLimiter, {
     rate: 3,
     period: HOUR,
   },
+
+  // ==========================================================================
+  // Subscription Limits
+  // ==========================================================================
+
+  /**
+   * Subscription cancellation limit (per organization)
+   * 3 per hour
+   */
+  cancelSubscription: {
+    kind: "token bucket",
+    rate: 3,
+    period: HOUR,
+  },
 });
 
 // Re-export time constants for use elsewhere

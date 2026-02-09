@@ -55,9 +55,12 @@ export function OrganizationProvider({ children }: { children: ReactNode }) {
   const organizationsData = useQuery(api.organizations.listForUser);
 
   // Get current staff profile for the active organization
+  // organizationsData null/boş ise kullanıcı çıkış yapmış demektir — skip et
   const currentStaff = useQuery(
     api.staff.getCurrentStaff,
-    activeOrganization ? { organizationId: activeOrganization._id } : "skip",
+    activeOrganization && organizationsData && organizationsData.length > 0
+      ? { organizationId: activeOrganization._id }
+      : "skip",
   );
 
   // Determine loading state

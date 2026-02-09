@@ -7,9 +7,13 @@ const publicRoutes = ["/", "/sign-in", "/sign-up", "/api/auth"];
 // Regex for public booking page: /[slug]/book
 const PUBLIC_BOOKING_REGEX = /^\/[^/]+\/book$/;
 
+// Regex for public appointment lookup: /[slug]/appointment/[code]
+const PUBLIC_APPOINTMENT_REGEX = /^\/[^/]+\/appointment\/[^/]+$/;
+
 // Check if the path starts with any public route
 function isPublicRoute(path: string): boolean {
   if (PUBLIC_BOOKING_REGEX.test(path)) return true;
+  if (PUBLIC_APPOINTMENT_REGEX.test(path)) return true;
   return publicRoutes.some(
     (route) =>
       path === route || (route !== "/" && path.startsWith(`${route}/`)),

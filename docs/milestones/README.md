@@ -9,8 +9,8 @@
 | 3 | Booking Engine Core | ✅ Complete | 4 |
 | 4 | Booking Operations | ✅ Complete | 5 |
 | 5 | Dashboard & Calendar | ✅ Complete | 4 |
-| 6 | SaaS Billing (Polar.sh) | 📋 Next | 5 |
-| 7 | Email Notifications (Resend) | 📋 Pending | 5 |
+| 6 | SaaS Billing (Polar.sh) | ✅ Complete | 5 |
+| 7 | Email Notifications (Resend) | 📋 Next | 5 |
 | 8 | Reports & Analytics | 📋 Pending | 5 |
 | 9 | Customer Portal | 📋 Pending | 6 |
 

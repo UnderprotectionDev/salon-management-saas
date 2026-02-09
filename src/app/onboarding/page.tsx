@@ -8,7 +8,6 @@ import {
   Building2,
   Check,
   Clock,
-  ImagePlus,
   Loader2,
   MapPin,
 } from "lucide-react";
@@ -21,7 +20,6 @@ import {
   BusinessHoursEditor,
   getDefaultBusinessHours,
 } from "@/components/business-hours/BusinessHoursEditor";
-import { LogoUpload } from "@/components/logo-upload/LogoUpload";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -41,7 +39,6 @@ import { Input } from "@/components/ui/input";
 import { Progress } from "@/components/ui/progress";
 import { Textarea } from "@/components/ui/textarea";
 import { api } from "../../../convex/_generated/api";
-import type { Id } from "../../../convex/_generated/dataModel";
 
 // =============================================================================
 // Constants
@@ -51,7 +48,6 @@ const STEPS = [
   { id: 1, name: "Basic Info", icon: Building2 },
   { id: 2, name: "Location", icon: MapPin },
   { id: 3, name: "Hours", icon: Clock },
-  { id: 4, name: "Logo", icon: ImagePlus },
 ] as const;
 
 // =============================================================================
@@ -104,7 +100,6 @@ interface OnboardingFormData {
   postalCode: string;
   country: string;
   // Step 3: Business Hours (handled separately)
-  // Step 4: Logo (handled after org creation)
 }
 
 // =============================================================================
@@ -118,10 +113,6 @@ export default function OnboardingPage() {
     getDefaultBusinessHours,
   );
   const [isCreating, setIsCreating] = useState(false);
-  const [createdOrgId, setCreatedOrgId] = useState<Id<"organization"> | null>(
-    null,
-  );
-  const [createdSlug, setCreatedSlug] = useState<string | null>(null);
 
   const createOrganization = useMutation(api.organizations.create);
   const updateSettings = useMutation(api.organizations.updateSettings);
@@ -145,14 +136,12 @@ export default function OnboardingPage() {
 
   const canProceed = (values: OnboardingFormData) => {
     if (currentStep === 1) {
-      // Step 1: Basic Info - name and slug required and valid
       const nameValid = nameSchema.safeParse(values.name).success;
       const slugValid = slugSchema.safeParse(values.slug).success;
       return nameValid && slugValid;
     }
 
     if (currentStep === 2) {
-      // Step 2: Location - email must be valid if provided
       if (values.email) {
         return emailSchema.safeParse(values.email).success;
       }
@@ -160,7 +149,6 @@ export default function OnboardingPage() {
     }
 
     if (currentStep === 3) {
-      // Step 3: Business Hours - always can proceed
       return true;
     }
 
@@ -190,9 +178,7 @@ export default function OnboardingPage() {
         businessHours,
       });
 
-      setCreatedOrgId(result.organizationId);
-      setCreatedSlug(result.slug);
-      setCurrentStep(4);
+      router.push(`/${result.slug}/dashboard`);
     } catch (error) {
       console.error("Failed to create organization:", error);
       const message =
@@ -204,11 +190,9 @@ export default function OnboardingPage() {
   };
 
   const handleNext = async () => {
-    // Validate current step before proceeding
     if (currentStep === 1) {
       const values = form.state.values;
 
-      // Validate name
       const nameResult = nameSchema.safeParse(values.name);
       if (!nameResult.success) {
         toast.error(
@@ -217,7 +201,6 @@ export default function OnboardingPage() {
         return;
       }
 
-      // Validate slug
       const slugResult = slugSchema.safeParse(values.slug);
       if (!slugResult.success) {
         toast.error(slugResult.error.issues[0]?.message || "Invalid URL slug");
@@ -226,7 +209,6 @@ export default function OnboardingPage() {
     }
 
     if (currentStep === 3) {
-      // Step 3 → 4: Create org first, then show logo step
       await handleCreateOrganization();
       return;
     }
@@ -237,16 +219,8 @@ export default function OnboardingPage() {
   };
 
   const handleBack = () => {
-    // Don't allow going back from logo step (org already created)
-    if (currentStep === 4) return;
     if (currentStep > 1) {
       setCurrentStep(currentStep - 1);
-    }
-  };
-
-  const handleFinish = () => {
-    if (createdSlug) {
-      router.push(`/${createdSlug}/dashboard`);
     }
   };
 
@@ -313,7 +287,6 @@ export default function OnboardingPage() {
               {currentStep === 1 && "Basic Information"}
               {currentStep === 2 && "Location & Contact"}
               {currentStep === 3 && "Business Hours"}
-              {currentStep === 4 && "Add Your Logo"}
             </CardTitle>
             <CardDescription>
               {currentStep === 1 &&
@@ -322,8 +295,6 @@ export default function OnboardingPage() {
                 "Add your salon's address and contact information"}
               {currentStep === 3 &&
                 "Set your operating hours for each day of the week"}
-              {currentStep === 4 &&
-                "Upload a logo to help customers recognize your brand (optional)"}
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -582,16 +553,6 @@ export default function OnboardingPage() {
                 />
               </div>
             )}
-
-            {/* Step 4: Logo (after org creation) */}
-            {currentStep === 4 && createdOrgId && (
-              <div className="flex flex-col items-center justify-center py-4">
-                <LogoUpload organizationId={createdOrgId} />
-                <p className="text-sm text-muted-foreground mt-4">
-                  You can add or change your logo later in Settings.
-                </p>
-              </div>
-            )}
           </CardContent>
         </Card>
 
@@ -610,20 +571,13 @@ export default function OnboardingPage() {
                   <Button
                     variant="outline"
                     onClick={handleBack}
-                    disabled={
-                      currentStep === 1 || currentStep === 4 || isCreating
-                    }
+                    disabled={currentStep === 1 || isCreating}
                   >
                     <ArrowLeft className="size-4 mr-2" />
                     Back
                   </Button>
 
-                  {currentStep === 4 ? (
-                    <Button onClick={handleFinish}>
-                      <Check className="size-4 mr-2" />
-                      {createdOrgId ? "Finish" : "Skip"}
-                    </Button>
-                  ) : currentStep === 3 ? (
+                  {currentStep === 3 ? (
                     <Button
                       onClick={handleNext}
                       disabled={isCreating || !isValid}
@@ -635,7 +589,7 @@ export default function OnboardingPage() {
                         </>
                       ) : (
                         <>
-                          Next
+                          Create Salon
                           <ArrowRight className="size-4 ml-2" />
                         </>
                       )}

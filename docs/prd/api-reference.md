@@ -129,6 +129,31 @@
 
 Upload flow: `generateUploadUrl()` → `fetch(url, {method: "POST", body: file})` → `save*({storageId, ...})`
 
+## SaaS Billing (Polar.sh)
+
+| Function | Wrapper | Args | Returns |
+|----------|---------|------|---------|
+| `subscriptions.getSubscriptionStatus` | orgQuery | `{}` | `{status, plan?, currentPeriodEnd?, gracePeriodEndsAt?, cancelledAt?}` |
+| `subscriptions.isSuspended` | orgQuery | `{}` | `boolean` |
+| `subscriptions.cancelSubscription` | ownerMutation | `{}` | `null` |
+| `polar.generateCheckoutLink` | action | `productIds, origin, successUrl, subscriptionId?` | `{url}` |
+| `polarSync.triggerSync` | action (auth required) | `{}` | — |
+| `polarSync.getProductBenefits` | query | `{}` | `array({polarProductId, benefits})` |
+
+Webhook routes registered in `convex/http.ts` via `polar.registerRoutes()`:
+- `onSubscriptionCreated`: Maps Polar customer → org owner → activates subscription
+- `onSubscriptionUpdated`: Finds org by `polarSubscriptionId` (indexed) → syncs status
+
+## Analytics & Notifications
+
+| Function | Wrapper | Args | Returns |
+|----------|---------|------|---------|
+| `analytics.getDashboardStats` | orgQuery | `{}` | `dashboardStats` |
+| `notifications.list` | orgQuery | `limit?` | `array(notificationDoc)` |
+| `notifications.getUnreadCount` | orgQuery | `{}` | `number` |
+| `notifications.markAsRead` | orgMutation | `notificationId` | `null` |
+| `notifications.markAllAsRead` | orgMutation | `{}` | `null` |
+
 ## Rate Limits
 
 | Operation | Limit | Key |
@@ -145,19 +170,23 @@ Upload flow: `generateUploadUrl()` → `fetch(url, {method: "POST", body: file})
 | `createTimeOffRequest` | 5/day | staff |
 | `createOvertime` | 10/day | staff |
 | `createCustomer` | 30/hour | org |
+| `cancelSubscription` | 3/hour | org |
 
 ## Scheduled Jobs
 
 | Job | Interval | Function |
 |-----|----------|----------|
 | Cleanup expired slot locks | 1 minute | `slotLocks.cleanupExpired` |
-| Send appointment reminders | Planned (M7) | `schedulers.sendScheduledReminders` |
-| Check grace periods | Planned (M6) | `schedulers.checkGracePeriods` |
+| Cleanup old notifications | 1 hour | `notifications.cleanupOld` |
+| Send appointment reminders | 5 minutes | `notifications.sendReminders` |
+| Check grace periods | 1 hour | `subscriptions.checkGracePeriods` |
+| Check trial expirations | 1 hour | `subscriptions.checkTrialExpirations` |
+| Send email reminders | Planned (M7) | `schedulers.sendScheduledReminders` |
 
 ## Validators Summary
 
-**Sub-validators:** memberRole, invitationRole/Status, staffStatus, subscriptionStatus, servicePriceType/Status, appointmentStatus/Source, cancelledBy, paymentStatus, customerAccountStatus/Source, address, businessHours, bookingSettings, staffSchedule
+**Sub-validators:** memberRole, invitationRole/Status, staffStatus, subscriptionStatus, servicePriceType/Status, appointmentStatus/Source, cancelledBy, paymentStatus, customerAccountStatus/Source, address, businessHours, bookingSettings, staffSchedule, notificationType
 
-**Doc validators:** organizationDoc, memberDoc, invitationDoc, staffDoc, serviceCategoryDoc, serviceDoc, scheduleOverrideDoc, timeOffRequestDoc, staffOvertimeDoc, customerDoc, customerListItem, appointmentDoc, appointmentServiceDoc, slotLockDoc
+**Doc validators:** organizationDoc, memberDoc, invitationDoc, staffDoc, serviceCategoryDoc, serviceDoc, scheduleOverrideDoc, timeOffRequestDoc, staffOvertimeDoc, customerDoc, customerListItem, appointmentDoc, appointmentServiceDoc, slotLockDoc, notificationDoc
 
-**Composite validators:** organizationWithRole, invitationWithOrg, serviceWithCategory, serviceCategoryWithCount, timeOffRequestWithStaff, customerWithStaff, availableSlot, publicAppointment, userAppointment, appointmentWithDetails
+**Composite validators:** organizationWithRole, invitationWithOrg, serviceWithCategory, serviceCategoryWithCount, timeOffRequestWithStaff, customerWithStaff, availableSlot, publicAppointment, userAppointment, appointmentWithDetails, dashboardStats

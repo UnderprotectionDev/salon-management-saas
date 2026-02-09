@@ -3,6 +3,7 @@ import { JetBrains_Mono, Playfair_Display, Poppins } from "next/font/google";
 import { getToken } from "@/lib/auth-server";
 import { ConvexClientProvider } from "@/modules/convex/providers/ConvexClientProvider";
 import { OrganizationProvider } from "@/modules/organization/providers/OrganizationProvider";
+import { Toaster } from "@/components/ui/sonner";
 import "./globals.css";
 
 const poppins = Poppins({
@@ -41,6 +42,7 @@ export default async function RootLayout({
       >
         <ConvexClientProvider initialToken={token}>
           <OrganizationProvider>{children}</OrganizationProvider>
+          <Toaster />
         </ConvexClientProvider>
       </body>
     </html>
