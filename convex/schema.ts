@@ -489,4 +489,27 @@ export default defineSchema({
     .index("by_staff_date", ["staffId", "date"])
     .index("by_expiry", ["expiresAt"])
     .index("by_session", ["sessionId"]),
+
+  // Notifications — staff notifications for booking events
+  notifications: defineTable({
+    organizationId: v.id("organization"),
+    recipientStaffId: v.id("staff"),
+    type: v.union(
+      v.literal("new_booking"),
+      v.literal("cancellation"),
+      v.literal("reminder_30min"),
+      v.literal("reschedule"),
+      v.literal("no_show"),
+      v.literal("status_change"),
+    ),
+    title: v.string(),
+    message: v.string(),
+    appointmentId: v.optional(v.id("appointments")),
+    isRead: v.boolean(),
+    readAt: v.optional(v.number()),
+    createdAt: v.number(),
+  })
+    .index("by_org_staff", ["organizationId", "recipientStaffId"])
+    .index("by_staff_unread", ["recipientStaffId", "isRead"])
+    .index("by_created", ["createdAt"]),
 });

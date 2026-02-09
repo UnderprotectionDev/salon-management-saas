@@ -2,6 +2,7 @@
 
 import {
   Calendar,
+  CalendarDays,
   ChevronUp,
   LayoutDashboard,
   LogOut,
@@ -44,12 +45,18 @@ import {
   OrganizationSwitcher,
   useOrganization,
 } from "@/modules/organization";
+import { NotificationBell } from "@/modules/notifications";
 
 const menuItems = [
   {
     title: "Dashboard",
     icon: LayoutDashboard,
     href: "/dashboard",
+  },
+  {
+    title: "Calendar",
+    icon: CalendarDays,
+    href: "/calendar",
   },
   {
     title: "Staff",
@@ -222,6 +229,7 @@ function AuthenticatedLayoutContent({
           <SidebarTrigger />
           <Separator orientation="vertical" className="h-6" />
           <div className="flex-1" />
+          <NotificationBell />
         </header>
         <main className="flex-1 p-4 lg:p-6">{children}</main>
       </SidebarInset>

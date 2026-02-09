@@ -679,6 +679,51 @@ export const userAppointmentValidator = v.object({
   ),
 });
 
+// =============================================================================
+// Notification Validators
+// =============================================================================
+
+/** Notification type */
+export const notificationTypeValidator = v.union(
+  v.literal("new_booking"),
+  v.literal("cancellation"),
+  v.literal("reminder_30min"),
+  v.literal("reschedule"),
+  v.literal("no_show"),
+  v.literal("status_change"),
+);
+
+/** Notification document validator */
+export const notificationDocValidator = v.object({
+  _id: v.id("notifications"),
+  _creationTime: v.number(),
+  organizationId: v.id("organization"),
+  recipientStaffId: v.id("staff"),
+  type: notificationTypeValidator,
+  title: v.string(),
+  message: v.string(),
+  appointmentId: v.optional(v.id("appointments")),
+  isRead: v.boolean(),
+  readAt: v.optional(v.number()),
+  createdAt: v.number(),
+});
+
+// =============================================================================
+// Dashboard Analytics Validators
+// =============================================================================
+
+/** Dashboard stats validator */
+export const dashboardStatsValidator = v.object({
+  todayTotal: v.number(),
+  todayCompleted: v.number(),
+  todayUpcoming: v.number(),
+  todayNoShows: v.number(),
+  todayWalkIns: v.number(),
+  todayTotalChange: v.number(),
+  monthlyRevenue: v.number(),
+  monthlyRevenueChange: v.number(),
+});
+
 /** Appointment with enriched details (customer, staff, services) */
 export const appointmentWithDetailsValidator = v.object({
   _id: v.id("appointments"),

@@ -298,40 +298,40 @@ export default function BookingPage() {
                       />
                     </div>
                   )}
-                <BookingSummary
-                  organizationId={organization._id}
-                  services={selectedServices}
-                  staffName={selectedStaff?.name ?? ""}
-                  staffId={state.staffId}
-                  date={state.date}
-                  startTime={state.slotStartTime}
-                  endTime={state.slotEndTime}
-                  customer={{
-                    name: state.customerName,
-                    phone: state.customerPhone,
-                    email: state.customerEmail,
-                    notes: state.customerNotes,
-                  }}
-                  sessionId={state.sessionId}
-                  onBack={() => setStep("info")}
-                  onConfirm={(result) =>
-                    setConfirmation({
-                      appointmentId: result.appointmentId as string,
-                      confirmationCode: result.confirmationCode,
-                      details: {
-                        date: state.date!,
-                        startTime: state.slotStartTime!,
-                        endTime: state.slotEndTime!,
-                        staffName: selectedStaff?.name ?? "",
-                        services: selectedServices.map((s) => ({
-                          name: s.name,
-                          duration: s.duration,
-                          price: s.price,
-                        })),
-                      },
-                    })
-                  }
-                />
+                  <BookingSummary
+                    organizationId={organization._id}
+                    services={selectedServices}
+                    staffName={selectedStaff?.name ?? ""}
+                    staffId={state.staffId}
+                    date={state.date}
+                    startTime={state.slotStartTime}
+                    endTime={state.slotEndTime}
+                    customer={{
+                      name: state.customerName,
+                      phone: state.customerPhone,
+                      email: state.customerEmail,
+                      notes: state.customerNotes,
+                    }}
+                    sessionId={state.sessionId}
+                    onBack={() => setStep("info")}
+                    onConfirm={(result) =>
+                      setConfirmation({
+                        appointmentId: result.appointmentId as string,
+                        confirmationCode: result.confirmationCode,
+                        details: {
+                          date: state.date!,
+                          startTime: state.slotStartTime!,
+                          endTime: state.slotEndTime!,
+                          staffName: selectedStaff?.name ?? "",
+                          services: selectedServices.map((s) => ({
+                            name: s.name,
+                            duration: s.duration,
+                            price: s.price,
+                          })),
+                        },
+                      })
+                    }
+                  />
                 </div>
               )}
           </CardContent>

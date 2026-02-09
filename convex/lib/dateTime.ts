@@ -76,7 +76,10 @@ export function getTodayDateString(): string {
  * Used for time-based policy checks (e.g., 2-hour cancellation window).
  * "2025-01-15" + 540 → epoch ms for 2025-01-15 09:00 UTC
  */
-export function dateTimeToEpoch(date: string, minutesFromMidnight: number): number {
+export function dateTimeToEpoch(
+  date: string,
+  minutesFromMidnight: number,
+): number {
   const ms = new Date(`${date}T00:00:00Z`).getTime();
   return ms + minutesFromMidnight * 60 * 1000;
 }

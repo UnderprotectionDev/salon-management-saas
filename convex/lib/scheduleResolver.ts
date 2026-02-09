@@ -56,7 +56,7 @@ export function getDayOfWeek(dateStr: string): DayOfWeek {
 /**
  * Generate an array of "YYYY-MM-DD" strings between start and end (inclusive).
  */
-function getDatesBetween(start: string, end: string): string[] {
+export function getDatesBetween(start: string, end: string): string[] {
   const dates: string[] = [];
   const current = new Date(`${start}T00:00:00`);
   const last = new Date(`${end}T00:00:00`);

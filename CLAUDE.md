@@ -261,7 +261,7 @@ Functions throw `ConvexError` with an `ErrorCode` enum from `convex/lib/function
 - **Path alias:** `@/*` → `./src/*`
 - **Imports:** Auto-organized on save by Biome
 - **Indentation:** 2 spaces
-- **Terminology:** Code/database use `organization`, UI uses `salon`, architecture uses `tenant` (see [Glossary](docs/prd/appendix/glossary.md#organization))
+- **Terminology:** Code/database use `organization`, UI uses `salon`, architecture uses `tenant` (see [Glossary](docs/prd/glossary.md))
 
 ## Environment Variables
 

@@ -8,6 +8,7 @@
  * @module
  */
 
+import type * as analytics from "../analytics.js";
 import type * as appointmentServices from "../appointmentServices.js";
 import type * as appointments from "../appointments.js";
 import type * as auth from "../auth.js";
@@ -26,6 +27,7 @@ import type * as lib_rls from "../lib/rls.js";
 import type * as lib_scheduleResolver from "../lib/scheduleResolver.js";
 import type * as lib_validators from "../lib/validators.js";
 import type * as members from "../members.js";
+import type * as notifications from "../notifications.js";
 import type * as organizations from "../organizations.js";
 import type * as scheduleOverrides from "../scheduleOverrides.js";
 import type * as serviceCategories from "../serviceCategories.js";
@@ -44,6 +46,7 @@ import type {
 } from "convex/server";
 
 declare const fullApi: ApiFromModules<{
+  analytics: typeof analytics;
   appointmentServices: typeof appointmentServices;
   appointments: typeof appointments;
   auth: typeof auth;
@@ -62,6 +65,7 @@ declare const fullApi: ApiFromModules<{
   "lib/scheduleResolver": typeof lib_scheduleResolver;
   "lib/validators": typeof lib_validators;
   members: typeof members;
+  notifications: typeof notifications;
   organizations: typeof organizations;
   scheduleOverrides: typeof scheduleOverrides;
   serviceCategories: typeof serviceCategories;

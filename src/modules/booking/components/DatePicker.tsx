@@ -46,7 +46,9 @@ export function DatePicker({ selectedDate, onDateSelect }: DatePickerProps) {
   for (let i = 0; i < MAX_ADVANCE_DAYS; i++) {
     const d = new Date(today);
     d.setDate(d.getDate() + i);
-    dates.push(`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`);
+    dates.push(
+      `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`,
+    );
   }
 
   const monthGroups = groupDatesByMonth(dates);

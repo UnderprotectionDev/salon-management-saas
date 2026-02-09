@@ -1,4 +1,5 @@
 import { ConvexError, v } from "convex/values";
+import { internal } from "./_generated/api";
 import type { Doc, Id } from "./_generated/dataModel";
 import type { DatabaseReader } from "./_generated/server";
 import { ensureUniqueCode } from "./lib/confirmation";
@@ -17,6 +18,7 @@ import {
 } from "./lib/functions";
 import { isValidTurkishPhone } from "./lib/phone";
 import { rateLimiter } from "./lib/rateLimits";
+import { getDatesBetween } from "./lib/scheduleResolver";
 import { resolveSchedule } from "./lib/scheduleResolver";
 import {
   appointmentSourceValidator,
@@ -109,11 +111,7 @@ async function validateSlotAvailability(
 
   // Build working windows
   const windows: Array<{ start: number; end: number }> = [];
-  if (
-    resolved.available &&
-    resolved.effectiveStart &&
-    resolved.effectiveEnd
-  ) {
+  if (resolved.available && resolved.effectiveStart && resolved.effectiveEnd) {
     windows.push({
       start: timeStringToMinutes(resolved.effectiveStart),
       end: timeStringToMinutes(resolved.effectiveEnd),
@@ -277,7 +275,10 @@ export const create = publicMutation({
       if (existingCustomer.name !== args.customer.name) {
         updates.name = args.customer.name;
       }
-      if (args.customer.email && existingCustomer.email !== args.customer.email) {
+      if (
+        args.customer.email &&
+        existingCustomer.email !== args.customer.email
+      ) {
         updates.email = args.customer.email;
       }
       if (Object.keys(updates).length > 0) {
@@ -347,6 +348,15 @@ export const create = publicMutation({
 
     // 11. Delete the slot lock
     await ctx.db.delete(myLock._id);
+
+    // 12. Notify all staff about new booking
+    await ctx.scheduler.runAfter(0, internal.notifications.notifyAllStaff, {
+      organizationId: args.organizationId,
+      type: "new_booking" as const,
+      title: "New Booking",
+      message: `${args.customer.name} booked for ${args.date} at ${formatMinutesShort(args.startTime)}`,
+      appointmentId,
+    });
 
     return { appointmentId, confirmationCode, customerId };
   },
@@ -662,6 +672,15 @@ export const createByStaff = orgMutation({
       });
     }
 
+    // Notify all staff about new booking
+    await ctx.scheduler.runAfter(0, internal.notifications.notifyAllStaff, {
+      organizationId: ctx.organizationId,
+      type: "new_booking" as const,
+      title: "New Booking",
+      message: `${customer.name} booked (${args.source}) for ${args.date} at ${formatMinutesShort(args.startTime)}`,
+      appointmentId,
+    });
+
     return { appointmentId, confirmationCode };
   },
 });
@@ -705,6 +724,53 @@ export const getByDate = orgQuery({
     );
 
     return enriched;
+  },
+});
+
+/**
+ * Get appointments for a date range (enriched with customer, staff, services).
+ * Useful for calendar week view.
+ */
+export const getByDateRange = orgQuery({
+  args: {
+    startDate: v.string(),
+    endDate: v.string(),
+    staffId: v.optional(v.id("staff")),
+  },
+  returns: v.array(appointmentWithDetailsValidator),
+  handler: async (ctx, args) => {
+    const dates = getDatesBetween(args.startDate, args.endDate);
+    const allAppts: Doc<"appointments">[] = [];
+
+    for (const date of dates) {
+      let dayAppts: Doc<"appointments">[];
+      if (args.staffId) {
+        const staffAppts = await ctx.db
+          .query("appointments")
+          .withIndex("by_staff_date", (q) =>
+            q.eq("staffId", args.staffId!).eq("date", date),
+          )
+          .collect();
+        dayAppts = staffAppts.filter(
+          (a) => a.organizationId === ctx.organizationId,
+        );
+      } else {
+        dayAppts = await ctx.db
+          .query("appointments")
+          .withIndex("by_org_date", (q) =>
+            q.eq("organizationId", ctx.organizationId).eq("date", date),
+          )
+          .collect();
+      }
+      allAppts.push(...dayAppts);
+    }
+
+    allAppts.sort((a, b) => {
+      const dateCompare = a.date.localeCompare(b.date);
+      return dateCompare !== 0 ? dateCompare : a.startTime - b.startTime;
+    });
+
+    return Promise.all(allAppts.map((appt) => enrichAppointment(ctx, appt)));
   },
 });
 
@@ -787,7 +853,8 @@ export const updateStatus = orgMutation({
       if (now < fifteenMinBefore) {
         throw new ConvexError({
           code: ErrorCode.VALIDATION_ERROR,
-          message: "Check-in is only allowed 15 minutes before appointment time",
+          message:
+            "Check-in is only allowed 15 minutes before appointment time",
         });
       }
     }
@@ -797,7 +864,8 @@ export const updateStatus = orgMutation({
       if (now < appointmentEpoch) {
         throw new ConvexError({
           code: ErrorCode.VALIDATION_ERROR,
-          message: "No-show can only be marked after the appointment start time",
+          message:
+            "No-show can only be marked after the appointment start time",
         });
       }
     }
@@ -812,6 +880,22 @@ export const updateStatus = orgMutation({
     if (args.status === "no_show") updates.noShowAt = now;
 
     await ctx.db.patch(args.appointmentId, updates);
+
+    // Notify on no_show
+    if (args.status === "no_show") {
+      await ctx.scheduler.runAfter(
+        0,
+        internal.notifications.createNotification,
+        {
+          organizationId: ctx.organizationId,
+          recipientStaffId: appointment.staffId,
+          type: "no_show" as const,
+          title: "No-Show",
+          message: `Customer did not show up for ${appointment.date} at ${formatMinutesShort(appointment.startTime)}`,
+          appointmentId: args.appointmentId,
+        },
+      );
+    }
 
     // Update customer stats on completed / no_show
     if (args.status === "completed" || args.status === "no_show") {
@@ -884,6 +968,16 @@ export const cancel = orgMutation({
       cancelledBy: args.cancelledBy,
       cancellationReason: args.reason,
       updatedAt: now,
+    });
+
+    // Notify assigned staff about cancellation
+    await ctx.scheduler.runAfter(0, internal.notifications.createNotification, {
+      organizationId: ctx.organizationId,
+      recipientStaffId: appointment.staffId,
+      type: "cancellation" as const,
+      title: "Appointment Cancelled",
+      message: `Appointment on ${appointment.date} at ${formatMinutesShort(appointment.startTime)} was cancelled`,
+      appointmentId: args.appointmentId,
     });
 
     return { success: true };
@@ -975,6 +1069,16 @@ export const cancelByCustomer = publicMutation({
       updatedAt: now,
     });
 
+    // Notify assigned staff about customer cancellation
+    await ctx.scheduler.runAfter(0, internal.notifications.createNotification, {
+      organizationId: args.organizationId,
+      recipientStaffId: appointment.staffId,
+      type: "cancellation" as const,
+      title: "Customer Cancelled",
+      message: `${customer.name} cancelled their appointment on ${appointment.date} at ${formatMinutesShort(appointment.startTime)}`,
+      appointmentId: appointment._id,
+    });
+
     return { success: true };
   },
 });
@@ -1007,7 +1111,10 @@ export const reschedule = orgMutation({
     }
 
     // Only pending/confirmed can be rescheduled
-    if (appointment.status !== "pending" && appointment.status !== "confirmed") {
+    if (
+      appointment.status !== "pending" &&
+      appointment.status !== "confirmed"
+    ) {
       throw new ConvexError({
         code: ErrorCode.VALIDATION_ERROR,
         message: `Cannot reschedule a ${appointment.status} appointment`,
@@ -1076,6 +1183,16 @@ export const reschedule = orgMutation({
       updatedAt: now,
     });
 
+    // Notify assigned staff about reschedule
+    await ctx.scheduler.runAfter(0, internal.notifications.createNotification, {
+      organizationId: ctx.organizationId,
+      recipientStaffId: targetStaffId,
+      type: "reschedule" as const,
+      title: "Appointment Rescheduled",
+      message: `Appointment moved to ${args.newDate} at ${formatMinutesShort(args.newStartTime)}`,
+      appointmentId: appointment._id,
+    });
+
     return { success: true };
   },
 });
@@ -1139,7 +1256,10 @@ export const rescheduleByCustomer = publicMutation({
     }
 
     // Only pending/confirmed
-    if (appointment.status !== "pending" && appointment.status !== "confirmed") {
+    if (
+      appointment.status !== "pending" &&
+      appointment.status !== "confirmed"
+    ) {
       throw new ConvexError({
         code: ErrorCode.VALIDATION_ERROR,
         message: `Cannot reschedule a ${appointment.status} appointment`,
@@ -1218,6 +1338,26 @@ export const rescheduleByCustomer = publicMutation({
     // Delete the slot lock
     await ctx.db.delete(myLock._id);
 
+    // Notify assigned staff about customer reschedule
+    await ctx.scheduler.runAfter(0, internal.notifications.createNotification, {
+      organizationId: args.organizationId,
+      recipientStaffId: appointment.staffId,
+      type: "reschedule" as const,
+      title: "Customer Rescheduled",
+      message: `${customer.name} rescheduled to ${args.newDate} at ${formatMinutesShort(args.newStartTime)}`,
+      appointmentId: appointment._id,
+    });
+
     return { success: true };
   },
 });
+
+// =============================================================================
+// Helpers
+// =============================================================================
+
+function formatMinutesShort(minutes: number): string {
+  const h = Math.floor(minutes / 60);
+  const m = minutes % 60;
+  return `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}`;
+}
