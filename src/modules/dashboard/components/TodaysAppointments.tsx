@@ -93,7 +93,7 @@ export function TodaysAppointments() {
                   variant="secondary"
                   className={statusColors[appt.status] ?? ""}
                 >
-                  {appt.status.replace("_", " ")}
+                  {appt.status.replaceAll("_", " ")}
                 </Badge>
               </div>
             ))}

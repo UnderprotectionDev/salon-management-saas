@@ -16,6 +16,20 @@ export const getDashboardStats = orgQuery({
     const isMemberOnly = ctx.member.role === "member";
     const staffFilter = isMemberOnly ? ctx.staff?._id : undefined;
 
+    // If member has no associated staff, return empty stats
+    if (isMemberOnly && !staffFilter) {
+      return {
+        todayTotal: 0,
+        todayCompleted: 0,
+        todayUpcoming: 0,
+        todayNoShows: 0,
+        todayWalkIns: 0,
+        todayTotalChange: 0,
+        monthlyRevenue: 0,
+        monthlyRevenueChange: 0,
+      };
+    }
+
     // Today's appointments
     const todayAppts = await ctx.db
       .query("appointments")
@@ -152,7 +166,7 @@ async function computeMonthlyRevenue(
     for (const appt of dayAppts) {
       if (appt.status === "completed") {
         if (!staffId || appt.staffId === staffId) {
-          total += appt.total;
+          total += appt.total ?? 0;
         }
       }
     }

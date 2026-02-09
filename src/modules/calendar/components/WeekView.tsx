@@ -38,7 +38,7 @@ export function WeekView({
 
   // Generate 7 days starting from startDate
   const days: string[] = [];
-  const start = new Date(`${startDate}T00:00:00`);
+  const start = parseISO(startDate);
   for (let i = 0; i < 7; i++) {
     const d = new Date(start);
     d.setDate(start.getDate() + i);

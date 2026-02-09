@@ -42,11 +42,15 @@ export function DayView({
     if (list) list.push(appt);
   }
 
-  // Current time indicator
+  // Current time indicator - only show on today
   const now = new Date();
+  const todayStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
+  const isToday = date === todayStr;
   const currentMinutes = now.getHours() * 60 + now.getMinutes();
   const showCurrentTime =
-    currentMinutes >= DEFAULT_START_HOUR * 60 && currentMinutes <= 20 * 60;
+    isToday &&
+    currentMinutes >= DEFAULT_START_HOUR * 60 &&
+    currentMinutes <= 20 * 60;
   const currentTimeTop =
     (currentMinutes - DEFAULT_START_HOUR * 60) * PIXELS_PER_MINUTE;
 

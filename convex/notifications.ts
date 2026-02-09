@@ -46,9 +46,12 @@ export const getUnreadCount = orgQuery({
 
     const unread = await ctx.db
       .query("notifications")
-      .withIndex("by_staff_unread", (q) =>
-        q.eq("recipientStaffId", ctx.staff!._id).eq("isRead", false),
+      .withIndex("by_org_staff", (q) =>
+        q
+          .eq("organizationId", ctx.organizationId)
+          .eq("recipientStaffId", ctx.staff!._id),
       )
+      .filter((q) => q.eq(q.field("isRead"), false))
       .collect();
 
     return unread.length;
@@ -100,9 +103,12 @@ export const markAllAsRead = orgMutation({
 
     const unread = await ctx.db
       .query("notifications")
-      .withIndex("by_staff_unread", (q) =>
-        q.eq("recipientStaffId", ctx.staff!._id).eq("isRead", false),
+      .withIndex("by_org_staff", (q) =>
+        q
+          .eq("organizationId", ctx.organizationId)
+          .eq("recipientStaffId", ctx.staff!._id),
       )
+      .filter((q) => q.eq(q.field("isRead"), false))
       .collect();
 
     const now = Date.now();
@@ -250,21 +256,33 @@ export const sendReminders = internalMutation({
     const windowStart = currentMinutes + 25;
     const windowEnd = currentMinutes + 35;
 
-    // Get all organizations' appointments for today
-    // We query broadly then filter - cron runs infrequently so this is acceptable
-    const appointments = await ctx.db
-      .query("appointments")
-      .withIndex("by_org_date")
-      .collect();
+    // Get all orgs, then query each org's appointments for today via index
+    const orgs = await ctx.db.query("organization").collect();
 
-    const todayAppts = appointments.filter(
-      (a) =>
-        a.date === dateStr &&
-        a.startTime >= windowStart &&
-        a.startTime <= windowEnd &&
-        (a.status === "pending" || a.status === "confirmed") &&
-        !a.reminderSentAt,
-    );
+    const todayAppts = [];
+    for (const org of orgs) {
+      const orgAppts = await ctx.db
+        .query("appointments")
+        .withIndex("by_org_date", (q) =>
+          q.eq("organizationId", org._id).eq("date", dateStr),
+        )
+        .filter((q) =>
+          q.and(
+            q.or(
+              q.eq(q.field("status"), "pending"),
+              q.eq(q.field("status"), "confirmed"),
+            ),
+            q.eq(q.field("reminderSentAt"), undefined),
+          ),
+        )
+        .collect();
+
+      for (const a of orgAppts) {
+        if (a.startTime >= windowStart && a.startTime <= windowEnd) {
+          todayAppts.push(a);
+        }
+      }
+    }
 
     for (const appt of todayAppts) {
       // Create reminder for the assigned staff

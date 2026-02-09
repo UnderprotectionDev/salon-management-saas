@@ -53,7 +53,7 @@ export function NotificationItem({
         <p className="text-xs text-muted-foreground truncate">
           {notification.message}
         </p>
-        <p className="text-[10px] text-muted-foreground mt-0.5">
+        <p className="text-xs text-muted-foreground mt-0.5">
           {formatDistanceToNow(new Date(notification.createdAt), {
             addSuffix: true,
           })}

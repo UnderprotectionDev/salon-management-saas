@@ -55,7 +55,7 @@ export function RevenueChart() {
       : "skip",
   );
 
-  const loading = appointments === undefined;
+  const loading = activeOrganization != null && appointments === undefined;
 
   // Aggregate by date
   const chartData = (() => {
@@ -67,7 +67,7 @@ export function RevenueChart() {
     const current = new Date(`${startDate}T00:00:00`);
     const last = new Date(`${endDate}T00:00:00`);
     while (current <= last) {
-      const ds = current.toISOString().split("T")[0];
+      const ds = `${current.getFullYear()}-${String(current.getMonth() + 1).padStart(2, "0")}-${String(current.getDate()).padStart(2, "0")}`;
       byDate[ds] = { revenue: 0, count: 0 };
       current.setDate(current.getDate() + 1);
     }

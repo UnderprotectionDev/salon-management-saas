@@ -91,8 +91,11 @@ export function AppointmentDetailModal({
           <div className="space-y-2">
             <h4 className="text-sm font-medium">Services</h4>
             <div className="space-y-1">
-              {appointment.services.map((s) => (
-                <div key={s.serviceId} className="flex justify-between text-sm">
+              {appointment.services.map((s, index) => (
+                <div
+                  key={`${s.serviceId}-${index}`}
+                  className="flex justify-between text-sm"
+                >
                   <span>
                     {s.serviceName}{" "}
                     <span className="text-muted-foreground">

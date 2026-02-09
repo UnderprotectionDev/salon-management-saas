@@ -213,7 +213,7 @@ export default function AppointmentStatusPage() {
             (() => {
               // Client-side 2-hour window check for visibility
               const apptMs =
-                new Date(`${appointment.date}T00:00:00Z`).getTime() +
+                new Date(`${appointment.date}T00:00:00`).getTime() +
                 appointment.startTime * 60 * 1000;
               const canModify = Date.now() < apptMs - 2 * 60 * 60 * 1000;
 

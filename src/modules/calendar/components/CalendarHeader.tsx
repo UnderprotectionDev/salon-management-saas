@@ -41,10 +41,20 @@ export function CalendarHeader({
           Today
         </Button>
         <div className="flex items-center">
-          <Button variant="ghost" size="icon" onClick={onPrev}>
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={onPrev}
+            aria-label="Previous"
+          >
             <ChevronLeft className="size-4" />
           </Button>
-          <Button variant="ghost" size="icon" onClick={onNext}>
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={onNext}
+            aria-label="Next"
+          >
             <ChevronRight className="size-4" />
           </Button>
         </div>
@@ -64,7 +74,11 @@ export function CalendarHeader({
             if (v) onViewModeChange(v as CalendarViewMode);
           }}
         >
-          <ToggleGroupItem value="day" aria-label="Day view" className="text-xs">
+          <ToggleGroupItem
+            value="day"
+            aria-label="Day view"
+            className="text-xs"
+          >
             Day
           </ToggleGroupItem>
           <ToggleGroupItem
