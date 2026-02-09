@@ -4,6 +4,7 @@ import {
   Calendar,
   CalendarDays,
   ChevronUp,
+  CreditCard,
   LayoutDashboard,
   LogOut,
   Scissors,
@@ -45,6 +46,7 @@ import {
   OrganizationSwitcher,
   useOrganization,
 } from "@/modules/organization";
+import { GracePeriodBanner, SuspendedOverlay } from "@/modules/billing";
 import { NotificationBell } from "@/modules/notifications";
 
 const menuItems = [
@@ -82,6 +84,11 @@ const menuItems = [
     title: "Settings",
     icon: Settings,
     href: "/settings",
+  },
+  {
+    title: "Billing",
+    icon: CreditCard,
+    href: "/billing",
   },
 ];
 
@@ -231,7 +238,9 @@ function AuthenticatedLayoutContent({
           <div className="flex-1" />
           <NotificationBell />
         </header>
+        <GracePeriodBanner />
         <main className="flex-1 p-4 lg:p-6">{children}</main>
+        <SuspendedOverlay />
       </SidebarInset>
     </SidebarProvider>
   );

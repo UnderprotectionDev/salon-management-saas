@@ -82,6 +82,7 @@ Custom wrappers in `convex/lib/functions.ts` with progressive access levels:
 | createTimeOffRequest | 5/day | staff |
 | createOvertime | 10/day | staff |
 | createCustomer | 30/hour | org |
+| cancelSubscription | 3/hour | org |
 
 ## Project Structure
 
@@ -107,6 +108,8 @@ convex/
 ├── slots.ts, slotLocks.ts, crons.ts
 ├── scheduleOverrides.ts, timeOffRequests.ts, staffOvertime.ts
 ├── serviceCategories.ts, appointmentServices.ts
+├── polar.ts, polarSync.ts, subscriptions.ts, subscriptions_helpers.ts
+├── analytics.ts, notifications.ts
 ├── files.ts, users.ts, auth.ts, http.ts
 └── auth.config.ts, convex.config.ts
 
@@ -127,6 +130,10 @@ src/
 │   ├── services/               # 9 components
 │   ├── staff/                  # 10+ components
 │   ├── organization/           # Provider, switcher, hooks
+│   ├── billing/                # 7 components (subscription, plans, cancel)
+│   ├── dashboard/              # 4 components (stats, charts)
+│   ├── calendar/               # 12 files (day/week views, DnD)
+│   ├── notifications/          # 3 components (bell, panel)
 │   ├── settings/               # Settings forms
 │   ├── auth/                   # Auth components
 │   └── convex/                 # ConvexClientProvider
@@ -146,6 +153,7 @@ src/
 | `/:slug/staff` | Auth+Org | Staff management |
 | `/:slug/services` | Auth+Org | Service catalog |
 | `/:slug/settings` | Auth+Org | Org settings |
+| `/:slug/billing` | Auth+Org | Subscription management |
 | `/:slug/book` | Public | Public booking |
 | `/:slug/appointment/:code` | Public | Appointment lookup |
 

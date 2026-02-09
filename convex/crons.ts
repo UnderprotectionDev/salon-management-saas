@@ -24,4 +24,25 @@ crons.interval(
   {},
 );
 
+crons.interval(
+  "check grace period expirations",
+  { hours: 1 },
+  internal.subscriptions.checkGracePeriods,
+  {},
+);
+
+crons.interval(
+  "check trial expirations",
+  { hours: 1 },
+  internal.subscriptions.checkTrialExpirations,
+  {},
+);
+
+crons.interval(
+  "sync Polar products",
+  { hours: 1 },
+  internal.polarSync.syncProducts,
+  {},
+);
+
 export default crons;

@@ -201,7 +201,26 @@ export const create = publicMutation({
       });
     }
 
-    // 2. Validate slot lock ownership
+    // 2. Check subscription status — block if suspended or canceled
+    const orgSettings = await ctx.db
+      .query("organizationSettings")
+      .withIndex("organizationId", (q) =>
+        q.eq("organizationId", args.organizationId),
+      )
+      .first();
+    if (
+      orgSettings?.subscriptionStatus === "suspended" ||
+      orgSettings?.subscriptionStatus === "canceled" ||
+      orgSettings?.subscriptionStatus === "pending_payment"
+    ) {
+      throw new ConvexError({
+        code: ErrorCode.FORBIDDEN,
+        message:
+          "This salon's subscription is inactive. Bookings are currently unavailable.",
+      });
+    }
+
+    // 3. Validate slot lock ownership
     const locks = await ctx.db
       .query("slotLocks")
       .withIndex("by_session", (q) => q.eq("sessionId", args.sessionId))
@@ -555,6 +574,25 @@ export const createByStaff = orgMutation({
     confirmationCode: v.string(),
   }),
   handler: async (ctx, args) => {
+    // Check subscription status — block if suspended or canceled
+    const orgSettings = await ctx.db
+      .query("organizationSettings")
+      .withIndex("organizationId", (q) =>
+        q.eq("organizationId", ctx.organizationId),
+      )
+      .first();
+    if (
+      orgSettings?.subscriptionStatus === "suspended" ||
+      orgSettings?.subscriptionStatus === "canceled" ||
+      orgSettings?.subscriptionStatus === "pending_payment"
+    ) {
+      throw new ConvexError({
+        code: ErrorCode.FORBIDDEN,
+        message:
+          "Subscription required. Please update your billing to create appointments.",
+      });
+    }
+
     // Validate staff
     const staff = await ctx.db.get(args.staffId);
     if (

@@ -4,12 +4,12 @@
 
 | Feature Area | Priority | Status |
 |-------------|----------|--------|
-| Admin Dashboard & Calendar | P0 | 📋 Planned (M5) |
+| Admin Dashboard & Calendar | P0 | ✅ Implemented (M5) |
 | Core Booking Engine | P0 | ✅ Implemented (M3-M4) |
 | Customer Portal | P1 | 📋 Planned (M9) |
 | Staff Management | P0 | ✅ Implemented (M1-M2) |
 | Products & Inventory | P1 | 📋 Planned (M8+) |
-| SaaS Billing | P0 | 📋 Planned (M6) |
+| SaaS Billing | P0 | ✅ Implemented (M6) |
 | Email Notifications | P1 | 📋 Planned (M7) |
 
 ---
@@ -118,10 +118,16 @@ Digital catalog + inventory management. No e-commerce/online sales.
 
 ---
 
-## SaaS Billing (Planned)
+## SaaS Billing
 
-Polar.sh integration. Standard plan: ₺500/month or ₺5,100/year.
+> **Files:** `convex/polar.ts`, `convex/polarSync.ts`, `convex/subscriptions.ts`, `convex/subscriptions_helpers.ts`, `convex/http.ts` (webhook routes), `convex/crons.ts`
+> **Frontend:** `src/modules/billing/` (7 components), `src/app/[slug]/(authenticated)/billing/page.tsx`
 
-**Subscription states:** trialing → active ↔ past_due → suspended (7-day grace) | cancelled
-**Webhook events:** checkout.completed, subscription.updated/cancelled, payment.failed/succeeded
-**Suspended access:** Only billing page accessible.
+Polar.sh integration via `@convex-dev/polar`. Dynamic pricing fetched from Polar API.
+
+**Subscription states:** pending_payment → active → (payment_failed) → grace_period → suspended | canceled
+**Webhook handling:** `onSubscriptionCreated` (maps customer → org), `onSubscriptionUpdated` (status sync, `canceledAt` forces canceled)
+**Suspended access:** `SuspendedOverlay` blocks all pages except billing. `GracePeriodBanner` warns during grace period.
+**Booking enforcement:** `appointments.create` / `createByStaff` block if subscription is suspended/canceled/pending_payment.
+**Cancellation:** `CancelSubscriptionDialog` with toast feedback, `e.preventDefault()` to control dialog close, rate limited (3/hour).
+**Env vars:** `POLAR_ORGANIZATION_TOKEN`, `POLAR_WEBHOOK_SECRET`, `POLAR_SERVER`, `POLAR_PRODUCT_MONTHLY_ID`, `POLAR_PRODUCT_YEARLY_ID`

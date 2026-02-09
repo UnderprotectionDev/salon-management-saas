@@ -141,7 +141,7 @@ export default defineSchema({
         cancellationPolicyHours: v.optional(v.number()),
       }),
     ),
-    // Subscription info (for future Polar integration)
+    // Subscription / billing
     subscriptionStatus: v.optional(
       v.union(
         v.literal("active"),
@@ -149,13 +149,25 @@ export default defineSchema({
         v.literal("past_due"),
         v.literal("canceled"),
         v.literal("unpaid"),
+        v.literal("suspended"),
+        v.literal("pending_payment"),
       ),
     ),
     subscriptionPlan: v.optional(v.string()),
+    polarSubscriptionId: v.optional(v.string()),
+    polarCustomerId: v.optional(v.string()),
+    trialEndsAt: v.optional(v.number()),
+    currentPeriodEnd: v.optional(v.number()),
+    gracePeriodEndsAt: v.optional(v.number()),
+    suspendedAt: v.optional(v.number()),
+    cancelledAt: v.optional(v.number()),
     // Timestamps
     createdAt: v.number(),
     updatedAt: v.number(),
-  }).index("organizationId", ["organizationId"]),
+  })
+    .index("organizationId", ["organizationId"])
+    .index("by_polar_subscription", ["polarSubscriptionId"])
+    .index("by_subscription_status", ["subscriptionStatus"]),
 
   // Staff profiles - salon-specific employee data
   staff: defineTable({
@@ -489,6 +501,12 @@ export default defineSchema({
     .index("by_staff_date", ["staffId", "date"])
     .index("by_expiry", ["expiresAt"])
     .index("by_session", ["sessionId"]),
+
+  // Product Benefits — cached from Polar API
+  productBenefits: defineTable({
+    polarProductId: v.string(),
+    benefits: v.array(v.string()),
+  }).index("polarProductId", ["polarProductId"]),
 
   // Notifications — staff notifications for booking events
   notifications: defineTable({

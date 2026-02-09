@@ -269,8 +269,7 @@ export const create = authedMutation({
       locale: "tr-TR",
       businessHours: defaultBusinessHours,
       bookingSettings: defaultBookingSettings,
-      subscriptionStatus: "trialing",
-      subscriptionPlan: "free",
+      subscriptionStatus: "pending_payment",
       createdAt: now,
       updatedAt: now,
     });

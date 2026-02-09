@@ -16,6 +16,7 @@ import type * as crons from "../crons.js";
 import type * as customers from "../customers.js";
 import type * as files from "../files.js";
 import type * as http from "../http.js";
+import type * as init from "../init.js";
 import type * as invitations from "../invitations.js";
 import type * as lib_confirmation from "../lib/confirmation.js";
 import type * as lib_dateTime from "../lib/dateTime.js";
@@ -29,6 +30,9 @@ import type * as lib_validators from "../lib/validators.js";
 import type * as members from "../members.js";
 import type * as notifications from "../notifications.js";
 import type * as organizations from "../organizations.js";
+import type * as polar from "../polar.js";
+import type * as polarActions from "../polarActions.js";
+import type * as polarSync from "../polarSync.js";
 import type * as scheduleOverrides from "../scheduleOverrides.js";
 import type * as serviceCategories from "../serviceCategories.js";
 import type * as services from "../services.js";
@@ -36,6 +40,8 @@ import type * as slotLocks from "../slotLocks.js";
 import type * as slots from "../slots.js";
 import type * as staff from "../staff.js";
 import type * as staffOvertime from "../staffOvertime.js";
+import type * as subscriptions from "../subscriptions.js";
+import type * as subscriptions_helpers from "../subscriptions_helpers.js";
 import type * as timeOffRequests from "../timeOffRequests.js";
 import type * as users from "../users.js";
 
@@ -54,6 +60,7 @@ declare const fullApi: ApiFromModules<{
   customers: typeof customers;
   files: typeof files;
   http: typeof http;
+  init: typeof init;
   invitations: typeof invitations;
   "lib/confirmation": typeof lib_confirmation;
   "lib/dateTime": typeof lib_dateTime;
@@ -67,6 +74,9 @@ declare const fullApi: ApiFromModules<{
   members: typeof members;
   notifications: typeof notifications;
   organizations: typeof organizations;
+  polar: typeof polar;
+  polarActions: typeof polarActions;
+  polarSync: typeof polarSync;
   scheduleOverrides: typeof scheduleOverrides;
   serviceCategories: typeof serviceCategories;
   services: typeof services;
@@ -74,6 +84,8 @@ declare const fullApi: ApiFromModules<{
   slots: typeof slots;
   staff: typeof staff;
   staffOvertime: typeof staffOvertime;
+  subscriptions: typeof subscriptions;
+  subscriptions_helpers: typeof subscriptions_helpers;
   timeOffRequests: typeof timeOffRequests;
   users: typeof users;
 }>;
@@ -2080,6 +2092,549 @@ export declare const components: {
     adapterTest: {
       runCustomTests: FunctionReference<"action", "internal", any, any>;
       runTests: FunctionReference<"action", "internal", any, any>;
+    };
+  };
+  polar: {
+    lib: {
+      createProduct: FunctionReference<
+        "mutation",
+        "internal",
+        {
+          product: {
+            createdAt: string;
+            description: string | null;
+            id: string;
+            isArchived: boolean;
+            isRecurring: boolean;
+            medias: Array<{
+              checksumEtag: string | null;
+              checksumSha256Base64: string | null;
+              checksumSha256Hex: string | null;
+              createdAt: string;
+              id: string;
+              isUploaded: boolean;
+              lastModifiedAt: string | null;
+              mimeType: string;
+              name: string;
+              organizationId: string;
+              path: string;
+              publicUrl: string;
+              service?: string;
+              size: number;
+              sizeReadable: string;
+              storageVersion: string | null;
+              version: string | null;
+            }>;
+            metadata?: Record<string, any>;
+            modifiedAt: string | null;
+            name: string;
+            organizationId: string;
+            prices: Array<{
+              amountType?: string;
+              createdAt: string;
+              id: string;
+              isArchived: boolean;
+              maximumAmount?: number | null;
+              minimumAmount?: number | null;
+              modifiedAt: string | null;
+              presetAmount?: number | null;
+              priceAmount?: number;
+              priceCurrency?: string;
+              productId: string;
+              recurringInterval?: "day" | "week" | "month" | "year" | null;
+              type?: string;
+            }>;
+            recurringInterval?: "day" | "week" | "month" | "year" | null;
+          };
+        },
+        any
+      >;
+      createSubscription: FunctionReference<
+        "mutation",
+        "internal",
+        {
+          subscription: {
+            amount: number | null;
+            cancelAtPeriodEnd: boolean;
+            checkoutId: string | null;
+            createdAt: string;
+            currency: string | null;
+            currentPeriodEnd: string | null;
+            currentPeriodStart: string;
+            customerCancellationComment?: string | null;
+            customerCancellationReason?: string | null;
+            customerId: string;
+            endedAt: string | null;
+            id: string;
+            metadata: Record<string, any>;
+            modifiedAt: string | null;
+            priceId?: string;
+            productId: string;
+            recurringInterval: "day" | "week" | "month" | "year" | null;
+            startedAt: string | null;
+            status: string;
+          };
+        },
+        any
+      >;
+      getCurrentSubscription: FunctionReference<
+        "query",
+        "internal",
+        { userId: string },
+        {
+          amount: number | null;
+          cancelAtPeriodEnd: boolean;
+          checkoutId: string | null;
+          createdAt: string;
+          currency: string | null;
+          currentPeriodEnd: string | null;
+          currentPeriodStart: string;
+          customerCancellationComment?: string | null;
+          customerCancellationReason?: string | null;
+          customerId: string;
+          endedAt: string | null;
+          id: string;
+          metadata: Record<string, any>;
+          modifiedAt: string | null;
+          priceId?: string;
+          product: {
+            createdAt: string;
+            description: string | null;
+            id: string;
+            isArchived: boolean;
+            isRecurring: boolean;
+            medias: Array<{
+              checksumEtag: string | null;
+              checksumSha256Base64: string | null;
+              checksumSha256Hex: string | null;
+              createdAt: string;
+              id: string;
+              isUploaded: boolean;
+              lastModifiedAt: string | null;
+              mimeType: string;
+              name: string;
+              organizationId: string;
+              path: string;
+              publicUrl: string;
+              service?: string;
+              size: number;
+              sizeReadable: string;
+              storageVersion: string | null;
+              version: string | null;
+            }>;
+            metadata?: Record<string, any>;
+            modifiedAt: string | null;
+            name: string;
+            organizationId: string;
+            prices: Array<{
+              amountType?: string;
+              createdAt: string;
+              id: string;
+              isArchived: boolean;
+              maximumAmount?: number | null;
+              minimumAmount?: number | null;
+              modifiedAt: string | null;
+              presetAmount?: number | null;
+              priceAmount?: number;
+              priceCurrency?: string;
+              productId: string;
+              recurringInterval?: "day" | "week" | "month" | "year" | null;
+              type?: string;
+            }>;
+            recurringInterval?: "day" | "week" | "month" | "year" | null;
+          };
+          productId: string;
+          recurringInterval: "day" | "week" | "month" | "year" | null;
+          startedAt: string | null;
+          status: string;
+        } | null
+      >;
+      getCustomerByUserId: FunctionReference<
+        "query",
+        "internal",
+        { userId: string },
+        { id: string; metadata?: Record<string, any>; userId: string } | null
+      >;
+      getProduct: FunctionReference<
+        "query",
+        "internal",
+        { id: string },
+        {
+          createdAt: string;
+          description: string | null;
+          id: string;
+          isArchived: boolean;
+          isRecurring: boolean;
+          medias: Array<{
+            checksumEtag: string | null;
+            checksumSha256Base64: string | null;
+            checksumSha256Hex: string | null;
+            createdAt: string;
+            id: string;
+            isUploaded: boolean;
+            lastModifiedAt: string | null;
+            mimeType: string;
+            name: string;
+            organizationId: string;
+            path: string;
+            publicUrl: string;
+            service?: string;
+            size: number;
+            sizeReadable: string;
+            storageVersion: string | null;
+            version: string | null;
+          }>;
+          metadata?: Record<string, any>;
+          modifiedAt: string | null;
+          name: string;
+          organizationId: string;
+          prices: Array<{
+            amountType?: string;
+            createdAt: string;
+            id: string;
+            isArchived: boolean;
+            maximumAmount?: number | null;
+            minimumAmount?: number | null;
+            modifiedAt: string | null;
+            presetAmount?: number | null;
+            priceAmount?: number;
+            priceCurrency?: string;
+            productId: string;
+            recurringInterval?: "day" | "week" | "month" | "year" | null;
+            type?: string;
+          }>;
+          recurringInterval?: "day" | "week" | "month" | "year" | null;
+        } | null
+      >;
+      getSubscription: FunctionReference<
+        "query",
+        "internal",
+        { id: string },
+        {
+          amount: number | null;
+          cancelAtPeriodEnd: boolean;
+          checkoutId: string | null;
+          createdAt: string;
+          currency: string | null;
+          currentPeriodEnd: string | null;
+          currentPeriodStart: string;
+          customerCancellationComment?: string | null;
+          customerCancellationReason?: string | null;
+          customerId: string;
+          endedAt: string | null;
+          id: string;
+          metadata: Record<string, any>;
+          modifiedAt: string | null;
+          priceId?: string;
+          productId: string;
+          recurringInterval: "day" | "week" | "month" | "year" | null;
+          startedAt: string | null;
+          status: string;
+        } | null
+      >;
+      insertCustomer: FunctionReference<
+        "mutation",
+        "internal",
+        { id: string; metadata?: Record<string, any>; userId: string },
+        string
+      >;
+      listCustomerSubscriptions: FunctionReference<
+        "query",
+        "internal",
+        { customerId: string },
+        Array<{
+          amount: number | null;
+          cancelAtPeriodEnd: boolean;
+          checkoutId: string | null;
+          createdAt: string;
+          currency: string | null;
+          currentPeriodEnd: string | null;
+          currentPeriodStart: string;
+          customerCancellationComment?: string | null;
+          customerCancellationReason?: string | null;
+          customerId: string;
+          endedAt: string | null;
+          id: string;
+          metadata: Record<string, any>;
+          modifiedAt: string | null;
+          priceId?: string;
+          productId: string;
+          recurringInterval: "day" | "week" | "month" | "year" | null;
+          startedAt: string | null;
+          status: string;
+        }>
+      >;
+      listProducts: FunctionReference<
+        "query",
+        "internal",
+        { includeArchived?: boolean },
+        Array<{
+          createdAt: string;
+          description: string | null;
+          id: string;
+          isArchived: boolean;
+          isRecurring: boolean;
+          medias: Array<{
+            checksumEtag: string | null;
+            checksumSha256Base64: string | null;
+            checksumSha256Hex: string | null;
+            createdAt: string;
+            id: string;
+            isUploaded: boolean;
+            lastModifiedAt: string | null;
+            mimeType: string;
+            name: string;
+            organizationId: string;
+            path: string;
+            publicUrl: string;
+            service?: string;
+            size: number;
+            sizeReadable: string;
+            storageVersion: string | null;
+            version: string | null;
+          }>;
+          metadata?: Record<string, any>;
+          modifiedAt: string | null;
+          name: string;
+          organizationId: string;
+          priceAmount?: number;
+          prices: Array<{
+            amountType?: string;
+            createdAt: string;
+            id: string;
+            isArchived: boolean;
+            maximumAmount?: number | null;
+            minimumAmount?: number | null;
+            modifiedAt: string | null;
+            presetAmount?: number | null;
+            priceAmount?: number;
+            priceCurrency?: string;
+            productId: string;
+            recurringInterval?: "day" | "week" | "month" | "year" | null;
+            type?: string;
+          }>;
+          recurringInterval?: "day" | "week" | "month" | "year" | null;
+        }>
+      >;
+      listUserSubscriptions: FunctionReference<
+        "query",
+        "internal",
+        { userId: string },
+        Array<{
+          amount: number | null;
+          cancelAtPeriodEnd: boolean;
+          checkoutId: string | null;
+          createdAt: string;
+          currency: string | null;
+          currentPeriodEnd: string | null;
+          currentPeriodStart: string;
+          customerCancellationComment?: string | null;
+          customerCancellationReason?: string | null;
+          customerId: string;
+          endedAt: string | null;
+          id: string;
+          metadata: Record<string, any>;
+          modifiedAt: string | null;
+          priceId?: string;
+          product: {
+            createdAt: string;
+            description: string | null;
+            id: string;
+            isArchived: boolean;
+            isRecurring: boolean;
+            medias: Array<{
+              checksumEtag: string | null;
+              checksumSha256Base64: string | null;
+              checksumSha256Hex: string | null;
+              createdAt: string;
+              id: string;
+              isUploaded: boolean;
+              lastModifiedAt: string | null;
+              mimeType: string;
+              name: string;
+              organizationId: string;
+              path: string;
+              publicUrl: string;
+              service?: string;
+              size: number;
+              sizeReadable: string;
+              storageVersion: string | null;
+              version: string | null;
+            }>;
+            metadata?: Record<string, any>;
+            modifiedAt: string | null;
+            name: string;
+            organizationId: string;
+            prices: Array<{
+              amountType?: string;
+              createdAt: string;
+              id: string;
+              isArchived: boolean;
+              maximumAmount?: number | null;
+              minimumAmount?: number | null;
+              modifiedAt: string | null;
+              presetAmount?: number | null;
+              priceAmount?: number;
+              priceCurrency?: string;
+              productId: string;
+              recurringInterval?: "day" | "week" | "month" | "year" | null;
+              type?: string;
+            }>;
+            recurringInterval?: "day" | "week" | "month" | "year" | null;
+          } | null;
+          productId: string;
+          recurringInterval: "day" | "week" | "month" | "year" | null;
+          startedAt: string | null;
+          status: string;
+        }>
+      >;
+      syncProducts: FunctionReference<
+        "action",
+        "internal",
+        { polarAccessToken: string; server: "sandbox" | "production" },
+        any
+      >;
+      updateProduct: FunctionReference<
+        "mutation",
+        "internal",
+        {
+          product: {
+            createdAt: string;
+            description: string | null;
+            id: string;
+            isArchived: boolean;
+            isRecurring: boolean;
+            medias: Array<{
+              checksumEtag: string | null;
+              checksumSha256Base64: string | null;
+              checksumSha256Hex: string | null;
+              createdAt: string;
+              id: string;
+              isUploaded: boolean;
+              lastModifiedAt: string | null;
+              mimeType: string;
+              name: string;
+              organizationId: string;
+              path: string;
+              publicUrl: string;
+              service?: string;
+              size: number;
+              sizeReadable: string;
+              storageVersion: string | null;
+              version: string | null;
+            }>;
+            metadata?: Record<string, any>;
+            modifiedAt: string | null;
+            name: string;
+            organizationId: string;
+            prices: Array<{
+              amountType?: string;
+              createdAt: string;
+              id: string;
+              isArchived: boolean;
+              maximumAmount?: number | null;
+              minimumAmount?: number | null;
+              modifiedAt: string | null;
+              presetAmount?: number | null;
+              priceAmount?: number;
+              priceCurrency?: string;
+              productId: string;
+              recurringInterval?: "day" | "week" | "month" | "year" | null;
+              type?: string;
+            }>;
+            recurringInterval?: "day" | "week" | "month" | "year" | null;
+          };
+        },
+        any
+      >;
+      updateProducts: FunctionReference<
+        "mutation",
+        "internal",
+        {
+          polarAccessToken: string;
+          products: Array<{
+            createdAt: string;
+            description: string | null;
+            id: string;
+            isArchived: boolean;
+            isRecurring: boolean;
+            medias: Array<{
+              checksumEtag: string | null;
+              checksumSha256Base64: string | null;
+              checksumSha256Hex: string | null;
+              createdAt: string;
+              id: string;
+              isUploaded: boolean;
+              lastModifiedAt: string | null;
+              mimeType: string;
+              name: string;
+              organizationId: string;
+              path: string;
+              publicUrl: string;
+              service?: string;
+              size: number;
+              sizeReadable: string;
+              storageVersion: string | null;
+              version: string | null;
+            }>;
+            metadata?: Record<string, any>;
+            modifiedAt: string | null;
+            name: string;
+            organizationId: string;
+            prices: Array<{
+              amountType?: string;
+              createdAt: string;
+              id: string;
+              isArchived: boolean;
+              maximumAmount?: number | null;
+              minimumAmount?: number | null;
+              modifiedAt: string | null;
+              presetAmount?: number | null;
+              priceAmount?: number;
+              priceCurrency?: string;
+              productId: string;
+              recurringInterval?: "day" | "week" | "month" | "year" | null;
+              type?: string;
+            }>;
+            recurringInterval?: "day" | "week" | "month" | "year" | null;
+          }>;
+        },
+        any
+      >;
+      updateSubscription: FunctionReference<
+        "mutation",
+        "internal",
+        {
+          subscription: {
+            amount: number | null;
+            cancelAtPeriodEnd: boolean;
+            checkoutId: string | null;
+            createdAt: string;
+            currency: string | null;
+            currentPeriodEnd: string | null;
+            currentPeriodStart: string;
+            customerCancellationComment?: string | null;
+            customerCancellationReason?: string | null;
+            customerId: string;
+            endedAt: string | null;
+            id: string;
+            metadata: Record<string, any>;
+            modifiedAt: string | null;
+            priceId?: string;
+            productId: string;
+            recurringInterval: "day" | "week" | "month" | "year" | null;
+            startedAt: string | null;
+            status: string;
+          };
+        },
+        any
+      >;
+      upsertCustomer: FunctionReference<
+        "mutation",
+        "internal",
+        { id: string; metadata?: Record<string, any>; userId: string },
+        string
+      >;
     };
   };
   rateLimiter: {
