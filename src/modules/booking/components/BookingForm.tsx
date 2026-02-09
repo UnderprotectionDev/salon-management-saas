@@ -69,7 +69,9 @@ export function BookingForm({
           aria-describedby={errors.name ? "name-error" : undefined}
         />
         {errors.name && (
-          <p id="name-error" className="text-sm text-destructive">{errors.name}</p>
+          <p id="name-error" className="text-sm text-destructive">
+            {errors.name}
+          </p>
         )}
       </div>
 
@@ -85,7 +87,9 @@ export function BookingForm({
           aria-describedby={errors.phone ? "phone-error" : undefined}
         />
         {errors.phone && (
-          <p id="phone-error" className="text-sm text-destructive">{errors.phone}</p>
+          <p id="phone-error" className="text-sm text-destructive">
+            {errors.phone}
+          </p>
         )}
       </div>
 
@@ -101,7 +105,9 @@ export function BookingForm({
           aria-describedby={errors.email ? "email-error" : undefined}
         />
         {errors.email && (
-          <p id="email-error" className="text-sm text-destructive">{errors.email}</p>
+          <p id="email-error" className="text-sm text-destructive">
+            {errors.email}
+          </p>
         )}
       </div>
 

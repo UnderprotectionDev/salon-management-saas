@@ -32,7 +32,10 @@ export default function AppointmentStatusPage() {
   );
 
   // Loading
-  if (organization === undefined || (organization !== null && appointment === undefined)) {
+  if (
+    organization === undefined ||
+    (organization !== null && appointment === undefined)
+  ) {
     return (
       <div className="min-h-screen bg-background">
         <Header slug={slug} />
@@ -65,7 +68,11 @@ export default function AppointmentStatusPage() {
   if (appointment === undefined) {
     return (
       <div className="min-h-screen bg-background">
-        <Header slug={slug} orgName={organization.name} logo={organization.logo} />
+        <Header
+          slug={slug}
+          orgName={organization.name}
+          logo={organization.logo}
+        />
         <main className="container mx-auto px-4 py-8">
           <div className="mx-auto max-w-md">
             <Skeleton className="h-8 w-48 mx-auto mb-6" />
@@ -202,33 +209,34 @@ export default function AppointmentStatusPage() {
 
           {/* Cancel / Reschedule Actions */}
           {(appointment.status === "pending" ||
-            appointment.status === "confirmed") && (() => {
-            // Client-side 2-hour window check for visibility
-            const apptMs =
-              new Date(`${appointment.date}T00:00:00Z`).getTime() +
-              appointment.startTime * 60 * 1000;
-            const canModify = Date.now() < apptMs - 2 * 60 * 60 * 1000;
+            appointment.status === "confirmed") &&
+            (() => {
+              // Client-side 2-hour window check for visibility
+              const apptMs =
+                new Date(`${appointment.date}T00:00:00`).getTime() +
+                appointment.startTime * 60 * 1000;
+              const canModify = Date.now() < apptMs - 2 * 60 * 60 * 1000;
 
-            if (!canModify) return null;
+              if (!canModify) return null;
 
-            return (
-              <div className="flex items-center justify-center gap-3 mt-4">
-                <PublicRescheduleDialog
-                  organizationId={organization._id}
-                  confirmationCode={code}
-                  staffId={appointment.staffId}
-                  serviceIds={appointment.services.map((s) => s.serviceId)}
-                  customerPhone={appointment.customerPhone}
-                />
-                <PublicCancelDialog
-                  organizationId={organization._id}
-                  confirmationCode={code}
-                  appointmentDate={appointment.date}
-                  appointmentStartTime={appointment.startTime}
-                />
-              </div>
-            );
-          })()}
+              return (
+                <div className="flex items-center justify-center gap-3 mt-4">
+                  <PublicRescheduleDialog
+                    organizationId={organization._id}
+                    confirmationCode={code}
+                    staffId={appointment.staffId}
+                    serviceIds={appointment.services.map((s) => s.serviceId)}
+                    customerPhone={appointment.customerPhone}
+                  />
+                  <PublicCancelDialog
+                    organizationId={organization._id}
+                    confirmationCode={code}
+                    appointmentDate={appointment.date}
+                    appointmentStartTime={appointment.startTime}
+                  />
+                </div>
+              );
+            })()}
 
           <div className="text-center mt-6">
             <Link

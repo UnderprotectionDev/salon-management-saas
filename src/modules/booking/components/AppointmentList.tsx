@@ -199,9 +199,7 @@ export function AppointmentList({
                               currentStartTime={appt.startTime}
                               currentEndTime={appt.endTime}
                               staffId={appt.staffId}
-                              serviceIds={appt.services.map(
-                                (s) => s.serviceId,
-                              )}
+                              serviceIds={appt.services.map((s) => s.serviceId)}
                             />
                           )}
                           <CancelAppointmentDialog

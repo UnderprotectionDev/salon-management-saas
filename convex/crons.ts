@@ -10,4 +10,18 @@ crons.interval(
   {},
 );
 
+crons.interval(
+  "cleanup old notifications",
+  { hours: 1 },
+  internal.notifications.cleanupOld,
+  {},
+);
+
+crons.interval(
+  "send 30-minute reminders",
+  { minutes: 5 },
+  internal.notifications.sendReminders,
+  {},
+);
+
 export default crons;

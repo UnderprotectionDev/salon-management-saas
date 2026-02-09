@@ -61,7 +61,9 @@ export function ServiceSelector({
               <label
                 key={service._id}
                 className={`flex items-center gap-4 rounded-lg border p-4 cursor-pointer hover:bg-accent/50 transition-colors ${
-                  selectedIds.includes(service._id) ? "border-primary bg-primary/5" : ""
+                  selectedIds.includes(service._id)
+                    ? "border-primary bg-primary/5"
+                    : ""
                 }`}
               >
                 <Checkbox

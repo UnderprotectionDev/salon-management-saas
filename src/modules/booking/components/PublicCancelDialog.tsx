@@ -72,8 +72,8 @@ export function PublicCancelDialog({
         <DialogHeader>
           <DialogTitle>Cancel Appointment</DialogTitle>
           <DialogDescription>
-            Enter your phone number to verify your identity.
-            Cancellation must be at least 2 hours before your appointment.
+            Enter your phone number to verify your identity. Cancellation must
+            be at least 2 hours before your appointment.
           </DialogDescription>
         </DialogHeader>
         <div className="space-y-4 pt-2">

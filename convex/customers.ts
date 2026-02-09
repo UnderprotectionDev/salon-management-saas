@@ -583,7 +583,8 @@ export const linkToCurrentUser = authedMutation({
     // Verify the user's email or phone matches the customer record
     // This prevents cross-tenant linking by ensuring only the actual customer can link
     const userEmail = ctx.user.email;
-    const emailMatches = userEmail && customer.email && userEmail === customer.email;
+    const emailMatches =
+      userEmail && customer.email && userEmail === customer.email;
     if (!emailMatches) {
       return { success: false };
     }
