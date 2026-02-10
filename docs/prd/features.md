@@ -6,11 +6,13 @@
 |-------------|----------|--------|
 | Admin Dashboard & Calendar | P0 | ✅ Implemented (M5) |
 | Core Booking Engine | P0 | ✅ Implemented (M3-M4) |
-| Customer Portal | P1 | 📋 Planned (M9) |
 | Staff Management | P0 | ✅ Implemented (M1-M2) |
-| Products & Inventory | P1 | 📋 Planned (M8+) |
 | SaaS Billing | P0 | ✅ Implemented (M6) |
-| Email Notifications | P1 | 📋 Planned (M7) |
+| Email Notifications | P1 | ✅ Implemented (M7) |
+| Reports & Analytics | P1 | ✅ Implemented (M8) |
+| Customer Portal | P1 | 📋 Planned (M9) |
+| AI Features | P2 | 📋 Planned (M10) |
+| Products & Inventory | P2 | 📋 Planned (future) |
 
 ---
 
@@ -28,7 +30,7 @@ Dashboard metrics: today's appointments (total/completed/upcoming/no-shows/walk-
 
 ## Core Booking Engine
 
-> **Files:** `convex/appointments.ts` (1,223 lines), `convex/slots.ts`, `convex/slotLocks.ts`, `convex/appointmentServices.ts`, `convex/crons.ts`
+> **Files:** `convex/appointments.ts` (~1,425 lines), `convex/slots.ts`, `convex/slotLocks.ts`, `convex/appointmentServices.ts`, `convex/crons.ts`
 
 ### Booking State Machine
 
@@ -131,3 +133,31 @@ Polar.sh integration via `@convex-dev/polar`. Dynamic pricing fetched from Polar
 **Booking enforcement:** `appointments.create` / `createByStaff` block if subscription is suspended/canceled/pending_payment.
 **Cancellation:** `CancelSubscriptionDialog` with toast feedback, `e.preventDefault()` to control dialog close, rate limited (3/hour).
 **Env vars:** `POLAR_ORGANIZATION_TOKEN`, `POLAR_WEBHOOK_SECRET`, `POLAR_SERVER`, `POLAR_PRODUCT_MONTHLY_ID`, `POLAR_PRODUCT_YEARLY_ID`
+
+---
+
+## Email Notifications
+
+> **Files:** `convex/email.tsx` (~467 lines), `convex/email_helpers.ts`, `convex/lib/ics.ts`, `src/emails/` (4 templates + 4 shared components)
+
+Resend integration via `resend@6.9.1` + `@react-email/components`. All email sending is via Convex `internalAction` with retry (3 attempts, exponential backoff).
+
+**Email types:** Booking confirmation (with ICS attachment), 24-hour reminder, cancellation notification, staff invitation.
+**Triggers:** `ctx.scheduler.runAfter(0)` in appointment create/cancel and invitation create/resend.
+**Cron:** Daily at 09:00 UTC for 24-hour reminders.
+**Env vars:** `RESEND_API_KEY`, `RESEND_FROM_EMAIL`, `SITE_URL`
+
+---
+
+## Reports & Analytics
+
+> **Files:** `convex/reports.ts` (~603 lines), `src/modules/reports/` (16 files)
+
+Three `adminQuery` functions for admin/owner users only. Member role sees "Admin access required" message.
+
+**Revenue report:** Total + expected revenue, completion/cancellation rates, status breakdown bar, dual Y-axis AreaChart (daily revenue + appointments), by-service table, by-staff table, period-over-period % change.
+**Staff performance:** Sortable table with appointments, completed, no-shows, revenue, utilization %. No-show rate >10% highlighted. Utilization uses `resolveSchedule()` for accurate scheduled minutes.
+**Customer analytics:** New vs returning BarChart by month, top 10 customers by revenue, retention rate (2+ appointments / total unique).
+
+**Date range:** URL-persisted `?from=&to=`, presets (Today, 7d, 30d, This/Last month), max 1 year.
+**CSV export:** UTF-8 BOM for Turkish chars, CSV injection sanitization, filename: `{type}_{from}_to_{to}.csv`.

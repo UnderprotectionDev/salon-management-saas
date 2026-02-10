@@ -808,3 +808,103 @@ export const appointmentWithDetailsValidator = v.object({
     }),
   ),
 });
+
+// =============================================================================
+// Report Validators
+// =============================================================================
+
+/** Revenue report daily data point */
+export const revenueDailyPointValidator = v.object({
+  date: v.string(),
+  revenue: v.number(),
+  appointments: v.number(),
+  completed: v.number(),
+});
+
+/** Revenue by service breakdown */
+export const revenueByServiceValidator = v.object({
+  serviceId: v.id("services"),
+  serviceName: v.string(),
+  appointments: v.number(),
+  revenue: v.number(),
+});
+
+/** Revenue by staff breakdown */
+export const revenueByStaffValidator = v.object({
+  staffId: v.id("staff"),
+  staffName: v.string(),
+  appointments: v.number(),
+  revenue: v.number(),
+});
+
+/** Appointment status breakdown */
+export const statusBreakdownValidator = v.object({
+  pending: v.number(),
+  confirmed: v.number(),
+  inProgress: v.number(),
+  completed: v.number(),
+  cancelled: v.number(),
+  noShow: v.number(),
+});
+
+/** Full revenue report */
+export const revenueReportValidator = v.object({
+  totalRevenue: v.number(),
+  expectedRevenue: v.number(),
+  totalAppointments: v.number(),
+  completedAppointments: v.number(),
+  avgPerAppointment: v.number(),
+  revenueChange: v.number(),
+  completionRate: v.number(),
+  cancellationRate: v.number(),
+  statusBreakdown: statusBreakdownValidator,
+  daily: v.array(revenueDailyPointValidator),
+  byService: v.array(revenueByServiceValidator),
+  byStaff: v.array(revenueByStaffValidator),
+});
+
+/** Staff performance entry */
+export const staffPerformanceEntryValidator = v.object({
+  staffId: v.id("staff"),
+  staffName: v.string(),
+  totalAppointments: v.number(),
+  completed: v.number(),
+  noShows: v.number(),
+  cancelled: v.number(),
+  revenue: v.number(),
+  scheduledMinutes: v.number(),
+  appointmentMinutes: v.number(),
+  utilization: v.number(),
+});
+
+/** Staff performance report */
+export const staffPerformanceReportValidator = v.object({
+  staff: v.array(staffPerformanceEntryValidator),
+});
+
+/** Monthly new vs returning data point */
+export const monthlyNewVsReturningValidator = v.object({
+  month: v.string(),
+  newCustomers: v.number(),
+  returningCustomers: v.number(),
+});
+
+/** Top customer entry */
+export const topCustomerValidator = v.object({
+  customerId: v.id("customers"),
+  name: v.string(),
+  phone: v.string(),
+  appointments: v.number(),
+  revenue: v.number(),
+  lastVisitDate: v.union(v.string(), v.null()),
+});
+
+/** Customer analytics report */
+export const customerReportValidator = v.object({
+  totalActive: v.number(),
+  newInPeriod: v.number(),
+  retentionRate: v.number(),
+  avgAppointmentsPerCustomer: v.number(),
+  monthly: v.array(monthlyNewVsReturningValidator),
+  topCustomers: v.array(topCustomerValidator),
+});

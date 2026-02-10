@@ -35,6 +35,7 @@ import type * as organizations from "../organizations.js";
 import type * as polar from "../polar.js";
 import type * as polarActions from "../polarActions.js";
 import type * as polarSync from "../polarSync.js";
+import type * as reports from "../reports.js";
 import type * as scheduleOverrides from "../scheduleOverrides.js";
 import type * as serviceCategories from "../serviceCategories.js";
 import type * as services from "../services.js";
@@ -81,6 +82,7 @@ declare const fullApi: ApiFromModules<{
   polar: typeof polar;
   polarActions: typeof polarActions;
   polarSync: typeof polarSync;
+  reports: typeof reports;
   scheduleOverrides: typeof scheduleOverrides;
   serviceCategories: typeof serviceCategories;
   services: typeof services;

@@ -1,6 +1,6 @@
 # Database Schema
 
-> **Source:** `convex/schema.ts` | **Validators:** `convex/lib/validators.ts` (~730 lines)
+> **Source:** `convex/schema.ts` (~533 lines) | **Validators:** `convex/lib/validators.ts` (~910 lines)
 > Auth tables (`user`, `session`, `account`, `verification`, `jwks`) managed by Better Auth at `convex/betterAuth/schema.ts`.
 
 ## ER Diagram

@@ -1,6 +1,6 @@
-# Milestone 3: Booking Engine Core ✅
+# Milestone 3: Booking Engine Core
 
-**Status:** Completed | **User Stories:** 4
+**Status:** ✅ Complete | **User Stories:** 4
 
 ## Summary
 

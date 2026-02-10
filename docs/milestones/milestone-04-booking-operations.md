@@ -1,6 +1,6 @@
-# Milestone 4: Booking Operations ✅
+# Milestone 4: Booking Operations
 
-**Status:** Completed | **User Stories:** 5
+**Status:** ✅ Complete | **User Stories:** 5
 
 ## Summary
 

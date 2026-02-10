@@ -1,6 +1,6 @@
-# Milestone 2: Services, Staff & Customers ✅
+# Milestone 2: Services, Staff & Customers
 
-**Status:** Completed | **User Stories:** 4
+**Status:** ✅ Complete | **User Stories:** 4
 
 ## Summary
 

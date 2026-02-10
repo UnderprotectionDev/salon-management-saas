@@ -92,31 +92,33 @@ convex/
 ├── betterAuth/           # Auth component
 ├── lib/
 │   ├── functions.ts      # Custom wrappers + ErrorCode
-│   ├── validators.ts     # Return validators (~730 lines)
+│   ├── validators.ts     # Return validators (~910 lines)
 │   ├── rateLimits.ts     # Rate limit config
 │   ├── scheduleResolver.ts # Schedule resolution
 │   ├── confirmation.ts   # Confirmation codes
 │   ├── dateTime.ts       # Date/time utils
 │   ├── phone.ts          # Turkish phone validation
+│   ├── ics.ts            # ICS calendar file generator
 │   ├── relationships.ts  # DB relationship helpers
 │   └── rls.ts            # RLS helpers
-├── schema.ts             # Database schema
-├── appointments.ts       # ~1,200 lines
-├── customers.ts          # ~600 lines
-├── services.ts           # ~350 lines
-├── staff.ts, members.ts, organizations.ts, invitations.ts
+├── schema.ts             # Database schema (~533 lines)
+├── appointments.ts       # ~1,425 lines
+├── customers.ts          # ~610 lines
+├── services.ts           # ~411 lines
+├── staff.ts (~447 lines), members.ts, organizations.ts, invitations.ts
 ├── slots.ts, slotLocks.ts, crons.ts
 ├── scheduleOverrides.ts, timeOffRequests.ts, staffOvertime.ts
 ├── serviceCategories.ts, appointmentServices.ts
 ├── polar.ts, polarSync.ts, subscriptions.ts, subscriptions_helpers.ts
-├── analytics.ts, notifications.ts
+├── analytics.ts, reports.ts (~603 lines), notifications.ts
+├── email.tsx (~467 lines), email_helpers.ts
 ├── files.ts, users.ts, auth.ts, http.ts
 └── auth.config.ts, convex.config.ts
 
 src/
 ├── app/
 │   ├── (auth)/sign-in/        # Sign-in page
-│   ├── [slug]/(authenticated)/ # Dashboard, appointments, customers, staff, services, settings
+│   ├── [slug]/(authenticated)/ # Dashboard, appointments, customers, staff, services, reports, settings
 │   ├── [slug]/(public)/        # Book, appointment/[code]
 │   ├── onboarding/             # Org creation wizard
 │   ├── dashboard/              # Redirect to active org
@@ -125,17 +127,18 @@ src/
 ├── hooks/
 ├── lib/                        # auth-client, auth-server, utils
 ├── modules/
-│   ├── booking/                # 16 files, ~1,800 lines
-│   ├── customers/              # 7 components
-│   ├── services/               # 9 components
-│   ├── staff/                  # 10+ components
-│   ├── organization/           # Provider, switcher, hooks
-│   ├── billing/                # 7 components (subscription, plans, cancel)
-│   ├── dashboard/              # 4 components (stats, charts)
-│   ├── calendar/               # 12 files (day/week views, DnD)
-│   ├── notifications/          # 3 components (bell, panel)
-│   ├── settings/               # Settings forms
-│   ├── auth/                   # Auth components
+│   ├── booking/                # 19 files (~1,824 lines)
+│   ├── customers/              # 10 files
+│   ├── services/               # 11 files
+│   ├── staff/                  # 12 files
+│   ├── organization/           # 4 files (Provider, switcher, hooks)
+│   ├── billing/                # 6 files (subscription, plans, cancel)
+│   ├── dashboard/              # 5 files (stats, charts)
+│   ├── calendar/               # 13 files (day/week views, DnD)
+│   ├── notifications/          # 4 files (bell, panel)
+│   ├── reports/                # 16 files (revenue, staff, customer reports, CSV export)
+│   ├── settings/               # 8 files
+│   ├── auth/                   # 11 files
 │   └── convex/                 # ConvexClientProvider
 └── middleware.ts               # Auth middleware
 ```
@@ -152,6 +155,7 @@ src/
 | `/:slug/customers` | Auth+Org | Customer database |
 | `/:slug/staff` | Auth+Org | Staff management |
 | `/:slug/services` | Auth+Org | Service catalog |
+| `/:slug/reports` | Auth+Org (admin) | Reports & analytics |
 | `/:slug/settings` | Auth+Org | Org settings |
 | `/:slug/billing` | Auth+Org | Subscription management |
 | `/:slug/book` | Public | Public booking |

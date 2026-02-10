@@ -1,7 +1,7 @@
 # API Reference
 
 > **All functions use custom wrappers** from `convex/lib/functions.ts`. All have `returns:` validators.
-> **Validators:** `convex/lib/validators.ts` (~730 lines)
+> **Validators:** `convex/lib/validators.ts` (~910 lines)
 
 ## Custom Function Wrappers
 
@@ -144,15 +144,34 @@ Webhook routes registered in `convex/http.ts` via `polar.registerRoutes()`:
 - `onSubscriptionCreated`: Maps Polar customer → org owner → activates subscription
 - `onSubscriptionUpdated`: Finds org by `polarSubscriptionId` (indexed) → syncs status
 
-## Analytics & Notifications
+## Reports & Analytics
 
 | Function | Wrapper | Args | Returns |
 |----------|---------|------|---------|
-| `analytics.getDashboardStats` | orgQuery | `{}` | `dashboardStats` |
+| `analytics.getDashboardStats` | orgQuery | `date` | `dashboardStats` |
+| `reports.getRevenueReport` | adminQuery | `startDate, endDate` | `revenueReport` (totalRevenue, expectedRevenue, completionRate, cancellationRate, statusBreakdown, daily[], byService[], byStaff[]) |
+| `reports.getStaffPerformanceReport` | adminQuery | `startDate, endDate` | `staffPerformanceReport` (staff[]: appointments, completed, noShows, revenue, utilization%) |
+| `reports.getCustomerReport` | adminQuery | `startDate, endDate` | `customerReport` (totalActive, newInPeriod, retentionRate, monthly[], topCustomers[]) |
+
+## Notifications
+
+| Function | Wrapper | Args | Returns |
+|----------|---------|------|---------|
 | `notifications.list` | orgQuery | `limit?` | `array(notificationDoc)` |
 | `notifications.getUnreadCount` | orgQuery | `{}` | `number` |
 | `notifications.markAsRead` | orgMutation | `notificationId` | `null` |
 | `notifications.markAllAsRead` | orgMutation | `{}` | `null` |
+
+## Email Notifications (Internal)
+
+| Function | Type | Trigger | Description |
+|----------|------|---------|-------------|
+| `email.sendBookingConfirmation` | internalAction | appointment create | Sends confirmation with ICS attachment |
+| `email.send24HourReminder` | internalAction | daily cron | Sends reminder for tomorrow's appointments |
+| `email.sendCancellationEmail` | internalAction | appointment cancel | Sends cancellation notice |
+| `email.sendInvitationEmail` | internalAction | invitation create/resend | Sends staff invitation link |
+
+All email actions use retry (3 attempts, exponential backoff). Triggered via `ctx.scheduler.runAfter(0)`.
 
 ## Rate Limits
 
@@ -181,7 +200,7 @@ Webhook routes registered in `convex/http.ts` via `polar.registerRoutes()`:
 | Send appointment reminders | 5 minutes | `notifications.sendReminders` |
 | Check grace periods | 1 hour | `subscriptions.checkGracePeriods` |
 | Check trial expirations | 1 hour | `subscriptions.checkTrialExpirations` |
-| Send email reminders | Planned (M7) | `schedulers.sendScheduledReminders` |
+| Send 24-hour email reminders | Daily (09:00 UTC) | `email.send24HourRemindersDaily` |
 
 ## Validators Summary
 
@@ -190,3 +209,5 @@ Webhook routes registered in `convex/http.ts` via `polar.registerRoutes()`:
 **Doc validators:** organizationDoc, memberDoc, invitationDoc, staffDoc, serviceCategoryDoc, serviceDoc, scheduleOverrideDoc, timeOffRequestDoc, staffOvertimeDoc, customerDoc, customerListItem, appointmentDoc, appointmentServiceDoc, slotLockDoc, notificationDoc
 
 **Composite validators:** organizationWithRole, invitationWithOrg, serviceWithCategory, serviceCategoryWithCount, timeOffRequestWithStaff, customerWithStaff, availableSlot, publicAppointment, userAppointment, appointmentWithDetails, dashboardStats
+
+**Report validators:** statusBreakdown, revenueReport (with dailyRevenue, revenueByService, revenueByStaff sub-validators), staffPerformanceReport (with staffPerformance sub-validator), customerReport (with monthlyNewVsReturning, topCustomer sub-validators)

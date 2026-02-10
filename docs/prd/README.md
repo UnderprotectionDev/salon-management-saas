@@ -1,6 +1,6 @@
 # Salon Management SaaS - PRD
 
-> **Current Milestone:** 6 - SaaS Billing (Polar.sh)
+> **Current Milestone:** 9 - Customer Portal
 
 ## Quick Navigation
 
@@ -19,7 +19,7 @@
 
 Frontend: Next.js 16, React 19 + Compiler, Tailwind CSS v4, shadcn/ui, TanStack Form + Zod
 Backend: Convex (DB, functions, real-time), convex-helpers, Better Auth
-Payments: Polar.sh (planned) | Tools: Bun, Biome
+Payments: Polar.sh (active) | Email: Resend (active) | Tools: Bun, Biome
 
 ## Milestone Status
 
@@ -30,15 +30,16 @@ Payments: Polar.sh (planned) | Tools: Bun, Biome
 | 3 | Booking Engine Core | ✅ Complete |
 | 4 | Booking Operations | ✅ Complete |
 | 5 | Dashboard & Calendar | ✅ Complete |
-| 6 | SaaS Billing | 📋 Next |
-| 7 | Email Notifications | 📋 Planned |
-| 8 | Reports & Analytics | 📋 Planned |
-| 9 | Customer Portal | 📋 Planned |
+| 6 | SaaS Billing | ✅ Complete |
+| 7 | Email Notifications | ✅ Complete |
+| 8 | Reports & Analytics | ✅ Complete |
+| 9 | Customer Portal | 📋 Next |
+| 10 | AI Features | 📋 Planned |
 
 See [Milestones](../milestones/README.md) for details.
 
 ## Priority Map
 
-- **P0 (MVP):** Multi-tenant ✅, Services ✅, Staff ✅, Customers ✅, Booking ✅, Dashboard ✅, Billing 📋
-- **P1:** Email notifications, Reports, Analytics
-- **P2:** Customer portal, Products & inventory
+- **P0 (MVP):** Multi-tenant ✅, Services ✅, Staff ✅, Customers ✅, Booking ✅, Dashboard ✅, Billing ✅
+- **P1:** Email notifications ✅, Reports ✅, Analytics ✅
+- **P2:** Customer portal 📋, Products & inventory 📋, AI features 📋
