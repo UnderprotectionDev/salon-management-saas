@@ -1,4 +1,5 @@
 import { ConvexError, v } from "convex/values";
+import { internal } from "./_generated/api";
 import {
   adminMutation,
   authedMutation,
@@ -175,6 +176,11 @@ export const create = adminMutation({
       expiresAt,
       createdAt: now,
       updatedAt: now,
+    });
+
+    // Send invitation email (async, non-blocking)
+    await ctx.scheduler.runAfter(0, internal.email.sendInvitationEmail, {
+      invitationId,
     });
 
     return invitationId;
@@ -444,6 +450,11 @@ export const resend = authedMutation({
       status: "pending",
       expiresAt,
       updatedAt: now,
+    });
+
+    // Resend invitation email (async, non-blocking)
+    await ctx.scheduler.runAfter(0, internal.email.sendInvitationEmail, {
+      invitationId: args.invitationId,
     });
 
     return true;

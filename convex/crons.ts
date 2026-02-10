@@ -45,4 +45,11 @@ crons.interval(
   {},
 );
 
+crons.daily(
+  "send 24-hour advance email reminders",
+  { hourUTC: 9, minuteUTC: 0 },
+  internal.email_helpers.send24HourRemindersDaily,
+  {},
+);
+
 export default crons;

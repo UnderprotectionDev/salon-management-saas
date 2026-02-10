@@ -377,6 +377,12 @@ export const create = publicMutation({
       appointmentId,
     });
 
+    // 13. Send booking confirmation email (async, non-blocking)
+    await ctx.scheduler.runAfter(0, internal.email.sendBookingConfirmation, {
+      appointmentId,
+      organizationId: args.organizationId,
+    });
+
     return { appointmentId, confirmationCode, customerId };
   },
 });
@@ -719,6 +725,12 @@ export const createByStaff = orgMutation({
       appointmentId,
     });
 
+    // Send booking confirmation email (async, non-blocking)
+    await ctx.scheduler.runAfter(0, internal.email.sendBookingConfirmation, {
+      appointmentId,
+      organizationId: ctx.organizationId,
+    });
+
     return { appointmentId, confirmationCode };
   },
 });
@@ -1018,6 +1030,12 @@ export const cancel = orgMutation({
       appointmentId: args.appointmentId,
     });
 
+    // Send cancellation email (async, non-blocking)
+    await ctx.scheduler.runAfter(0, internal.email.sendCancellationEmail, {
+      appointmentId: args.appointmentId,
+      organizationId: ctx.organizationId,
+    });
+
     return { success: true };
   },
 });
@@ -1115,6 +1133,12 @@ export const cancelByCustomer = publicMutation({
       title: "Customer Cancelled",
       message: `${customer.name} cancelled their appointment on ${appointment.date} at ${formatMinutesShort(appointment.startTime)}`,
       appointmentId: appointment._id,
+    });
+
+    // Send cancellation email (async, non-blocking)
+    await ctx.scheduler.runAfter(0, internal.email.sendCancellationEmail, {
+      appointmentId: appointment._id,
+      organizationId: args.organizationId,
     });
 
     return { success: true };

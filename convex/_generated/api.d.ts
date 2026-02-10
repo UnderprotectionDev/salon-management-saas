@@ -14,6 +14,8 @@ import type * as appointments from "../appointments.js";
 import type * as auth from "../auth.js";
 import type * as crons from "../crons.js";
 import type * as customers from "../customers.js";
+import type * as email from "../email.js";
+import type * as email_helpers from "../email_helpers.js";
 import type * as files from "../files.js";
 import type * as http from "../http.js";
 import type * as init from "../init.js";
@@ -58,6 +60,8 @@ declare const fullApi: ApiFromModules<{
   auth: typeof auth;
   crons: typeof crons;
   customers: typeof customers;
+  email: typeof email;
+  email_helpers: typeof email_helpers;
   files: typeof files;
   http: typeof http;
   init: typeof init;
