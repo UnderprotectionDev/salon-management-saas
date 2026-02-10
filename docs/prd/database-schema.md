@@ -21,6 +21,15 @@ erDiagram
     services }o--|| serviceCategories : belongs_to
     customers ||--o{ appointments : books
     appointments ||--o{ appointmentServices : contains
+    organization ||--o{ aiCredits : has
+    organization ||--o{ aiAnalyses : has
+    organization ||--o{ aiSimulations : has
+    organization ||--o{ aiForecasts : has
+    organization ||--o{ aiCareSchedules : has
+    customers ||--o{ aiAnalyses : uploads
+    customers ||--o{ aiSimulations : requests
+    customers ||--o{ aiChatThreads : starts
+    customers ||--o{ aiMoodBoard : saves
 ```
 
 ## Implementation Status
@@ -36,6 +45,9 @@ erDiagram
 | products, productCategories, inventoryTransactions | 📋 | M8+ |
 | notifications | ✅ | M5 |
 | productBenefits | ✅ | M6 |
+| aiCredits, aiCreditTransactions | 📋 | M10A |
+| aiAnalyses, aiSimulations, aiChatThreads, aiChatMessages, aiMoodBoard | 📋 | M10B |
+| aiForecasts, aiCareSchedules | 📋 | M10C |
 
 ## Core Tables
 
@@ -141,6 +153,69 @@ erDiagram
 - Index: `polarProductId`
 - Synced from Polar API via `polarSync.triggerSync`
 
+## AI Tables (M10)
+
+### `aiCredits`
+- `customerId?: id("customers")`, `organizationId?: id("organization")` (one must be set — separate pools)
+- `balance: number` (current credit balance)
+- `updatedAt: number` (last balance change timestamp)
+- Indexes: `by_customer`, `by_organization`
+- Two pools: customer credits (for photo analysis, simulation, chat) and org credits (for forecasts, post-visit, care schedule)
+
+### `aiCreditTransactions`
+- `creditId: id("aiCredits")`, `type: purchase|usage|refund`
+- `amount: number` (positive for purchase/refund, negative for usage)
+- `referenceType?: string` (e.g., "photo_analysis", "simulation", "chat", "forecast", "post_visit", "care_schedule")
+- `referenceId?: string` (ID of the related resource)
+- `description?: string`
+- Indexes: `by_credit`, `by_credit_type`
+
+### `aiAnalyses`
+- `customerId: id("customers")`, `organizationId: id("organization")`
+- `imageStorageId: id("_storage")`, `status: pending|processing|completed|failed`
+- `result?: { faceShape, skinTone, skinUndertone, hairType, hairColor, hairDensity, hairCondition, recommendations[], productRecommendations[], salonServiceMatches[] }`
+- `errorMessage?: string`, `creditTransactionId?: id("aiCreditTransactions")`
+- Indexes: `by_customer`, `by_org_status`
+
+### `aiSimulations`
+- `customerId: id("customers")`, `organizationId: id("organization")`
+- `originalImageId: id("_storage")`, `resultImageId?: id("_storage")`
+- `prompt: string`, `status: pending|processing|completed|failed`
+- `errorMessage?: string`, `creditTransactionId?: id("aiCreditTransactions")`
+- Indexes: `by_customer`, `by_org_status`
+
+### `aiChatThreads`
+- `customerId: id("customers")`, `organizationId: id("organization")`
+- `title: string`, `status: active|archived`
+- Indexes: `by_customer`, `by_org_status`
+
+### `aiChatMessages`
+- `threadId: id("aiChatThreads")`, `role: user|assistant|system`
+- `content: string`, `creditDeducted: boolean`
+- Index: `by_thread`
+
+### `aiForecasts`
+- `organizationId: id("organization")`
+- `type: weekly|monthly`
+- `predictions: array({ date, predictedRevenue, predictedAppointments, confidence })`
+- `insights: array({ type, title, description, impact? })`
+- `expiresAt: number` (24h cache TTL)
+- `creditTransactionId?: id("aiCreditTransactions")`
+- Indexes: `by_org_type`, `by_expiry`
+
+### `aiCareSchedules`
+- `customerId: id("customers")`, `organizationId: id("organization")`
+- `recommendations: array({ serviceType, recommendedDate, reason, priority })`
+- `nextCheckDate: string` (YYYY-MM-DD)
+- `creditTransactionId?: id("aiCreditTransactions")`
+- Indexes: `by_customer`, `by_org`, `by_next_check`
+
+### `aiMoodBoard`
+- `customerId: id("customers")`, `organizationId: id("organization")`
+- `items: array({ imageStorageId: id("_storage"), note?, source: analysis|simulation, savedAt: number })`
+- Indexes: `by_customer`, `by_org`
+- Free feature (no credit cost)
+
 ## Planned Tables
 
 ### `products` / `productCategories` / `inventoryTransactions` (M8+)
@@ -164,3 +239,10 @@ Schema exists in PRD. Products with pricing, inventory tracking, supplier info.
 | Appointment by code | `appointments.by_confirmation` |
 | Subscription by Polar ID | `organizationSettings.by_polar_subscription` |
 | Product benefits | `productBenefits.polarProductId` |
+| Customer AI credits | `aiCredits.by_customer` |
+| Org AI credits | `aiCredits.by_organization` |
+| Customer analyses | `aiAnalyses.by_customer` |
+| Chat messages in thread | `aiChatMessages.by_thread` |
+| Org forecasts | `aiForecasts.by_org_type` |
+| Care schedule check | `aiCareSchedules.by_next_check` |
+| Customer mood board | `aiMoodBoard.by_customer` |

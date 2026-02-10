@@ -11,7 +11,7 @@
 | Email Notifications | P1 | ✅ Implemented (M7) |
 | Reports & Analytics | P1 | ✅ Implemented (M8) |
 | Dashboard Appointment Management | P1 | ✅ Implemented (M9) |
-| AI Features | P2 | 📋 Planned (M10) |
+| AI Features | P2 | 📋 Planned (M10A/B/C) |
 | Products & Inventory | P2 | 📋 Planned (future) |
 
 ---
@@ -164,3 +164,52 @@ Three `adminQuery` functions for admin/owner users only. Member role sees "Admin
 
 **Date range:** URL-persisted `?from=&to=`, presets (Today, 7d, 30d, This/Last month), max 1 year.
 **CSV export:** UTF-8 BOM for Turkish chars, CSV injection sanitization, filename: `{type}_{from}_to_{to}.csv`.
+
+---
+
+## AI Features
+
+> **Files:** `convex/aiAnalysis.ts`, `convex/aiSimulations.ts`, `convex/aiChat.ts`, `convex/aiCredits.ts`, `convex/aiForecasts.ts`, `convex/aiCareSchedules.ts`, `convex/aiMoodBoard.ts`, `convex/aiActions.tsx`
+> **Frontend:** `src/modules/ai/` (customer, organization, shared components)
+> **Routes:** `/{slug}/ai` (public, customer), `/{slug}/ai-insights` (admin/owner)
+
+### Credit System
+
+- Two separate pools: customer credits + organization credits
+- Credit costs: Photo Analysis (5), Simulation (10), Chat (1/msg), Forecast (3), Post-Visit (2), Care Schedule (2)
+- Purchase packages: 50 credits, 200 credits, 500 credits (Polar one-time checkout)
+- Atomic: balance check + deduct + transaction log in single mutation
+- Full audit trail via `aiCreditTransactions` table
+
+### Customer AI Features
+
+**Photo Analysis:** Upload selfie → GPT-4o vision model analyzes face shape, skin tone (Fitzpatrick), hair type, color, density, condition → Detailed profile card with salon service recommendations + product suggestions. History saved per customer.
+
+**Before/After Simulation:** Upload photo + style prompt → fal.ai generates simulated result → Skeleton placeholder during processing → Blur-to-sharp reveal animation (CSS transition, 1s) → Side-by-side comparison view. Results stored in Convex file storage.
+
+**Style Chat:** Streaming AI consultation (Claude) with salon context (services, pricing, staff specialties) → Thread-based persistence (create, archive) → 1 credit per message.
+
+**Mood Board:** Save favorite analyses/simulations to personal collection → Add notes → Staff-shareable (visible during appointments for reference) → Free feature (no credits).
+
+**Care Schedule:** AI-generated personal care calendar based on visit history + hair/skin type + service intervals → Smart reminders ("Time for a haircut", "Root touch-up ideal date") → Weekly cron check + optional email.
+
+### Organization AI Features
+
+**Revenue Forecasting:** Admin/owner requests weekly or monthly forecast → 90 days of historical data analysis via Gemini Flash → Structured predictions + actionable insights → AreaChart + insights list → 24h cache.
+
+**Post-Visit Follow-up:** AI-generated care tips email sent 1 hour after appointment completion → Personalized content: services summary, home care advice, product suggestions, next visit recommendation → 2 credits per email from org pool.
+
+**Credit Management:** Balance display, purchase (owner only), transaction history with reference type filtering, usage analytics by feature type.
+
+### Business Rules
+
+| Rule | Details |
+|------|---------|
+| Provider routing | Vision: GPT-4o, Chat: Claude, Forecast: Gemini Flash |
+| Simulation wait | Skeleton + blur-to-sharp animation (10-30s) |
+| Analysis result | Detailed profile card with face/skin/hair analysis + recommendations |
+| Forecast cache | 24 hours, cleanup cron every 6 hours |
+| Post-visit delay | 1 hour after completion (`ctx.scheduler.runAfter(3600000)`) |
+| Care schedule | Weekly cron check + optional email reminder |
+| Mood board | Free (no credits), staff-shareable |
+| Product recs | Included in photo analysis (no extra credits), general recs now, catalog match in M11 |

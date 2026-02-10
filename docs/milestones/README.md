@@ -13,7 +13,15 @@
 | 7 | Email Notifications (Resend) | ✅ Complete | 5 |
 | 8 | Reports & Analytics | ✅ Complete | 5 |
 | 9 | Dashboard Appointment Management | ✅ Complete | 5 |
-| 10 | AI Features | 📋 Pending | 8 |
+| 10 | AI Features | 📋 Pending | 12 |
+
+### Milestone 10 Sub-milestones
+
+| Sub | Name | User Stories | Scope |
+|-----|------|-------------|-------|
+| 10A | AI Infrastructure + Credit System | US-045, US-046 | Schema, multi-provider setup, credit billing |
+| 10B | Customer AI Features | US-039~042, US-049 | Photo analysis, simulation, chat, mood board |
+| 10C | Organization AI + Extras | US-043~044, US-047~048, US-050 | Forecasting, post-visit email, care schedule, product recs |
 
 ## Quality Gates
 

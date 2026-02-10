@@ -10,7 +10,8 @@
 | Customer Loyalty & Reviews | Medium | Points system, star ratings, review moderation |
 | Waitlist Management | Low | Notify when cancelled slots open up |
 | Mobile Applications | Low | React Native iOS/Android apps |
-| AI-Powered Features | Low | Smart scheduling, no-show prediction, demand forecasting |
+| AI-Powered Features | ✅ M10 | Photo analysis, style simulation, AI chat, forecasting, care schedule, mood board, post-visit follow-up |
+| AI Advanced (Post-M10) | Low | Smart scheduling optimization, no-show prediction, sentiment analysis, AR try-on |
 | Advanced Analytics & BI | Low | Custom reports, drill-down dashboards, scheduled delivery |
 | WhatsApp Integration | Low-Med | Template messages, interactive confirmations |
 | Public API & Integrations | Low | Webhooks, Zapier, third-party OAuth |

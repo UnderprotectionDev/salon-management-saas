@@ -25,6 +25,15 @@
 | cancelled | `bg-red-100 text-red-800 line-through` |
 | no_show | `bg-red-100 text-red-800` |
 
+**AI Status Colors:**
+
+| Status | Classes |
+|--------|---------|
+| pending | `bg-blue-100 text-blue-800` |
+| processing | `bg-purple-100 text-purple-800 animate-pulse` |
+| completed | `bg-green-100 text-green-800` |
+| failed | `bg-red-100 text-red-800` |
+
 ## Typography
 
 - **Font:** Inter (sans), JetBrains Mono (mono)
@@ -53,6 +62,10 @@
 | Sheet (side panel) | Mobile navigation |
 | Skeleton | Loading placeholders |
 | Alert (destructive variant) | Error messages |
+| Before/After comparison | Side-by-side image view (AI simulation results) |
+| Chat interface | Message bubbles, streaming indicator, thread list |
+| Credit balance badge | Inline display with coin icon + count |
+| Skeleton → reveal | Blur-to-sharp animation (AI processing result reveal) |
 
 **Button sizes:** default (h-10), sm (h-9), lg (h-11), icon (h-10 w-10)
 
@@ -61,6 +74,8 @@
 - **Dashboard:** Header (h-14) + Sidebar (w-64, hidden on mobile) + Main (flex-1, p-6)
 - **Booking wizard:** Progress bar + centered content (max-w-2xl) + Back/Continue
 - **Calendar:** Time column + staff columns (horizontal scroll)
+- **AI Page:** Tab navigation (Photo Analysis, Simulation, Chat, Mood Board, Care Schedule) + Credit balance header badge
+- **AI Insights:** Tab navigation (Revenue Forecast, Credit Management) for admin/owner
 
 ## Mobile
 

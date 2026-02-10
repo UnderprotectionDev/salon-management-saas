@@ -24,6 +24,7 @@ All-in-one salon management platform for Turkish beauty salons (1-10 staff). Sol
 | Monthly | ₺500/month |
 | Yearly | ₺5,100/year (15% savings) |
 | Features | Single tier, full access, no free trial |
+| AI Credits | Pay-as-you-go credit packages (50/200/500) for AI features via Polar one-time checkout |
 | Platform | Polar.sh billing |
 | Grace Period | 7 days after payment failure (reminders day 1,3,5,7) |
 | Suspended | Billing page only after grace period |
@@ -48,4 +49,5 @@ All-in-one salon management platform for Turkish beauty salons (1-10 staff). Sol
 | System Uptime | 99.9% |
 | No-Show Rate | <10% (from 15-20%) |
 | Churn Rate | <5% monthly |
+| AI Adoption | 30%+ of active salons use AI features |
 | Page Load (P95) | <2s |

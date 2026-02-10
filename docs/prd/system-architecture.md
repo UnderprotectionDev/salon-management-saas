@@ -17,6 +17,10 @@ flowchart TB
     subgraph Auth["Authentication"]
         BetterAuth["Better Auth + Google OAuth"]
     end
+    subgraph AI["AI Services"]
+        AIGateway["Vercel AI Gateway"]
+        FalAI["fal.ai (Image Gen)"]
+    end
     subgraph External["External Services"]
         Resend["Resend (Email)"]
         Polar["Polar.sh (Billing)"]
@@ -27,6 +31,8 @@ flowchart TB
     Functions <--> Database
     Functions <--> Storage
     Functions --> Scheduler
+    Functions --> AIGateway
+    Functions --> FalAI
     Functions --> Resend
     NextJS --> BetterAuth
     BetterAuth <--> Database
@@ -39,6 +45,7 @@ flowchart TB
 | Frontend | Next.js 16, React 19 + Compiler, TypeScript 5.x, Tailwind CSS v4, shadcn/ui, TanStack Form + Zod |
 | Backend | Convex (DB, functions, real-time, file storage, crons, search indexes), convex-helpers (RLS, triggers, validators) |
 | Auth | Better Auth + @convex-dev/better-auth, Google OAuth |
+| AI | `ai` (v6+), `@ai-sdk/react`, `@fal-ai/client`, Vercel AI Gateway (multi-provider: GPT-4o vision, Claude chat, Gemini Flash forecast) |
 | External | Polar.sh (billing), Resend (email), React Email (templates), Sentry (monitoring), Vercel (hosting) |
 | Tools | Bun (package manager), Biome (linter/formatter) |
 
@@ -83,6 +90,11 @@ Custom wrappers in `convex/lib/functions.ts` with progressive access levels:
 | createOvertime | 10/day | staff |
 | createCustomer | 30/hour | org |
 | cancelSubscription | 3/hour | org |
+| aiPhotoAnalysis | 5/hour | customer |
+| aiSimulation | 3/hour | customer |
+| aiChat | 30/hour | customer |
+| aiForecast | 5/day | org |
+| aiCreditPurchase | 5/hour | customer/org |
 
 ## Project Structure
 
@@ -112,6 +124,10 @@ convex/
 ├── polar.ts, polarSync.ts, subscriptions.ts, subscriptions_helpers.ts
 ├── analytics.ts, reports.ts (~603 lines), notifications.ts
 ├── email.tsx (~467 lines), email_helpers.ts
+├── aiAnalysis.ts, aiSimulations.ts, aiChat.ts
+├── aiCredits.ts, aiForecasts.ts, aiCareSchedules.ts, aiMoodBoard.ts
+├── aiActions.tsx              # "use node" - external AI calls (Gateway, fal.ai)
+├── lib/aiConstants.ts         # Credit costs, model configs, provider routing
 ├── files.ts, users.ts, auth.ts, http.ts
 └── auth.config.ts, convex.config.ts
 
@@ -137,6 +153,11 @@ src/
 │   ├── calendar/               # 13 files (day/week views, DnD)
 │   ├── notifications/          # 4 files (bell, panel)
 │   ├── reports/                # 16 files (revenue, staff, customer reports, CSV export)
+│   ├── ai/
+│   │   ├── customer/components/  # PhotoAnalysisView, SimulationView, StyleChatView, MoodBoardView, CareScheduleView
+│   │   ├── organization/components/ # RevenueForecastView, OrgAICreditManager
+│   │   ├── components/           # CreditBalance, CreditPurchaseDialog, AIPageLayout
+│   │   └── lib/                  # constants, types
 │   ├── settings/               # 8 files
 │   ├── auth/                   # 11 files
 │   └── convex/                 # ConvexClientProvider
@@ -158,6 +179,8 @@ src/
 | `/:slug/reports` | Auth+Org (admin) | Reports & analytics |
 | `/:slug/settings` | Auth+Org | Org settings |
 | `/:slug/billing` | Auth+Org | Subscription management |
+| `/:slug/ai` | Public | Customer AI features (photo analysis, simulation, chat, mood board, care schedule) |
+| `/:slug/ai-insights` | Auth+Org (admin) | Organization AI features (revenue forecast, credit management) |
 | `/:slug/book` | Public | Public booking |
 | `/:slug/appointment/:code` | Public | Appointment lookup |
 

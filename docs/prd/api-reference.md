@@ -190,6 +190,11 @@ All email actions use retry (3 attempts, exponential backoff). Triggered via `ct
 | `createOvertime` | 10/day | staff |
 | `createCustomer` | 30/hour | org |
 | `cancelSubscription` | 3/hour | org |
+| `aiPhotoAnalysis` | 5/hour | customer |
+| `aiSimulation` | 3/hour | customer |
+| `aiChat` | 30/hour | customer |
+| `aiForecast` | 5/day | org |
+| `aiCreditPurchase` | 5/hour | customer/org |
 
 ## Scheduled Jobs
 
@@ -201,6 +206,62 @@ All email actions use retry (3 attempts, exponential backoff). Triggered via `ct
 | Check grace periods | 1 hour | `subscriptions.checkGracePeriods` |
 | Check trial expirations | 1 hour | `subscriptions.checkTrialExpirations` |
 | Send 24-hour email reminders | Daily (09:00 UTC) | `email.send24HourRemindersDaily` |
+| Cleanup expired AI forecasts | 6 hours | `aiForecasts.cleanupExpired` |
+| Check care schedules & notify | Weekly | `aiCareSchedules.checkAndNotify` |
+
+## AI — Credits
+
+| Function | Wrapper | Args | Returns |
+|----------|---------|------|---------|
+| `aiCredits.getBalance` | orgQuery / publicQuery | `customerId?` | `{balance, updatedAt}` |
+| `aiCredits.purchaseCredits` | publicMutation / ownerMutation | `package: 50\|200\|500, customerId?` | `{transactionId, newBalance}` |
+| `aiCredits.getTransactions` | orgQuery / publicQuery | `customerId?, limit?, referenceType?` | `array(aiCreditTransactionDoc)` |
+| `aiCredits.deductCredits` | internalMutation | `creditId, amount, referenceType, referenceId?, description?` | `{transactionId, newBalance}` |
+
+- Customer credit functions use `publicQuery`/`publicMutation` (customer identified via auth)
+- Organization credit functions use `orgQuery`/`ownerMutation`
+- `deductCredits` is internal-only — called by AI action functions, never directly by clients
+
+## AI — Customer Features
+
+| Function | Wrapper | Args | Returns |
+|----------|---------|------|---------|
+| `aiAnalysis.create` | publicMutation | `organizationId, imageStorageId` | `{analysisId}` |
+| `aiAnalysis.get` | publicQuery | `analysisId` | `aiAnalysisDoc \| null` |
+| `aiAnalysis.listHistory` | publicQuery | `organizationId, customerId?` | `array(aiAnalysisDoc)` |
+| `aiSimulations.create` | publicMutation | `organizationId, imageStorageId, prompt` | `{simulationId}` |
+| `aiSimulations.get` | publicQuery | `simulationId` | `aiSimulationDoc \| null` |
+| `aiChat.createThread` | publicMutation | `organizationId, title?` | `{threadId}` |
+| `aiChat.listThreads` | publicQuery | `organizationId` | `array(aiChatThreadDoc)` |
+| `aiChat.getMessages` | publicQuery | `threadId` | `array(aiChatMessageDoc)` |
+| `aiMoodBoard.save` | publicMutation | `organizationId, imageStorageId, note?, source` | `{success}` |
+| `aiMoodBoard.list` | publicQuery | `organizationId` | `aiMoodBoardDoc \| null` |
+| `aiMoodBoard.remove` | publicMutation | `organizationId, itemIndex` | `{success}` |
+
+- All customer AI functions require auth (customer identified via `ctx.user`)
+- Photo analysis and simulation create records with `status: pending`, then schedule action
+- Real-time status updates via Convex reactivity (`useQuery` on `get` function)
+
+## AI — Organization Features
+
+| Function | Wrapper | Args | Returns |
+|----------|---------|------|---------|
+| `aiForecasts.generate` | adminMutation | `type: weekly\|monthly` | `{forecastId}` |
+| `aiForecasts.get` | adminQuery | `type: weekly\|monthly` | `aiForecastDoc \| null` |
+| `aiCareSchedules.generate` | orgMutation | `customerId` | `{scheduleId}` |
+| `aiCareSchedules.get` | orgQuery | `customerId` | `aiCareScheduleDoc \| null` |
+
+## AI — Actions (External API)
+
+| Function | Type | Description |
+|----------|------|-------------|
+| `aiActions.analyzePhoto` | internalAction | AI Gateway vision call (GPT-4o) → structured analysis result |
+| `aiActions.generateSimulation` | internalAction | fal.ai call → generated image stored in Convex file storage |
+| `aiActions.generateForecast` | internalAction | AI Gateway text call (Gemini Flash) → structured predictions |
+| `aiActions.generateCareSchedule` | internalAction | AI Gateway text call → personalized care recommendations |
+| `aiActions.generatePostVisitContent` | internalAction | AI Gateway text call → personalized follow-up email content |
+
+All actions use `"use node"` runtime. Triggered via `ctx.scheduler.runAfter(0)` from mutations. Chat streaming handled separately via Next.js API route (`src/app/api/ai/chat/route.ts`).
 
 ## Validators Summary
 
@@ -211,3 +272,5 @@ All email actions use retry (3 attempts, exponential backoff). Triggered via `ct
 **Composite validators:** organizationWithRole, invitationWithOrg, serviceWithCategory, serviceCategoryWithCount, timeOffRequestWithStaff, customerWithStaff, availableSlot, publicAppointment, userAppointment, appointmentWithDetails, dashboardStats
 
 **Report validators:** statusBreakdown, revenueReport (with dailyRevenue, revenueByService, revenueByStaff sub-validators), staffPerformanceReport (with staffPerformance sub-validator), customerReport (with monthlyNewVsReturning, topCustomer sub-validators)
+
+**AI validators:** aiCreditDoc, aiCreditTransactionDoc, aiAnalysisDoc, aiSimulationDoc, aiChatThreadDoc, aiChatMessageDoc, aiForecastDoc, aiCareScheduleDoc, aiMoodBoardDoc, aiAnalysisResult (structured output), aiForecastPrediction, aiForecastInsight, aiCareRecommendation
