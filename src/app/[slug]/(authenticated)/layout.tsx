@@ -1,6 +1,7 @@
 "use client";
 
 import {
+  BarChart3,
   Calendar,
   CalendarDays,
   ChevronUp,
@@ -79,6 +80,11 @@ const menuItems = [
     title: "Customers",
     icon: UserRound,
     href: "/customers",
+  },
+  {
+    title: "Reports",
+    icon: BarChart3,
+    href: "/reports",
   },
   {
     title: "Settings",
