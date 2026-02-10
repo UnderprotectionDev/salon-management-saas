@@ -42,13 +42,13 @@ import {
   SidebarTrigger,
 } from "@/components/ui/sidebar";
 import { authClient } from "@/lib/auth-client";
+import { GracePeriodBanner, SuspendedOverlay } from "@/modules/billing";
+import { NotificationBell } from "@/modules/notifications";
 import {
   OrganizationProvider,
   OrganizationSwitcher,
   useOrganization,
 } from "@/modules/organization";
-import { GracePeriodBanner, SuspendedOverlay } from "@/modules/billing";
-import { NotificationBell } from "@/modules/notifications";
 
 const menuItems = [
   {

@@ -20,7 +20,11 @@ type StaffRow = {
 
 export function RevenueByStaffTable({ data }: { data: StaffRow[] }) {
   if (data.length === 0) {
-    return <p className="text-sm text-muted-foreground">No staff data for this period.</p>;
+    return (
+      <p className="text-sm text-muted-foreground">
+        No staff data for this period.
+      </p>
+    );
   }
 
   return (
@@ -37,7 +41,9 @@ export function RevenueByStaffTable({ data }: { data: StaffRow[] }) {
           <TableRow key={row.staffId}>
             <TableCell className="font-medium">{row.staffName}</TableCell>
             <TableCell className="text-right">{row.appointments}</TableCell>
-            <TableCell className="text-right">{formatPrice(row.revenue)}</TableCell>
+            <TableCell className="text-right">
+              {formatPrice(row.revenue)}
+            </TableCell>
           </TableRow>
         ))}
       </TableBody>

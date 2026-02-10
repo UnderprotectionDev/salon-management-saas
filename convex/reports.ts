@@ -2,10 +2,7 @@ import { ConvexError, v } from "convex/values";
 import type { Id } from "./_generated/dataModel";
 import type { DatabaseReader } from "./_generated/server";
 import { ErrorCode, adminQuery } from "./lib/functions";
-import {
-  getDatesBetween,
-  resolveSchedule,
-} from "./lib/scheduleResolver";
+import { getDatesBetween, resolveSchedule } from "./lib/scheduleResolver";
 import {
   customerReportValidator,
   revenueReportValidator,
@@ -394,7 +391,11 @@ export const getStaffPerformanceReport = adminQuery({
           overtimeEntries: dayOvertime,
         });
 
-        if (resolved.available && resolved.effectiveStart && resolved.effectiveEnd) {
+        if (
+          resolved.available &&
+          resolved.effectiveStart &&
+          resolved.effectiveEnd
+        ) {
           scheduledMinutes +=
             timeStringToMinutes(resolved.effectiveEnd) -
             timeStringToMinutes(resolved.effectiveStart);
@@ -474,7 +475,8 @@ export const getCustomerReport = adminQuery({
 
     // Customers created in date range (use UTC to avoid timezone ambiguity)
     const startEpoch = parseDateUTC(args.startDate).getTime();
-    const endEpoch = parseDateUTC(args.endDate).getTime() + 24 * 60 * 60 * 1000 - 1;
+    const endEpoch =
+      parseDateUTC(args.endDate).getTime() + 24 * 60 * 60 * 1000 - 1;
     const newInPeriod = customers.filter(
       (c) => c._creationTime >= startEpoch && c._creationTime <= endEpoch,
     ).length;
@@ -486,9 +488,7 @@ export const getCustomerReport = adminQuery({
       args.startDate,
       args.endDate,
     );
-    const completedAppts = appointments.filter(
-      (a) => a.status === "completed",
-    );
+    const completedAppts = appointments.filter((a) => a.status === "completed");
 
     // Build customer lookup map for O(1) access
     const customerMap = new Map<string, { name: string; phone: string }>();
@@ -499,7 +499,13 @@ export const getCustomerReport = adminQuery({
     // Build customer stats map
     const customerStats = new Map<
       string,
-      { name: string; phone: string; appointments: number; revenue: number; lastDate: string | null }
+      {
+        name: string;
+        phone: string;
+        appointments: number;
+        revenue: number;
+        lastDate: string | null;
+      }
     >();
 
     for (const appt of completedAppts) {

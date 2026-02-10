@@ -1,8 +1,8 @@
 "use client";
 
 import { useQuery } from "convex/react";
-import { useParams } from "next/navigation";
-import { useState } from "react";
+import { useParams, useSearchParams } from "next/navigation";
+import { useEffect, useState } from "react";
 import { authClient } from "@/lib/auth-client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -24,6 +24,7 @@ import { api } from "../../../../../convex/_generated/api";
 
 export default function BookingPage() {
   const params = useParams();
+  const searchParams = useSearchParams();
   const slug = params.slug as string;
 
   const {
@@ -38,6 +39,9 @@ export default function BookingPage() {
   } = useBookingFlow();
 
   const session = authClient.useSession();
+
+  // Pre-fill from URL params (Book Again flow)
+  const [prefilled, setPrefilled] = useState(false);
 
   const [confirmation, setConfirmation] = useState<{
     appointmentId: string;
@@ -65,6 +69,36 @@ export default function BookingPage() {
     api.staff.listPublicActive,
     organization ? { organizationId: organization._id } : "skip",
   );
+
+  // Pre-fill from searchParams (Book Again)
+  useEffect(() => {
+    if (prefilled || !services || !staffMembers) return;
+    const servicesParam = searchParams.get("services");
+    const staffParam = searchParams.get("staff");
+
+    if (servicesParam) {
+      const ids = servicesParam.split(",").filter(Boolean);
+      const validIds = ids.filter((id) => services.some((s) => s._id === id));
+      if (validIds.length > 0) {
+        setServiceIds(validIds as any);
+        if (staffParam && staffMembers.some((s) => s._id === staffParam)) {
+          setStaffId(staffParam as any);
+          setStep("datetime");
+        } else {
+          setStep("staff");
+        }
+      }
+    }
+    setPrefilled(true);
+  }, [
+    prefilled,
+    services,
+    staffMembers,
+    searchParams,
+    setServiceIds,
+    setStaffId,
+    setStep,
+  ]);
 
   if (organization === undefined) {
     return (

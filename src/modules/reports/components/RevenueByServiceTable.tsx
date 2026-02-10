@@ -18,7 +18,11 @@ type ServiceRow = {
 
 export function RevenueByServiceTable({ data }: { data: ServiceRow[] }) {
   if (data.length === 0) {
-    return <p className="text-sm text-muted-foreground">No service data for this period.</p>;
+    return (
+      <p className="text-sm text-muted-foreground">
+        No service data for this period.
+      </p>
+    );
   }
 
   return (
@@ -35,7 +39,9 @@ export function RevenueByServiceTable({ data }: { data: ServiceRow[] }) {
           <TableRow key={row.serviceName}>
             <TableCell className="font-medium">{row.serviceName}</TableCell>
             <TableCell className="text-right">{row.appointments}</TableCell>
-            <TableCell className="text-right">{formatPrice(row.revenue)}</TableCell>
+            <TableCell className="text-right">
+              {formatPrice(row.revenue)}
+            </TableCell>
           </TableRow>
         ))}
       </TableBody>

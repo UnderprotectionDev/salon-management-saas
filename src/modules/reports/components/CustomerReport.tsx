@@ -28,7 +28,13 @@ export function CustomerReport() {
 
   function handleExport() {
     if (!report) return;
-    const headers = ["Name", "Phone", "Appointments", "Revenue (TRY)", "Last Visit"];
+    const headers = [
+      "Name",
+      "Phone",
+      "Appointments",
+      "Revenue (TRY)",
+      "Last Visit",
+    ];
     const rows = report.topCustomers.map((c) => [
       sanitizeCsvValue(c.name),
       sanitizeCsvValue(c.phone),
@@ -55,9 +61,18 @@ export function CustomerReport() {
       ) : report ? (
         <>
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-            <ReportCard title="Total Active Customers" value={String(report.totalActive)} />
-            <ReportCard title="New in Period" value={String(report.newInPeriod)} />
-            <ReportCard title="Retention Rate" value={`${report.retentionRate}%`} />
+            <ReportCard
+              title="Total Active Customers"
+              value={String(report.totalActive)}
+            />
+            <ReportCard
+              title="New in Period"
+              value={String(report.newInPeriod)}
+            />
+            <ReportCard
+              title="Retention Rate"
+              value={`${report.retentionRate}%`}
+            />
             <ReportCard
               title="Avg Appointments"
               value={String(report.avgAppointmentsPerCustomer)}

@@ -23,7 +23,12 @@ type StaffEntry = {
   utilization: number;
 };
 
-type SortKey = "staffName" | "totalAppointments" | "revenue" | "utilization" | "noShows";
+type SortKey =
+  | "staffName"
+  | "totalAppointments"
+  | "revenue"
+  | "utilization"
+  | "noShows";
 
 export function StaffPerformanceTable({ data }: { data: StaffEntry[] }) {
   const [sortKey, setSortKey] = useState<SortKey>("revenue");
@@ -48,7 +53,11 @@ export function StaffPerformanceTable({ data }: { data: StaffEntry[] }) {
   });
 
   if (data.length === 0) {
-    return <p className="text-sm text-muted-foreground">No staff data for this period.</p>;
+    return (
+      <p className="text-sm text-muted-foreground">
+        No staff data for this period.
+      </p>
+    );
   }
 
   const sortIndicator = (key: SortKey) =>
@@ -101,18 +110,24 @@ export function StaffPerformanceTable({ data }: { data: StaffEntry[] }) {
           return (
             <TableRow key={row.staffId}>
               <TableCell className="font-medium">{row.staffName}</TableCell>
-              <TableCell className="text-right">{row.totalAppointments}</TableCell>
+              <TableCell className="text-right">
+                {row.totalAppointments}
+              </TableCell>
               <TableCell className="text-right">{row.completed}</TableCell>
               <TableCell
                 className={`text-right ${noShowRate > 10 ? "text-destructive font-medium" : ""}`}
               >
                 {row.noShows}
                 {noShowRate > 10 && (
-                  <span className="ml-1 text-xs">({Math.round(noShowRate)}%)</span>
+                  <span className="ml-1 text-xs">
+                    ({Math.round(noShowRate)}%)
+                  </span>
                 )}
               </TableCell>
               <TableCell className="text-right">{row.cancelled}</TableCell>
-              <TableCell className="text-right">{formatPrice(row.revenue)}</TableCell>
+              <TableCell className="text-right">
+                {formatPrice(row.revenue)}
+              </TableCell>
               <TableCell className="text-right">{row.utilization}%</TableCell>
             </TableRow>
           );

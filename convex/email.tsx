@@ -235,9 +235,7 @@ export const send24HourReminder = internalAction({
 
     // Skip if already sent (idempotency)
     if (appointment.reminderSentAt) {
-      console.log(
-        `[email] Reminder already sent for ${args.appointmentId}`,
-      );
+      console.log(`[email] Reminder already sent for ${args.appointmentId}`);
       return;
     }
 
@@ -445,7 +443,12 @@ export const sendInvitationEmail = internalAction({
         acceptUrl={`${siteUrl}/sign-in`}
         expiresInDays={
           invitation.expiresAt
-            ? Math.max(1, Math.ceil((invitation.expiresAt - Date.now()) / (1000 * 60 * 60 * 24)))
+            ? Math.max(
+                1,
+                Math.ceil(
+                  (invitation.expiresAt - Date.now()) / (1000 * 60 * 60 * 24),
+                ),
+              )
             : 7
         }
       />,
@@ -464,4 +467,3 @@ export const sendInvitationEmail = internalAction({
     }
   },
 });
-

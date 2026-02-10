@@ -37,7 +37,11 @@ export function ReportCard({
       <CardContent>
         <div className="text-2xl font-bold">
           {value}
-          {suffix && <span className="text-sm font-normal text-muted-foreground ml-1">{suffix}</span>}
+          {suffix && (
+            <span className="text-sm font-normal text-muted-foreground ml-1">
+              {suffix}
+            </span>
+          )}
         </div>
       </CardContent>
     </Card>
