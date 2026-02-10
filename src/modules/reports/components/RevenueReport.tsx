@@ -96,7 +96,8 @@ export function RevenueReport() {
             <CardContent>
               {!hasRevenue && !hasExpected ? (
                 <div className="flex h-[300px] items-center justify-center text-sm text-muted-foreground">
-                  No completed appointments yet. Revenue will appear here as appointments are completed.
+                  No completed appointments yet. Revenue will appear here as
+                  appointments are completed.
                 </div>
               ) : (
                 <RevenueChart data={report.daily} />

@@ -23,7 +23,12 @@ const chartConfig = {
 export function RevenueChart({
   data,
 }: {
-  data: Array<{ date: string; revenue: number; appointments: number; completed: number }>;
+  data: Array<{
+    date: string;
+    revenue: number;
+    appointments: number;
+    completed: number;
+  }>;
 }) {
   const chartData = data.map((d) => ({
     date: new Date(`${d.date}T00:00:00`).toLocaleDateString("en-US", {

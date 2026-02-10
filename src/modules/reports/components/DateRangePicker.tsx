@@ -117,7 +117,10 @@ export function DateRangePicker() {
   return (
     <Popover open={open} onOpenChange={handleOpenChange}>
       <PopoverTrigger asChild>
-        <Button variant="outline" className="justify-start text-left font-normal">
+        <Button
+          variant="outline"
+          className="justify-start text-left font-normal"
+        >
           <CalendarIcon className="mr-2 size-4" />
           {formatDisplay(from)} - {formatDisplay(to)}
         </Button>
@@ -147,7 +150,9 @@ export function DateRangePicker() {
             />
             <div className="flex items-center justify-end gap-2 px-3 pb-2">
               {days > 365 && (
-                <span className="text-xs text-destructive">Max range is 1 year</span>
+                <span className="text-xs text-destructive">
+                  Max range is 1 year
+                </span>
               )}
               <Button size="sm" onClick={handleApply} disabled={!isRangeValid}>
                 Apply

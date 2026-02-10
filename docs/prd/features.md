@@ -10,7 +10,7 @@
 | SaaS Billing | P0 | ✅ Implemented (M6) |
 | Email Notifications | P1 | ✅ Implemented (M7) |
 | Reports & Analytics | P1 | ✅ Implemented (M8) |
-| Customer Portal | P1 | 📋 Planned (M9) |
+| Dashboard Appointment Management | P1 | ✅ Implemented (M9) |
 | AI Features | P2 | 📋 Planned (M10) |
 | Products & Inventory | P2 | 📋 Planned (future) |
 
@@ -68,12 +68,15 @@ Identity via confirmationCode + phone. Cancel/reschedule enforces 2-hour policy.
 
 ---
 
-## Customer Portal
+## Dashboard Appointment Management
 
-**Hybrid account model:** guest (1st visit) → recognized (2nd, pre-filled) → prompted (3rd, account banner) → registered (full access).
+All customer self-service features live on the `/dashboard` page.
 
-**Public pages (no auth):** Salon landing, services by category, booking wizard, confirmation page.
-**Authenticated pages:** My bookings (upcoming/past/cancelled), my profile.
+**Appointment cards:** Rich cards with date, time, staff, services, price, confirmation code, and action buttons.
+**Self-service actions:** Cancel (with optional reason), Reschedule (date picker + time slot grid), Book Again (pre-filled booking link).
+**2-hour policy:** Cancel/Reschedule buttons hidden if appointment starts within 2 hours. Enforced both client-side and server-side.
+**Customer profiles:** Cross-salon profile listing with inline editing (name, phone, email) via `getMyProfiles` / `updateMyProfile`.
+**Identity:** Authenticated user matched via `customer.userId` — no phone verification needed.
 
 **Notes system:** `customerNotes` (customer-visible) and `staffNotes` (internal only).
 **No-show policy:** Informational only, no penalties or blocking.

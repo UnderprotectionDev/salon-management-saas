@@ -1,6 +1,6 @@
 # Salon Management SaaS - PRD
 
-> **Current Milestone:** 9 - Customer Portal
+> **Current Milestone:** 9 - Dashboard Appointment Management
 
 ## Quick Navigation
 
@@ -33,7 +33,7 @@ Payments: Polar.sh (active) | Email: Resend (active) | Tools: Bun, Biome
 | 6 | SaaS Billing | ✅ Complete |
 | 7 | Email Notifications | ✅ Complete |
 | 8 | Reports & Analytics | ✅ Complete |
-| 9 | Customer Portal | 📋 Next |
+| 9 | Dashboard Appointment Management | ✅ Complete |
 | 10 | AI Features | 📋 Planned |
 
 See [Milestones](../milestones/README.md) for details.
@@ -42,4 +42,4 @@ See [Milestones](../milestones/README.md) for details.
 
 - **P0 (MVP):** Multi-tenant ✅, Services ✅, Staff ✅, Customers ✅, Booking ✅, Dashboard ✅, Billing ✅
 - **P1:** Email notifications ✅, Reports ✅, Analytics ✅
-- **P2:** Customer portal 📋, Products & inventory 📋, AI features 📋
+- **P2:** Dashboard Appointment Management ✅, Products & inventory 📋, AI features 📋

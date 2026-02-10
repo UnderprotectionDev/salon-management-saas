@@ -144,10 +144,7 @@ export default function BookingConfirmation({
                 Location
               </Text>
               <Text className="m-0 mt-1 text-sm text-gray-900">
-                <Link
-                  href={mapsUrl}
-                  className="text-gray-900 underline"
-                >
+                <Link href={mapsUrl} className="text-gray-900 underline">
                   {address}
                 </Link>
               </Text>

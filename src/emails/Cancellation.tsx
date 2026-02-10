@@ -66,7 +66,10 @@ export default function Cancellation({
             Services
           </Text>
           {services.map((service, index) => (
-            <Text key={`${service}-${index}`} className="m-0 mt-1 text-sm text-gray-900">
+            <Text
+              key={`${service}-${index}`}
+              className="m-0 mt-1 text-sm text-gray-900"
+            >
               {service}
             </Text>
           ))}

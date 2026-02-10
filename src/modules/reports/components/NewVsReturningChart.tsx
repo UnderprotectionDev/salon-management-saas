@@ -22,7 +22,11 @@ const chartConfig = {
 export function NewVsReturningChart({
   data,
 }: {
-  data: Array<{ month: string; newCustomers: number; returningCustomers: number }>;
+  data: Array<{
+    month: string;
+    newCustomers: number;
+    returningCustomers: number;
+  }>;
 }) {
   const chartData = data.map((d) => ({
     ...d,
@@ -54,7 +58,11 @@ export function NewVsReturningChart({
         />
         <YAxis tickLine={false} axisLine={false} tickMargin={8} fontSize={12} />
         <ChartTooltip content={<ChartTooltipContent />} />
-        <Bar dataKey="newCustomers" fill="var(--color-newCustomers)" radius={[4, 4, 0, 0]} />
+        <Bar
+          dataKey="newCustomers"
+          fill="var(--color-newCustomers)"
+          radius={[4, 4, 0, 0]}
+        />
         <Bar
           dataKey="returningCustomers"
           fill="var(--color-returningCustomers)"

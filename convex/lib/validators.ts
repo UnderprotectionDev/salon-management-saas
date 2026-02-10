@@ -899,6 +899,53 @@ export const topCustomerValidator = v.object({
   lastVisitDate: v.union(v.string(), v.null()),
 });
 
+// =============================================================================
+// User Appointment Validators
+// =============================================================================
+
+/** User appointment detail (extends userAppointment with IDs for actions) */
+export const userAppointmentDetailValidator = v.object({
+  _id: v.id("appointments"),
+  date: v.string(),
+  startTime: v.number(),
+  endTime: v.number(),
+  status: appointmentStatusValidator,
+  confirmationCode: v.string(),
+  staffName: v.string(),
+  staffImageUrl: v.optional(v.string()),
+  staffId: v.id("staff"),
+  total: v.number(),
+  organizationId: v.id("organization"),
+  organizationName: v.string(),
+  organizationSlug: v.string(),
+  organizationLogo: v.optional(v.string()),
+  customerNotes: v.optional(v.string()),
+  cancelledAt: v.optional(v.number()),
+  rescheduleCount: v.optional(v.number()),
+  services: v.array(
+    v.object({
+      serviceId: v.id("services"),
+      serviceName: v.string(),
+      duration: v.number(),
+      price: v.number(),
+    }),
+  ),
+});
+
+/** Customer profile for dashboard (cross-org) */
+export const customerProfileValidator = v.object({
+  _id: v.id("customers"),
+  name: v.string(),
+  phone: v.string(),
+  email: v.optional(v.string()),
+  organizationId: v.id("organization"),
+  organizationName: v.string(),
+  organizationSlug: v.string(),
+  totalVisits: v.number(),
+  totalSpent: v.number(),
+  createdAt: v.number(),
+});
+
 /** Customer analytics report */
 export const customerReportValidator = v.object({
   totalActive: v.number(),

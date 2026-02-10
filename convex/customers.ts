@@ -3,6 +3,7 @@ import type { Doc } from "./_generated/dataModel";
 import {
   adminMutation,
   authedMutation,
+  authedQuery,
   ErrorCode,
   orgMutation,
   orgQuery,
@@ -13,6 +14,7 @@ import {
   customerAccountStatusValidator,
   customerDocValidator,
   customerListItemValidator,
+  customerProfileValidator,
   customerSearchResultValidator,
   customerSourceValidator,
   customerWithStaffValidator,
@@ -564,6 +566,121 @@ export const merge = adminMutation({
 // =============================================================================
 // Customer–User Linking
 // =============================================================================
+
+// =============================================================================
+// Authenticated Customer (Dashboard)
+// =============================================================================
+
+/**
+ * Get all customer profiles linked to the current user (across orgs).
+ * Used by the dashboard to show profile info.
+ */
+export const getMyProfiles = authedQuery({
+  args: {},
+  returns: v.array(customerProfileValidator),
+  handler: async (ctx) => {
+    const customers = await ctx.db
+      .query("customers")
+      .withIndex("by_user", (q) => q.eq("userId", ctx.user._id))
+      .collect();
+
+    const enriched = await Promise.all(
+      customers.map(async (c) => {
+        const org = await ctx.db.get(c.organizationId);
+        return {
+          _id: c._id,
+          name: c.name,
+          phone: c.phone,
+          email: c.email,
+          organizationId: c.organizationId,
+          organizationName: org?.name ?? "Unknown",
+          organizationSlug: org?.slug ?? "",
+          totalVisits: c.totalVisits ?? 0,
+          totalSpent: c.totalSpent ?? 0,
+          createdAt: c.createdAt,
+        };
+      }),
+    );
+
+    return enriched;
+  },
+});
+
+/**
+ * Update a customer profile from the dashboard.
+ * Verifies ownership via customer.userId.
+ */
+export const updateMyProfile = authedMutation({
+  args: {
+    customerId: v.id("customers"),
+    name: v.optional(v.string()),
+    phone: v.optional(v.string()),
+    email: v.optional(v.string()),
+  },
+  returns: v.object({ success: v.boolean() }),
+  handler: async (ctx, args) => {
+    const customer = await ctx.db.get(args.customerId);
+    if (!customer || customer.userId !== ctx.user._id) {
+      throw new ConvexError({
+        code: ErrorCode.FORBIDDEN,
+        message: "You do not have permission to update this profile",
+      });
+    }
+
+    // Phone validation + uniqueness if changed
+    if (args.phone !== undefined && args.phone !== customer.phone) {
+      if (!isValidTurkishPhone(args.phone)) {
+        throw new ConvexError({
+          code: ErrorCode.VALIDATION_ERROR,
+          message:
+            "Invalid phone format. Use Turkish mobile format: +90 5XX XXX XX XX",
+        });
+      }
+      const existingByPhone = await ctx.db
+        .query("customers")
+        .withIndex("by_org_phone", (q) =>
+          q
+            .eq("organizationId", customer.organizationId)
+            .eq("phone", args.phone as string),
+        )
+        .first();
+      if (existingByPhone && existingByPhone._id !== args.customerId) {
+        throw new ConvexError({
+          code: ErrorCode.ALREADY_EXISTS,
+          message: "A customer with this phone number already exists",
+        });
+      }
+    }
+
+    // Email uniqueness if changed
+    if (args.email !== undefined && args.email !== customer.email) {
+      if (args.email) {
+        const existingByEmail = await ctx.db
+          .query("customers")
+          .withIndex("by_org_email", (q) =>
+            q
+              .eq("organizationId", customer.organizationId)
+              .eq("email", args.email as string),
+          )
+          .first();
+        if (existingByEmail && existingByEmail._id !== args.customerId) {
+          throw new ConvexError({
+            code: ErrorCode.ALREADY_EXISTS,
+            message: "A customer with this email already exists",
+          });
+        }
+      }
+    }
+
+    const { customerId, ...updates } = args;
+    await ctx.db.patch(customerId, {
+      ...updates,
+      updatedAt: Date.now(),
+    });
+
+    return { success: true };
+  },
+});
 
 /**
  * Link a customer record to the current authenticated user.

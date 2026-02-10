@@ -41,10 +41,6 @@ export function sanitizeCsvValue(value: string): string {
   return value;
 }
 
-export function reportFilename(
-  type: string,
-  from: string,
-  to: string,
-): string {
+export function reportFilename(type: string, from: string, to: string): string {
   return `${type}_${from}_to_${to}.csv`;
 }
