@@ -309,6 +309,7 @@ export const serviceCategoryWithCountValidator = v.object({
   description: v.optional(v.string()),
   sortOrder: v.number(),
   createdAt: v.number(),
+  updatedAt: v.optional(v.number()),
   serviceCount: v.number(),
 });
 

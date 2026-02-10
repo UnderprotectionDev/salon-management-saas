@@ -1,10 +1,9 @@
 # Milestone 9: Customer Portal
 
-**Status:** Pending | **User Stories:** 6
+**Status:** Pending | **User Stories:** 5
 
 ## Goals
 
-- Magic link authentication for customers
 - Appointment history (active + past)
 - Self-service rescheduling with slot selection
 - Self-service cancellation (2-hour policy)
@@ -12,15 +11,6 @@
 - Customer profile settings
 
 ## User Stories
-
-### US-026: Magic Link Authentication
-- Customer enters email/phone → magic link email
-- Token: UUID, 15-min TTL, single-use
-- Session: 30-day cookie (HttpOnly, Secure)
-- Separate from staff auth (Better Auth customer component)
-- URL: `/{slug}/portal/auth?token={token}`
-- Rate limit: 5/hour per email
-- Files: `convex/customerAuth.ts`, `src/app/[slug]/portal/login/page.tsx`, `src/emails/MagicLink.tsx`
 
 ### US-027: Appointment History
 - Active tab: upcoming + pending appointments
@@ -59,8 +49,6 @@
 ## URL Structure
 
 ```
-/{slug}/portal/login           # Magic link entry
-/{slug}/portal/auth?token=...  # Token validation
 /{slug}/portal/appointments    # History
 /{slug}/portal/reschedule/[id] # Reschedule flow
 /{slug}/portal/profile         # Profile settings
@@ -68,4 +56,4 @@
 
 ## Non-Goals
 
-- Reviews/ratings, loyalty program, payment storage, social login, 2FA, family accounts
+- Reviews/ratings, loyalty program, payment storage, 2FA, family accounts
