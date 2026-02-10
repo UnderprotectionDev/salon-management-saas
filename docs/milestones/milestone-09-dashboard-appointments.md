@@ -16,13 +16,13 @@ Customer self-service features (cancel, reschedule, book again, profile editing)
 
 ### Backend Functions
 
-| Function | Type | Description |
-|----------|------|-------------|
-| `appointments.getForUser` | authedQuery | Get appointment detail with IDs for actions |
-| `appointments.cancelByUser` | authedMutation | Cancel with 2-hour policy |
-| `appointments.rescheduleByUser` | authedMutation | Reschedule with slot lock validation |
-| `customers.getMyProfiles` | authedQuery | Cross-org customer profiles |
-| `customers.updateMyProfile` | authedMutation | Edit name/phone/email |
+| Function                        | Type           | Description                                 |
+| ------------------------------- | -------------- | ------------------------------------------- |
+| `appointments.getForUser`       | authedQuery    | Get appointment detail with IDs for actions |
+| `appointments.cancelByUser`     | authedMutation | Cancel with 2-hour policy                   |
+| `appointments.rescheduleByUser` | authedMutation | Reschedule with slot lock validation        |
+| `customers.getMyProfiles`       | authedQuery    | Cross-org customer profiles                 |
+| `customers.updateMyProfile`     | authedMutation | Edit name/phone/email                       |
 
 ### Dashboard Components (all inline in `src/app/dashboard/page.tsx`)
 
@@ -38,7 +38,7 @@ Customer self-service features (cancel, reschedule, book again, profile editing)
 - 2-hour cancellation/reschedule policy enforced client-side (`canModifyAppointment`) and server-side
 - `getForUser` only fetched when appointment is actionable (active or completed)
 - Book Again uses `/{slug}/book?services=...&staff=...` URL params
-- Profile identity via `customer.userId` — no phone verification needed
+- Profile identity via `customer.userId` — no phone verification needed.
 
 ## Non-Goals
 
