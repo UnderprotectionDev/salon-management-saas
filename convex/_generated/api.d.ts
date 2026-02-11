@@ -8,6 +8,7 @@
  * @module
  */
 
+import type * as admin from "../admin.js";
 import type * as analytics from "../analytics.js";
 import type * as appointmentServices from "../appointmentServices.js";
 import type * as appointments from "../appointments.js";
@@ -20,6 +21,7 @@ import type * as files from "../files.js";
 import type * as http from "../http.js";
 import type * as init from "../init.js";
 import type * as invitations from "../invitations.js";
+import type * as lib_actionRetrier from "../lib/actionRetrier.js";
 import type * as lib_confirmation from "../lib/confirmation.js";
 import type * as lib_dateTime from "../lib/dateTime.js";
 import type * as lib_functions from "../lib/functions.js";
@@ -28,8 +30,10 @@ import type * as lib_rateLimits from "../lib/rateLimits.js";
 import type * as lib_relationships from "../lib/relationships.js";
 import type * as lib_rls from "../lib/rls.js";
 import type * as lib_scheduleResolver from "../lib/scheduleResolver.js";
+import type * as lib_triggers from "../lib/triggers.js";
 import type * as lib_validators from "../lib/validators.js";
 import type * as members from "../members.js";
+import type * as migrations_roleCleanup from "../migrations/roleCleanup.js";
 import type * as notifications from "../notifications.js";
 import type * as organizations from "../organizations.js";
 import type * as polar from "../polar.js";
@@ -55,6 +59,7 @@ import type {
 } from "convex/server";
 
 declare const fullApi: ApiFromModules<{
+  admin: typeof admin;
   analytics: typeof analytics;
   appointmentServices: typeof appointmentServices;
   appointments: typeof appointments;
@@ -67,6 +72,7 @@ declare const fullApi: ApiFromModules<{
   http: typeof http;
   init: typeof init;
   invitations: typeof invitations;
+  "lib/actionRetrier": typeof lib_actionRetrier;
   "lib/confirmation": typeof lib_confirmation;
   "lib/dateTime": typeof lib_dateTime;
   "lib/functions": typeof lib_functions;
@@ -75,8 +81,10 @@ declare const fullApi: ApiFromModules<{
   "lib/relationships": typeof lib_relationships;
   "lib/rls": typeof lib_rls;
   "lib/scheduleResolver": typeof lib_scheduleResolver;
+  "lib/triggers": typeof lib_triggers;
   "lib/validators": typeof lib_validators;
   members: typeof members;
+  "migrations/roleCleanup": typeof migrations_roleCleanup;
   notifications: typeof notifications;
   organizations: typeof organizations;
   polar: typeof polar;
