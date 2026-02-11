@@ -46,7 +46,7 @@ export const listByOrg = orgQuery({
   },
   returns: v.array(timeOffRequestWithStaffValidator),
   handler: async (ctx, args) => {
-    const isAdmin = ctx.member.role === "admin" || ctx.member.role === "owner";
+    const isOwner = ctx.member.role === "owner";
 
     let requests;
 
@@ -67,7 +67,7 @@ export const listByOrg = orgQuery({
     }
 
     // Members can only see their own requests
-    if (!isAdmin) {
+    if (!isOwner) {
       requests = requests.filter(
         (r) => ctx.staff && r.staffId === ctx.staff._id,
       );

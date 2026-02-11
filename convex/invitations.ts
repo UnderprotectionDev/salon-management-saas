@@ -365,7 +365,7 @@ export const cancel = authedMutation({
       )
       .first();
 
-    if (!membership || !["owner", "admin"].includes(membership.role)) {
+    if (!membership || membership.role !== "owner") {
       throw new ConvexError({
         code: ErrorCode.FORBIDDEN,
         message: "You don't have permission to cancel invitations",
@@ -414,7 +414,7 @@ export const resend = authedMutation({
       )
       .first();
 
-    if (!membership || !["owner", "admin"].includes(membership.role)) {
+    if (!membership || membership.role !== "owner") {
       throw new ConvexError({
         code: ErrorCode.FORBIDDEN,
         message: "You don't have permission to resend invitations",

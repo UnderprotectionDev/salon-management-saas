@@ -197,10 +197,7 @@ export const createProfile = authedMutation({
         )
         .first();
 
-      if (
-        !currentMembership ||
-        !["owner", "admin"].includes(currentMembership.role)
-      ) {
+      if (!currentMembership || currentMembership.role !== "owner") {
         throw new ConvexError({
           code: ErrorCode.FORBIDDEN,
           message:
@@ -311,10 +308,7 @@ export const updateProfile = authedMutation({
     }
 
     // Authorization: only allow self-update or admin/owner
-    if (
-      staff.userId !== ctx.user._id &&
-      !["owner", "admin"].includes(member.role)
-    ) {
+    if (staff.userId !== ctx.user._id && member.role !== "owner") {
       throw new ConvexError({
         code: ErrorCode.FORBIDDEN,
         message: "You don't have permission to update this staff profile",

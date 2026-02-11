@@ -73,11 +73,11 @@ export const create = orgMutation({
   },
   returns: v.id("staffOvertime"),
   handler: async (ctx, args) => {
-    // Permission check: own staff profile or admin/owner
+    // Permission check: own staff profile or owner
     const isOwnProfile = ctx.staff?._id === args.staffId;
-    const isAdminOrOwner = ["admin", "owner"].includes(ctx.member.role);
+    const isOwner = ctx.member.role === "owner";
 
-    if (!isOwnProfile && !isAdminOrOwner) {
+    if (!isOwnProfile && !isOwner) {
       throw new ConvexError({
         code: ErrorCode.FORBIDDEN,
         message: "You can only create overtime entries for yourself",
@@ -137,11 +137,11 @@ export const remove = orgMutation({
       });
     }
 
-    // Permission check: own entry or admin/owner
+    // Permission check: own entry or owner
     const isOwnEntry = ctx.staff?._id === entry.staffId;
-    const isAdminOrOwner = ["admin", "owner"].includes(ctx.member.role);
+    const isOwner = ctx.member.role === "owner";
 
-    if (!isOwnEntry && !isAdminOrOwner) {
+    if (!isOwnEntry && !isOwner) {
       throw new ConvexError({
         code: ErrorCode.FORBIDDEN,
         message: "You can only remove your own overtime entries",

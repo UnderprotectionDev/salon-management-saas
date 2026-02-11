@@ -812,8 +812,14 @@ export default function DashboardPage() {
   const router = useRouter();
   const user = useQuery(api.users.getCurrentUser);
   const organizations = useOrganizations();
-  const myAppointments = useQuery(api.appointments.listForCurrentUser);
-  const isSuperAdmin = useQuery(api.admin.checkIsSuperAdmin);
+  const myAppointments = useQuery(
+    api.appointments.listForCurrentUser,
+    user ? {} : "skip",
+  );
+  const isSuperAdmin = useQuery(
+    api.admin.checkIsSuperAdmin,
+    user ? {} : "skip",
+  );
 
   useEffect(() => {
     if (user === null) {

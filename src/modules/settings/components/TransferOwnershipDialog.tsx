@@ -28,7 +28,7 @@ import type { Id } from "../../../../convex/_generated/dataModel";
 type Member = {
   _id: Id<"member">;
   userId: string;
-  role: "owner" | "admin" | "member";
+  role: "owner" | "staff";
   name?: string;
   email?: string;
 };

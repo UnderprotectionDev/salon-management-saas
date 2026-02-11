@@ -9,7 +9,7 @@ export interface StaffInvitationProps {
   organizationLogo?: string;
   inviteeName: string;
   inviterName: string;
-  role: "admin" | "member";
+  role: "staff";
   acceptUrl: string;
   expiresInDays: number;
 }
@@ -19,11 +19,11 @@ export default function StaffInvitation({
   organizationLogo,
   inviteeName,
   inviterName,
-  role,
+  role: _role,
   acceptUrl,
   expiresInDays,
 }: StaffInvitationProps) {
-  const roleLabel = role === "admin" ? "an admin" : "a team member";
+  const roleLabel = "a team member";
 
   return (
     <EmailLayout
@@ -66,7 +66,7 @@ StaffInvitation.PreviewProps = {
   organizationName: "Luxe Hair Studio",
   inviteeName: "Alex Smith",
   inviterName: "Sarah Johnson",
-  role: "member" as const,
+  role: "staff" as const,
   acceptUrl: "https://example.com/sign-in",
   expiresInDays: 7,
 } satisfies StaffInvitationProps;

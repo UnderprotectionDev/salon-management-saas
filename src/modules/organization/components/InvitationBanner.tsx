@@ -13,9 +13,9 @@ import type { Id } from "../../../../convex/_generated/dataModel";
 
 function getRoleLabel(role: string): string {
   switch (role) {
-    case "admin":
-      return "Admin";
-    case "member":
+    case "owner":
+      return "Owner";
+    case "staff":
       return "Staff";
     default:
       return role;

@@ -53,14 +53,9 @@ function getStatusBadgeVariant(
 }
 
 function getRoleBadgeVariant(
-  role: string,
+  _role: string,
 ): "default" | "secondary" | "outline" {
-  switch (role) {
-    case "admin":
-      return "secondary";
-    default:
-      return "outline";
-  }
+  return "outline";
 }
 
 export function InvitationsList({ organizationId }: InvitationsListProps) {
@@ -83,7 +78,7 @@ export function InvitationsList({ organizationId }: InvitationsListProps) {
     );
   }
 
-  const isAdminOrOwner = currentRole === "owner" || currentRole === "admin";
+  const isAdminOrOwner = currentRole === "owner";
 
   const handleResend = async (invitationId: Id<"invitation">) => {
     try {

@@ -18,6 +18,7 @@ export const ErrorCode = {
   UNAUTHENTICATED: "UNAUTHENTICATED",
   // Authorization errors
   FORBIDDEN: "FORBIDDEN",
+  ADMIN_REQUIRED: "ADMIN_REQUIRED",
   OWNER_REQUIRED: "OWNER_REQUIRED",
   SUPER_ADMIN_REQUIRED: "SUPER_ADMIN_REQUIRED",
   // Resource errors
@@ -43,7 +44,6 @@ type AuthUser = NonNullable<
 type MemberDoc = Doc<"member">;
 type StaffDoc = Doc<"staff">;
 
-// Extended context types
 export type AuthedCtx = {
   user: AuthUser;
 };
@@ -62,9 +62,6 @@ export type SuperAdminCtx = AuthedCtx & {
   isSuperAdmin: true;
 };
 
-/**
- * Check if an email is in the SUPER_ADMIN_EMAILS env var list.
- */
 function isSuperAdminEmail(email: string): boolean {
   const emails = (process.env.SUPER_ADMIN_EMAILS || "")
     .split(",")
@@ -283,6 +280,81 @@ export const orgMutation = customMutation(triggerMutation, {
       throw new ConvexError({
         code: ErrorCode.FORBIDDEN,
         message: "You don't have access to this organization",
+      });
+    }
+
+    return {
+      ctx: { user, organizationId: args.organizationId, member, staff },
+      args: {},
+    };
+  },
+});
+
+// =============================================================================
+// Admin Query/Mutation
+// Requires login + organization membership + owner role
+// =============================================================================
+
+/**
+ * Query that requires owner role.
+ * SuperAdmins bypass the role check.
+ */
+export const adminQuery = customQuery(baseQuery, {
+  args: { organizationId: v.id("organization") },
+  input: async (ctx, args) => {
+    const user = await getAuthUser(ctx);
+    const { member, staff } = await resolveOrgContext(
+      ctx,
+      user,
+      args.organizationId,
+    );
+
+    if (!member) {
+      throw new ConvexError({
+        code: ErrorCode.FORBIDDEN,
+        message: "You don't have access to this organization",
+      });
+    }
+
+    if (member.role !== "owner" && !isSuperAdminEmail(user.email)) {
+      throw new ConvexError({
+        code: ErrorCode.ADMIN_REQUIRED,
+        message: "Admin access required",
+      });
+    }
+
+    return {
+      ctx: { user, organizationId: args.organizationId, member, staff },
+      args: {},
+    };
+  },
+});
+
+/**
+ * Mutation that requires owner role.
+ * SuperAdmins bypass the role check.
+ */
+export const adminMutation = customMutation(triggerMutation, {
+  args: { organizationId: v.id("organization") },
+  input: async (ctx, args) => {
+    const user = await getAuthUser(ctx);
+    const { member, staff } = await resolveOrgContext(
+      ctx,
+      user,
+      args.organizationId,
+    );
+
+    if (!member) {
+      throw new ConvexError({
+        code: ErrorCode.FORBIDDEN,
+        message: "You don't have access to this organization",
+      });
+    }
+
+    if (member.role !== "owner" && !isSuperAdminEmail(user.email)) {
+      throw new ConvexError({
+        code: ErrorCode.ADMIN_REQUIRED,
+        message: "Admin access required",
       });
     }
 

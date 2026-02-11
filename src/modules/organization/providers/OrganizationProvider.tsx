@@ -16,7 +16,7 @@ type Organization = {
   name: string;
   slug: string;
   logo?: string | null;
-  role: "owner" | "admin" | "member";
+  role: "owner" | "staff";
   memberId: Id<"member">;
 };
 
@@ -35,7 +35,7 @@ type OrganizationContextType = {
   // Current user's staff profile in active org
   currentStaff: Staff | null;
   // Current user's role in active org
-  currentRole: "owner" | "admin" | "member" | null;
+  currentRole: "owner" | "staff" | null;
   // Loading state
   isLoading: boolean;
   // Set the active organization

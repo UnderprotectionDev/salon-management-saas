@@ -181,10 +181,7 @@ export const saveStaffImage = authedMutation({
       });
     }
 
-    if (
-      staff.userId !== ctx.user._id &&
-      !["owner", "admin"].includes(member.role)
-    ) {
+    if (staff.userId !== ctx.user._id && member.role !== "owner") {
       throw new ConvexError({
         code: ErrorCode.FORBIDDEN,
         message: "You don't have permission to update this profile",

@@ -4,9 +4,7 @@ import { useMutation, useQuery } from "convex/react";
 import {
   LogOut,
   MoreHorizontal,
-  Shield,
   ShieldAlert,
-  User,
 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
@@ -64,8 +62,6 @@ function getRoleBadgeVariant(
   switch (role) {
     case "owner":
       return "default";
-    case "admin":
-      return "secondary";
     default:
       return "outline";
   }
@@ -78,7 +74,6 @@ export function MembersList({ organizationId }: MembersListProps) {
   const members = useQuery(api.members.list, { organizationId });
   const staffList = useQuery(api.staff.list, { organizationId });
 
-  const updateRole = useMutation(api.members.updateRole);
   const removeMember = useMutation(api.members.remove);
   const leaveOrg = useMutation(api.members.leave);
 
@@ -97,20 +92,6 @@ export function MembersList({ organizationId }: MembersListProps) {
 
   // Build a lookup from memberId to staff info
   const staffByMemberId = new Map(staffList.map((s) => [s.memberId, s]));
-
-  const handleRoleChange = async (
-    memberId: Id<"member">,
-    role: "admin" | "member",
-  ) => {
-    try {
-      await updateRole({ memberId, role });
-      toast.success(`Role updated to ${role}`);
-    } catch (error) {
-      const message =
-        error instanceof Error ? error.message : "Failed to update role";
-      toast.error(message);
-    }
-  };
 
   const handleRemove = async () => {
     if (!removeTarget) return;
@@ -138,7 +119,7 @@ export function MembersList({ organizationId }: MembersListProps) {
   };
 
   const isOwner = currentRole === "owner";
-  const isAdminOrOwner = currentRole === "owner" || currentRole === "admin";
+  const isAdminOrOwner = currentRole === "owner";
 
   // Build member list with staff info for TransferOwnershipDialog
   const membersWithNames = members.map((m) => {
@@ -210,30 +191,6 @@ export function MembersList({ organizationId }: MembersListProps) {
                           </Button>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end">
-                          {isOwner && (
-                            <>
-                              {member.role === "member" ? (
-                                <DropdownMenuItem
-                                  onClick={() =>
-                                    handleRoleChange(member._id, "admin")
-                                  }
-                                >
-                                  <Shield className="mr-2 size-4" />
-                                  Change to Admin
-                                </DropdownMenuItem>
-                              ) : (
-                                <DropdownMenuItem
-                                  onClick={() =>
-                                    handleRoleChange(member._id, "member")
-                                  }
-                                >
-                                  <User className="mr-2 size-4" />
-                                  Change to Member
-                                </DropdownMenuItem>
-                              )}
-                              <DropdownMenuSeparator />
-                            </>
-                          )}
                           {!isSelf && (
                             <DropdownMenuItem
                               className="text-destructive"

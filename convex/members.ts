@@ -186,10 +186,7 @@ export const remove = authedMutation({
       )
       .first();
 
-    if (
-      !currentMembership ||
-      !["owner", "admin"].includes(currentMembership.role)
-    ) {
+    if (!currentMembership || currentMembership.role !== "owner") {
       throw new ConvexError({
         code: ErrorCode.FORBIDDEN,
         message: "You don't have permission to remove members",
@@ -272,9 +269,9 @@ export const transferOwnership = ownerMutation({
 
     const now = Date.now();
 
-    // Demote current owner to admin
+    // Demote current owner to staff
     await ctx.db.patch(ctx.member._id, {
-      role: "admin",
+      role: "staff",
       updatedAt: now,
     });
 

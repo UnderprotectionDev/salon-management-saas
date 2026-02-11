@@ -77,11 +77,11 @@ export const create = orgMutation({
   },
   returns: v.id("scheduleOverrides"),
   handler: async (ctx, args) => {
-    // Permission check: own staff profile or admin/owner
+    // Permission check: own staff profile or owner
     const isOwnProfile = ctx.staff?._id === args.staffId;
-    const isAdminOrOwner = ["admin", "owner"].includes(ctx.member.role);
+    const isOwner = ctx.member.role === "owner";
 
-    if (!isOwnProfile && !isAdminOrOwner) {
+    if (!isOwnProfile && !isOwner) {
       throw new ConvexError({
         code: ErrorCode.FORBIDDEN,
         message: "You can only create schedule overrides for yourself",
@@ -160,11 +160,11 @@ export const remove = orgMutation({
       });
     }
 
-    // Permission check: own override or admin/owner
+    // Permission check: own override or owner
     const isOwnOverride = ctx.staff?._id === override.staffId;
-    const isAdminOrOwner = ["admin", "owner"].includes(ctx.member.role);
+    const isOwner = ctx.member.role === "owner";
 
-    if (!isOwnOverride && !isAdminOrOwner) {
+    if (!isOwnOverride && !isOwner) {
       throw new ConvexError({
         code: ErrorCode.FORBIDDEN,
         message: "You can only remove your own schedule overrides",

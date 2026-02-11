@@ -2,7 +2,7 @@ import type { Id } from "../_generated/dataModel";
 import type { MutationCtx, QueryCtx } from "../_generated/server";
 import { authComponent } from "../auth";
 
-export type Role = "owner" | "admin" | "member";
+export type Role = "owner" | "staff";
 
 /**
  * Get the currently authenticated user

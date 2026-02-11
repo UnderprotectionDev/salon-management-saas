@@ -23,13 +23,6 @@ import {
   FieldLabel,
 } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { api } from "../../../../convex/_generated/api";
 import type { Id } from "../../../../convex/_generated/dataModel";
 
@@ -57,7 +50,6 @@ export function AddStaffDialog({
       name: "",
       email: "",
       phone: "",
-      role: "member" as "admin" | "member",
     },
     onSubmit: async ({ value }) => {
       try {
@@ -65,7 +57,7 @@ export function AddStaffDialog({
           organizationId,
           email: value.email,
           name: value.name,
-          role: value.role,
+          role: "staff",
           phone: value.phone || undefined,
         });
         setOpen(false);
@@ -196,32 +188,6 @@ export function AddStaffDialog({
                     onChange={(e) => field.handleChange(e.target.value)}
                     disabled={form.state.isSubmitting}
                   />
-                </Field>
-              )}
-            </form.Field>
-
-            <form.Field name="role">
-              {(field) => (
-                <Field>
-                  <FieldLabel htmlFor={field.name}>Role</FieldLabel>
-                  <Select
-                    value={field.state.value}
-                    onValueChange={(value: "admin" | "member") =>
-                      field.handleChange(value)
-                    }
-                    disabled={form.state.isSubmitting}
-                  >
-                    <SelectTrigger id={field.name}>
-                      <SelectValue placeholder="Select role" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="member">Staff</SelectItem>
-                      <SelectItem value="admin">Admin</SelectItem>
-                    </SelectContent>
-                  </Select>
-                  <FieldDescription>
-                    Admins can manage staff and settings
-                  </FieldDescription>
                 </Field>
               )}
             </form.Field>

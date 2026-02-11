@@ -139,12 +139,9 @@ export default function StaffDetailPage() {
     );
   }
 
-  const canEdit =
-    currentStaff?._id === staffId ||
-    currentRole === "owner" ||
-    currentRole === "admin";
+  const canEdit = currentStaff?._id === staffId || currentRole === "owner";
 
-  const isAdmin = currentRole === "owner" || currentRole === "admin";
+  const isAdmin = currentRole === "owner";
   const isSelf = currentStaff?._id === staffId;
 
   const schedule = (editSchedule ??

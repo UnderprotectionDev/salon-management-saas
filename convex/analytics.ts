@@ -13,11 +13,11 @@ export const getDashboardStats = orgQuery({
   args: { date: v.string() },
   returns: dashboardStatsValidator,
   handler: async (ctx, args) => {
-    const isMemberOnly = ctx.member.role === "member";
-    const staffFilter = isMemberOnly ? ctx.staff?._id : undefined;
+    const isStaffOnly = ctx.member.role === "staff";
+    const staffFilter = isStaffOnly ? ctx.staff?._id : undefined;
 
-    // If member has no associated staff, return empty stats
-    if (isMemberOnly && !staffFilter) {
+    // If staff member has no associated staff profile, return empty stats
+    if (isStaffOnly && !staffFilter) {
       return {
         todayTotal: 0,
         todayCompleted: 0,
