@@ -527,14 +527,32 @@ export const list = orgQuery({
   },
   returns: v.array(appointmentWithDetailsValidator),
   handler: async (ctx, args) => {
+    const isStaffOnly = ctx.member.role === "staff";
+    const staffFilter = isStaffOnly ? ctx.staff?._id : undefined;
+
     let appointments: Doc<"appointments">[];
 
-    const { statusFilter } = args;
-    if (statusFilter) {
+    if (isStaffOnly && staffFilter) {
+      // Staff: only their own appointments
+      appointments = await ctx.db
+        .query("appointments")
+        .withIndex("by_staff_date", (q) => q.eq("staffId", staffFilter))
+        .collect();
+      appointments = appointments.filter(
+        (a) => a.organizationId === ctx.organizationId,
+      );
+      if (args.statusFilter) {
+        appointments = appointments.filter(
+          (a) => a.status === args.statusFilter,
+        );
+      }
+    } else if (args.statusFilter) {
       appointments = await ctx.db
         .query("appointments")
         .withIndex("by_org_status", (q) =>
-          q.eq("organizationId", ctx.organizationId).eq("status", statusFilter),
+          q
+            .eq("organizationId", ctx.organizationId)
+            .eq("status", args.statusFilter!),
         )
         .collect();
     } else {
@@ -582,6 +600,15 @@ export const createByStaff = orgMutation({
     confirmationCode: v.string(),
   }),
   handler: async (ctx, args) => {
+    // Staff can only create appointments for themselves
+    const isStaffOnly = ctx.member.role === "staff";
+    if (isStaffOnly && ctx.staff?._id !== args.staffId) {
+      throw new ConvexError({
+        code: ErrorCode.FORBIDDEN,
+        message: "You can only create appointments for yourself",
+      });
+    }
+
     // Check subscription status — block if suspended or canceled
     const orgSettings = await ctx.db
       .query("organizationSettings")
@@ -747,12 +774,17 @@ export const getByDate = orgQuery({
   },
   returns: v.array(appointmentWithDetailsValidator),
   handler: async (ctx, args) => {
+    // Staff can only see their own appointments
+    const isStaffOnly = ctx.member.role === "staff";
+    const effectiveStaffId =
+      isStaffOnly && ctx.staff?._id ? ctx.staff._id : args.staffId;
+
     let appointments: Doc<"appointments">[];
-    if (args.staffId) {
+    if (effectiveStaffId) {
       const staffAppts = await ctx.db
         .query("appointments")
         .withIndex("by_staff_date", (q) =>
-          q.eq("staffId", args.staffId!).eq("date", args.date),
+          q.eq("staffId", effectiveStaffId).eq("date", args.date),
         )
         .collect();
       // Filter by org
@@ -791,16 +823,21 @@ export const getByDateRange = orgQuery({
   },
   returns: v.array(appointmentWithDetailsValidator),
   handler: async (ctx, args) => {
+    // Staff can only see their own appointments
+    const isStaffOnly = ctx.member.role === "staff";
+    const effectiveStaffId =
+      isStaffOnly && ctx.staff?._id ? ctx.staff._id : args.staffId;
+
     const dates = getDatesBetween(args.startDate, args.endDate);
     const allAppts: Doc<"appointments">[] = [];
 
     for (const date of dates) {
       let dayAppts: Doc<"appointments">[];
-      if (args.staffId) {
+      if (effectiveStaffId) {
         const staffAppts = await ctx.db
           .query("appointments")
           .withIndex("by_staff_date", (q) =>
-            q.eq("staffId", args.staffId!).eq("date", date),
+            q.eq("staffId", effectiveStaffId).eq("date", date),
           )
           .collect();
         dayAppts = staffAppts.filter(
@@ -837,6 +874,11 @@ export const get = orgQuery({
     if (!appointment || appointment.organizationId !== ctx.organizationId) {
       return null;
     }
+    // Staff can only see their own appointments
+    const isStaffOnly = ctx.member.role === "staff";
+    if (isStaffOnly && ctx.staff?._id !== appointment.staffId) {
+      return null;
+    }
     return enrichAppointment(ctx, appointment);
   },
 });
@@ -864,6 +906,15 @@ export const updateStatus = orgMutation({
       throw new ConvexError({
         code: ErrorCode.NOT_FOUND,
         message: "Appointment not found",
+      });
+    }
+
+    // Staff can only update their own appointments
+    const isStaffOnly = ctx.member.role === "staff";
+    if (isStaffOnly && ctx.staff?._id !== appointment.staffId) {
+      throw new ConvexError({
+        code: ErrorCode.FORBIDDEN,
+        message: "You can only update your own appointments",
       });
     }
 
@@ -989,6 +1040,15 @@ export const cancel = orgMutation({
       throw new ConvexError({
         code: ErrorCode.NOT_FOUND,
         message: "Appointment not found",
+      });
+    }
+
+    // Staff can only cancel their own appointments
+    const isStaffOnly = ctx.member.role === "staff";
+    if (isStaffOnly && ctx.staff?._id !== appointment.staffId) {
+      throw new ConvexError({
+        code: ErrorCode.FORBIDDEN,
+        message: "You can only cancel your own appointments",
       });
     }
 
@@ -1171,6 +1231,15 @@ export const reschedule = orgMutation({
       throw new ConvexError({
         code: ErrorCode.NOT_FOUND,
         message: "Appointment not found",
+      });
+    }
+
+    // Staff can only reschedule their own appointments
+    const isStaffOnly = ctx.member.role === "staff";
+    if (isStaffOnly && ctx.staff?._id !== appointment.staffId) {
+      throw new ConvexError({
+        code: ErrorCode.FORBIDDEN,
+        message: "You can only reschedule your own appointments",
       });
     }
 

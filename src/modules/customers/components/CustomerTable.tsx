@@ -45,7 +45,7 @@ type CustomerItem = {
 type CustomerTableProps = {
   customers: CustomerItem[];
   organizationId: Id<"organization">;
-  isAdminOrOwner: boolean;
+  isOwner: boolean;
 };
 
 function getStatusBadgeVariant(
@@ -65,7 +65,7 @@ function getStatusBadgeVariant(
 export function CustomerTable({
   customers,
   organizationId,
-  isAdminOrOwner,
+  isOwner,
 }: CustomerTableProps) {
   const { slug } = useParams();
 
@@ -89,7 +89,7 @@ export function CustomerTable({
             <TableHead className="hidden sm:table-cell">Spent</TableHead>
             <TableHead className="hidden lg:table-cell">Last Visit</TableHead>
             <TableHead className="hidden lg:table-cell">Status</TableHead>
-            {isAdminOrOwner && <TableHead className="w-12" />}
+            {isOwner && <TableHead className="w-12" />}
           </TableRow>
         </TableHeader>
         <TableBody>
@@ -146,7 +146,7 @@ export function CustomerTable({
                   </Badge>
                 )}
               </TableCell>
-              {isAdminOrOwner && (
+              {isOwner && (
                 <TableCell>
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild>

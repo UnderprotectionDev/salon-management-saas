@@ -1,5 +1,6 @@
 import { ConvexError, v } from "convex/values";
-import type { Doc } from "./_generated/dataModel";
+import type { Doc, Id } from "./_generated/dataModel";
+import type { DatabaseReader } from "./_generated/server";
 import {
   adminMutation,
   authedMutation,
@@ -21,6 +22,21 @@ import {
 } from "./lib/validators";
 
 // =============================================================================
+// Helper: Get customer IDs for a staff member (customers they've served)
+// =============================================================================
+
+async function getStaffCustomerIds(
+  db: DatabaseReader,
+  staffId: Id<"staff">,
+): Promise<Set<string>> {
+  const appointments = await db
+    .query("appointments")
+    .withIndex("by_staff_date", (q) => q.eq("staffId", staffId))
+    .collect();
+  return new Set(appointments.map((a) => a.customerId as string));
+}
+
+// =============================================================================
 // Queries
 // =============================================================================
 
@@ -35,6 +51,12 @@ export const list = orgQuery({
   },
   returns: v.array(customerListItemValidator),
   handler: async (ctx, args) => {
+    const isStaffOnly = ctx.member.role === "staff";
+    const staffCustomerIds =
+      isStaffOnly && ctx.staff?._id
+        ? await getStaffCustomerIds(ctx.db, ctx.staff._id)
+        : null;
+
     let customers: Doc<"customers">[];
 
     if (args.search && args.search.trim().length > 0) {
@@ -53,6 +75,13 @@ export const list = orgQuery({
           q.eq("organizationId", ctx.organizationId),
         )
         .collect();
+    }
+
+    // Staff: only their customers
+    if (staffCustomerIds) {
+      customers = customers.filter((c) =>
+        staffCustomerIds.has(c._id as string),
+      );
     }
 
     // Filter by accountStatus if provided
@@ -97,6 +126,18 @@ export const get = orgQuery({
       return null;
     }
 
+    // Staff can only see their own customers
+    const isStaffOnly = ctx.member.role === "staff";
+    if (isStaffOnly && ctx.staff?._id) {
+      const staffCustomerIds = await getStaffCustomerIds(
+        ctx.db,
+        ctx.staff._id,
+      );
+      if (!staffCustomerIds.has(customer._id as string)) {
+        return null;
+      }
+    }
+
     let preferredStaffName: string | undefined;
     if (customer.preferredStaffId) {
       const staff = await ctx.db.get(customer.preferredStaffId);
@@ -129,6 +170,12 @@ export const advancedSearch = orgQuery({
     totalCount: v.number(),
   }),
   handler: async (ctx, args) => {
+    const isStaffOnly = ctx.member.role === "staff";
+    const staffCustomerIds =
+      isStaffOnly && ctx.staff?._id
+        ? await getStaffCustomerIds(ctx.db, ctx.staff._id)
+        : null;
+
     let customers: Doc<"customers">[];
 
     if (args.query && args.query.trim().length > 0) {
@@ -147,6 +194,13 @@ export const advancedSearch = orgQuery({
           q.eq("organizationId", ctx.organizationId),
         )
         .collect();
+    }
+
+    // Staff: only their customers
+    if (staffCustomerIds) {
+      customers = customers.filter((c) =>
+        staffCustomerIds.has(c._id as string),
+      );
     }
 
     // Apply filters
@@ -240,6 +294,12 @@ export const searchByPhone = orgQuery({
       return [];
     }
 
+    const isStaffOnly = ctx.member.role === "staff";
+    const staffCustomerIds =
+      isStaffOnly && ctx.staff?._id
+        ? await getStaffCustomerIds(ctx.db, ctx.staff._id)
+        : null;
+
     const customers = await ctx.db
       .query("customers")
       .withIndex("by_organization", (q) =>
@@ -247,11 +307,16 @@ export const searchByPhone = orgQuery({
       )
       .collect();
 
-    const filtered = customers
-      .filter((c) => c.phone.includes(args.phonePrefix))
-      .slice(0, 10);
+    let filtered = customers.filter((c) => c.phone.includes(args.phonePrefix));
 
-    return filtered.map((c) => ({
+    // Staff: only their customers
+    if (staffCustomerIds) {
+      filtered = filtered.filter((c) =>
+        staffCustomerIds.has(c._id as string),
+      );
+    }
+
+    return filtered.slice(0, 10).map((c) => ({
       _id: c._id,
       name: c.name,
       phone: c.phone,
@@ -387,6 +452,21 @@ export const update = orgMutation({
         code: ErrorCode.NOT_FOUND,
         message: "Customer not found",
       });
+    }
+
+    // Staff can only update their own customers
+    const isStaffOnly = ctx.member.role === "staff";
+    if (isStaffOnly && ctx.staff?._id) {
+      const staffCustomerIds = await getStaffCustomerIds(
+        ctx.db,
+        ctx.staff._id,
+      );
+      if (!staffCustomerIds.has(customer._id as string)) {
+        throw new ConvexError({
+          code: ErrorCode.FORBIDDEN,
+          message: "You can only update your own customers",
+        });
+      }
     }
 
     // Phone validation + uniqueness if changed
