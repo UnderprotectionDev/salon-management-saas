@@ -21,7 +21,7 @@ export default defineSchema({
   member: defineTable({
     organizationId: v.id("organization"),
     userId: v.string(), // Better Auth user ID (from component)
-    role: v.union(v.literal("owner"), v.literal("admin"), v.literal("member")),
+    role: v.union(v.literal("owner"), v.literal("staff")),
     createdAt: v.number(),
     updatedAt: v.number(),
   })
@@ -34,7 +34,7 @@ export default defineSchema({
     organizationId: v.id("organization"),
     email: v.string(),
     name: v.string(),
-    role: v.union(v.literal("admin"), v.literal("member")),
+    role: v.literal("staff"),
     phone: v.optional(v.string()),
     status: v.union(
       v.literal("pending"),
@@ -507,6 +507,28 @@ export default defineSchema({
     polarProductId: v.string(),
     benefits: v.array(v.string()),
   }).index("polarProductId", ["polarProductId"]),
+
+  // SuperAdmin action log
+  adminActions: defineTable({
+    adminUserId: v.string(),
+    adminEmail: v.string(),
+    action: v.string(),
+    targetType: v.union(v.literal("organization"), v.literal("user")),
+    targetId: v.string(),
+    reason: v.optional(v.string()),
+    metadata: v.optional(v.record(v.string(), v.string())),
+    createdAt: v.number(),
+  })
+    .index("by_created", ["createdAt"])
+    .index("by_target", ["targetType", "targetId"]),
+
+  // Banned users
+  bannedUsers: defineTable({
+    userId: v.string(),
+    bannedBy: v.string(),
+    reason: v.optional(v.string()),
+    bannedAt: v.number(),
+  }).index("by_user", ["userId"]),
 
   // Notifications — staff notifications for booking events
   notifications: defineTable({

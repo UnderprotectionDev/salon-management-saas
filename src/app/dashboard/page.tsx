@@ -13,6 +13,7 @@ import {
   Plus,
   RotateCcw,
   Settings,
+  Shield,
   Store,
   User,
 } from "lucide-react";
@@ -75,9 +76,7 @@ function getRoleLabel(role: string): string {
   switch (role) {
     case "owner":
       return "Owner";
-    case "admin":
-      return "Admin";
-    case "member":
+    case "staff":
       return "Staff";
     default:
       return role;
@@ -814,6 +813,7 @@ export default function DashboardPage() {
   const user = useQuery(api.users.getCurrentUser);
   const organizations = useOrganizations();
   const myAppointments = useQuery(api.appointments.listForCurrentUser);
+  const isSuperAdmin = useQuery(api.admin.checkIsSuperAdmin);
 
   useEffect(() => {
     if (user === null) {
@@ -859,12 +859,22 @@ export default function DashboardPage() {
                 )}
               </CardDescription>
             </div>
-            <Button variant="outline" size="sm" asChild>
-              <Link href="/settings">
-                <Settings className="mr-2 size-4" />
-                Edit Profile
-              </Link>
-            </Button>
+            <div className="flex items-center gap-2">
+              {isSuperAdmin && (
+                <Button variant="destructive" size="sm" asChild>
+                  <Link href="/admin">
+                    <Shield className="mr-2 size-4" />
+                    Admin Panel
+                  </Link>
+                </Button>
+              )}
+              <Button variant="outline" size="sm" asChild>
+                <Link href="/settings">
+                  <Settings className="mr-2 size-4" />
+                  Edit Profile
+                </Link>
+              </Button>
+            </div>
           </CardHeader>
         </Card>
 

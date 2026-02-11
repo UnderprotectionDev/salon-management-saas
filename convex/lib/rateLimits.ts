@@ -187,6 +187,28 @@ export const rateLimiter = new RateLimiter(components.rateLimiter, {
     rate: 3,
     period: HOUR,
   },
+
+  // ==========================================================================
+  // SuperAdmin Limits
+  // ==========================================================================
+
+  suspendOrganization: {
+    kind: "token bucket",
+    rate: 10,
+    period: HOUR,
+  },
+
+  deleteOrganization: {
+    kind: "fixed window",
+    rate: 5,
+    period: DAY,
+  },
+
+  banUser: {
+    kind: "token bucket",
+    rate: 10,
+    period: HOUR,
+  },
 });
 
 // Re-export time constants for use elsewhere

@@ -75,6 +75,7 @@ convex/              # Backend functions and schema
 ├── slotLocks.ts     # Slot lock acquire/release/cleanup (145 lines)
 ├── users.ts         # User queries (getCurrentUser)
 ├── reports.ts       # Revenue, staff performance, customer analytics (~580 lines)
+├── admin.ts         # SuperAdmin functions (platform stats, org/user management)
 ├── analytics.ts     # Dashboard stats (week-over-week, monthly revenue)
 ├── notifications.ts # In-app notifications CRUD + triggers (~230 lines)
 ├── subscriptions.ts # Subscription status, webhook handlers, grace periods
@@ -127,6 +128,8 @@ src/
 
 **Sidebar Navigation:** Dashboard, Calendar, Staff, Appointments, Services, Customers, Reports, Settings, Billing
 
+**Admin Panel (`/admin`):** Platform-level management for SuperAdmins (env-based). Dashboard, Organizations, Users, Action Log
+
 **User Flow:** Sign in → No orgs? → `/onboarding` → Create org → `/{slug}/dashboard`
 **Public Booking:** `/{slug}/book` → Select services → Pick time → Enter info → Confirmation code
 
@@ -154,6 +157,7 @@ Use hooks from `@/modules/organization`:
 | `orgQuery/Mutation`    | Required + membership  | `ctx.user`, `ctx.organizationId`, `ctx.member`, `ctx.staff` | All org-scoped operations             |
 | `adminQuery/Mutation`  | Required + admin/owner | Same as org + role check                                    | Staff management, settings, reports   |
 | `ownerQuery/Mutation`  | Required + owner only  | Same as org + owner check                                   | Billing, org deletion                 |
+| `superAdminQuery/Mutation` | Required + env email | `ctx.user`, `ctx.isSuperAdmin`                            | Platform admin panel                  |
 
 **Key behavior:**
 
@@ -333,6 +337,9 @@ POLAR_WEBHOOK_SECRET=...         # Webhook verification secret
 POLAR_SERVER=sandbox             # "sandbox" or "production"
 POLAR_PRODUCT_MONTHLY_ID=...     # Monthly plan product ID
 POLAR_PRODUCT_YEARLY_ID=...      # Yearly plan product ID
+
+# SuperAdmin
+SUPER_ADMIN_EMAILS=dev@example.com  # Comma-separated list of superadmin emails
 ```
 
 ## Critical Gotchas
