@@ -1,7 +1,7 @@
 import { ConvexError, v } from "convex/values";
 import type { Id } from "./_generated/dataModel";
 import type { DatabaseReader } from "./_generated/server";
-import { ErrorCode, adminQuery } from "./lib/functions";
+import { ErrorCode, orgQuery } from "./lib/functions";
 import { getDatesBetween, resolveSchedule } from "./lib/scheduleResolver";
 import {
   customerReportValidator,
@@ -70,20 +70,28 @@ function validateDateRange(startDate: string, endDate: string) {
 // Revenue Report
 // =============================================================================
 
-export const getRevenueReport = adminQuery({
+export const getRevenueReport = orgQuery({
   args: {
     startDate: v.string(),
     endDate: v.string(),
   },
   returns: revenueReportValidator,
   handler: async (ctx, args) => {
+    const isStaffOnly = ctx.member.role === "staff";
+    const staffFilter = isStaffOnly ? ctx.staff?._id : undefined;
+
     const dates = validateDateRange(args.startDate, args.endDate);
-    const appointments = await getAppointmentsForDateRange(
+    let appointments = await getAppointmentsForDateRange(
       ctx.db,
       ctx.organizationId,
       args.startDate,
       args.endDate,
     );
+
+    // Staff: filter to only their appointments
+    if (staffFilter) {
+      appointments = appointments.filter((a) => a.staffId === staffFilter);
+    }
 
     // Daily aggregation
     const dailyMap: Record<
@@ -246,12 +254,15 @@ export const getRevenueReport = adminQuery({
     const prevStartStr = formatDateStr(prevStart);
     const prevEndStr = formatDateStr(prevEnd);
 
-    const prevAppts = await getAppointmentsForDateRange(
+    let prevAppts = await getAppointmentsForDateRange(
       ctx.db,
       ctx.organizationId,
       prevStartStr,
       prevEndStr,
     );
+    if (staffFilter) {
+      prevAppts = prevAppts.filter((a) => a.staffId === staffFilter);
+    }
     let prevRevenue = 0;
     for (const appt of prevAppts) {
       if (appt.status === "completed") {
@@ -315,22 +326,29 @@ export const getRevenueReport = adminQuery({
 // Staff Performance Report
 // =============================================================================
 
-export const getStaffPerformanceReport = adminQuery({
+export const getStaffPerformanceReport = orgQuery({
   args: {
     startDate: v.string(),
     endDate: v.string(),
   },
   returns: staffPerformanceReportValidator,
   handler: async (ctx, args) => {
+    const isStaffOnly = ctx.member.role === "staff";
+    const staffFilter = isStaffOnly ? ctx.staff?._id : undefined;
+
     const dates = validateDateRange(args.startDate, args.endDate);
 
-    // Get active staff
-    const staffList = await ctx.db
+    // Get active staff (staff only sees themselves)
+    let staffList = await ctx.db
       .query("staff")
       .withIndex("organizationId_status", (q) =>
         q.eq("organizationId", ctx.organizationId).eq("status", "active"),
       )
       .collect();
+
+    if (staffFilter) {
+      staffList = staffList.filter((s) => s._id === staffFilter);
+    }
 
     // Batch-fetch all org appointments for the date range (single query)
     const allAppointments = await getAppointmentsForDateRange(
@@ -452,22 +470,44 @@ export const getStaffPerformanceReport = adminQuery({
 // Customer Report
 // =============================================================================
 
-export const getCustomerReport = adminQuery({
+export const getCustomerReport = orgQuery({
   args: {
     startDate: v.string(),
     endDate: v.string(),
   },
   returns: customerReportValidator,
   handler: async (ctx, args) => {
+    const isStaffOnly = ctx.member.role === "staff";
+    const staffFilter = isStaffOnly ? ctx.staff?._id : undefined;
+
     validateDateRange(args.startDate, args.endDate);
 
     // Get all org customers
-    const customers = await ctx.db
+    let customers = await ctx.db
       .query("customers")
       .withIndex("by_organization", (q) =>
         q.eq("organizationId", ctx.organizationId),
       )
       .collect();
+
+    // Get completed appointments in range (single query)
+    let appointments = await getAppointmentsForDateRange(
+      ctx.db,
+      ctx.organizationId,
+      args.startDate,
+      args.endDate,
+    );
+
+    // Staff: filter appointments to their own, and customers to those they've served
+    if (staffFilter) {
+      appointments = appointments.filter((a) => a.staffId === staffFilter);
+      const staffCustomerIds = new Set(
+        appointments.map((a) => a.customerId as string),
+      );
+      customers = customers.filter((c) =>
+        staffCustomerIds.has(c._id as string),
+      );
+    }
 
     const totalActive = customers.filter(
       (c) => (c.totalVisits ?? 0) > 0,
@@ -481,13 +521,6 @@ export const getCustomerReport = adminQuery({
       (c) => c._creationTime >= startEpoch && c._creationTime <= endEpoch,
     ).length;
 
-    // Get completed appointments in range (single query)
-    const appointments = await getAppointmentsForDateRange(
-      ctx.db,
-      ctx.organizationId,
-      args.startDate,
-      args.endDate,
-    );
     const completedAppts = appointments.filter((a) => a.status === "completed");
 
     // Build customer lookup map for O(1) access

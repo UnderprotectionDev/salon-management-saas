@@ -29,7 +29,7 @@ import { EditServiceDialog } from "./EditServiceDialog";
 type ServicesListProps = {
   organizationId: Id<"organization">;
   categoryId: string | null;
-  isAdminOrOwner: boolean;
+  isOwner: boolean;
 };
 
 function getStatusBadgeVariant(
@@ -48,7 +48,7 @@ function getStatusBadgeVariant(
 export function ServicesList({
   organizationId,
   categoryId,
-  isAdminOrOwner,
+  isOwner,
 }: ServicesListProps) {
   const services = useQuery(api.services.list, {
     organizationId,
@@ -82,7 +82,7 @@ export function ServicesList({
           {categoryId ? "No services in this category" : "No services yet"}
         </p>
         <p className="text-xs text-muted-foreground mt-1">
-          {isAdminOrOwner
+          {isOwner
             ? 'Click "Add Service" to create your first service'
             : "Your admin will add services soon"}
         </p>
@@ -100,7 +100,7 @@ export function ServicesList({
             <TableHead>Duration</TableHead>
             <TableHead>Price</TableHead>
             <TableHead className="hidden sm:table-cell">Status</TableHead>
-            {isAdminOrOwner && <TableHead className="w-12" />}
+            {isOwner && <TableHead className="w-12" />}
           </TableRow>
         </TableHeader>
         <TableBody>
@@ -140,7 +140,7 @@ export function ServicesList({
                   {service.status}
                 </Badge>
               </TableCell>
-              {isAdminOrOwner && (
+              {isOwner && (
                 <TableCell>
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild>

@@ -97,7 +97,7 @@ export default function CustomerDetailPage() {
   const [showEditDialog, setShowEditDialog] = useState(false);
   const [showMergeDialog, setShowMergeDialog] = useState(false);
 
-  const isAdminOrOwner = currentRole === "owner" || currentRole === "admin";
+  const isOwner = currentRole === "owner";
 
   if (customer === undefined) {
     return <CustomerDetailSkeleton />;
@@ -189,8 +189,8 @@ export default function CustomerDetailPage() {
                 </div>
               )}
             </div>
-            {isAdminOrOwner && (
-              <div className="flex gap-2">
+            <div className="flex gap-2">
+              {isOwner && (
                 <Button
                   variant="outline"
                   size="sm"
@@ -199,15 +199,15 @@ export default function CustomerDetailPage() {
                   <GitMerge className="mr-2 size-4" />
                   Merge
                 </Button>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => setShowEditDialog(true)}
-                >
-                  Edit
-                </Button>
-              </div>
-            )}
+              )}
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setShowEditDialog(true)}
+              >
+                Edit
+              </Button>
+            </div>
           </div>
         </CardContent>
       </Card>

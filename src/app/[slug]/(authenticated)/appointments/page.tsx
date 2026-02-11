@@ -7,8 +7,7 @@ import { useOrganization } from "@/modules/organization";
 import { AppointmentList, CreateAppointmentDialog } from "@/modules/booking";
 
 export default function AppointmentsPage() {
-  const { activeOrganization, currentRole } = useOrganization();
-  const isAdminOrOwner = currentRole === "owner" || currentRole === "admin";
+  const { activeOrganization } = useOrganization();
   const [searchCode, setSearchCode] = useState("");
 
   if (!activeOrganization) {
@@ -30,12 +29,10 @@ export default function AppointmentsPage() {
             Manage your salon appointments
           </p>
         </div>
-        {isAdminOrOwner && (
-          <CreateAppointmentDialog
-            organizationId={activeOrganization._id}
-            date={new Date().toLocaleDateString("en-CA")}
-          />
-        )}
+        <CreateAppointmentDialog
+          organizationId={activeOrganization._id}
+          date={new Date().toLocaleDateString("en-CA")}
+        />
       </div>
 
       {/* Search by confirmation code */}

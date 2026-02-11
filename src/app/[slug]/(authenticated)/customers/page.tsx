@@ -15,7 +15,7 @@ import { api } from "../../../../../convex/_generated/api";
 
 export default function CustomersPage() {
   const { activeOrganization, currentRole } = useOrganization();
-  const isAdminOrOwner = currentRole === "owner" || currentRole === "admin";
+  const isOwner = currentRole === "owner";
 
   const [search, setSearch] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
@@ -107,9 +107,7 @@ export default function CustomersPage() {
             Manage your salon&apos;s customer database
           </p>
         </div>
-        {isAdminOrOwner && (
-          <AddCustomerDialog organizationId={activeOrganization._id} />
-        )}
+        <AddCustomerDialog organizationId={activeOrganization._id} />
       </div>
 
       <CustomerSearch
@@ -141,7 +139,7 @@ export default function CustomersPage() {
                 ? "Try adjusting your search or filters"
                 : "Add your first customer to get started"}
             </p>
-            {!debouncedSearch && !hasAdvancedFilters && isAdminOrOwner && (
+            {!debouncedSearch && !hasAdvancedFilters && (
               <AddCustomerDialog organizationId={activeOrganization._id} />
             )}
           </CardContent>
@@ -157,7 +155,7 @@ export default function CustomersPage() {
           <CustomerTable
             customers={customers}
             organizationId={activeOrganization._id}
-            isAdminOrOwner={isAdminOrOwner}
+            isOwner={isOwner}
           />
         </>
       )}

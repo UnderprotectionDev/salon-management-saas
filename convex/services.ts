@@ -3,6 +3,7 @@ import type { Doc } from "./_generated/dataModel";
 import {
   adminMutation,
   ErrorCode,
+  orgMutation,
   orgQuery,
   publicQuery,
 } from "./lib/functions";
@@ -241,7 +242,7 @@ export const create = adminMutation({
 /**
  * Update an existing service
  */
-export const update = adminMutation({
+export const update = orgMutation({
   args: {
     serviceId: v.id("services"),
     name: v.optional(v.string()),
@@ -263,6 +264,18 @@ export const update = adminMutation({
         code: ErrorCode.NOT_FOUND,
         message: "Service not found",
       });
+    }
+
+    // Staff can only update services they're assigned to
+    const isStaffOnly = ctx.member.role === "staff";
+    if (isStaffOnly) {
+      const staffServiceIds = ctx.staff?.serviceIds ?? [];
+      if (!staffServiceIds.includes(args.serviceId)) {
+        throw new ConvexError({
+          code: ErrorCode.FORBIDDEN,
+          message: "You can only edit services assigned to you",
+        });
+      }
     }
 
     // Validate category if changing

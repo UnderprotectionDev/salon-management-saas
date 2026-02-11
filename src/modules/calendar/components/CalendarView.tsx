@@ -14,19 +14,23 @@ import { DayView } from "./DayView";
 import { WeekView } from "./WeekView";
 
 export function CalendarView() {
-  const { activeOrganization } = useOrganization();
+  const { activeOrganization, currentRole, currentStaff } = useOrganization();
   const calendar = useCalendarState();
   const [selectedAppt, setSelectedAppt] =
     useState<AppointmentWithDetails | null>(null);
   const [modalOpen, setModalOpen] = useState(false);
 
   const orgId = activeOrganization?._id;
+  const isStaffOnly = currentRole === "staff";
 
-  // Staff list
-  const staffList = useQuery(
+  // Staff list — staff only sees themselves
+  const allStaffList = useQuery(
     api.staff.listActive,
     orgId ? { organizationId: orgId } : "skip",
   );
+  const staffList = isStaffOnly && currentStaff && allStaffList
+    ? allStaffList.filter((s) => s._id === currentStaff._id)
+    : allStaffList;
 
   // Day view data
   const dayAppointments = useQuery(

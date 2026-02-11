@@ -16,7 +16,7 @@ export default function ServicesPage() {
 
   if (!activeOrganization) return null;
 
-  const isAdminOrOwner = currentRole === "owner" || currentRole === "admin";
+  const isOwner = currentRole === "owner";
 
   return (
     <div className="space-y-6">
@@ -28,7 +28,7 @@ export default function ServicesPage() {
             Manage your salon&apos;s services and pricing
           </p>
         </div>
-        {isAdminOrOwner && (
+        {isOwner && (
           <AddServiceDialog
             organizationId={activeOrganization._id}
             defaultCategoryId={
@@ -50,7 +50,7 @@ export default function ServicesPage() {
             organizationId={activeOrganization._id}
             selectedCategoryId={selectedCategoryId}
             onSelectCategory={setSelectedCategoryId}
-            isAdminOrOwner={isAdminOrOwner}
+            isOwner={isOwner}
           />
         </div>
 
@@ -59,7 +59,7 @@ export default function ServicesPage() {
           <ServicesList
             organizationId={activeOrganization._id}
             categoryId={selectedCategoryId}
-            isAdminOrOwner={isAdminOrOwner}
+            isOwner={isOwner}
           />
         </div>
       </div>

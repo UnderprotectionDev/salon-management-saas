@@ -25,14 +25,14 @@ type CategorySidebarProps = {
   organizationId: Id<"organization">;
   selectedCategoryId: string | null;
   onSelectCategory: (categoryId: string | null) => void;
-  isAdminOrOwner: boolean;
+  isOwner: boolean;
 };
 
 export function CategorySidebar({
   organizationId,
   selectedCategoryId,
   onSelectCategory,
-  isAdminOrOwner,
+  isOwner,
 }: CategorySidebarProps) {
   const categories = useQuery(api.serviceCategories.list, { organizationId });
   const updateCategory = useMutation(api.serviceCategories.update);
@@ -157,7 +157,7 @@ export function CategorySidebar({
             >
               <span className="truncate">{category.name}</span>
               <span className="flex items-center gap-1">
-                {isAdminOrOwner && (
+                {isOwner && (
                   <span className="hidden items-center gap-0.5 group-hover:flex">
                     <span
                       role="button"
@@ -204,7 +204,7 @@ export function CategorySidebar({
         </div>
       ))}
 
-      {isAdminOrOwner && (
+      {isOwner && (
         <div className="pt-2">
           <AddCategoryPopover organizationId={organizationId} />
         </div>
