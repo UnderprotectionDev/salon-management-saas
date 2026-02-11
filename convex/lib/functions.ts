@@ -1,5 +1,6 @@
 import { ConvexError, v } from "convex/values";
 import {
+  customCtx,
   customMutation,
   customQuery,
 } from "convex-helpers/server/customFunctions";
@@ -10,18 +11,15 @@ import {
   query as baseQuery,
 } from "../_generated/server";
 import { authComponent } from "../auth";
-
-// =============================================================================
-// Error Codes
-// =============================================================================
+import { triggers } from "./triggers";
 
 export const ErrorCode = {
   // Authentication errors
   UNAUTHENTICATED: "UNAUTHENTICATED",
   // Authorization errors
   FORBIDDEN: "FORBIDDEN",
-  ADMIN_REQUIRED: "ADMIN_REQUIRED",
   OWNER_REQUIRED: "OWNER_REQUIRED",
+  SUPER_ADMIN_REQUIRED: "SUPER_ADMIN_REQUIRED",
   // Resource errors
   NOT_FOUND: "NOT_FOUND",
   ALREADY_EXISTS: "ALREADY_EXISTS",
@@ -36,11 +34,7 @@ export const ErrorCode = {
 
 export type ErrorCode = (typeof ErrorCode)[keyof typeof ErrorCode];
 
-// =============================================================================
-// Types
-// =============================================================================
-
-export type Role = "owner" | "admin" | "member";
+export type Role = "owner" | "staff";
 
 type AuthUser = NonNullable<
   Awaited<ReturnType<typeof authComponent.getAuthUser>>
@@ -60,85 +54,76 @@ export type OrgCtx = AuthedCtx & {
   staff: StaffDoc | null;
 };
 
-export type AdminCtx = OrgCtx & {
-  role: Role;
+export type OwnerCtx = OrgCtx & {
+  role: "owner";
 };
 
-// =============================================================================
-// Helper Functions
-// =============================================================================
+export type SuperAdminCtx = AuthedCtx & {
+  isSuperAdmin: true;
+};
 
-async function getAuthUser(ctx: { db: unknown; auth: unknown }) {
-  const user = await authComponent.getAuthUser(
-    ctx as Parameters<typeof authComponent.getAuthUser>[0],
-  );
+/**
+ * Check if an email is in the SUPER_ADMIN_EMAILS env var list.
+ */
+function isSuperAdminEmail(email: string): boolean {
+  const emails = (process.env.SUPER_ADMIN_EMAILS || "")
+    .split(",")
+    .map((e) => e.trim())
+    .filter(Boolean);
+  return emails.includes(email);
+}
+
+async function getAuthUser(
+  ctx: Parameters<typeof authComponent.getAuthUser>[0],
+  options?: { skipBanCheck?: boolean },
+): Promise<AuthUser> {
+  const user = await authComponent.getAuthUser(ctx);
   if (!user) {
     throw new ConvexError({
       code: ErrorCode.UNAUTHENTICATED,
       message: "Authentication required",
     });
   }
+
+  // Check if user is banned (skip for superadmins)
+  if (!options?.skipBanCheck && !isSuperAdminEmail(user.email)) {
+    const db = (ctx as any).db;
+    if (db) {
+      const banned = await db
+        .query("bannedUsers")
+        .withIndex("by_user", (q: any) => q.eq("userId", user._id))
+        .first();
+      if (banned) {
+        throw new ConvexError({
+          code: ErrorCode.FORBIDDEN,
+          message: "Your account has been suspended",
+        });
+      }
+    }
+  }
+
   return user;
 }
 
-// =============================================================================
-// Public Query (No Auth Required)
-// =============================================================================
-
-/**
- * Query that does NOT require authentication.
- * Use for public data like organization info by slug.
- *
- * @example
- * export const getBySlug = publicQuery({
- *   args: { slug: v.string() },
- *   handler: async (ctx, args) => {
- *     return await ctx.db.query("organization")
- *       .withIndex("slug", q => q.eq("slug", args.slug))
- *       .first();
- *   },
- * });
- */
 export const publicQuery = customQuery(baseQuery, {
   args: {},
-  input: async (_ctx, _args) => {
-    return { ctx: {}, args: {} };
+  input: async (_ctx, args) => {
+    return { ctx: {}, args };
   },
 });
 
-/**
- * Mutation that does NOT require authentication.
- * Use for public operations like booking creation.
- */
-export const publicMutation = customMutation(baseMutation, {
+const triggerMutation = customMutation(
+  baseMutation,
+  customCtx(triggers.wrapDB),
+);
+
+export const publicMutation = customMutation(triggerMutation, {
   args: {},
   input: async (_ctx, _args) => {
     return { ctx: {}, args: {} };
   },
 });
 
-// =============================================================================
-// Maybe Authenticated Query
-// Returns user if authenticated, null otherwise (doesn't throw)
-// =============================================================================
-
-/**
- * Query that optionally uses authentication.
- * Returns `ctx.user` if authenticated, `null` otherwise.
- * Does NOT throw if user is not authenticated.
- *
- * Use for queries that should work for both authenticated and unauthenticated users,
- * or for queries called before auth state is determined.
- *
- * @example
- * export const listForUser = maybeAuthedQuery({
- *   args: {},
- *   handler: async (ctx) => {
- *     if (!ctx.user) return []; // Not authenticated
- *     return await ctx.db.query("member")...
- *   },
- * });
- */
 export const maybeAuthedQuery = customQuery(baseQuery, {
   args: {},
   input: async (ctx, _args) => {
@@ -184,7 +169,7 @@ export const authedQuery = customQuery(baseQuery, {
  * Mutation that requires authentication.
  * Adds `ctx.user` to the handler.
  */
-export const authedMutation = customMutation(baseMutation, {
+export const authedMutation = customMutation(triggerMutation, {
   args: {},
   input: async (ctx, _args) => {
     const user = await getAuthUser(ctx);
@@ -212,18 +197,59 @@ export const authedMutation = customMutation(baseMutation, {
  *   },
  * });
  */
+/**
+ * Shared helper: resolve org context with SuperAdmin bypass.
+ * SuperAdmins get a synthetic owner member if they're not an actual member.
+ */
+async function resolveOrgContext(
+  ctx: any,
+  user: AuthUser,
+  organizationId: Id<"organization">,
+) {
+  const member = await ctx.db
+    .query("member")
+    .withIndex("organizationId_userId", (q: any) =>
+      q.eq("organizationId", organizationId).eq("userId", user._id),
+    )
+    .first();
+
+  const staff = member
+    ? await ctx.db
+        .query("staff")
+        .withIndex("organizationId_userId", (q: any) =>
+          q.eq("organizationId", organizationId).eq("userId", user._id),
+        )
+        .first()
+    : null;
+
+  // SuperAdmin bypass: create synthetic owner member if not a real member
+  if (!member && isSuperAdminEmail(user.email)) {
+    return {
+      member: {
+        _id: "superadmin" as Id<"member">,
+        _creationTime: 0,
+        organizationId,
+        userId: user._id,
+        role: "owner" as const,
+        createdAt: 0,
+        updatedAt: 0,
+      } as MemberDoc,
+      staff: null as StaffDoc | null,
+    };
+  }
+
+  return { member, staff };
+}
+
 export const orgQuery = customQuery(baseQuery, {
   args: { organizationId: v.id("organization") },
   input: async (ctx, args) => {
     const user = await getAuthUser(ctx);
-
-    // Check member record for RBAC
-    const member = await ctx.db
-      .query("member")
-      .withIndex("organizationId_userId", (q) =>
-        q.eq("organizationId", args.organizationId).eq("userId", user._id),
-      )
-      .first();
+    const { member, staff } = await resolveOrgContext(
+      ctx,
+      user,
+      args.organizationId,
+    );
 
     if (!member) {
       throw new ConvexError({
@@ -232,21 +258,8 @@ export const orgQuery = customQuery(baseQuery, {
       });
     }
 
-    // Also get staff profile if exists
-    const staff = await ctx.db
-      .query("staff")
-      .withIndex("organizationId_userId", (q) =>
-        q.eq("organizationId", args.organizationId).eq("userId", user._id),
-      )
-      .first();
-
     return {
-      ctx: {
-        user,
-        organizationId: args.organizationId,
-        member,
-        staff,
-      },
+      ctx: { user, organizationId: args.organizationId, member, staff },
       args: {},
     };
   },
@@ -256,17 +269,15 @@ export const orgQuery = customQuery(baseQuery, {
  * Mutation that requires authentication AND organization membership.
  * Adds `ctx.user`, `ctx.organizationId`, `ctx.member`, `ctx.staff` to handler.
  */
-export const orgMutation = customMutation(baseMutation, {
+export const orgMutation = customMutation(triggerMutation, {
   args: { organizationId: v.id("organization") },
   input: async (ctx, args) => {
     const user = await getAuthUser(ctx);
-
-    const member = await ctx.db
-      .query("member")
-      .withIndex("organizationId_userId", (q) =>
-        q.eq("organizationId", args.organizationId).eq("userId", user._id),
-      )
-      .first();
+    const { member, staff } = await resolveOrgContext(
+      ctx,
+      user,
+      args.organizationId,
+    );
 
     if (!member) {
       throw new ConvexError({
@@ -275,136 +286,8 @@ export const orgMutation = customMutation(baseMutation, {
       });
     }
 
-    const staff = await ctx.db
-      .query("staff")
-      .withIndex("organizationId_userId", (q) =>
-        q.eq("organizationId", args.organizationId).eq("userId", user._id),
-      )
-      .first();
-
     return {
-      ctx: {
-        user,
-        organizationId: args.organizationId,
-        member,
-        staff,
-      },
-      args: {},
-    };
-  },
-});
-
-// =============================================================================
-// Admin Query/Mutation
-// Requires login + organization membership + admin or owner role
-// =============================================================================
-
-/**
- * Query that requires admin or owner role.
- * Adds `ctx.user`, `ctx.organizationId`, `ctx.member`, `ctx.staff`, `ctx.role`.
- *
- * @example
- * export const getSecrets = adminQuery({
- *   args: {},
- *   handler: async (ctx) => {
- *     // Only owner/admin can access
- *     return await ctx.db.query("secrets")
- *       .withIndex("organizationId", q => q.eq("organizationId", ctx.organizationId))
- *       .collect();
- *   },
- * });
- */
-export const adminQuery = customQuery(baseQuery, {
-  args: { organizationId: v.id("organization") },
-  input: async (ctx, args) => {
-    const user = await getAuthUser(ctx);
-
-    const member = await ctx.db
-      .query("member")
-      .withIndex("organizationId_userId", (q) =>
-        q.eq("organizationId", args.organizationId).eq("userId", user._id),
-      )
-      .first();
-
-    if (!member) {
-      throw new ConvexError({
-        code: ErrorCode.FORBIDDEN,
-        message: "You don't have access to this organization",
-      });
-    }
-
-    if (!["owner", "admin"].includes(member.role)) {
-      throw new ConvexError({
-        code: ErrorCode.ADMIN_REQUIRED,
-        message: "Admin access required",
-      });
-    }
-
-    const staff = await ctx.db
-      .query("staff")
-      .withIndex("organizationId_userId", (q) =>
-        q.eq("organizationId", args.organizationId).eq("userId", user._id),
-      )
-      .first();
-
-    return {
-      ctx: {
-        user,
-        organizationId: args.organizationId,
-        member,
-        staff,
-        role: member.role as Role,
-      },
-      args: {},
-    };
-  },
-});
-
-/**
- * Mutation that requires admin or owner role.
- * Adds `ctx.user`, `ctx.organizationId`, `ctx.member`, `ctx.staff`, `ctx.role`.
- */
-export const adminMutation = customMutation(baseMutation, {
-  args: { organizationId: v.id("organization") },
-  input: async (ctx, args) => {
-    const user = await getAuthUser(ctx);
-
-    const member = await ctx.db
-      .query("member")
-      .withIndex("organizationId_userId", (q) =>
-        q.eq("organizationId", args.organizationId).eq("userId", user._id),
-      )
-      .first();
-
-    if (!member) {
-      throw new ConvexError({
-        code: ErrorCode.FORBIDDEN,
-        message: "You don't have access to this organization",
-      });
-    }
-
-    if (!["owner", "admin"].includes(member.role)) {
-      throw new ConvexError({
-        code: ErrorCode.ADMIN_REQUIRED,
-        message: "Admin access required",
-      });
-    }
-
-    const staff = await ctx.db
-      .query("staff")
-      .withIndex("organizationId_userId", (q) =>
-        q.eq("organizationId", args.organizationId).eq("userId", user._id),
-      )
-      .first();
-
-    return {
-      ctx: {
-        user,
-        organizationId: args.organizationId,
-        member,
-        staff,
-        role: member.role as Role,
-      },
+      ctx: { user, organizationId: args.organizationId, member, staff },
       args: {},
     };
   },
@@ -417,19 +300,17 @@ export const adminMutation = customMutation(baseMutation, {
 
 /**
  * Query that requires owner role only.
- * Use for critical operations like billing, deleting org, etc.
+ * SuperAdmins bypass the owner role check.
  */
 export const ownerQuery = customQuery(baseQuery, {
   args: { organizationId: v.id("organization") },
   input: async (ctx, args) => {
     const user = await getAuthUser(ctx);
-
-    const member = await ctx.db
-      .query("member")
-      .withIndex("organizationId_userId", (q) =>
-        q.eq("organizationId", args.organizationId).eq("userId", user._id),
-      )
-      .first();
+    const { member, staff } = await resolveOrgContext(
+      ctx,
+      user,
+      args.organizationId,
+    );
 
     if (!member) {
       throw new ConvexError({
@@ -438,19 +319,12 @@ export const ownerQuery = customQuery(baseQuery, {
       });
     }
 
-    if (member.role !== "owner") {
+    if (member.role !== "owner" && !isSuperAdminEmail(user.email)) {
       throw new ConvexError({
         code: ErrorCode.OWNER_REQUIRED,
         message: "Owner access required",
       });
     }
-
-    const staff = await ctx.db
-      .query("staff")
-      .withIndex("organizationId_userId", (q) =>
-        q.eq("organizationId", args.organizationId).eq("userId", user._id),
-      )
-      .first();
 
     return {
       ctx: {
@@ -467,19 +341,17 @@ export const ownerQuery = customQuery(baseQuery, {
 
 /**
  * Mutation that requires owner role only.
- * Use for critical operations like billing, deleting org, etc.
+ * SuperAdmins bypass the owner role check.
  */
-export const ownerMutation = customMutation(baseMutation, {
+export const ownerMutation = customMutation(triggerMutation, {
   args: { organizationId: v.id("organization") },
   input: async (ctx, args) => {
     const user = await getAuthUser(ctx);
-
-    const member = await ctx.db
-      .query("member")
-      .withIndex("organizationId_userId", (q) =>
-        q.eq("organizationId", args.organizationId).eq("userId", user._id),
-      )
-      .first();
+    const { member, staff } = await resolveOrgContext(
+      ctx,
+      user,
+      args.organizationId,
+    );
 
     if (!member) {
       throw new ConvexError({
@@ -488,19 +360,12 @@ export const ownerMutation = customMutation(baseMutation, {
       });
     }
 
-    if (member.role !== "owner") {
+    if (member.role !== "owner" && !isSuperAdminEmail(user.email)) {
       throw new ConvexError({
         code: ErrorCode.OWNER_REQUIRED,
         message: "Owner access required",
       });
     }
-
-    const staff = await ctx.db
-      .query("staff")
-      .withIndex("organizationId_userId", (q) =>
-        q.eq("organizationId", args.organizationId).eq("userId", user._id),
-      )
-      .first();
 
     return {
       ctx: {
@@ -516,6 +381,57 @@ export const ownerMutation = customMutation(baseMutation, {
 });
 
 // =============================================================================
+// SuperAdmin Query/Mutation
+// Requires login + email in SUPER_ADMIN_EMAILS env var
+// =============================================================================
+
+/**
+ * Query that requires SuperAdmin access.
+ * Checks user email against SUPER_ADMIN_EMAILS env var.
+ */
+export const superAdminQuery = customQuery(baseQuery, {
+  args: {},
+  input: async (ctx, _args) => {
+    const user = await getAuthUser(ctx, { skipBanCheck: true });
+
+    if (!isSuperAdminEmail(user.email)) {
+      throw new ConvexError({
+        code: ErrorCode.SUPER_ADMIN_REQUIRED,
+        message: "SuperAdmin access required",
+      });
+    }
+
+    return {
+      ctx: { user, isSuperAdmin: true as const },
+      args: {},
+    };
+  },
+});
+
+/**
+ * Mutation that requires SuperAdmin access.
+ * Checks user email against SUPER_ADMIN_EMAILS env var.
+ */
+export const superAdminMutation = customMutation(triggerMutation, {
+  args: {},
+  input: async (ctx, _args) => {
+    const user = await getAuthUser(ctx, { skipBanCheck: true });
+
+    if (!isSuperAdminEmail(user.email)) {
+      throw new ConvexError({
+        code: ErrorCode.SUPER_ADMIN_REQUIRED,
+        message: "SuperAdmin access required",
+      });
+    }
+
+    return {
+      ctx: { user, isSuperAdmin: true as const },
+      args: {},
+    };
+  },
+});
+
+// =============================================================================
 // Internal Functions
 // =============================================================================
 
@@ -524,3 +440,6 @@ export const ownerMutation = customMutation(baseMutation, {
  * Re-export from base for consistency
  */
 export const internalMutation = baseInternalMutation;
+
+// Re-export for admin.ts
+export { isSuperAdminEmail };

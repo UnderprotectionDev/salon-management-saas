@@ -1,5 +1,6 @@
 "use client";
 
+import { useQuery } from "convex/react";
 import {
   BarChart3,
   Calendar,
@@ -10,6 +11,7 @@ import {
   LogOut,
   Scissors,
   Settings,
+  Shield,
   UserRound,
   Users,
 } from "lucide-react";
@@ -49,6 +51,7 @@ import {
   OrganizationSwitcher,
   useOrganization,
 } from "@/modules/organization";
+import { api } from "../../../../convex/_generated/api";
 
 const menuItems = [
   {
@@ -114,25 +117,35 @@ function AuthenticatedLayoutContent({
   } = useOrganization();
 
   const { data: session } = authClient.useSession();
+  const isSuperAdmin = useQuery(api.admin.checkIsSuperAdmin);
   const [isRedirecting, setIsRedirecting] = useState(false);
+
+  // SuperAdmin impersonation: check if current user is viewing an org they're not a member of
+  const isSuperAdminImpersonating =
+    isSuperAdmin === true && !organizations.find((o) => o.slug === slug);
 
   // Find organization by slug and set as active
   useEffect(() => {
-    if (isLoading || !organizations.length) return;
+    if (isLoading || isSuperAdminImpersonating) return;
+    if (!organizations.length) return;
 
     const org = organizations.find((o) => o.slug === slug);
     if (org && activeOrganization?.slug !== slug) {
       setActiveOrganization(org);
     } else if (!org && organizations.length > 0) {
-      // Redirect to first org if slug doesn't match
-      setIsRedirecting(true);
-      router.push(`/${organizations[0].slug}/dashboard`);
+      // Redirect to first org if slug doesn't match (skip for superadmins)
+      if (!isSuperAdmin) {
+        setIsRedirecting(true);
+        router.push(`/${organizations[0].slug}/dashboard`);
+      }
     }
   }, [
     slug,
     organizations,
     activeOrganization,
     isLoading,
+    isSuperAdmin,
+    isSuperAdminImpersonating,
     setActiveOrganization,
     router,
   ]);
@@ -146,8 +159,8 @@ function AuthenticatedLayoutContent({
     );
   }
 
-  // No organization found
-  if (!activeOrganization && !isLoading) {
+  // No organization found (skip for superadmins — they can access any org)
+  if (!activeOrganization && !isLoading && !isSuperAdminImpersonating) {
     return (
       <div className="flex min-h-screen items-center justify-center">
         <div className="text-center">
@@ -244,6 +257,22 @@ function AuthenticatedLayoutContent({
           <div className="flex-1" />
           <NotificationBell />
         </header>
+        {isSuperAdminImpersonating && (
+          <div className="flex items-center justify-between bg-red-600 px-4 py-2 text-sm text-white">
+            <div className="flex items-center gap-2">
+              <Shield className="size-4" />
+              <span>
+                SuperAdmin Mode: Viewing <strong>{slug}</strong>
+              </span>
+            </div>
+            <Link
+              href="/admin"
+              className="rounded-md bg-white/20 px-3 py-1 text-xs font-medium hover:bg-white/30"
+            >
+              Exit
+            </Link>
+          </div>
+        )}
         <GracePeriodBanner />
         <main className="flex-1 p-4 lg:p-6">{children}</main>
         <SuspendedOverlay />
