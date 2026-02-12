@@ -1,14 +1,14 @@
 import { ConvexError, v } from "convex/values";
 import { internalMutation } from "./_generated/server";
-import { ErrorCode, publicMutation } from "./lib/functions";
 import { isOverlapping } from "./lib/dateTime";
+import { authedMutation, ErrorCode } from "./lib/functions";
 
 /**
  * Acquire a slot lock to prevent double booking.
  * Each session can hold only one lock at a time.
  * Lock expires after 2 minutes.
  */
-export const acquire = publicMutation({
+export const acquire = authedMutation({
   args: {
     organizationId: v.id("organization"),
     staffId: v.id("staff"),
@@ -119,7 +119,7 @@ export const acquire = publicMutation({
 /**
  * Release a slot lock.
  */
-export const release = publicMutation({
+export const release = authedMutation({
   args: {
     lockId: v.id("slotLocks"),
     sessionId: v.string(),

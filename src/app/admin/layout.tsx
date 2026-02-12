@@ -1,6 +1,6 @@
 "use client";
 
-import { useQuery } from "convex/react";
+import { useConvexAuth, useQuery } from "convex/react";
 import {
   BarChart3,
   Building2,
@@ -43,8 +43,12 @@ const menuItems = [
 function AdminLayoutContent({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const router = useRouter();
+  const { isAuthenticated } = useConvexAuth();
   const { data: session } = authClient.useSession();
-  const isSuperAdmin = useQuery(api.admin.checkIsSuperAdmin);
+  const isSuperAdmin = useQuery(
+    api.admin.checkIsSuperAdmin,
+    isAuthenticated ? {} : "skip",
+  );
 
   // Loading
   if (isSuperAdmin === undefined) {

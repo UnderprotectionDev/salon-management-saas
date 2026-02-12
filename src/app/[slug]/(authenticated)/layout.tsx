@@ -1,6 +1,6 @@
 "use client";
 
-import { useQuery } from "convex/react";
+import { useConvexAuth, useQuery } from "convex/react";
 import {
   BarChart3,
   Calendar,
@@ -116,8 +116,12 @@ function AuthenticatedLayoutContent({
     isLoading,
   } = useOrganization();
 
+  const { isAuthenticated, isLoading: isAuthLoading } = useConvexAuth();
   const { data: session } = authClient.useSession();
-  const isSuperAdmin = useQuery(api.admin.checkIsSuperAdmin);
+  const isSuperAdmin = useQuery(
+    api.admin.checkIsSuperAdmin,
+    isAuthenticated ? {} : "skip",
+  );
   const [isRedirecting, setIsRedirecting] = useState(false);
 
   // SuperAdmin impersonation: check if current user is viewing an org they're not a member of
@@ -150,8 +154,15 @@ function AuthenticatedLayoutContent({
     router,
   ]);
 
+  // Redirect to sign-in if not authenticated
+  useEffect(() => {
+    if (!isAuthLoading && !isAuthenticated) {
+      router.replace("/sign-in");
+    }
+  }, [isAuthLoading, isAuthenticated, router]);
+
   // Loading state
-  if (isLoading || isRedirecting) {
+  if (isAuthLoading || !isAuthenticated || isLoading || isRedirecting) {
     return (
       <div className="flex min-h-screen items-center justify-center">
         <div className="text-muted-foreground">Loading...</div>

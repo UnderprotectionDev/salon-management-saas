@@ -2,8 +2,8 @@ import { ConvexError, v } from "convex/values";
 import {
   adminMutation,
   authedMutation,
+  authedQuery,
   ErrorCode,
-  maybeAuthedQuery,
   orgQuery,
   publicQuery,
 } from "./lib/functions";
@@ -17,14 +17,6 @@ import {
   organizationWithRoleValidator,
 } from "./lib/validators";
 
-// =============================================================================
-// Public Queries
-// =============================================================================
-
-/**
- * Get organization by slug
- * Public query - no authentication required
- */
 export const getBySlug = publicQuery({
   args: { slug: v.string() },
   returns: v.union(organizationDocValidator, v.null()),
@@ -36,22 +28,6 @@ export const getBySlug = publicQuery({
   },
 });
 
-/**
- * Get organization by ID
- * Public query - no authentication required
- */
-export const get = publicQuery({
-  args: { id: v.id("organization") },
-  returns: v.union(organizationDocValidator, v.null()),
-  handler: async (ctx, args) => {
-    return ctx.db.get(args.id);
-  },
-});
-
-/**
- * List all organizations (for public salon directory)
- * Public query - no authentication required
- */
 export const listPublic = publicQuery({
   args: {},
   returns: v.array(
@@ -78,32 +54,15 @@ export const listPublic = publicQuery({
   },
 });
 
-// =============================================================================
-// Authenticated Queries
-// =============================================================================
-
-/**
- * List all organizations the current user belongs to
- * Uses maybeAuthedQuery - returns empty array if not authenticated
- */
-export const listForUser = maybeAuthedQuery({
+export const listForUser = authedQuery({
   args: {},
   returns: v.array(organizationWithRoleValidator),
   handler: async (ctx) => {
-    // Return empty array if not authenticated
-    if (!ctx.user) {
-      return [];
-    }
-
-    const user = ctx.user;
-
-    // Get all memberships for this user
     const memberships = await ctx.db
       .query("member")
-      .withIndex("userId", (q) => q.eq("userId", user._id))
+      .withIndex("userId", (q) => q.eq("userId", ctx.user._id))
       .collect();
 
-    // Get organization details for each membership
     const organizations = await Promise.all(
       memberships.map(async (m) => {
         const org = await ctx.db.get(m.organizationId);
@@ -120,30 +79,6 @@ export const listForUser = maybeAuthedQuery({
     return organizations.filter(
       (org): org is NonNullable<typeof org> => org !== null,
     );
-  },
-});
-
-/**
- * Check if user has any organizations
- * Uses maybeAuthedQuery - returns false if not authenticated
- */
-export const hasOrganization = maybeAuthedQuery({
-  args: {},
-  returns: v.boolean(),
-  handler: async (ctx) => {
-    // Return false if not authenticated
-    if (!ctx.user) {
-      return false;
-    }
-
-    const user = ctx.user;
-
-    const membership = await ctx.db
-      .query("member")
-      .withIndex("userId", (q) => q.eq("userId", user._id))
-      .first();
-
-    return !!membership;
   },
 });
 
@@ -167,10 +102,6 @@ export const getSettings = orgQuery({
 // Mutations
 // =============================================================================
 
-/**
- * Create a new organization with the current user as owner
- * Bootstrap mutation - creates org, member, settings, and staff in one transaction
- */
 /**
  * Create a new organization with the current user as owner
  * Bootstrap mutation - creates org, member, settings, and staff in one transaction
@@ -354,11 +285,17 @@ export const updateSettings = adminMutation({
     }
 
     const updates: Record<string, unknown> = { updatedAt: Date.now() };
-    for (const [key, value] of Object.entries(args)) {
-      if (value !== undefined) {
-        updates[key] = value;
-      }
-    }
+    if (args.email !== undefined) updates.email = args.email;
+    if (args.phone !== undefined) updates.phone = args.phone;
+    if (args.website !== undefined) updates.website = args.website;
+    if (args.address !== undefined) updates.address = args.address;
+    if (args.timezone !== undefined) updates.timezone = args.timezone;
+    if (args.currency !== undefined) updates.currency = args.currency;
+    if (args.locale !== undefined) updates.locale = args.locale;
+    if (args.businessHours !== undefined)
+      updates.businessHours = args.businessHours;
+    if (args.bookingSettings !== undefined)
+      updates.bookingSettings = args.bookingSettings;
 
     await ctx.db.patch(settings._id, updates);
 

@@ -4,7 +4,6 @@ import { useMutation } from "convex/react";
 import { Loader2 } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
-import { authClient } from "@/lib/auth-client";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
@@ -56,7 +55,6 @@ export function BookingSummary({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const createAppointment = useMutation(api.appointments.create);
   const linkCustomer = useMutation(api.customers.linkToCurrentUser);
-  const session = authClient.useSession();
 
   const totalPrice = services.reduce((sum, s) => sum + s.price, 0);
   const totalDuration = services.reduce((sum, s) => sum + s.duration, 0);
@@ -86,11 +84,9 @@ export function BookingSummary({
       });
 
       // Link customer record to authenticated user (best-effort, don't block confirmation)
-      if (session.data?.user) {
-        linkCustomer({ customerId: result.customerId }).catch(() => {
-          // Silently ignore — linking is optional
-        });
-      }
+      linkCustomer({ customerId: result.customerId }).catch(() => {
+        // Silently ignore if linking fails
+      });
 
       onConfirm(result);
     } catch (error: any) {

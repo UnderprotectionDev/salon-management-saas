@@ -1,6 +1,6 @@
 "use client";
 
-import { useMutation, useQuery } from "convex/react";
+import { useConvexAuth, useMutation, useQuery } from "convex/react";
 import {
   Bell,
   Building2,
@@ -810,7 +810,11 @@ function ProfilesSection() {
 
 export default function DashboardPage() {
   const router = useRouter();
-  const user = useQuery(api.users.getCurrentUser);
+  const { isAuthenticated } = useConvexAuth();
+  const user = useQuery(
+    api.users.getCurrentUser,
+    isAuthenticated ? {} : "skip",
+  );
   const organizations = useOrganizations();
   const myAppointments = useQuery(
     api.appointments.listForCurrentUser,

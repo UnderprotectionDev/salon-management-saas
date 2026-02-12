@@ -1,6 +1,6 @@
 "use client";
 
-import { useQuery } from "convex/react";
+import { useConvexAuth, useQuery } from "convex/react";
 import {
   createContext,
   type ReactNode,
@@ -47,12 +47,16 @@ const OrganizationContext = createContext<OrganizationContextType | undefined>(
 );
 
 export function OrganizationProvider({ children }: { children: ReactNode }) {
+  const { isAuthenticated } = useConvexAuth();
   const [activeOrganization, setActiveOrgState] = useState<Organization | null>(
     null,
   );
 
-  // Get organizations from Convex
-  const organizationsData = useQuery(api.organizations.listForUser);
+  // Get organizations from Convex — skip if not authenticated
+  const organizationsData = useQuery(
+    api.organizations.listForUser,
+    isAuthenticated ? {} : "skip",
+  );
 
   // Get current staff profile for the active organization
   // organizationsData null/boş ise kullanıcı çıkış yapmış demektir — skip et

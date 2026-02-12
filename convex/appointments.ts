@@ -14,20 +14,18 @@ import {
   ErrorCode,
   orgMutation,
   orgQuery,
-  publicMutation,
   publicQuery,
 } from "./lib/functions";
 import { isValidTurkishPhone } from "./lib/phone";
 import { rateLimiter } from "./lib/rateLimits";
-import { getDatesBetween } from "./lib/scheduleResolver";
-import { resolveSchedule } from "./lib/scheduleResolver";
+import { getDatesBetween, resolveSchedule } from "./lib/scheduleResolver";
 import {
   appointmentSourceValidator,
   appointmentStatusValidator,
   appointmentWithDetailsValidator,
   cancelledByValidator,
-  userAppointmentDetailValidator,
   publicAppointmentValidator,
+  userAppointmentDetailValidator,
   userAppointmentValidator,
 } from "./lib/validators";
 
@@ -166,10 +164,10 @@ async function validateSlotAvailability(
 // =============================================================================
 
 /**
- * Create a new appointment (public booking).
+ * Create a new appointment (authenticated booking).
  * Rate limited. Validates slot availability, lock ownership, and staff schedule.
  */
-export const create = publicMutation({
+export const create = authedMutation({
   args: {
     organizationId: v.id("organization"),
     staffId: v.id("staff"),
@@ -1103,111 +1101,6 @@ export const cancel = orgMutation({
 });
 
 // =============================================================================
-// Customer Self-Service (Public)
-// =============================================================================
-
-/**
- * Cancel an appointment by customer (public).
- * Requires confirmation code + phone for identity verification.
- * Enforces 2-hour cancellation policy.
- */
-export const cancelByCustomer = publicMutation({
-  args: {
-    organizationId: v.id("organization"),
-    confirmationCode: v.string(),
-    phone: v.string(),
-    reason: v.optional(v.string()),
-  },
-  returns: v.object({ success: v.boolean() }),
-  handler: async (ctx, args) => {
-    // Rate limit
-    const { ok, retryAfter } = await rateLimiter.limit(ctx, "cancelBooking", {
-      key: args.organizationId,
-    });
-    if (!ok) {
-      throw new ConvexError({
-        code: ErrorCode.RATE_LIMITED,
-        message: `Cancellation limit exceeded. Try again in ${Math.ceil((retryAfter ?? 60000) / 1000)} seconds.`,
-      });
-    }
-
-    // Look up appointment
-    const appointment = await ctx.db
-      .query("appointments")
-      .withIndex("by_confirmation", (q) =>
-        q.eq("confirmationCode", args.confirmationCode),
-      )
-      .first();
-
-    if (!appointment || appointment.organizationId !== args.organizationId) {
-      throw new ConvexError({
-        code: ErrorCode.NOT_FOUND,
-        message: "Appointment not found",
-      });
-    }
-
-    // Verify identity: phone must match customer
-    const customer = await ctx.db.get(appointment.customerId);
-    if (!customer || customer.phone !== args.phone) {
-      throw new ConvexError({
-        code: ErrorCode.FORBIDDEN,
-        message: "Phone number does not match appointment records",
-      });
-    }
-
-    // Only allow cancellation of non-terminal statuses
-    const terminalStatuses = ["completed", "cancelled", "no_show"];
-    if (terminalStatuses.includes(appointment.status)) {
-      throw new ConvexError({
-        code: ErrorCode.VALIDATION_ERROR,
-        message: `Cannot cancel a ${appointment.status} appointment`,
-      });
-    }
-
-    // Enforce 2-hour cancellation policy
-    const appointmentEpoch = dateTimeToEpoch(
-      appointment.date,
-      appointment.startTime,
-    );
-    const twoHoursBefore = appointmentEpoch - 2 * 60 * 60 * 1000;
-    if (Date.now() > twoHoursBefore) {
-      throw new ConvexError({
-        code: ErrorCode.VALIDATION_ERROR,
-        message:
-          "Appointments can only be cancelled at least 2 hours before the start time",
-      });
-    }
-
-    const now = Date.now();
-    await ctx.db.patch(appointment._id, {
-      status: "cancelled",
-      cancelledAt: now,
-      cancelledBy: "customer",
-      cancellationReason: args.reason,
-      updatedAt: now,
-    });
-
-    // Notify assigned staff about customer cancellation
-    await ctx.scheduler.runAfter(0, internal.notifications.createNotification, {
-      organizationId: args.organizationId,
-      recipientStaffId: appointment.staffId,
-      type: "cancellation" as const,
-      title: "Customer Cancelled",
-      message: `${customer.name} cancelled their appointment on ${appointment.date} at ${formatMinutesShort(appointment.startTime)}`,
-      appointmentId: appointment._id,
-    });
-
-    // Send cancellation email (async, non-blocking)
-    await ctx.scheduler.runAfter(0, internal.email.sendCancellationEmail, {
-      appointmentId: appointment._id,
-      organizationId: args.organizationId,
-    });
-
-    return { success: true };
-  },
-});
-
-// =============================================================================
 // Staff Reschedule
 // =============================================================================
 
@@ -1323,161 +1216,6 @@ export const reschedule = orgMutation({
       type: "reschedule" as const,
       title: "Appointment Rescheduled",
       message: `Appointment moved to ${args.newDate} at ${formatMinutesShort(args.newStartTime)}`,
-      appointmentId: appointment._id,
-    });
-
-    return { success: true };
-  },
-});
-
-// =============================================================================
-// Customer Reschedule (Public)
-// =============================================================================
-
-/**
- * Reschedule an appointment by customer (public).
- * Requires confirmation code + phone for identity verification.
- * Enforces 2-hour policy. Cannot change staff.
- */
-export const rescheduleByCustomer = publicMutation({
-  args: {
-    organizationId: v.id("organization"),
-    confirmationCode: v.string(),
-    phone: v.string(),
-    newDate: v.string(),
-    newStartTime: v.number(),
-    newEndTime: v.number(),
-    sessionId: v.string(),
-  },
-  returns: v.object({ success: v.boolean() }),
-  handler: async (ctx, args) => {
-    // Rate limit
-    const { ok, retryAfter } = await rateLimiter.limit(
-      ctx,
-      "rescheduleBooking",
-      { key: args.organizationId },
-    );
-    if (!ok) {
-      throw new ConvexError({
-        code: ErrorCode.RATE_LIMITED,
-        message: `Reschedule limit exceeded. Try again in ${Math.ceil((retryAfter ?? 60000) / 1000)} seconds.`,
-      });
-    }
-
-    // Look up appointment
-    const appointment = await ctx.db
-      .query("appointments")
-      .withIndex("by_confirmation", (q) =>
-        q.eq("confirmationCode", args.confirmationCode),
-      )
-      .first();
-
-    if (!appointment || appointment.organizationId !== args.organizationId) {
-      throw new ConvexError({
-        code: ErrorCode.NOT_FOUND,
-        message: "Appointment not found",
-      });
-    }
-
-    // Verify identity
-    const customer = await ctx.db.get(appointment.customerId);
-    if (!customer || customer.phone !== args.phone) {
-      throw new ConvexError({
-        code: ErrorCode.FORBIDDEN,
-        message: "Phone number does not match appointment records",
-      });
-    }
-
-    // Only pending/confirmed
-    if (
-      appointment.status !== "pending" &&
-      appointment.status !== "confirmed"
-    ) {
-      throw new ConvexError({
-        code: ErrorCode.VALIDATION_ERROR,
-        message: `Cannot reschedule a ${appointment.status} appointment`,
-      });
-    }
-
-    // Enforce 2-hour policy
-    const appointmentEpoch = dateTimeToEpoch(
-      appointment.date,
-      appointment.startTime,
-    );
-    const twoHoursBefore = appointmentEpoch - 2 * 60 * 60 * 1000;
-    if (Date.now() > twoHoursBefore) {
-      throw new ConvexError({
-        code: ErrorCode.VALIDATION_ERROR,
-        message:
-          "Appointments can only be rescheduled at least 2 hours before the start time",
-      });
-    }
-
-    // Validate slot lock ownership
-    const locks = await ctx.db
-      .query("slotLocks")
-      .withIndex("by_session", (q) => q.eq("sessionId", args.sessionId))
-      .collect();
-    const myLock = locks.find(
-      (l) =>
-        l.staffId === appointment.staffId &&
-        l.date === args.newDate &&
-        l.startTime === args.newStartTime &&
-        l.endTime === args.newEndTime &&
-        l.expiresAt > Date.now(),
-    );
-    if (!myLock) {
-      throw new ConvexError({
-        code: ErrorCode.VALIDATION_ERROR,
-        message:
-          "Slot lock expired or not found. Please select a time slot again.",
-      });
-    }
-
-    // Validate slot availability (exclude self from conflict check)
-    await validateSlotAvailability(ctx, {
-      staffId: appointment.staffId,
-      date: args.newDate,
-      startTime: args.newStartTime,
-      endTime: args.newEndTime,
-      excludeAppointmentId: appointment._id,
-    });
-
-    const now = Date.now();
-    const historyEntry = {
-      fromDate: appointment.date,
-      fromStartTime: appointment.startTime,
-      fromEndTime: appointment.endTime,
-      toDate: args.newDate,
-      toStartTime: args.newStartTime,
-      toEndTime: args.newEndTime,
-      rescheduledBy: "customer" as const,
-      rescheduledAt: now,
-    };
-
-    await ctx.db.patch(appointment._id, {
-      date: args.newDate,
-      startTime: args.newStartTime,
-      endTime: args.newEndTime,
-      rescheduledAt: now,
-      rescheduleCount: (appointment.rescheduleCount ?? 0) + 1,
-      rescheduleHistory: [
-        ...(appointment.rescheduleHistory ?? []),
-        historyEntry,
-      ],
-      updatedAt: now,
-    });
-
-    // Delete the slot lock
-    await ctx.db.delete(myLock._id);
-
-    // Notify assigned staff about customer reschedule
-    await ctx.scheduler.runAfter(0, internal.notifications.createNotification, {
-      organizationId: args.organizationId,
-      recipientStaffId: appointment.staffId,
-      type: "reschedule" as const,
-      title: "Customer Rescheduled",
-      message: `${customer.name} rescheduled to ${args.newDate} at ${formatMinutesShort(args.newStartTime)}`,
       appointmentId: appointment._id,
     });
 

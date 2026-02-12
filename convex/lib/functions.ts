@@ -112,32 +112,10 @@ const triggerMutation = customMutation(
   customCtx(triggers.wrapDB),
 );
 
-export const publicMutation = customMutation(triggerMutation, {
-  args: {},
-  input: async (_ctx, _args) => {
-    return { ctx: {}, args: {} };
-  },
-});
-
 export const publicQuery = customQuery(baseQuery, {
   args: {},
   input: async (_ctx, args) => {
     return { ctx: {}, args };
-  },
-});
-
-export const maybeAuthedQuery = customQuery(baseQuery, {
-  args: {},
-  input: async (ctx, _args) => {
-    try {
-      const user = await authComponent.getAuthUser(
-        ctx as Parameters<typeof authComponent.getAuthUser>[0],
-      );
-      return { ctx: { user: user as AuthUser | null }, args: {} };
-    } catch {
-      // User not authenticated - return null
-      return { ctx: { user: null as AuthUser | null }, args: {} };
-    }
   },
 });
 

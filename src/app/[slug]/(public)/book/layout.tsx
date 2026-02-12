@@ -1,9 +1,10 @@
 "use client";
 
-import { useQuery } from "convex/react";
+import { useConvexAuth, useQuery } from "convex/react";
 import { Building2 } from "lucide-react";
 import Link from "next/link";
-import { useParams } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
+import { useEffect } from "react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Skeleton } from "@/components/ui/skeleton";
 import { api } from "../../../../../convex/_generated/api";
@@ -14,12 +15,21 @@ export default function BookLayout({
   children: React.ReactNode;
 }) {
   const params = useParams();
+  const router = useRouter();
   const slug = typeof params.slug === "string" ? params.slug : "";
 
+  const { isAuthenticated, isLoading: isAuthLoading } = useConvexAuth();
   const organization = useQuery(api.organizations.getBySlug, { slug });
 
-  // Loading state
-  if (organization === undefined) {
+  // Redirect to sign-in if not authenticated
+  useEffect(() => {
+    if (!isAuthLoading && !isAuthenticated) {
+      router.replace("/sign-in");
+    }
+  }, [isAuthLoading, isAuthenticated, router]);
+
+  // Auth loading, redirecting, or org loading
+  if (isAuthLoading || !isAuthenticated || organization === undefined) {
     return (
       <div className="min-h-screen bg-background">
         <header className="border-b">

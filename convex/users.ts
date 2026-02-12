@@ -1,8 +1,8 @@
-import { maybeAuthedQuery } from "./lib/functions";
+import { authedQuery } from "./lib/functions";
 
-// Returns the current user if authenticated, null otherwise
-// Does NOT throw if user is not authenticated
-export const getCurrentUser = maybeAuthedQuery({
+// Returns the current authenticated user
+// Throws UNAUTHENTICATED if not logged in
+export const getCurrentUser = authedQuery({
   args: {},
   handler: async (ctx) => {
     return ctx.user;
