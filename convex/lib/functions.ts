@@ -5,6 +5,7 @@ import {
   customQuery,
 } from "convex-helpers/server/customFunctions";
 import type { Doc, Id } from "../_generated/dataModel";
+import type { MutationCtx, QueryCtx } from "../_generated/server";
 import {
   internalMutation as baseInternalMutation,
   mutation as baseMutation,
@@ -70,8 +71,15 @@ function isSuperAdminEmail(email: string): boolean {
   return emails.includes(email);
 }
 
+/**
+ * Context type that includes both database access and auth capabilities.
+ */
+type CtxWithDb =
+  | (QueryCtx & Parameters<typeof authComponent.getAuthUser>[0])
+  | (MutationCtx & Parameters<typeof authComponent.getAuthUser>[0]);
+
 async function getAuthUser(
-  ctx: Parameters<typeof authComponent.getAuthUser>[0],
+  ctx: CtxWithDb,
   options?: { skipBanCheck?: boolean },
 ): Promise<AuthUser> {
   const user = await authComponent.getAuthUser(ctx);
@@ -82,32 +90,22 @@ async function getAuthUser(
     });
   }
 
-  // Check if user is banned (skip for superadmins)
   if (!options?.skipBanCheck && !isSuperAdminEmail(user.email)) {
-    const db = (ctx as any).db;
-    if (db) {
-      const banned = await db
-        .query("bannedUsers")
-        .withIndex("by_user", (q: any) => q.eq("userId", user._id))
-        .first();
-      if (banned) {
-        throw new ConvexError({
-          code: ErrorCode.FORBIDDEN,
-          message: "Your account has been suspended",
-        });
-      }
+    const banned = await ctx.db
+      .query("bannedUsers")
+      .withIndex("by_user", (q) => q.eq("userId", user._id))
+      .first();
+
+    if (banned) {
+      throw new ConvexError({
+        code: ErrorCode.FORBIDDEN,
+        message: "Your account has been suspended",
+      });
     }
   }
 
   return user;
 }
-
-export const publicQuery = customQuery(baseQuery, {
-  args: {},
-  input: async (_ctx, args) => {
-    return { ctx: {}, args };
-  },
-});
 
 const triggerMutation = customMutation(
   baseMutation,
@@ -118,6 +116,13 @@ export const publicMutation = customMutation(triggerMutation, {
   args: {},
   input: async (_ctx, _args) => {
     return { ctx: {}, args: {} };
+  },
+});
+
+export const publicQuery = customQuery(baseQuery, {
+  args: {},
+  input: async (_ctx, args) => {
+    return { ctx: {}, args };
   },
 });
 
@@ -136,24 +141,6 @@ export const maybeAuthedQuery = customQuery(baseQuery, {
   },
 });
 
-// =============================================================================
-// Authenticated Query/Mutation
-// Just requires login, adds user to context
-// =============================================================================
-
-/**
- * Query that requires authentication.
- * Adds `ctx.user` to the handler.
- *
- * @example
- * export const getMyProfile = authedQuery({
- *   args: {},
- *   handler: async (ctx) => {
- *     // ctx.user is guaranteed to exist
- *     return ctx.user;
- *   },
- * });
- */
 export const authedQuery = customQuery(baseQuery, {
   args: {},
   input: async (ctx, _args) => {
@@ -162,10 +149,6 @@ export const authedQuery = customQuery(baseQuery, {
   },
 });
 
-/**
- * Mutation that requires authentication.
- * Adds `ctx.user` to the handler.
- */
 export const authedMutation = customMutation(triggerMutation, {
   args: {},
   input: async (ctx, _args) => {
@@ -174,38 +157,14 @@ export const authedMutation = customMutation(triggerMutation, {
   },
 });
 
-// =============================================================================
-// Organization Query/Mutation
-// Requires login + organization membership
-// =============================================================================
-
-/**
- * Query that requires authentication AND organization membership.
- * Adds `ctx.user`, `ctx.organizationId`, `ctx.member`, `ctx.staff` to handler.
- *
- * @example
- * export const listStaff = orgQuery({
- *   args: {},
- *   handler: async (ctx) => {
- *     // ctx.organizationId is automatically available
- *     return await ctx.db.query("staff")
- *       .withIndex("organizationId", q => q.eq("organizationId", ctx.organizationId))
- *       .collect();
- *   },
- * });
- */
-/**
- * Shared helper: resolve org context with SuperAdmin bypass.
- * SuperAdmins get a synthetic owner member if they're not an actual member.
- */
 async function resolveOrgContext(
-  ctx: any,
+  ctx: CtxWithDb,
   user: AuthUser,
   organizationId: Id<"organization">,
 ) {
   const member = await ctx.db
     .query("member")
-    .withIndex("organizationId_userId", (q: any) =>
+    .withIndex("organizationId_userId", (q) =>
       q.eq("organizationId", organizationId).eq("userId", user._id),
     )
     .first();
@@ -213,7 +172,7 @@ async function resolveOrgContext(
   const staff = member
     ? await ctx.db
         .query("staff")
-        .withIndex("organizationId_userId", (q: any) =>
+        .withIndex("organizationId_userId", (q) =>
           q.eq("organizationId", organizationId).eq("userId", user._id),
         )
         .first()
@@ -290,15 +249,6 @@ export const orgMutation = customMutation(triggerMutation, {
   },
 });
 
-// =============================================================================
-// Admin Query/Mutation
-// Requires login + organization membership + owner role
-// =============================================================================
-
-/**
- * Query that requires owner role.
- * SuperAdmins bypass the role check.
- */
 export const adminQuery = customQuery(baseQuery, {
   args: { organizationId: v.id("organization") },
   input: async (ctx, args) => {
@@ -330,10 +280,6 @@ export const adminQuery = customQuery(baseQuery, {
   },
 });
 
-/**
- * Mutation that requires owner role.
- * SuperAdmins bypass the role check.
- */
 export const adminMutation = customMutation(triggerMutation, {
   args: { organizationId: v.id("organization") },
   input: async (ctx, args) => {
@@ -365,15 +311,6 @@ export const adminMutation = customMutation(triggerMutation, {
   },
 });
 
-// =============================================================================
-// Owner-Only Query/Mutation
-// Requires login + organization membership + owner role
-// =============================================================================
-
-/**
- * Query that requires owner role only.
- * SuperAdmins bypass the owner role check.
- */
 export const ownerQuery = customQuery(baseQuery, {
   args: { organizationId: v.id("organization") },
   input: async (ctx, args) => {
@@ -411,10 +348,6 @@ export const ownerQuery = customQuery(baseQuery, {
   },
 });
 
-/**
- * Mutation that requires owner role only.
- * SuperAdmins bypass the owner role check.
- */
 export const ownerMutation = customMutation(triggerMutation, {
   args: { organizationId: v.id("organization") },
   input: async (ctx, args) => {
@@ -452,15 +385,6 @@ export const ownerMutation = customMutation(triggerMutation, {
   },
 });
 
-// =============================================================================
-// SuperAdmin Query/Mutation
-// Requires login + email in SUPER_ADMIN_EMAILS env var
-// =============================================================================
-
-/**
- * Query that requires SuperAdmin access.
- * Checks user email against SUPER_ADMIN_EMAILS env var.
- */
 export const superAdminQuery = customQuery(baseQuery, {
   args: {},
   input: async (ctx, _args) => {
@@ -480,10 +404,6 @@ export const superAdminQuery = customQuery(baseQuery, {
   },
 });
 
-/**
- * Mutation that requires SuperAdmin access.
- * Checks user email against SUPER_ADMIN_EMAILS env var.
- */
 export const superAdminMutation = customMutation(triggerMutation, {
   args: {},
   input: async (ctx, _args) => {
@@ -503,15 +423,6 @@ export const superAdminMutation = customMutation(triggerMutation, {
   },
 });
 
-// =============================================================================
-// Internal Functions
-// =============================================================================
-
-/**
- * Internal mutation - for system/cron jobs only
- * Re-export from base for consistency
- */
 export const internalMutation = baseInternalMutation;
 
-// Re-export for admin.ts
 export { isSuperAdminEmail };
