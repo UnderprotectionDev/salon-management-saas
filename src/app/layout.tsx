@@ -1,25 +1,13 @@
 import type { Metadata } from "next";
-import { JetBrains_Mono, Playfair_Display, Poppins } from "next/font/google";
+import { JetBrains_Mono } from "next/font/google";
+import { Toaster } from "@/components/ui/sonner";
 import { getToken } from "@/lib/auth-server";
 import { ConvexClientProvider } from "@/modules/convex/providers/ConvexClientProvider";
 import { OrganizationProvider } from "@/modules/organization/providers/OrganizationProvider";
-import { Toaster } from "@/components/ui/sonner";
 import "./globals.css";
 
-const poppins = Poppins({
-  variable: "--font-sans",
-  subsets: ["latin"],
-  weight: ["400", "500", "600", "700"],
-});
-
 const jetbrainsMono = JetBrains_Mono({
-  variable: "--font-mono",
-  subsets: ["latin"],
-  weight: ["400", "500"],
-});
-
-const playfair = Playfair_Display({
-  variable: "--font-serif",
+  variable: "--font-sans",
   subsets: ["latin"],
   weight: ["400", "500", "600", "700"],
 });
@@ -37,9 +25,7 @@ export default async function RootLayout({
   const token = await getToken();
   return (
     <html lang="en">
-      <body
-        className={`${poppins.variable} ${jetbrainsMono.variable} ${playfair.variable} font-sans antialiased`}
-      >
+      <body className={`${jetbrainsMono.variable} font-sans antialiased`}>
         <ConvexClientProvider initialToken={token}>
           <OrganizationProvider>{children}</OrganizationProvider>
           <Toaster />
