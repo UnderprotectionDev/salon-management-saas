@@ -1,5 +1,5 @@
-import { SignInView } from "@/modules/auth";
+import { SignInView } from "@/modules/auth/ui";
 
-export default function SignInPage() {
+export default async function SignInPage() {
   return <SignInView callbackUrl="/dashboard" />;
 }

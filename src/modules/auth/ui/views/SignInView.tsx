@@ -1,6 +1,5 @@
 "use client";
 
-import { useState } from "react";
 import { authClient } from "@/lib/auth-client";
 import { AuthFooter } from "../components/AuthFooter";
 import { AuthHeader } from "../components/AuthHeader";
@@ -12,36 +11,24 @@ interface SignInViewProps {
 }
 
 export function SignInView({ callbackUrl }: SignInViewProps) {
-  const [isGoogleLoading, setIsGoogleLoading] = useState(false);
-
-  const handleGoogleSignIn = async () => {
-    try {
-      setIsGoogleLoading(true);
-      await authClient.signIn.social({
-        provider: "google",
-        callbackURL: callbackUrl,
-      });
-    } catch (error) {
-      console.error("Google sign-in error:", error);
-      setIsGoogleLoading(false);
-    }
+  const handleGoogleSignIn = () => {
+    authClient.signIn.social({
+      provider: "google",
+      callbackURL: callbackUrl,
+    });
   };
 
   return (
     <AuthLayout>
       <div className="space-y-8">
         <AuthHeader
-          title="WELCOME BACK"
+          title="WELCOME"
           subtitle="Sign in to your account"
           showDivider
         />
 
         <div className="space-y-6">
-          <SocialButton
-            provider="google"
-            onClick={handleGoogleSignIn}
-            isLoading={isGoogleLoading}
-          />
+          <SocialButton onClick={handleGoogleSignIn} />
         </div>
 
         <AuthFooter />
