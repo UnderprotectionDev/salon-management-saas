@@ -1,8 +1,18 @@
 import { v } from "convex/values";
-import { literals, withSystemFields } from "convex-helpers/validators";
+import { pick } from "convex-helpers";
+import {
+  literals,
+  nullable,
+  typedV,
+  withSystemFields,
+} from "convex-helpers/validators";
+import schema from "../schema";
+
+// Schema-typed v: provides vv.doc("tableName") and type-safe vv.id("tableName")
+const vv = typedV(schema);
 
 // =============================================================================
-// Enum Validators (all defined first — used by field objects below)
+// Enum Validators (used in args: positions — kept explicit for readability)
 // =============================================================================
 
 /** Member role: owner | staff */
@@ -124,10 +134,36 @@ export const notificationTypeValidator = literals(
 );
 
 // =============================================================================
-// Complex Sub-Validators (nested objects)
+// Schema-Derived Nested Validators (used in args: positions)
 // =============================================================================
 
-/** Subscription detail (for billing page) */
+/** Address object — derived from organizationSettings schema */
+export const addressValidator =
+  schema.tables.organizationSettings.validator.fields.address;
+
+/** Single business hours day entry */
+export const businessHoursDayValidator = v.optional(
+  v.object({ open: v.string(), close: v.string(), closed: v.boolean() }),
+);
+
+/** Full weekly business hours — derived from organizationSettings schema */
+export const businessHoursValidator =
+  schema.tables.organizationSettings.validator.fields.businessHours;
+
+/** Booking settings — derived from organizationSettings schema */
+export const bookingSettingsValidator =
+  schema.tables.organizationSettings.validator.fields.bookingSettings;
+
+/** Single staff day schedule entry */
+export const staffDayScheduleValidator = v.optional(
+  v.object({ start: v.string(), end: v.string(), available: v.boolean() }),
+);
+
+/** Full weekly staff schedule — derived from staff schema */
+export const staffScheduleValidator =
+  schema.tables.staff.validator.fields.defaultSchedule;
+
+/** Subscription detail (for billing page — composite, not a doc) */
 export const subscriptionDetailValidator = v.object({
   status: subscriptionStatusValidator,
   plan: v.optional(v.string()),
@@ -138,76 +174,6 @@ export const subscriptionDetailValidator = v.object({
   suspendedAt: v.optional(v.number()),
   cancelledAt: v.optional(v.number()),
 });
-
-/** Address object */
-export const addressValidator = v.optional(
-  v.object({
-    street: v.optional(v.string()),
-    city: v.optional(v.string()),
-    state: v.optional(v.string()),
-    postalCode: v.optional(v.string()),
-    country: v.optional(v.string()),
-  }),
-);
-
-/** Single business hours day entry */
-export const businessHoursDayValidator = v.optional(
-  v.object({
-    open: v.string(),
-    close: v.string(),
-    closed: v.boolean(),
-  }),
-);
-
-/** Weekly schedule days (shared between business hours and staff) */
-const weekDays = {
-  monday: businessHoursDayValidator,
-  tuesday: businessHoursDayValidator,
-  wednesday: businessHoursDayValidator,
-  thursday: businessHoursDayValidator,
-  friday: businessHoursDayValidator,
-  saturday: businessHoursDayValidator,
-  sunday: businessHoursDayValidator,
-} as const;
-
-/** Full weekly business hours */
-export const businessHoursValidator = v.optional(v.object(weekDays));
-
-/** Booking settings object */
-export const bookingSettingsValidator = v.optional(
-  v.object({
-    minAdvanceBookingMinutes: v.optional(v.number()),
-    maxAdvanceBookingDays: v.optional(v.number()),
-    slotDurationMinutes: v.optional(v.number()),
-    bufferBetweenBookingsMinutes: v.optional(v.number()),
-    allowOnlineBooking: v.optional(v.boolean()),
-    requireDeposit: v.optional(v.boolean()),
-    depositAmount: v.optional(v.number()),
-    cancellationPolicyHours: v.optional(v.number()),
-  }),
-);
-
-/** Single staff day schedule entry */
-export const staffDayScheduleValidator = v.optional(
-  v.object({
-    start: v.string(),
-    end: v.string(),
-    available: v.boolean(),
-  }),
-);
-
-/** Full weekly staff schedule */
-const staffWeekDays = {
-  monday: staffDayScheduleValidator,
-  tuesday: staffDayScheduleValidator,
-  wednesday: staffDayScheduleValidator,
-  thursday: staffDayScheduleValidator,
-  friday: staffDayScheduleValidator,
-  saturday: staffDayScheduleValidator,
-  sunday: staffDayScheduleValidator,
-} as const;
-
-export const staffScheduleValidator = v.optional(v.object(staffWeekDays));
 
 /** Reschedule history entry */
 export const rescheduleHistoryEntryValidator = v.object({
@@ -220,6 +186,10 @@ export const rescheduleHistoryEntryValidator = v.object({
   rescheduledBy: literals("customer", "staff"),
   rescheduledAt: v.number(),
 });
+
+// =============================================================================
+// Reusable Sub-Validators (used in composite validators)
+// =============================================================================
 
 /** Reusable service item (used in appointment service arrays) */
 const serviceItemWithId = v.object({
@@ -237,307 +207,65 @@ const serviceItemNoId = v.object({
 });
 
 // =============================================================================
-// Shared Field Objects (reused across doc + composite validators)
-// =============================================================================
-
-const organizationFields = {
-  name: v.string(),
-  slug: v.string(),
-  description: v.optional(v.string()),
-  logo: v.optional(v.string()),
-  createdAt: v.number(),
-  updatedAt: v.number(),
-};
-
-const invitationFields = {
-  organizationId: v.id("organization"),
-  email: v.string(),
-  name: v.string(),
-  role: invitationRoleValidator,
-  phone: v.optional(v.string()),
-  status: invitationStatusValidator,
-  invitedBy: v.string(),
-  expiresAt: v.optional(v.number()),
-  createdAt: v.number(),
-  updatedAt: v.number(),
-};
-
-const serviceCategoryFields = {
-  organizationId: v.id("organization"),
-  name: v.string(),
-  description: v.optional(v.string()),
-  sortOrder: v.number(),
-  createdAt: v.number(),
-  updatedAt: v.optional(v.number()),
-};
-
-const serviceFields = {
-  organizationId: v.id("organization"),
-  categoryId: v.optional(v.id("serviceCategories")),
-  name: v.string(),
-  description: v.optional(v.string()),
-  duration: v.number(),
-  bufferTime: v.optional(v.number()),
-  price: v.number(),
-  priceType: servicePriceTypeValidator,
-  imageUrl: v.optional(v.string()),
-  sortOrder: v.number(),
-  isPopular: v.boolean(),
-  status: serviceStatusValidator,
-  showOnline: v.boolean(),
-  createdAt: v.number(),
-  updatedAt: v.number(),
-};
-
-const timeOffRequestFields = {
-  staffId: v.id("staff"),
-  organizationId: v.id("organization"),
-  startDate: v.string(),
-  endDate: v.string(),
-  type: timeOffTypeValidator,
-  status: timeOffStatusValidator,
-  reason: v.optional(v.string()),
-  rejectionReason: v.optional(v.string()),
-  approvedBy: v.optional(v.id("staff")),
-  reviewedAt: v.optional(v.number()),
-  createdAt: v.number(),
-  updatedAt: v.number(),
-};
-
-const customerFields = {
-  organizationId: v.id("organization"),
-  userId: v.optional(v.string()),
-  name: v.string(),
-  email: v.optional(v.string()),
-  phone: v.string(),
-  phoneVerified: v.optional(v.boolean()),
-  accountStatus: v.optional(customerAccountStatusValidator),
-  preferredStaffId: v.optional(v.id("staff")),
-  totalVisits: v.optional(v.number()),
-  totalSpent: v.optional(v.number()),
-  lastVisitDate: v.optional(v.string()),
-  noShowCount: v.optional(v.number()),
-  customerNotes: v.optional(v.string()),
-  staffNotes: v.optional(v.string()),
-  tags: v.optional(v.array(v.string())),
-  source: v.optional(customerSourceValidator),
-  createdAt: v.number(),
-  updatedAt: v.number(),
-};
-
-const appointmentCoreFields = {
-  organizationId: v.id("organization"),
-  customerId: v.id("customers"),
-  staffId: v.id("staff"),
-  date: v.string(),
-  startTime: v.number(),
-  endTime: v.number(),
-  status: appointmentStatusValidator,
-  source: appointmentSourceValidator,
-  confirmationCode: v.string(),
-  confirmedAt: v.optional(v.number()),
-  checkedInAt: v.optional(v.number()),
-  completedAt: v.optional(v.number()),
-  noShowAt: v.optional(v.number()),
-  cancelledAt: v.optional(v.number()),
-  cancelledBy: v.optional(cancelledByValidator),
-  cancellationReason: v.optional(v.string()),
-  subtotal: v.number(),
-  discount: v.optional(v.number()),
-  total: v.number(),
-  paymentStatus: v.optional(paymentStatusValidator),
-  paymentMethod: v.optional(v.string()),
-  paidAt: v.optional(v.number()),
-  customerNotes: v.optional(v.string()),
-  staffNotes: v.optional(v.string()),
-  reminderSentAt: v.optional(v.number()),
-  confirmationSentAt: v.optional(v.number()),
-  rescheduledAt: v.optional(v.number()),
-  rescheduleCount: v.optional(v.number()),
-  rescheduleHistory: v.optional(v.array(rescheduleHistoryEntryValidator)),
-  createdAt: v.number(),
-  updatedAt: v.number(),
-};
-
-// =============================================================================
-// Document Validators (with system fields: _id, _creationTime)
+// Document Validators (auto-generated from schema via typedV)
 // =============================================================================
 
 /** Organization document validator */
-export const organizationDocValidator = v.object(
-  withSystemFields("organization", organizationFields),
-);
+export const organizationDocValidator = vv.doc("organization");
 
 /** Member document validator */
-export const memberDocValidator = v.object(
-  withSystemFields("member", {
-    organizationId: v.id("organization"),
-    userId: v.string(),
-    role: memberRoleValidator,
-    createdAt: v.number(),
-    updatedAt: v.number(),
-  }),
-);
+export const memberDocValidator = vv.doc("member");
 
 /** Invitation document validator */
-export const invitationDocValidator = v.object(
-  withSystemFields("invitation", invitationFields),
-);
+export const invitationDocValidator = vv.doc("invitation");
 
 /** Organization settings document validator */
-export const organizationSettingsDocValidator = v.object(
-  withSystemFields("organizationSettings", {
-    organizationId: v.id("organization"),
-    email: v.optional(v.string()),
-    phone: v.optional(v.string()),
-    website: v.optional(v.string()),
-    address: addressValidator,
-    timezone: v.optional(v.string()),
-    currency: v.optional(v.string()),
-    locale: v.optional(v.string()),
-    businessHours: businessHoursValidator,
-    bookingSettings: bookingSettingsValidator,
-    subscriptionStatus: v.optional(subscriptionStatusValidator),
-    subscriptionPlan: v.optional(v.string()),
-    polarSubscriptionId: v.optional(v.string()),
-    polarCustomerId: v.optional(v.string()),
-    trialEndsAt: v.optional(v.number()),
-    currentPeriodEnd: v.optional(v.number()),
-    gracePeriodEndsAt: v.optional(v.number()),
-    suspendedAt: v.optional(v.number()),
-    cancelledAt: v.optional(v.number()),
-    createdAt: v.number(),
-    updatedAt: v.number(),
-  }),
-);
+export const organizationSettingsDocValidator = vv.doc("organizationSettings");
 
 /** Staff document validator */
-export const staffDocValidator = v.object(
-  withSystemFields("staff", {
-    userId: v.string(),
-    organizationId: v.id("organization"),
-    memberId: v.id("member"),
-    name: v.string(),
-    email: v.string(),
-    phone: v.optional(v.string()),
-    imageUrl: v.optional(v.string()),
-    bio: v.optional(v.string()),
-    status: staffStatusValidator,
-    serviceIds: v.optional(v.array(v.id("services"))),
-    defaultSchedule: staffScheduleValidator,
-    createdAt: v.number(),
-    updatedAt: v.number(),
-  }),
-);
+export const staffDocValidator = vv.doc("staff");
 
 /** Service category document validator */
-export const serviceCategoryDocValidator = v.object(
-  withSystemFields("serviceCategories", serviceCategoryFields),
-);
+export const serviceCategoryDocValidator = vv.doc("serviceCategories");
 
 /** Service document validator */
-export const serviceDocValidator = v.object(
-  withSystemFields("services", serviceFields),
-);
+export const serviceDocValidator = vv.doc("services");
 
 /** Schedule override document validator */
-export const scheduleOverrideDocValidator = v.object(
-  withSystemFields("scheduleOverrides", {
-    staffId: v.id("staff"),
-    organizationId: v.id("organization"),
-    date: v.string(),
-    type: scheduleOverrideTypeValidator,
-    startTime: v.optional(v.string()),
-    endTime: v.optional(v.string()),
-    reason: v.optional(v.string()),
-    createdAt: v.number(),
-  }),
-);
+export const scheduleOverrideDocValidator = vv.doc("scheduleOverrides");
 
 /** Time-off request document validator */
-export const timeOffRequestDocValidator = v.object(
-  withSystemFields("timeOffRequests", timeOffRequestFields),
-);
+export const timeOffRequestDocValidator = vv.doc("timeOffRequests");
 
 /** Staff overtime document validator */
-export const staffOvertimeDocValidator = v.object(
-  withSystemFields("staffOvertime", {
-    staffId: v.id("staff"),
-    organizationId: v.id("organization"),
-    date: v.string(),
-    startTime: v.string(),
-    endTime: v.string(),
-    reason: v.optional(v.string()),
-    createdAt: v.number(),
-  }),
-);
+export const staffOvertimeDocValidator = vv.doc("staffOvertime");
 
 /** Customer document validator */
-export const customerDocValidator = v.object(
-  withSystemFields("customers", customerFields),
-);
+export const customerDocValidator = vv.doc("customers");
 
 /** Appointment document validator */
-export const appointmentDocValidator = v.object(
-  withSystemFields("appointments", appointmentCoreFields),
-);
+export const appointmentDocValidator = vv.doc("appointments");
 
 /** Appointment service (junction) document validator */
-export const appointmentServiceDocValidator = v.object(
-  withSystemFields("appointmentServices", {
-    appointmentId: v.id("appointments"),
-    serviceId: v.id("services"),
-    serviceName: v.string(),
-    duration: v.number(),
-    price: v.number(),
-    staffId: v.id("staff"),
-  }),
-);
+export const appointmentServiceDocValidator = vv.doc("appointmentServices");
 
 /** Slot lock document validator */
-export const slotLockDocValidator = v.object(
-  withSystemFields("slotLocks", {
-    organizationId: v.id("organization"),
-    staffId: v.id("staff"),
-    date: v.string(),
-    startTime: v.number(),
-    endTime: v.number(),
-    sessionId: v.string(),
-    expiresAt: v.number(),
-  }),
-);
+export const slotLockDocValidator = vv.doc("slotLocks");
 
 /** Notification document validator */
-export const notificationDocValidator = v.object(
-  withSystemFields("notifications", {
-    organizationId: v.id("organization"),
-    recipientStaffId: v.id("staff"),
-    type: notificationTypeValidator,
-    title: v.string(),
-    message: v.string(),
-    appointmentId: v.optional(v.id("appointments")),
-    isRead: v.boolean(),
-    readAt: v.optional(v.number()),
-    createdAt: v.number(),
-  }),
-);
+export const notificationDocValidator = vv.doc("notifications");
 
 /** Product benefits document validator */
-export const productBenefitsDocValidator = v.object(
-  withSystemFields("productBenefits", {
-    polarProductId: v.string(),
-    benefits: v.array(v.string()),
-  }),
-);
+export const productBenefitsDocValidator = vv.doc("productBenefits");
 
 // =============================================================================
-// Composite Validators (enriched return types)
+// Composite Validators (enriched return types — schema fields + extensions)
 // =============================================================================
 
 /** Organization with role and memberId (for listForUser) */
 export const organizationWithRoleValidator = v.object(
   withSystemFields("organization", {
-    ...organizationFields,
+    ...schema.tables.organization.validator.fields,
     role: memberRoleValidator,
     memberId: v.id("member"),
   }),
@@ -546,7 +274,7 @@ export const organizationWithRoleValidator = v.object(
 /** Service with category name (enriched query result) */
 export const serviceWithCategoryValidator = v.object(
   withSystemFields("services", {
-    ...serviceFields,
+    ...schema.tables.services.validator.fields,
     categoryName: v.optional(v.string()),
   }),
 );
@@ -554,7 +282,7 @@ export const serviceWithCategoryValidator = v.object(
 /** Service category with service count */
 export const serviceCategoryWithCountValidator = v.object(
   withSystemFields("serviceCategories", {
-    ...serviceCategoryFields,
+    ...schema.tables.serviceCategories.validator.fields,
     serviceCount: v.number(),
   }),
 );
@@ -562,41 +290,46 @@ export const serviceCategoryWithCountValidator = v.object(
 /** Time-off request with staff name (enriched for admin panel) */
 export const timeOffRequestWithStaffValidator = v.object(
   withSystemFields("timeOffRequests", {
-    ...timeOffRequestFields,
+    ...schema.tables.timeOffRequests.validator.fields,
     staffName: v.string(),
     approvedByName: v.optional(v.string()),
   }),
 );
 
-/** Customer list item (lightweight for table display) */
-export const customerListItemValidator = v.object({
-  _id: v.id("customers"),
-  _creationTime: v.number(),
-  name: v.string(),
-  email: v.optional(v.string()),
-  phone: v.string(),
-  accountStatus: v.optional(customerAccountStatusValidator),
-  totalVisits: v.optional(v.number()),
-  totalSpent: v.optional(v.number()),
-  lastVisitDate: v.optional(v.string()),
-  noShowCount: v.optional(v.number()),
-  tags: v.optional(v.array(v.string())),
-  source: v.optional(customerSourceValidator),
-  createdAt: v.number(),
-});
+/** Customer list item (lightweight subset via pick) */
+export const customerListItemValidator = v.object(
+  pick(
+    withSystemFields("customers", schema.tables.customers.validator.fields),
+    [
+      "_id",
+      "_creationTime",
+      "name",
+      "email",
+      "phone",
+      "accountStatus",
+      "totalVisits",
+      "totalSpent",
+      "lastVisitDate",
+      "noShowCount",
+      "tags",
+      "source",
+      "createdAt",
+    ],
+  ),
+);
 
-/** Customer search result (lightweight for phone autocomplete) */
-export const customerSearchResultValidator = v.object({
-  _id: v.id("customers"),
-  name: v.string(),
-  phone: v.string(),
-  email: v.optional(v.string()),
-});
+/** Customer search result (lightweight for phone autocomplete via pick) */
+export const customerSearchResultValidator = v.object(
+  pick(
+    withSystemFields("customers", schema.tables.customers.validator.fields),
+    ["_id", "name", "phone", "email"],
+  ),
+);
 
 /** Customer with preferred staff (enriched for detail page) */
 export const customerWithStaffValidator = v.object(
   withSystemFields("customers", {
-    ...customerFields,
+    ...schema.tables.customers.validator.fields,
     preferredStaffName: v.optional(v.string()),
   }),
 );
@@ -604,7 +337,7 @@ export const customerWithStaffValidator = v.object(
 /** Invitation with organization info (for getPendingForCurrentUser) */
 export const invitationWithOrgValidator = v.object(
   withSystemFields("invitation", {
-    ...invitationFields,
+    ...schema.tables.invitation.validator.fields,
     organizationName: v.string(),
     organizationSlug: v.string(),
   }),
@@ -660,7 +393,7 @@ export const userAppointmentValidator = v.object({
 /** Appointment with enriched details (customer, staff, services) */
 export const appointmentWithDetailsValidator = v.object(
   withSystemFields("appointments", {
-    ...appointmentCoreFields,
+    ...schema.tables.appointments.validator.fields,
     customerName: v.string(),
     customerPhone: v.string(),
     customerEmail: v.optional(v.string()),
@@ -773,7 +506,7 @@ export const topCustomerValidator = v.object({
   phone: v.string(),
   appointments: v.number(),
   revenue: v.number(),
-  lastVisitDate: v.union(v.string(), v.null()),
+  lastVisitDate: nullable(v.string()),
 });
 
 // =============================================================================
@@ -851,13 +584,13 @@ export const adminOrgListItemValidator = v.object({
   name: v.string(),
   slug: v.string(),
   createdAt: v.number(),
-  ownerName: v.union(v.string(), v.null()),
-  ownerEmail: v.union(v.string(), v.null()),
+  ownerName: nullable(v.string()),
+  ownerEmail: nullable(v.string()),
   memberCount: v.number(),
   customerCount: v.number(),
   appointmentCount: v.number(),
   revenue: v.number(),
-  subscriptionStatus: v.union(subscriptionStatusValidator, v.null()),
+  subscriptionStatus: nullable(subscriptionStatusValidator),
 });
 
 /** User list item for admin panel */
@@ -870,14 +603,22 @@ export const adminUserListItemValidator = v.object({
   isBanned: v.boolean(),
 });
 
-/** Admin action log entry */
-export const adminActionLogValidator = v.object({
-  _id: v.id("adminActions"),
-  _creationTime: v.number(),
-  adminEmail: v.string(),
-  action: v.string(),
-  targetType: v.union(v.literal("organization"), v.literal("user")),
-  targetId: v.string(),
-  reason: v.optional(v.string()),
-  createdAt: v.number(),
-});
+/** Admin action log entry (subset of adminActions via pick) */
+export const adminActionLogValidator = v.object(
+  pick(
+    withSystemFields(
+      "adminActions",
+      schema.tables.adminActions.validator.fields,
+    ),
+    [
+      "_id",
+      "_creationTime",
+      "adminEmail",
+      "action",
+      "targetType",
+      "targetId",
+      "reason",
+      "createdAt",
+    ],
+  ),
+);

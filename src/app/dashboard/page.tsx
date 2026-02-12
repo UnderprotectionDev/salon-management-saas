@@ -973,17 +973,9 @@ export default function DashboardPage() {
         {/* My Salons (For salon owners/staff) */}
         <Card>
           <CardHeader>
-            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-              <div>
-                <CardTitle>My Salons</CardTitle>
-                <CardDescription>Salons you own or work at</CardDescription>
-              </div>
-              <Button asChild variant="outline" size="sm">
-                <Link href="/onboarding">
-                  <Plus className="mr-2 size-4" />
-                  New Salon
-                </Link>
-              </Button>
+            <div>
+              <CardTitle>My Salon</CardTitle>
+              <CardDescription>Salon you own or work at</CardDescription>
             </div>
           </CardHeader>
           <CardContent>

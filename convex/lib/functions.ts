@@ -71,9 +71,6 @@ function isSuperAdminEmail(email: string): boolean {
   return emails.includes(email);
 }
 
-/**
- * Context type that includes both database access and auth capabilities.
- */
 type CtxWithDb =
   | (QueryCtx & Parameters<typeof authComponent.getAuthUser>[0])
   | (MutationCtx & Parameters<typeof authComponent.getAuthUser>[0]);
@@ -156,7 +153,6 @@ async function resolveOrgContext(
         .first()
     : null;
 
-  // SuperAdmin bypass: create synthetic owner member if not a real member
   if (!member && isSuperAdminEmail(user.email)) {
     return {
       member: {
@@ -199,10 +195,6 @@ export const orgQuery = customQuery(baseQuery, {
   },
 });
 
-/**
- * Mutation that requires authentication AND organization membership.
- * Adds `ctx.user`, `ctx.organizationId`, `ctx.member`, `ctx.staff` to handler.
- */
 export const orgMutation = customMutation(triggerMutation, {
   args: { organizationId: v.id("organization") },
   input: async (ctx, args) => {

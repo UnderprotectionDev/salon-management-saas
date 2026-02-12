@@ -306,7 +306,7 @@ export const send24HourReminder = internalAction({
 
 /**
  * Send cancellation email to customer (and optionally staff).
- * Called from cancel/cancelByCustomer mutations.
+ * Called from cancel mutation.
  */
 export const sendCancellationEmail = internalAction({
   args: {

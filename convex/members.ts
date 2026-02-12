@@ -68,18 +68,17 @@ export const add = adminMutation({
       });
     }
 
-    // Check if user is already a member
+    // Check if user is already a member of ANY organization
     const existingMembership = await ctx.db
       .query("member")
-      .withIndex("organizationId_userId", (q) =>
-        q.eq("organizationId", ctx.organizationId).eq("userId", args.userId),
-      )
+      .withIndex("userId", (q) => q.eq("userId", args.userId))
       .first();
 
     if (existingMembership) {
       throw new ConvexError({
         code: ErrorCode.ALREADY_EXISTS,
-        message: "User is already a member of this organization",
+        message:
+          "User is already a member of a salon. A staff member can only belong to one salon.",
       });
     }
 

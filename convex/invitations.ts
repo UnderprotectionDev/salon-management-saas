@@ -157,7 +157,22 @@ export const create = adminMutation({
     if (existingStaff) {
       throw new ConvexError({
         code: ErrorCode.ALREADY_EXISTS,
-        message: "A staff member with this email already exists",
+        message: "A staff member with this email already exists in this salon",
+      });
+    }
+
+    // Check if user is already staff at another organization
+    const staffAtOtherOrg = await ctx.db
+      .query("staff")
+      .withIndex("email", (q) => q.eq("email", normalizedEmail))
+      .first();
+    if (
+      staffAtOtherOrg &&
+      staffAtOtherOrg.organizationId !== ctx.organizationId
+    ) {
+      throw new ConvexError({
+        code: ErrorCode.ALREADY_EXISTS,
+        message: "This person is already a staff member at another salon",
       });
     }
 
@@ -233,20 +248,17 @@ export const accept = authedMutation({
       });
     }
 
-    // Check if user is already a member of this organization
+    // Check if user is already a member of ANY organization
     const existingMembership = await ctx.db
       .query("member")
-      .withIndex("organizationId_userId", (q) =>
-        q
-          .eq("organizationId", invitation.organizationId)
-          .eq("userId", ctx.user._id),
-      )
+      .withIndex("userId", (q) => q.eq("userId", ctx.user._id))
       .first();
 
     if (existingMembership) {
       throw new ConvexError({
         code: ErrorCode.ALREADY_EXISTS,
-        message: "You are already a member of this organization",
+        message:
+          "You are already a member of a salon. A staff member can only belong to one salon.",
       });
     }
 

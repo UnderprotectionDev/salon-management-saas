@@ -82,9 +82,6 @@ export const listForUser = authedQuery({
   },
 });
 
-/**
- * Get organization settings
- */
 export const getSettings = orgQuery({
   args: {},
   returns: v.union(organizationSettingsDocValidator, v.null()),
@@ -98,15 +95,6 @@ export const getSettings = orgQuery({
   },
 });
 
-// =============================================================================
-// Mutations
-// =============================================================================
-
-/**
- * Create a new organization with the current user as owner
- * Bootstrap mutation - creates org, member, settings, and staff in one transaction
- * Rate limited: 3/day per user
- */
 export const create = authedMutation({
   args: {
     name: v.string(),
@@ -137,6 +125,19 @@ export const create = authedMutation({
     }
 
     const now = Date.now();
+
+    // Check if user already belongs to an organization
+    const existingMembership = await ctx.db
+      .query("member")
+      .withIndex("userId", (q) => q.eq("userId", ctx.user._id))
+      .first();
+    if (existingMembership) {
+      throw new ConvexError({
+        code: ErrorCode.ALREADY_EXISTS,
+        message:
+          "You already belong to a salon. A user can only be part of one salon.",
+      });
+    }
 
     // Check if slug is already taken
     const existingOrg = await ctx.db

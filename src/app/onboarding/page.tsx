@@ -12,7 +12,7 @@ import {
   MapPin,
 } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { z } from "zod";
 import {
@@ -38,6 +38,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Progress } from "@/components/ui/progress";
 import { Textarea } from "@/components/ui/textarea";
+import { useOrganizations } from "@/modules/organization";
 import { api } from "../../../convex/_generated/api";
 
 // =============================================================================
@@ -108,6 +109,15 @@ interface OnboardingFormData {
 
 export default function OnboardingPage() {
   const router = useRouter();
+  const organizations = useOrganizations();
+
+  // Redirect to salon if user already belongs to one
+  useEffect(() => {
+    if (organizations && organizations.length > 0) {
+      router.replace(`/${organizations[0].slug}/dashboard`);
+    }
+  }, [organizations, router]);
+
   const [currentStep, setCurrentStep] = useState(1);
   const [businessHours, setBusinessHours] = useState<BusinessHours>(
     getDefaultBusinessHours,

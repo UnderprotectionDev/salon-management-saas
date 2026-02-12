@@ -252,7 +252,8 @@ export default defineSchema({
     .index("memberId", ["memberId"])
     .index("organizationId_userId", ["organizationId", "userId"])
     .index("organizationId_status", ["organizationId", "status"])
-    .index("organizationId_email", ["organizationId", "email"]),
+    .index("organizationId_email", ["organizationId", "email"])
+    .index("email", ["email"]),
 
   // Service Categories
   serviceCategories: defineTable({
