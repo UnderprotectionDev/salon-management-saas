@@ -9,6 +9,7 @@ import {
   Clock,
   Heart,
   Loader2,
+  LogOut,
   MapPin,
   Plus,
   RotateCcw,
@@ -50,6 +51,7 @@ import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
+import { authClient } from "@/lib/auth-client";
 import {
   AppointmentStatusBadge,
   DatePicker,
@@ -824,6 +826,30 @@ export default function DashboardPage() {
     api.admin.checkIsSuperAdmin,
     user ? {} : "skip",
   );
+  const [isSigningOut, setIsSigningOut] = useState(false);
+
+  const handleSignOut = async () => {
+    setIsSigningOut(true);
+    try {
+      // Dispatch event BEFORE sign out to skip queries immediately
+      window.dispatchEvent(new Event("auth:signing-out"));
+
+      // Small delay to allow React to process the state update
+      await new Promise((resolve) => setTimeout(resolve, 50));
+
+      await authClient.signOut();
+
+      // Notify that sign out is complete
+      window.dispatchEvent(new Event("auth:signed-out"));
+
+      toast.success("Signed out successfully");
+      router.push("/sign-in");
+    } catch (error) {
+      toast.error("Failed to sign out");
+      window.dispatchEvent(new Event("auth:signed-out"));
+      setIsSigningOut(false);
+    }
+  };
 
   useEffect(() => {
     if (user === null) {
@@ -883,6 +909,19 @@ export default function DashboardPage() {
                   <Settings className="mr-2 size-4" />
                   Edit Profile
                 </Link>
+              </Button>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={handleSignOut}
+                disabled={isSigningOut}
+              >
+                {isSigningOut ? (
+                  <Loader2 className="mr-2 size-4 animate-spin" />
+                ) : (
+                  <LogOut className="mr-2 size-4" />
+                )}
+                Sign Out
               </Button>
             </div>
           </CardHeader>

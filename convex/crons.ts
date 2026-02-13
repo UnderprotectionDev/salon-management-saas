@@ -45,6 +45,13 @@ crons.interval(
   {},
 );
 
+crons.interval(
+  "expire old invitations",
+  { hours: 1 },
+  internal.invitations.expireOldInvitations,
+  {},
+);
+
 crons.daily(
   "send 24-hour advance email reminders",
   { hourUTC: 9, minuteUTC: 0 },

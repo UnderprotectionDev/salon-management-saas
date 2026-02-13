@@ -24,6 +24,7 @@ import type * as invitations from "../invitations.js";
 import type * as lib_actionRetrier from "../lib/actionRetrier.js";
 import type * as lib_confirmation from "../lib/confirmation.js";
 import type * as lib_dateTime from "../lib/dateTime.js";
+import type * as lib_defaults from "../lib/defaults.js";
 import type * as lib_functions from "../lib/functions.js";
 import type * as lib_phone from "../lib/phone.js";
 import type * as lib_rateLimits from "../lib/rateLimits.js";
@@ -74,6 +75,7 @@ declare const fullApi: ApiFromModules<{
   "lib/actionRetrier": typeof lib_actionRetrier;
   "lib/confirmation": typeof lib_confirmation;
   "lib/dateTime": typeof lib_dateTime;
+  "lib/defaults": typeof lib_defaults;
   "lib/functions": typeof lib_functions;
   "lib/phone": typeof lib_phone;
   "lib/rateLimits": typeof lib_rateLimits;

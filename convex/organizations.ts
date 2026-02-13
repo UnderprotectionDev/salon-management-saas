@@ -1,4 +1,10 @@
 import { ConvexError, v } from "convex/values";
+import type { Doc } from "./_generated/dataModel";
+import {
+  DEFAULT_BOOKING_SETTINGS,
+  DEFAULT_BUSINESS_HOURS,
+  DEFAULT_STAFF_SCHEDULE,
+} from "./lib/defaults";
 import {
   adminMutation,
   authedMutation,
@@ -7,7 +13,36 @@ import {
   orgQuery,
   publicQuery,
 } from "./lib/functions";
+import { isValidTurkishPhone } from "./lib/phone";
 import { rateLimiter } from "./lib/rateLimits";
+
+/**
+ * Slugs reserved for app routes. Prevents routing conflicts.
+ */
+const RESERVED_SLUGS = new Set([
+  "dashboard",
+  "settings",
+  "sign-in",
+  "sign-up",
+  "onboarding",
+  "api",
+  "admin",
+  "auth",
+  "billing",
+  "book",
+  "calendar",
+  "customers",
+  "reports",
+  "services",
+  "staff",
+  "appointments",
+  "invite",
+  "accept-invite",
+  "404",
+  "500",
+  "error",
+]);
+
 import {
   addressValidator,
   bookingSettingsValidator,
@@ -43,14 +78,35 @@ export const listPublic = publicQuery({
   handler: async (ctx) => {
     const orgs = await ctx.db.query("organization").take(200);
 
-    return orgs.map((org) => ({
-      _id: org._id,
-      _creationTime: org._creationTime,
-      name: org.name,
-      slug: org.slug,
-      logo: org.logo,
-      description: org.description,
-    }));
+    // Filter out suspended organizations
+    const results: {
+      _id: (typeof orgs)[number]["_id"];
+      _creationTime: number;
+      name: string;
+      slug: string;
+      logo?: string;
+      description?: string;
+    }[] = [];
+
+    for (const org of orgs) {
+      const settings = await ctx.db
+        .query("organizationSettings")
+        .withIndex("organizationId", (q) => q.eq("organizationId", org._id))
+        .first();
+
+      if (settings?.subscriptionStatus === "suspended") continue;
+
+      results.push({
+        _id: org._id,
+        _creationTime: org._creationTime,
+        name: org.name,
+        slug: org.slug,
+        logo: org.logo,
+        description: org.description,
+      });
+    }
+
+    return results;
   },
 });
 
@@ -84,14 +140,23 @@ export const listForUser = authedQuery({
 
 export const getSettings = orgQuery({
   args: {},
-  returns: v.union(organizationSettingsDocValidator, v.null()),
+  returns: organizationSettingsDocValidator,
   handler: async (ctx) => {
-    return await ctx.db
+    const settings = await ctx.db
       .query("organizationSettings")
       .withIndex("organizationId", (q) =>
         q.eq("organizationId", ctx.organizationId),
       )
       .first();
+
+    if (!settings) {
+      throw new ConvexError({
+        code: ErrorCode.INTERNAL_ERROR,
+        message: "Organization settings not found - data integrity issue",
+      });
+    }
+
+    return settings;
   },
 });
 
@@ -109,7 +174,6 @@ export const create = authedMutation({
     slug: v.string(),
   }),
   handler: async (ctx, args) => {
-    // Rate limit check (per user)
     const { ok, retryAfter } = await rateLimiter.limit(
       ctx,
       "createOrganization",
@@ -125,6 +189,53 @@ export const create = authedMutation({
     }
 
     const now = Date.now();
+
+    // Validate name length
+    const trimmedName = args.name.trim();
+    if (trimmedName.length < 2 || trimmedName.length > 100) {
+      throw new ConvexError({
+        code: ErrorCode.INVALID_INPUT,
+        message: "Salon name must be between 2 and 100 characters",
+      });
+    }
+
+    // Validate slug format (lowercase letters, numbers, hyphens only; no leading/trailing/consecutive hyphens)
+    const trimmedSlug = args.slug.trim().toLowerCase();
+    if (
+      !/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(trimmedSlug) ||
+      trimmedSlug.length < 2 ||
+      trimmedSlug.length > 50
+    ) {
+      throw new ConvexError({
+        code: ErrorCode.INVALID_INPUT,
+        message:
+          "URL slug must be 2-50 characters, start and end with a letter or number, and can only contain lowercase letters, numbers, and hyphens (no consecutive hyphens)",
+      });
+    }
+
+    // Check reserved slugs
+    if (RESERVED_SLUGS.has(trimmedSlug)) {
+      throw new ConvexError({
+        code: ErrorCode.INVALID_INPUT,
+        message: "This URL slug is reserved and cannot be used",
+      });
+    }
+
+    // Validate phone if provided
+    if (args.phone && !isValidTurkishPhone(args.phone)) {
+      throw new ConvexError({
+        code: ErrorCode.INVALID_INPUT,
+        message: "Invalid phone format. Expected: +90 5XX XXX XX XX",
+      });
+    }
+
+    // Validate email if provided
+    if (args.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(args.email)) {
+      throw new ConvexError({
+        code: ErrorCode.INVALID_INPUT,
+        message: "Invalid email format",
+      });
+    }
 
     // Check if user already belongs to an organization
     const existingMembership = await ctx.db
@@ -142,7 +253,7 @@ export const create = authedMutation({
     // Check if slug is already taken
     const existingOrg = await ctx.db
       .query("organization")
-      .withIndex("slug", (q) => q.eq("slug", args.slug))
+      .withIndex("slug", (q) => q.eq("slug", trimmedSlug))
       .first();
 
     if (existingOrg) {
@@ -154,8 +265,8 @@ export const create = authedMutation({
 
     // Create organization
     const organizationId = await ctx.db.insert("organization", {
-      name: args.name,
-      slug: args.slug,
+      name: trimmedName,
+      slug: trimmedSlug,
       logo: args.logo,
       createdAt: now,
       updatedAt: now,
@@ -171,27 +282,6 @@ export const create = authedMutation({
     });
 
     // Create default settings
-    const defaultBusinessHours = {
-      monday: { open: "09:00", close: "18:00", closed: false },
-      tuesday: { open: "09:00", close: "18:00", closed: false },
-      wednesday: { open: "09:00", close: "18:00", closed: false },
-      thursday: { open: "09:00", close: "18:00", closed: false },
-      friday: { open: "09:00", close: "18:00", closed: false },
-      saturday: { open: "09:00", close: "18:00", closed: false },
-      sunday: { open: "09:00", close: "18:00", closed: true },
-    };
-
-    const defaultBookingSettings = {
-      minAdvanceBookingMinutes: 60,
-      maxAdvanceBookingDays: 30,
-      slotDurationMinutes: 30,
-      bufferBetweenBookingsMinutes: 0,
-      allowOnlineBooking: true,
-      requireDeposit: false,
-      depositAmount: 0,
-      cancellationPolicyHours: 24,
-    };
-
     await ctx.db.insert("organizationSettings", {
       organizationId,
       email: args.email,
@@ -199,8 +289,8 @@ export const create = authedMutation({
       timezone: "Europe/Istanbul",
       currency: "TRY",
       locale: "tr-TR",
-      businessHours: defaultBusinessHours,
-      bookingSettings: defaultBookingSettings,
+      businessHours: { ...DEFAULT_BUSINESS_HOURS },
+      bookingSettings: { ...DEFAULT_BOOKING_SETTINGS },
       subscriptionStatus: "pending_payment",
       createdAt: now,
       updatedAt: now,
@@ -211,24 +301,16 @@ export const create = authedMutation({
       userId: ctx.user._id,
       organizationId,
       memberId,
-      name: ctx.user.name,
+      name: ctx.user.name || "Unknown",
       email: ctx.user.email,
       status: "active",
       serviceIds: [],
-      defaultSchedule: {
-        monday: { start: "09:00", end: "18:00", available: true },
-        tuesday: { start: "09:00", end: "18:00", available: true },
-        wednesday: { start: "09:00", end: "18:00", available: true },
-        thursday: { start: "09:00", end: "18:00", available: true },
-        friday: { start: "09:00", end: "18:00", available: true },
-        saturday: { start: "09:00", end: "18:00", available: true },
-        sunday: { start: "09:00", end: "18:00", available: false },
-      },
+      defaultSchedule: { ...DEFAULT_STAFF_SCHEDULE },
       createdAt: now,
       updatedAt: now,
     });
 
-    return { organizationId, memberId, slug: args.slug };
+    return { organizationId, memberId, slug: trimmedSlug };
   },
 });
 
@@ -243,10 +325,55 @@ export const update = adminMutation({
   },
   returns: v.id("organization"),
   handler: async (ctx, args) => {
-    const updates: Record<string, unknown> = { updatedAt: Date.now() };
-    if (args.name !== undefined) updates.name = args.name;
-    if (args.description !== undefined) updates.description = args.description;
-    if (args.logo !== undefined) updates.logo = args.logo;
+    // Skip no-op updates
+    if (
+      args.name === undefined &&
+      args.description === undefined &&
+      args.logo === undefined
+    ) {
+      return ctx.organizationId;
+    }
+
+    const updates: {
+      name?: string;
+      description?: string;
+      logo?: string;
+      updatedAt: number;
+    } = { updatedAt: Date.now() };
+
+    // Validate and trim name
+    if (args.name !== undefined) {
+      const trimmedName = args.name.trim();
+      if (trimmedName.length < 2 || trimmedName.length > 100) {
+        throw new ConvexError({
+          code: ErrorCode.INVALID_INPUT,
+          message: "Salon name must be between 2 and 100 characters",
+        });
+      }
+      updates.name = trimmedName;
+    }
+
+    // Validate description length
+    if (args.description !== undefined) {
+      if (args.description.length > 500) {
+        throw new ConvexError({
+          code: ErrorCode.INVALID_INPUT,
+          message: "Description must be at most 500 characters",
+        });
+      }
+      updates.description = args.description;
+    }
+
+    // Validate logo URL format
+    if (args.logo !== undefined) {
+      if (args.logo !== "" && !/^https?:\/\/.+/i.test(args.logo)) {
+        throw new ConvexError({
+          code: ErrorCode.INVALID_INPUT,
+          message: "Logo must be a valid URL",
+        });
+      }
+      updates.logo = args.logo;
+    }
 
     await ctx.db.patch(ctx.organizationId, updates);
 
@@ -285,7 +412,35 @@ export const updateSettings = adminMutation({
       });
     }
 
-    const updates: Record<string, unknown> = { updatedAt: Date.now() };
+    // Validate phone if provided
+    if (
+      args.phone !== undefined &&
+      args.phone !== "" &&
+      !isValidTurkishPhone(args.phone)
+    ) {
+      throw new ConvexError({
+        code: ErrorCode.INVALID_INPUT,
+        message: "Invalid phone format. Expected: +90 5XX XXX XX XX",
+      });
+    }
+
+    // Validate email if provided
+    if (
+      args.email !== undefined &&
+      args.email !== "" &&
+      !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(args.email)
+    ) {
+      throw new ConvexError({
+        code: ErrorCode.INVALID_INPUT,
+        message: "Invalid email format",
+      });
+    }
+
+    const updates: Partial<Doc<"organizationSettings">> & {
+      updatedAt: number;
+    } = {
+      updatedAt: Date.now(),
+    };
     if (args.email !== undefined) updates.email = args.email;
     if (args.phone !== undefined) updates.phone = args.phone;
     if (args.website !== undefined) updates.website = args.website;

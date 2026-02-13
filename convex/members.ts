@@ -1,13 +1,68 @@
 import { ConvexError, v } from "convex/values";
+import type { Id } from "./_generated/dataModel";
+import type { MutationCtx } from "./_generated/server";
 import {
   adminMutation,
   authedMutation,
   authedQuery,
   ErrorCode,
+  isSuperAdminEmail,
   orgQuery,
   ownerMutation,
 } from "./lib/functions";
 import { memberDocValidator, memberRoleValidator } from "./lib/validators";
+
+/**
+ * Cascade-delete all data associated with a staff profile.
+ * Removes: scheduleOverrides, timeOffRequests, staffOvertime, notifications, slotLocks.
+ */
+async function cascadeDeleteStaffData(
+  ctx: MutationCtx,
+  staffId: Id<"staff">,
+  organizationId: Id<"organization">,
+) {
+  const overrides = await ctx.db
+    .query("scheduleOverrides")
+    .withIndex("by_staff_date", (q) => q.eq("staffId", staffId))
+    .collect();
+  for (const override of overrides) {
+    await ctx.db.delete(override._id);
+  }
+
+  const timeOff = await ctx.db
+    .query("timeOffRequests")
+    .withIndex("by_staff", (q) => q.eq("staffId", staffId))
+    .collect();
+  for (const request of timeOff) {
+    await ctx.db.delete(request._id);
+  }
+
+  const overtime = await ctx.db
+    .query("staffOvertime")
+    .withIndex("by_staff_date", (q) => q.eq("staffId", staffId))
+    .collect();
+  for (const entry of overtime) {
+    await ctx.db.delete(entry._id);
+  }
+
+  const notifications = await ctx.db
+    .query("notifications")
+    .withIndex("by_org_staff", (q) =>
+      q.eq("organizationId", organizationId).eq("recipientStaffId", staffId),
+    )
+    .collect();
+  for (const notification of notifications) {
+    await ctx.db.delete(notification._id);
+  }
+
+  const locks = await ctx.db
+    .query("slotLocks")
+    .withIndex("by_staff_date", (q) => q.eq("staffId", staffId))
+    .collect();
+  for (const lock of locks) {
+    await ctx.db.delete(lock._id);
+  }
+}
 
 // =============================================================================
 // Queries
@@ -126,7 +181,10 @@ export const updateRole = authedMutation({
       )
       .first();
 
-    if (!currentMembership || currentMembership.role !== "owner") {
+    if (
+      !currentMembership ||
+      (currentMembership.role !== "owner" && !isSuperAdminEmail(ctx.user.email))
+    ) {
       throw new ConvexError({
         code: ErrorCode.OWNER_REQUIRED,
         message: "Only owner can change member roles",
@@ -185,7 +243,10 @@ export const remove = authedMutation({
       )
       .first();
 
-    if (!currentMembership || currentMembership.role !== "owner") {
+    if (
+      !currentMembership ||
+      (currentMembership.role !== "owner" && !isSuperAdminEmail(ctx.user.email))
+    ) {
       throw new ConvexError({
         code: ErrorCode.FORBIDDEN,
         message: "You don't have permission to remove members",
@@ -208,13 +269,18 @@ export const remove = authedMutation({
       });
     }
 
-    // Cascading: Also remove staff profile
+    // Cascading: Remove staff profile and all associated data
     const staffProfile = await ctx.db
       .query("staff")
       .withIndex("memberId", (q) => q.eq("memberId", args.memberId))
       .first();
 
     if (staffProfile) {
+      await cascadeDeleteStaffData(
+        ctx,
+        staffProfile._id,
+        member.organizationId,
+      );
       await ctx.db.delete(staffProfile._id);
     }
 
@@ -313,13 +379,14 @@ export const leave = authedMutation({
       });
     }
 
-    // Cascading: Remove staff profile
+    // Cascading: Remove staff profile and all associated data
     const staffProfile = await ctx.db
       .query("staff")
       .withIndex("memberId", (q) => q.eq("memberId", membership._id))
       .first();
 
     if (staffProfile) {
+      await cascadeDeleteStaffData(ctx, staffProfile._id, args.organizationId);
       await ctx.db.delete(staffProfile._id);
     }
 

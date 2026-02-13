@@ -53,7 +53,7 @@ export default function SettingsPage() {
     activeOrganization ? { organizationId: activeOrganization._id } : "skip",
   );
 
-  if (!activeOrganization || settings === undefined || settings === null) {
+  if (!activeOrganization || settings === undefined) {
     return <SettingsSkeleton />;
   }
 
@@ -163,7 +163,7 @@ export default function SettingsPage() {
             <CardContent>
               <BusinessHoursEditor
                 organizationId={activeOrganization._id}
-                initialHours={settings?.businessHours}
+                initialHours={settings.businessHours}
               />
             </CardContent>
           </Card>

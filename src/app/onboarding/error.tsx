@@ -1,6 +1,7 @@
 "use client";
 
 import { AlertTriangle } from "lucide-react";
+import { useRouter } from "next/navigation";
 import { useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import {
@@ -19,9 +20,31 @@ export default function OnboardingError({
   error: Error & { digest?: string };
   reset: () => void;
 }) {
+  const router = useRouter();
+
   useEffect(() => {
     console.error(error);
   }, [error]);
+
+  const handleSignOut = async () => {
+    try {
+      // Dispatch event BEFORE sign out to skip queries immediately
+      window.dispatchEvent(new Event("auth:signing-out"));
+
+      // Small delay to allow React to process the state update
+      await new Promise((resolve) => setTimeout(resolve, 50));
+
+      await authClient.signOut();
+
+      // Notify that sign out is complete
+      window.dispatchEvent(new Event("auth:signed-out"));
+
+      router.push("/sign-in");
+    } catch (error) {
+      console.error("Sign out failed:", error);
+      window.dispatchEvent(new Event("auth:signed-out"));
+    }
+  };
 
   return (
     <div className="flex items-center justify-center min-h-screen bg-muted/30">
@@ -37,7 +60,7 @@ export default function OnboardingError({
         </CardHeader>
         <CardContent className="flex flex-col gap-2">
           <Button onClick={reset}>Try again</Button>
-          <Button variant="outline" onClick={() => authClient.signOut()}>
+          <Button variant="outline" onClick={handleSignOut}>
             Sign out
           </Button>
         </CardContent>

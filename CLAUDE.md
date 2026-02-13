@@ -24,7 +24,7 @@ Multi-tenant salon management platform with real-time booking, staff scheduling,
 ## Tech Stack
 
 - **Frontend:** Next.js 16, React 19, React Compiler, Tailwind CSS v4, shadcn/ui (New York)
-- **Backend:** Convex (database, functions, real-time), convex-helpers (RLS, triggers)
+- **Backend:** Convex (database, functions, real-time), convex-helpers (triggers, custom functions)
 - **Auth:** Better Auth (@convex-dev/better-auth) with Convex adapter
 - **Payments:** Polar (@convex-dev/polar for subscriptions)
 - **Email:** Resend + React Email (transactional emails with JSX templates)
@@ -52,7 +52,8 @@ convex/              # Backend functions and schema
 ├── _generated/      # Auto-generated types (don't edit)
 ├── betterAuth/      # Better Auth component (schema, auth config)
 ├── lib/
-│   ├── functions.ts # Custom query/mutation wrappers with auth & RLS + ErrorCode enum
+│   ├── functions.ts # Custom query/mutation wrappers with auth + ErrorCode enum
+│   ├── triggers.ts  # Convex triggers (auto notifications/emails on appointment changes)
 │   ├── validators.ts # Shared return type validators (~910 lines)
 │   ├── rateLimits.ts # Rate limiting config
 │   ├── scheduleResolver.ts # Schedule resolution logic (163 lines)
@@ -60,8 +61,7 @@ convex/              # Backend functions and schema
 │   ├── dateTime.ts  # Date/time utilities (94 lines)
 │   ├── ics.ts       # RFC 5545 ICS calendar file generator
 │   ├── phone.ts     # Turkish phone validation helper
-│   ├── relationships.ts # Database relationship helpers
-│   └── rls.ts       # Row-level security helpers
+│   └── relationships.ts # Database relationship helpers
 ├── appointments.ts  # Appointment CRUD + booking + reschedule (~1400 lines)
 ├── appointmentServices.ts # Appointment-service junction (54 lines)
 ├── auth.ts          # Auth instance and options
@@ -133,7 +133,7 @@ src/
 **User Flow:** Sign in → No orgs? → `/onboarding` → Create org → `/{slug}/dashboard`
 **Public Booking:** `/{slug}/book` → Select services → Pick time → Enter info → Confirmation code
 
-**Multi-Tenancy:** Every table includes `organizationId` for tenant isolation. Custom function wrappers (`orgQuery`, `orgMutation`) automatically enforce this via RLS.
+**Multi-Tenancy:** Every table includes `organizationId` for tenant isolation. Custom function wrappers (`orgQuery`, `orgMutation`) automatically enforce membership checks. One salon per user.
 
 ### Organization Context
 
@@ -152,10 +152,9 @@ Use hooks from `@/modules/organization`:
 | ---------------------- | ---------------------- | ----------------------------------------------------------- | ------------------------------------- |
 | `publicQuery`          | None                   | —                                                           | Public data (org info by slug)        |
 | `publicMutation`       | None                   | —                                                           | Public operations (booking, slot locks) |
-| `maybeAuthedQuery`     | Optional               | `ctx.user \| null`                                          | Works for authed/unauthed users       |
 | `authedQuery/Mutation` | Required               | `ctx.user`                                                  | User-scoped data (profile, orgs list) |
 | `orgQuery/Mutation`    | Required + membership  | `ctx.user`, `ctx.organizationId`, `ctx.member`, `ctx.staff` | All org-scoped operations             |
-| `adminQuery/Mutation`  | Required + admin/owner | Same as org + role check                                    | Staff management, settings, reports   |
+| `adminQuery/Mutation`  | Required + owner       | Same as org + owner role check                              | Staff management, settings, reports   |
 | `ownerQuery/Mutation`  | Required + owner only  | Same as org + owner check                                   | Billing, org deletion                 |
 | `superAdminQuery/Mutation` | Required + env email | `ctx.user`, `ctx.isSuperAdmin`                            | Platform admin panel                  |
 
@@ -265,7 +264,7 @@ Defined in `convex/crons.ts`:
 - `convex/email.tsx` — 4 internalAction functions (confirmation, reminder, cancellation, invitation)
 - `convex/email_helpers.ts` — internalQuery/internalMutation helpers (actions can't access `ctx.db`)
 - `src/emails/` — React Email templates (BookingConfirmation, Reminder24Hour, Cancellation, StaffInvitation)
-- **Trigger pattern:** `ctx.scheduler.runAfter(0, internal.email.sendXxx, { ... })` from mutations
+- **Trigger pattern:** Convex triggers in `convex/lib/triggers.ts` auto-fire notifications and emails on appointment changes
 - **Retry:** 3 attempts with exponential backoff (1s, 2s, 4s)
 - **Idempotency:** Check `confirmationSentAt`/`reminderSentAt` before sending
 - Convex actions (.tsx) can import from `../src/` — esbuild handles JSX
@@ -280,6 +279,7 @@ Defined in `convex/crons.ts`:
 | `convex/lib/functions.ts`   | Custom function wrappers + `ErrorCode` enum (CRITICAL)              |
 | `convex/lib/validators.ts`  | Shared return type validators (~910 lines)                          |
 | `convex/lib/rateLimits.ts`  | Rate limiting configuration                                         |
+| `convex/lib/triggers.ts`    | Appointment triggers (auto notifications + emails on changes)        |
 
 **Frontend (key infrastructure):**
 
@@ -288,7 +288,7 @@ Defined in `convex/crons.ts`:
 | `src/lib/auth-client.ts`          | Client-side auth hooks (`authClient`)                |
 | `src/lib/auth-server.ts`          | Server-side auth helpers (`isAuthenticated`)         |
 | `src/modules/organization/`       | OrganizationProvider, hooks, OrganizationSwitcher    |
-| `src/middleware.ts`               | Auth middleware for protected routes                 |
+| `src/proxy.ts`                    | Auth proxy for protected routes                      |
 
 ## Domain Conventions
 
@@ -364,6 +364,8 @@ SUPER_ADMIN_EMAILS=dev@example.com  # Comma-separated list of superadmin emails
 - Actions are for external API calls only (email, payments, etc.)
 - Actions can't access `ctx.db` — use `ctx.runQuery(internal.xxx)` / `ctx.runMutation(internal.xxx)` instead
 - Avoid N+1 queries: use index range queries (`.gte()/.lte()`) and pre-fetch lookups into Maps
+- **Roles:** Only `"owner"` and `"staff"` — no admin/member roles. `adminQuery`/`adminMutation` check for owner role.
+- **Triggers:** `convex/lib/triggers.ts` uses `convex-helpers/server/triggers` to auto-fire side effects (notifications, emails) on appointment inserts/updates. All mutations use `triggerMutation` base (handled by function wrappers).
 
 ### Tailwind v4
 

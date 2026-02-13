@@ -8,7 +8,6 @@
 | Wrapper | Auth | Context | Use Case |
 |---------|------|---------|----------|
 | `publicQuery/Mutation` | None | — | Public data, booking |
-| `maybeAuthedQuery` | Optional | `ctx.user \| null` | Authed/unauthed |
 | `authedQuery/Mutation` | Required | `ctx.user` | User-scoped |
 | `orgQuery/Mutation` | Required + membership | `ctx.user, organizationId, member, staff` | Org-scoped |
 | `adminQuery/Mutation` | Required + admin/owner | Same + role check | Staff mgmt, settings |

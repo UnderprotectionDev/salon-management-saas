@@ -189,10 +189,21 @@ function AuthenticatedLayoutContent({
 
   const handleSignOut = async () => {
     try {
+      // Dispatch event BEFORE sign out to skip queries immediately
+      window.dispatchEvent(new Event("auth:signing-out"));
+
+      // Small delay to allow React to process the state update
+      await new Promise((resolve) => setTimeout(resolve, 50));
+
       await authClient.signOut();
+
+      // Notify that sign out is complete
+      window.dispatchEvent(new Event("auth:signed-out"));
+
       router.push("/sign-in");
     } catch (error) {
       console.error("Sign out failed:", error);
+      window.dispatchEvent(new Event("auth:signed-out"));
     }
   };
 
@@ -292,6 +303,13 @@ function AuthenticatedLayoutContent({
   );
 }
 
+/**
+ * OrganizationProvider is intentionally nested here to create a fresh context
+ * for the authenticated org layout. The root layout also wraps with
+ * OrganizationProvider for pages like /dashboard and /onboarding that need
+ * org data outside the [slug] route. The inner provider takes precedence
+ * via React context nesting.
+ */
 export default function AuthenticatedLayout({
   children,
 }: {

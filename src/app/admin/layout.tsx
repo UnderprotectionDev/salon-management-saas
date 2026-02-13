@@ -13,7 +13,6 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import {
   Sidebar,
@@ -66,8 +65,23 @@ function AdminLayoutContent({ children }: { children: React.ReactNode }) {
   }
 
   const handleSignOut = async () => {
-    await authClient.signOut();
-    router.push("/sign-in");
+    try {
+      // Dispatch event BEFORE sign out to skip queries immediately
+      window.dispatchEvent(new Event("auth:signing-out"));
+
+      // Small delay to allow React to process the state update
+      await new Promise((resolve) => setTimeout(resolve, 50));
+
+      await authClient.signOut();
+
+      // Notify that sign out is complete
+      window.dispatchEvent(new Event("auth:signed-out"));
+
+      router.push("/sign-in");
+    } catch (error) {
+      console.error("Sign out failed:", error);
+      window.dispatchEvent(new Event("auth:signed-out"));
+    }
   };
 
   return (

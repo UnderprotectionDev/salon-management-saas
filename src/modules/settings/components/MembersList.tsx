@@ -1,11 +1,7 @@
 "use client";
 
 import { useMutation, useQuery } from "convex/react";
-import {
-  LogOut,
-  MoreHorizontal,
-  ShieldAlert,
-} from "lucide-react";
+import { LogOut, MoreHorizontal, ShieldAlert } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { toast } from "sonner";
@@ -119,7 +115,6 @@ export function MembersList({ organizationId }: MembersListProps) {
   };
 
   const isOwner = currentRole === "owner";
-  const isAdminOrOwner = currentRole === "owner";
 
   // Build member list with staff info for TransferOwnershipDialog
   const membersWithNames = members.map((m) => {
@@ -139,7 +134,7 @@ export function MembersList({ organizationId }: MembersListProps) {
             <TableHead>Member</TableHead>
             <TableHead>Role</TableHead>
             <TableHead className="hidden sm:table-cell">Joined</TableHead>
-            {isAdminOrOwner && <TableHead className="w-12" />}
+            {isOwner && <TableHead className="w-12" />}
           </TableRow>
         </TableHeader>
         <TableBody>
@@ -176,7 +171,7 @@ export function MembersList({ organizationId }: MembersListProps) {
                 <TableCell className="hidden sm:table-cell text-sm text-muted-foreground">
                   {new Date(member.createdAt).toLocaleDateString()}
                 </TableCell>
-                {isAdminOrOwner && (
+                {isOwner && (
                   <TableCell>
                     {member.role !== "owner" && (
                       <DropdownMenu>

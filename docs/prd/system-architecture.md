@@ -63,7 +63,6 @@ Custom wrappers in `convex/lib/functions.ts` with progressive access levels:
 | Wrapper | Auth | Context Added |
 |---------|------|---------------|
 | `publicQuery/Mutation` | None | — |
-| `maybeAuthedQuery` | Optional | `ctx.user \| null` |
 | `authedQuery/Mutation` | Required | `ctx.user` |
 | `orgQuery/Mutation` | Required + membership | `ctx.user, organizationId, member, staff` |
 | `adminQuery/Mutation` | Required + admin/owner | Same + role check |

@@ -8,6 +8,7 @@ import {
   useEffect,
   useState,
 } from "react";
+import { authClient } from "@/lib/auth-client";
 import { api } from "../../../../convex/_generated/api";
 import type { Id } from "../../../../convex/_generated/dataModel";
 
@@ -48,21 +49,53 @@ const OrganizationContext = createContext<OrganizationContextType | undefined>(
 
 export function OrganizationProvider({ children }: { children: ReactNode }) {
   const { isAuthenticated } = useConvexAuth();
+  const { data: session, isPending: isSessionPending } =
+    authClient.useSession();
   const [activeOrganization, setActiveOrgState] = useState<Organization | null>(
     null,
   );
+  const [isSigningOut, setIsSigningOut] = useState(false);
 
-  // Get organizations from Convex — skip if not authenticated
+  // Listen for sign-out events to skip queries BEFORE token invalidation
+  useEffect(() => {
+    const handleSigningOut = () => {
+      setIsSigningOut(true);
+    };
+
+    const handleSignedOut = () => {
+      setIsSigningOut(false);
+    };
+
+    window.addEventListener("auth:signing-out", handleSigningOut);
+    window.addEventListener("auth:signed-out", handleSignedOut);
+
+    return () => {
+      window.removeEventListener("auth:signing-out", handleSigningOut);
+      window.removeEventListener("auth:signed-out", handleSignedOut);
+    };
+  }, []);
+
+  // Skip the query when:
+  // - Sign-out is in progress (most important - prevents race condition), OR
+  // - Convex auth says not authenticated, OR
+  // - Better Auth session is pending, OR
+  // - Better Auth session is confirmed gone
+  // This prevents UNAUTHENTICATED errors during sign-out.
+  const shouldSkipQuery =
+    isSigningOut || !isAuthenticated || isSessionPending || session === null;
   const organizationsData = useQuery(
     api.organizations.listForUser,
-    isAuthenticated ? {} : "skip",
+    shouldSkipQuery ? "skip" : {},
   );
 
   // Get current staff profile for the active organization
-  // organizationsData null/boş ise kullanıcı çıkış yapmış demektir — skip et
+  // Skip if user is signing out or has no active organization
   const currentStaff = useQuery(
     api.staff.getCurrentStaff,
-    activeOrganization && organizationsData && organizationsData.length > 0
+    !shouldSkipQuery &&
+      activeOrganization &&
+      organizationsData &&
+      organizationsData.length > 0
       ? { organizationId: activeOrganization._id }
       : "skip",
   );
@@ -81,6 +114,14 @@ export function OrganizationProvider({ children }: { children: ReactNode }) {
       memberId: org.memberId,
     }),
   );
+
+  // Clear active org and localStorage when user signs out
+  useEffect(() => {
+    if (!isAuthenticated || (!isSessionPending && session === null)) {
+      setActiveOrgState(null);
+      localStorage.removeItem("activeOrganizationId");
+    }
+  }, [isAuthenticated, session, isSessionPending]);
 
   // Auto-set active organization if only one exists and none is set
   useEffect(() => {

@@ -78,7 +78,7 @@ export function InvitationsList({ organizationId }: InvitationsListProps) {
     );
   }
 
-  const isAdminOrOwner = currentRole === "owner";
+  const isOwner = currentRole === "owner";
 
   const handleResend = async (invitationId: Id<"invitation">) => {
     try {
@@ -108,7 +108,7 @@ export function InvitationsList({ organizationId }: InvitationsListProps) {
     return (
       <div className="flex flex-col items-center justify-center py-8">
         <p className="mb-4 text-sm text-muted-foreground">No invitations yet</p>
-        {isAdminOrOwner && <AddStaffDialog organizationId={organizationId} />}
+        {isOwner && <AddStaffDialog organizationId={organizationId} />}
       </div>
     );
   }
@@ -122,7 +122,7 @@ export function InvitationsList({ organizationId }: InvitationsListProps) {
             <TableHead>Role</TableHead>
             <TableHead>Status</TableHead>
             <TableHead className="hidden sm:table-cell">Sent</TableHead>
-            {isAdminOrOwner && <TableHead className="w-20" />}
+            {isOwner && <TableHead className="w-20" />}
           </TableRow>
         </TableHeader>
         <TableBody>
@@ -151,7 +151,7 @@ export function InvitationsList({ organizationId }: InvitationsListProps) {
               <TableCell className="hidden sm:table-cell text-sm text-muted-foreground">
                 {new Date(invitation.createdAt).toLocaleDateString()}
               </TableCell>
-              {isAdminOrOwner && (
+              {isOwner && (
                 <TableCell>
                   {invitation.status === "pending" && (
                     <div className="flex items-center gap-1">

@@ -1,12 +1,14 @@
 import { ConvexError, v } from "convex/values";
 import { internal } from "./_generated/api";
+import { internalMutation } from "./_generated/server";
+import { DEFAULT_STAFF_SCHEDULE } from "./lib/defaults";
 import {
   adminMutation,
   authedMutation,
   authedQuery,
   ErrorCode,
+  isSuperAdminEmail,
   orgQuery,
-  publicQuery,
 } from "./lib/functions";
 import { rateLimiter } from "./lib/rateLimits";
 import {
@@ -36,16 +38,18 @@ export const list = orgQuery({
 });
 
 /**
- * Check if there are pending invitations for an email (used during signup/login)
- * Public query - returns only a boolean to prevent information disclosure
+ * Check if there are pending invitations for the current user's email.
+ * Requires authentication to prevent email enumeration attacks.
  */
-export const hasPendingInvitations = publicQuery({
-  args: { email: v.string() },
+export const hasPendingInvitations = authedQuery({
+  args: {},
   returns: v.boolean(),
-  handler: async (ctx, args) => {
+  handler: async (ctx) => {
+    if (!ctx.user.email) return false;
+
     const invitation = await ctx.db
       .query("invitation")
-      .withIndex("email", (q) => q.eq("email", args.email.toLowerCase()))
+      .withIndex("email", (q) => q.eq("email", ctx.user.email?.toLowerCase()))
       .filter((q) => q.eq(q.field("status"), "pending"))
       .first();
 
@@ -69,7 +73,7 @@ export const getPendingForCurrentUser = authedQuery({
 
     const invitations = await ctx.db
       .query("invitation")
-      .withIndex("email", (q) => q.eq("email", ctx.user.email!.toLowerCase()))
+      .withIndex("email", (q) => q.eq("email", ctx.user.email?.toLowerCase()))
       .filter((q) => q.eq(q.field("status"), "pending"))
       .collect();
 
@@ -124,7 +128,7 @@ export const create = adminMutation({
     if (!ok) {
       throw new ConvexError({
         code: ErrorCode.RATE_LIMITED,
-        message: `Invitation limit exceeded. Try again in ${Math.ceil(retryAfter! / 1000 / 60)} minutes.`,
+        message: `Invitation limit exceeded. Try again in ${Math.ceil((retryAfter ?? 0) / 1000 / 60)} minutes.`,
       });
     }
 
@@ -283,15 +287,7 @@ export const accept = authedMutation({
       phone: invitation.phone,
       status: "active",
       serviceIds: [],
-      defaultSchedule: {
-        monday: { start: "09:00", end: "18:00", available: true },
-        tuesday: { start: "09:00", end: "18:00", available: true },
-        wednesday: { start: "09:00", end: "18:00", available: true },
-        thursday: { start: "09:00", end: "18:00", available: true },
-        friday: { start: "09:00", end: "18:00", available: true },
-        saturday: { start: "09:00", end: "18:00", available: true },
-        sunday: { start: "09:00", end: "18:00", available: false },
-      },
+      defaultSchedule: { ...DEFAULT_STAFF_SCHEDULE },
       createdAt: now,
       updatedAt: now,
     });
@@ -377,7 +373,10 @@ export const cancel = authedMutation({
       )
       .first();
 
-    if (!membership || membership.role !== "owner") {
+    if (
+      !membership ||
+      (membership.role !== "owner" && !isSuperAdminEmail(ctx.user.email))
+    ) {
       throw new ConvexError({
         code: ErrorCode.FORBIDDEN,
         message: "You don't have permission to cancel invitations",
@@ -426,7 +425,10 @@ export const resend = authedMutation({
       )
       .first();
 
-    if (!membership || membership.role !== "owner") {
+    if (
+      !membership ||
+      (membership.role !== "owner" && !isSuperAdminEmail(ctx.user.email))
+    ) {
       throw new ConvexError({
         code: ErrorCode.FORBIDDEN,
         message: "You don't have permission to resend invitations",
@@ -444,7 +446,7 @@ export const resend = authedMutation({
     if (!ok) {
       throw new ConvexError({
         code: ErrorCode.RATE_LIMITED,
-        message: `Rate limit exceeded. Try again in ${Math.ceil(retryAfter! / 1000 / 60)} minutes.`,
+        message: `Rate limit exceeded. Try again in ${Math.ceil((retryAfter ?? 0) / 1000 / 60)} minutes.`,
       });
     }
 
@@ -470,5 +472,34 @@ export const resend = authedMutation({
     });
 
     return true;
+  },
+});
+
+// =============================================================================
+// Internal
+// =============================================================================
+
+/**
+ * Mark expired invitations as "expired".
+ * Called by cron job to keep invitation statuses accurate.
+ */
+export const expireOldInvitations = internalMutation({
+  args: {},
+  returns: v.number(),
+  handler: async (ctx) => {
+    const now = Date.now();
+    const pending = await ctx.db
+      .query("invitation")
+      .withIndex("status", (q) => q.eq("status", "pending"))
+      .collect();
+
+    let count = 0;
+    for (const inv of pending) {
+      if (inv.expiresAt && inv.expiresAt < now) {
+        await ctx.db.patch(inv._id, { status: "expired", updatedAt: now });
+        count++;
+      }
+    }
+    return count;
   },
 });
