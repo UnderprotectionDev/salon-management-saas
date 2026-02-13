@@ -1,6 +1,5 @@
 "use client";
 
-import { Checkbox } from "@/components/ui/checkbox";
 import { formatPrice } from "@/modules/services/lib/currency";
 import type { Id } from "../../../../convex/_generated/dataModel";
 
@@ -8,6 +7,7 @@ type Service = {
   _id: Id<"services">;
   name: string;
   duration: number;
+  bufferTime?: number;
   price: number;
   description?: string;
   categoryName?: string;
@@ -18,14 +18,17 @@ type ServiceSelectorProps = {
   services: Service[];
   selectedIds: Id<"services">[];
   onSelectionChange: (ids: Id<"services">[]) => void;
+  disabled?: boolean;
 };
 
 export function ServiceSelector({
   services,
   selectedIds,
   onSelectionChange,
+  disabled = false,
 }: ServiceSelectorProps) {
   const toggleService = (id: Id<"services">) => {
+    if (disabled) return;
     if (selectedIds.includes(id)) {
       onSelectionChange(selectedIds.filter((s) => s !== id));
     } else {
@@ -33,82 +36,81 @@ export function ServiceSelector({
     }
   };
 
-  const totalDuration = services
-    .filter((s) => selectedIds.includes(s._id))
-    .reduce((sum, s) => sum + s.duration, 0);
-  const totalPrice = services
-    .filter((s) => selectedIds.includes(s._id))
-    .reduce((sum, s) => sum + s.price, 0);
-
   // Group by category
   const grouped = new Map<string, Service[]>();
   for (const service of services) {
-    const cat = service.categoryName ?? "Other";
+    const cat = service.categoryName ?? "Services";
     const list = grouped.get(cat) ?? [];
     list.push(service);
     grouped.set(cat, list);
   }
 
+  let globalIndex = 0;
+
   return (
-    <div className="space-y-6">
+    <div className={disabled ? "opacity-40 pointer-events-none" : ""}>
       {Array.from(grouped.entries()).map(([category, categoryServices]) => (
         <div key={category}>
-          <h3 className="mb-3 text-sm font-medium text-muted-foreground uppercase tracking-wide">
-            {category}
-          </h3>
-          <div className="space-y-2">
-            {categoryServices.map((service) => (
-              <label
+          {grouped.size > 1 && (
+            <div className="text-[10px] uppercase tracking-widest text-muted-foreground font-semibold py-2 border-b">
+              {category}
+            </div>
+          )}
+          {categoryServices.map((service) => {
+            globalIndex++;
+            const idx = String(globalIndex).padStart(2, "0");
+            const isSelected = selectedIds.includes(service._id);
+            return (
+              <button
                 key={service._id}
-                className={`flex items-center gap-4 rounded-lg border p-4 cursor-pointer hover:bg-accent/50 transition-colors ${
-                  selectedIds.includes(service._id)
-                    ? "border-primary bg-primary/5"
-                    : ""
+                type="button"
+                onClick={() => toggleService(service._id)}
+                aria-pressed={isSelected}
+                className={`w-full flex items-center gap-4 py-4 px-3 border-b text-left transition-colors ${
+                  isSelected
+                    ? "bg-primary text-primary-foreground"
+                    : "hover:bg-accent/50"
                 }`}
               >
-                <Checkbox
-                  checked={selectedIds.includes(service._id)}
-                  onCheckedChange={() => toggleService(service._id)}
-                />
+                <span
+                  className={`text-sm font-medium tabular-nums shrink-0 ${
+                    isSelected
+                      ? "text-primary-foreground"
+                      : "text-muted-foreground"
+                  }`}
+                >
+                  {idx}
+                </span>
                 <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2">
-                    <span className="font-medium">{service.name}</span>
-                    {service.isPopular && (
-                      <span className="text-xs bg-primary/10 text-primary px-2 py-0.5 rounded-full">
-                        Popular
-                      </span>
-                    )}
-                  </div>
-                  {service.description && (
-                    <p className="text-sm text-muted-foreground mt-0.5 truncate">
+                  <span className="font-semibold uppercase text-sm tracking-wide">
+                    {service.name}
+                  </span>
+                  {service.description && !isSelected && (
+                    <p className="text-xs text-muted-foreground mt-0.5 truncate">
                       {service.description}
                     </p>
                   )}
                 </div>
-                <div className="text-right shrink-0">
-                  <div className="font-medium">
+                <div className="text-right shrink-0 tabular-nums">
+                  <div className="font-semibold text-sm">
                     {formatPrice(service.price)}
                   </div>
-                  <div className="text-xs text-muted-foreground">
-                    {service.duration} min
+                  <div
+                    className={`text-xs ${
+                      isSelected
+                        ? "text-primary-foreground/70"
+                        : "text-muted-foreground"
+                    }`}
+                  >
+                    {service.duration}
+                    {service.bufferTime ? ` +${service.bufferTime}` : ""} MIN
                   </div>
                 </div>
-              </label>
-            ))}
-          </div>
+              </button>
+            );
+          })}
         </div>
       ))}
-
-      {selectedIds.length > 0 && (
-        <div className="flex items-center justify-between border-t pt-4">
-          <div className="text-sm text-muted-foreground">
-            {selectedIds.length} service
-            {selectedIds.length !== 1 ? "s" : ""} selected{" · "}
-            {totalDuration} min total
-          </div>
-          <div className="font-semibold">{formatPrice(totalPrice)}</div>
-        </div>
-      )}
     </div>
   );
 }

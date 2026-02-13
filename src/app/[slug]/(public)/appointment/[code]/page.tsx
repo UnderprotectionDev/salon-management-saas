@@ -139,7 +139,16 @@ export default function AppointmentStatusPage() {
               <div className="flex items-start gap-3">
                 <Calendar className="size-4 mt-0.5 text-muted-foreground" />
                 <div>
-                  <div className="font-medium">{appointment.date}</div>
+                  <div className="font-medium">
+                    {new Date(
+                      `${appointment.date}T00:00:00`,
+                    ).toLocaleDateString("en-US", {
+                      weekday: "long",
+                      year: "numeric",
+                      month: "long",
+                      day: "numeric",
+                    })}
+                  </div>
                   <div className="text-sm text-muted-foreground">
                     {formatMinutesAsTime(appointment.startTime)} –{" "}
                     {formatMinutesAsTime(appointment.endTime)}

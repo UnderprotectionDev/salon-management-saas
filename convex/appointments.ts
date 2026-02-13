@@ -1,5 +1,5 @@
+import { paginationOptsValidator } from "convex/server";
 import { ConvexError, v } from "convex/values";
-import { internal } from "./_generated/api";
 import type { Doc, Id } from "./_generated/dataModel";
 import type { DatabaseReader } from "./_generated/server";
 import { ensureUniqueCode } from "./lib/confirmation";
@@ -18,7 +18,7 @@ import {
 } from "./lib/functions";
 import { isValidTurkishPhone } from "./lib/phone";
 import { rateLimiter } from "./lib/rateLimits";
-import { getDatesBetween, resolveSchedule } from "./lib/scheduleResolver";
+import { resolveSchedule } from "./lib/scheduleResolver";
 import {
   appointmentSourceValidator,
   appointmentStatusValidator,
@@ -64,6 +64,78 @@ async function enrichAppointment(
 }
 
 // =============================================================================
+// Helper: Batch enrich appointments (avoids N+1 queries)
+// =============================================================================
+
+async function batchEnrichAppointments(
+  ctx: { db: DatabaseReader },
+  appointments: Doc<"appointments">[],
+) {
+  if (appointments.length === 0) return [];
+
+  // Collect unique IDs
+  const customerIds = [...new Set(appointments.map((a) => a.customerId))];
+  const staffIds = [
+    ...new Set(
+      appointments
+        .map((a) => a.staffId)
+        .filter((id): id is Id<"staff"> => id != null),
+    ),
+  ];
+
+  // Batch fetch customers and staff
+  const [customerDocs, staffDocs] = await Promise.all([
+    Promise.all(customerIds.map((id) => ctx.db.get(id))),
+    Promise.all(staffIds.map((id) => ctx.db.get(id))),
+  ]);
+
+  const customerMap = new Map(
+    customerDocs
+      .filter((c): c is NonNullable<typeof c> => c != null)
+      .map((c) => [c._id, c]),
+  );
+  const staffMap = new Map(
+    staffDocs
+      .filter((s): s is NonNullable<typeof s> => s != null)
+      .map((s) => [s._id, s]),
+  );
+
+  // Batch fetch appointment services (one query per appointment — unavoidable with index)
+  const allServices = await Promise.all(
+    appointments.map((a) =>
+      ctx.db
+        .query("appointmentServices")
+        .withIndex("by_appointment", (q) => q.eq("appointmentId", a._id))
+        .collect(),
+    ),
+  );
+  const servicesMap = new Map(
+    appointments.map((a, i) => [a._id, allServices[i]]),
+  );
+
+  return appointments.map((appt) => {
+    const customer = customerMap.get(appt.customerId);
+    const staff = appt.staffId ? staffMap.get(appt.staffId) : null;
+    const apptServices = servicesMap.get(appt._id) ?? [];
+
+    return {
+      ...appt,
+      customerName: customer?.name ?? "Unknown",
+      customerPhone: customer?.phone ?? "",
+      customerEmail: customer?.email,
+      staffName: staff?.name ?? "Deleted staff",
+      staffImageUrl: staff?.imageUrl,
+      services: apptServices.map((s) => ({
+        serviceId: s.serviceId,
+        serviceName: s.serviceName,
+        duration: s.duration,
+        price: s.price,
+      })),
+    };
+  });
+}
+
+// =============================================================================
 // Helper: Validate slot availability for a staff member
 // =============================================================================
 
@@ -75,11 +147,20 @@ async function validateSlotAvailability(
     startTime: number;
     endTime: number;
     excludeAppointmentId?: Id<"appointments">;
+    /** Skip working hours check (for staff-created appointments) */
+    skipScheduleCheck?: boolean;
   },
 ) {
-  const { staffId, date, startTime, endTime, excludeAppointmentId } = params;
+  const {
+    staffId,
+    date,
+    startTime,
+    endTime,
+    excludeAppointmentId,
+    skipScheduleCheck,
+  } = params;
 
-  // Verify staff schedule
+  // Verify staff exists and is active
   const staff = await ctx.db.get(staffId);
   if (!staff || staff.status !== "active") {
     throw new ConvexError({
@@ -88,50 +169,57 @@ async function validateSlotAvailability(
     });
   }
 
-  const override = await ctx.db
-    .query("scheduleOverrides")
-    .withIndex("by_staff_date", (q) =>
-      q.eq("staffId", staffId).eq("date", date),
-    )
-    .first();
+  // Check working hours (unless explicitly skipped for staff-created appointments)
+  if (!skipScheduleCheck) {
+    const override = await ctx.db
+      .query("scheduleOverrides")
+      .withIndex("by_staff_date", (q) =>
+        q.eq("staffId", staffId).eq("date", date),
+      )
+      .first();
 
-  const overtimeEntries = await ctx.db
-    .query("staffOvertime")
-    .withIndex("by_staff_date", (q) =>
-      q.eq("staffId", staffId).eq("date", date),
-    )
-    .collect();
+    const overtimeEntries = await ctx.db
+      .query("staffOvertime")
+      .withIndex("by_staff_date", (q) =>
+        q.eq("staffId", staffId).eq("date", date),
+      )
+      .collect();
 
-  const resolved = resolveSchedule({
-    date,
-    defaultSchedule: staff.defaultSchedule ?? undefined,
-    override: override ?? null,
-    overtimeEntries,
-  });
-
-  // Build working windows
-  const windows: Array<{ start: number; end: number }> = [];
-  if (resolved.available && resolved.effectiveStart && resolved.effectiveEnd) {
-    windows.push({
-      start: timeStringToMinutes(resolved.effectiveStart),
-      end: timeStringToMinutes(resolved.effectiveEnd),
+    const resolved = resolveSchedule({
+      date,
+      defaultSchedule: staff.defaultSchedule ?? undefined,
+      override: override ?? null,
+      overtimeEntries,
     });
-  }
-  for (const ot of resolved.overtimeWindows) {
-    windows.push({
-      start: timeStringToMinutes(ot.start),
-      end: timeStringToMinutes(ot.end),
-    });
-  }
 
-  const fitsInWindow = windows.some(
-    (w) => startTime >= w.start && endTime <= w.end,
-  );
-  if (!fitsInWindow) {
-    throw new ConvexError({
-      code: ErrorCode.VALIDATION_ERROR,
-      message: "Selected time is outside staff working hours",
-    });
+    // Build working windows
+    const windows: Array<{ start: number; end: number }> = [];
+    if (
+      resolved.available &&
+      resolved.effectiveStart &&
+      resolved.effectiveEnd
+    ) {
+      windows.push({
+        start: timeStringToMinutes(resolved.effectiveStart),
+        end: timeStringToMinutes(resolved.effectiveEnd),
+      });
+    }
+    for (const ot of resolved.overtimeWindows) {
+      windows.push({
+        start: timeStringToMinutes(ot.start),
+        end: timeStringToMinutes(ot.end),
+      });
+    }
+
+    const fitsInWindow = windows.some(
+      (w) => startTime >= w.start && endTime <= w.end,
+    );
+    if (!fitsInWindow) {
+      throw new ConvexError({
+        code: ErrorCode.VALIDATION_ERROR,
+        message: "Selected time is outside staff working hours",
+      });
+    }
   }
 
   // Check for conflicting appointments
@@ -190,9 +278,9 @@ export const create = authedMutation({
     customerId: v.id("customers"),
   }),
   handler: async (ctx, args) => {
-    // 1. Rate limit
+    // 1. Rate limit (keyed by user ID, not org)
     const { ok, retryAfter } = await rateLimiter.limit(ctx, "createBooking", {
-      key: args.organizationId,
+      key: ctx.user._id,
     });
     if (!ok) {
       throw new ConvexError({
@@ -201,7 +289,42 @@ export const create = authedMutation({
       });
     }
 
-    // 2. Check subscription status — block if suspended or canceled
+    // 2. Validate inputs
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(args.date)) {
+      throw new ConvexError({
+        code: ErrorCode.VALIDATION_ERROR,
+        message: "Invalid date format. Expected YYYY-MM-DD.",
+      });
+    }
+    if (args.endTime <= args.startTime) {
+      throw new ConvexError({
+        code: ErrorCode.VALIDATION_ERROR,
+        message: "End time must be after start time.",
+      });
+    }
+    if (args.serviceIds.length > 10) {
+      throw new ConvexError({
+        code: ErrorCode.VALIDATION_ERROR,
+        message: "Maximum 10 services per appointment.",
+      });
+    }
+    if (args.customer.notes && args.customer.notes.length > 500) {
+      throw new ConvexError({
+        code: ErrorCode.VALIDATION_ERROR,
+        message: "Customer notes must be 500 characters or less.",
+      });
+    }
+
+    // 3. Validate organization exists
+    const org = await ctx.db.get(args.organizationId);
+    if (!org) {
+      throw new ConvexError({
+        code: ErrorCode.NOT_FOUND,
+        message: "Organization not found.",
+      });
+    }
+
+    // 4. Check subscription status — block if suspended or canceled
     const orgSettings = await ctx.db
       .query("organizationSettings")
       .withIndex("organizationId", (q) =>
@@ -220,7 +343,7 @@ export const create = authedMutation({
       });
     }
 
-    // 3. Validate slot lock ownership
+    // 5. Validate slot lock ownership
     const locks = await ctx.db
       .query("slotLocks")
       .withIndex("by_session", (q) => q.eq("sessionId", args.sessionId))
@@ -241,7 +364,7 @@ export const create = authedMutation({
       });
     }
 
-    // 3. Validate staff schedule + slot availability
+    // 6. Validate staff schedule + slot availability
     const staff = await validateSlotAvailability(ctx, {
       staffId: args.staffId,
       date: args.date,
@@ -249,7 +372,7 @@ export const create = authedMutation({
       endTime: args.endTime,
     });
 
-    // 4. Verify at least one service selected
+    // 7. Verify at least one service selected
     if (args.serviceIds.length === 0) {
       throw new ConvexError({
         code: ErrorCode.VALIDATION_ERROR,
@@ -268,7 +391,7 @@ export const create = authedMutation({
       }
     }
 
-    // 6. Find or create customer
+    // 8. Find or create customer
     if (!isValidTurkishPhone(args.customer.phone)) {
       throw new ConvexError({
         code: ErrorCode.VALIDATION_ERROR,
@@ -320,7 +443,7 @@ export const create = authedMutation({
       });
     }
 
-    // 7. Fetch services for pricing
+    // 9. Fetch services for pricing
     const services = await Promise.all(
       args.serviceIds.map((id) => ctx.db.get(id)),
     );
@@ -329,13 +452,13 @@ export const create = authedMutation({
     );
     const subtotal = validServices.reduce((sum, s) => sum + s.price, 0);
 
-    // 8. Generate confirmation code
+    // 10. Generate confirmation code
     const confirmationCode = await ensureUniqueCode(
       ctx.db,
       args.organizationId,
     );
 
-    // 9. Create appointment
+    // 11. Create appointment
     const appointmentId = await ctx.db.insert("appointments", {
       organizationId: args.organizationId,
       customerId,
@@ -353,7 +476,7 @@ export const create = authedMutation({
       updatedAt: now,
     });
 
-    // 10. Create appointment service records
+    // 12. Create appointment service records
     for (const service of validServices) {
       await ctx.db.insert("appointmentServices", {
         appointmentId,
@@ -365,23 +488,10 @@ export const create = authedMutation({
       });
     }
 
-    // 11. Delete the slot lock
+    // 13. Delete the slot lock
     await ctx.db.delete(myLock._id);
 
-    // 12. Notify all staff about new booking
-    await ctx.scheduler.runAfter(0, internal.notifications.notifyAllStaff, {
-      organizationId: args.organizationId,
-      type: "new_booking" as const,
-      title: "New Booking",
-      message: `${args.customer.name} booked for ${args.date} at ${formatMinutesShort(args.startTime)}`,
-      appointmentId,
-    });
-
-    // 13. Send booking confirmation email (async, non-blocking)
-    await ctx.scheduler.runAfter(0, internal.email.sendBookingConfirmation, {
-      appointmentId,
-      organizationId: args.organizationId,
-    });
+    // 14. Notifications & emails are handled automatically by triggers (convex/lib/triggers.ts)
 
     return { appointmentId, confirmationCode, customerId };
   },
@@ -446,23 +556,24 @@ export const listForCurrentUser = authedQuery({
   args: {},
   returns: v.array(userAppointmentValidator),
   handler: async (ctx) => {
-    // Find all customer records linked to this user
+    // Find customer records linked to this user (limit to 50)
     const customerRecords = await ctx.db
       .query("customers")
       .withIndex("by_user", (q) => q.eq("userId", ctx.user._id))
-      .collect();
+      .take(50);
 
     if (customerRecords.length === 0) {
       return [];
     }
 
-    // Gather appointments from all customer records
+    // Gather appointments from all customer records (limit to 100 per customer)
     const allAppointments: Doc<"appointments">[] = [];
     for (const customer of customerRecords) {
       const appts = await ctx.db
         .query("appointments")
         .withIndex("by_customer", (q) => q.eq("customerId", customer._id))
-        .collect();
+        .order("desc")
+        .take(100);
       allAppointments.push(...appts);
     }
 
@@ -472,42 +583,70 @@ export const listForCurrentUser = authedQuery({
       return dateCompare !== 0 ? dateCompare : a.startTime - b.startTime;
     });
 
-    // Enrich with org info, staff, services
-    const enriched = await Promise.all(
-      allAppointments.map(async (appt) => {
-        const [org, staff] = await Promise.all([
-          ctx.db.get(appt.organizationId),
-          appt.staffId ? ctx.db.get(appt.staffId) : null,
-        ]);
+    // Batch fetch unique org and staff IDs
+    const orgIds = [...new Set(allAppointments.map((a) => a.organizationId))];
+    const staffIds = [
+      ...new Set(
+        allAppointments
+          .map((a) => a.staffId)
+          .filter((id): id is Id<"staff"> => id != null),
+      ),
+    ];
 
-        const apptServices = await ctx.db
-          .query("appointmentServices")
-          .withIndex("by_appointment", (q) => q.eq("appointmentId", appt._id))
-          .collect();
+    const [orgDocs, staffDocs] = await Promise.all([
+      Promise.all(orgIds.map((id) => ctx.db.get(id))),
+      Promise.all(staffIds.map((id) => ctx.db.get(id))),
+    ]);
 
-        return {
-          _id: appt._id,
-          date: appt.date,
-          startTime: appt.startTime,
-          endTime: appt.endTime,
-          status: appt.status,
-          confirmationCode: appt.confirmationCode,
-          staffName: staff?.name ?? "Deleted staff",
-          staffImageUrl: staff?.imageUrl,
-          total: appt.total,
-          organizationName: org?.name ?? "Unknown",
-          organizationSlug: org?.slug ?? "",
-          organizationLogo: org?.logo,
-          services: apptServices.map((s) => ({
-            serviceName: s.serviceName,
-            duration: s.duration,
-            price: s.price,
-          })),
-        };
-      }),
+    const orgMap = new Map(
+      orgDocs
+        .filter((o): o is NonNullable<typeof o> => o != null)
+        .map((o) => [o._id, o]),
+    );
+    const staffMap = new Map(
+      staffDocs
+        .filter((s): s is NonNullable<typeof s> => s != null)
+        .map((s) => [s._id, s]),
     );
 
-    return enriched;
+    // Batch fetch appointment services
+    const allServices = await Promise.all(
+      allAppointments.map((a) =>
+        ctx.db
+          .query("appointmentServices")
+          .withIndex("by_appointment", (q) => q.eq("appointmentId", a._id))
+          .collect(),
+      ),
+    );
+    const servicesMap = new Map(
+      allAppointments.map((a, i) => [a._id, allServices[i]]),
+    );
+
+    return allAppointments.map((appt) => {
+      const org = orgMap.get(appt.organizationId);
+      const staff = appt.staffId ? staffMap.get(appt.staffId) : null;
+      const apptServices = servicesMap.get(appt._id) ?? [];
+
+      return {
+        _id: appt._id,
+        date: appt.date,
+        startTime: appt.startTime,
+        endTime: appt.endTime,
+        status: appt.status,
+        confirmationCode: appt.confirmationCode,
+        staffName: staff?.name ?? "Deleted staff",
+        staffImageUrl: staff?.imageUrl,
+        total: appt.total,
+        organizationName: org?.name ?? "Unknown",
+        organizationSlug: org?.slug ?? "",
+        organizationLogo: org?.logo,
+        services: apptServices.map((s) => ({
+          serviceName: s.serviceName,
+          duration: s.duration,
+          price: s.price,
+        })),
+      };
+    });
   },
 });
 
@@ -568,9 +707,73 @@ export const list = orgQuery({
       return dateCompare !== 0 ? dateCompare : a.startTime - b.startTime;
     });
 
-    return Promise.all(
-      appointments.map((appt) => enrichAppointment(ctx, appt)),
-    );
+    return batchEnrichAppointments(ctx, appointments);
+  },
+});
+
+/**
+ * List appointments with cursor-based pagination.
+ * Supports optional status filter.
+ */
+export const listPaginated = orgQuery({
+  args: {
+    paginationOpts: paginationOptsValidator,
+    statusFilter: v.optional(appointmentStatusValidator),
+  },
+  returns: v.object({
+    page: v.array(appointmentWithDetailsValidator),
+    isDone: v.boolean(),
+    continueCursor: v.string(),
+  }),
+  handler: async (ctx, args) => {
+    const isStaffOnly = ctx.member.role === "staff";
+    const staffFilter = isStaffOnly ? ctx.staff?._id : undefined;
+
+    let paginationResult;
+
+    if (isStaffOnly && staffFilter) {
+      // Staff members can only paginate their own appointments.
+      // Known limitation: post-pagination filtering may cause inconsistent page
+      // sizes because by_staff_date index doesn't include organizationId.
+      // A composite index (by_staff_org_date) would fix this but isn't worth
+      // the index overhead since staff rarely belong to multiple orgs.
+      paginationResult = await ctx.db
+        .query("appointments")
+        .withIndex("by_staff_date", (q) => q.eq("staffId", staffFilter))
+        .order("desc")
+        .paginate(args.paginationOpts);
+      paginationResult.page = paginationResult.page.filter(
+        (a) =>
+          a.organizationId === ctx.organizationId &&
+          (!args.statusFilter || a.status === args.statusFilter),
+      );
+    } else if (args.statusFilter) {
+      paginationResult = await ctx.db
+        .query("appointments")
+        .withIndex("by_org_status", (q) =>
+          q
+            .eq("organizationId", ctx.organizationId)
+            .eq("status", args.statusFilter!),
+        )
+        .order("desc")
+        .paginate(args.paginationOpts);
+    } else {
+      paginationResult = await ctx.db
+        .query("appointments")
+        .withIndex("by_organization", (q) =>
+          q.eq("organizationId", ctx.organizationId),
+        )
+        .order("desc")
+        .paginate(args.paginationOpts);
+    }
+
+    const enriched = await batchEnrichAppointments(ctx, paginationResult.page);
+
+    return {
+      page: enriched,
+      isDone: paginationResult.isDone,
+      continueCursor: paginationResult.continueCursor,
+    };
   },
 });
 
@@ -626,19 +829,6 @@ export const createByStaff = orgMutation({
       });
     }
 
-    // Validate staff
-    const staff = await ctx.db.get(args.staffId);
-    if (
-      !staff ||
-      staff.organizationId !== ctx.organizationId ||
-      staff.status !== "active"
-    ) {
-      throw new ConvexError({
-        code: ErrorCode.NOT_FOUND,
-        message: "Staff not found or inactive",
-      });
-    }
-
     // Validate customer
     const customer = await ctx.db.get(args.customerId);
     if (!customer || customer.organizationId !== ctx.organizationId) {
@@ -673,6 +863,27 @@ export const createByStaff = orgMutation({
       });
     }
 
+    const totalDuration = validServices.reduce((sum, s) => sum + s.duration, 0);
+    const endTime = args.startTime + totalDuration;
+    const subtotal = validServices.reduce((sum, s) => sum + s.price, 0);
+
+    // Validate staff + conflict check (skip schedule check — staff can book outside hours)
+    const staff = await validateSlotAvailability(ctx, {
+      staffId: args.staffId,
+      date: args.date,
+      startTime: args.startTime,
+      endTime,
+      skipScheduleCheck: true,
+    });
+
+    // Verify staff belongs to this org
+    if (staff.organizationId !== ctx.organizationId) {
+      throw new ConvexError({
+        code: ErrorCode.NOT_FOUND,
+        message: "Staff not found or inactive",
+      });
+    }
+
     // Verify staff can perform selected services
     const staffServiceIds = staff.serviceIds ?? [];
     for (const sid of args.serviceIds) {
@@ -680,31 +891,6 @@ export const createByStaff = orgMutation({
         throw new ConvexError({
           code: ErrorCode.VALIDATION_ERROR,
           message: "Staff cannot perform one or more selected services",
-        });
-      }
-    }
-
-    const totalDuration = validServices.reduce((sum, s) => sum + s.duration, 0);
-    const endTime = args.startTime + totalDuration;
-    const subtotal = validServices.reduce((sum, s) => sum + s.price, 0);
-
-    // Check for conflicting appointments
-    const existingAppts = await ctx.db
-      .query("appointments")
-      .withIndex("by_staff_date", (q) =>
-        q.eq("staffId", args.staffId).eq("date", args.date),
-      )
-      .collect();
-    const activeAppts = existingAppts.filter(
-      (a) => a.status !== "cancelled" && a.status !== "no_show",
-    );
-    for (const appt of activeAppts) {
-      if (
-        isOverlapping(args.startTime, endTime, appt.startTime, appt.endTime)
-      ) {
-        throw new ConvexError({
-          code: ErrorCode.ALREADY_EXISTS,
-          message: "Time slot conflicts with an existing appointment",
         });
       }
     }
@@ -743,20 +929,7 @@ export const createByStaff = orgMutation({
       });
     }
 
-    // Notify all staff about new booking
-    await ctx.scheduler.runAfter(0, internal.notifications.notifyAllStaff, {
-      organizationId: ctx.organizationId,
-      type: "new_booking" as const,
-      title: "New Booking",
-      message: `${customer.name} booked (${args.source}) for ${args.date} at ${formatMinutesShort(args.startTime)}`,
-      appointmentId,
-    });
-
-    // Send booking confirmation email (async, non-blocking)
-    await ctx.scheduler.runAfter(0, internal.email.sendBookingConfirmation, {
-      appointmentId,
-      organizationId: ctx.organizationId,
-    });
+    // Notifications & emails are handled automatically by triggers (convex/lib/triggers.ts)
 
     return { appointmentId, confirmationCode };
   },
@@ -801,11 +974,7 @@ export const getByDate = orgQuery({
     // Sort by startTime
     appointments.sort((a, b) => a.startTime - b.startTime);
 
-    const enriched = await Promise.all(
-      appointments.map((appt) => enrichAppointment(ctx, appt)),
-    );
-
-    return enriched;
+    return batchEnrichAppointments(ctx, appointments);
   },
 });
 
@@ -826,30 +995,30 @@ export const getByDateRange = orgQuery({
     const effectiveStaffId =
       isStaffOnly && ctx.staff?._id ? ctx.staff._id : args.staffId;
 
-    const dates = getDatesBetween(args.startDate, args.endDate);
-    const allAppts: Doc<"appointments">[] = [];
-
-    for (const date of dates) {
-      let dayAppts: Doc<"appointments">[];
-      if (effectiveStaffId) {
-        const staffAppts = await ctx.db
-          .query("appointments")
-          .withIndex("by_staff_date", (q) =>
-            q.eq("staffId", effectiveStaffId).eq("date", date),
-          )
-          .collect();
-        dayAppts = staffAppts.filter(
-          (a) => a.organizationId === ctx.organizationId,
-        );
-      } else {
-        dayAppts = await ctx.db
-          .query("appointments")
-          .withIndex("by_org_date", (q) =>
-            q.eq("organizationId", ctx.organizationId).eq("date", date),
-          )
-          .collect();
-      }
-      allAppts.push(...dayAppts);
+    // Single range query instead of per-day loop
+    let allAppts: Doc<"appointments">[];
+    if (effectiveStaffId) {
+      // Fetch all org appointments in range, then filter by staffId in memory
+      const orgAppts = await ctx.db
+        .query("appointments")
+        .withIndex("by_org_date", (q) =>
+          q
+            .eq("organizationId", ctx.organizationId)
+            .gte("date", args.startDate)
+            .lte("date", args.endDate),
+        )
+        .collect();
+      allAppts = orgAppts.filter((a) => a.staffId === effectiveStaffId);
+    } else {
+      allAppts = await ctx.db
+        .query("appointments")
+        .withIndex("by_org_date", (q) =>
+          q
+            .eq("organizationId", ctx.organizationId)
+            .gte("date", args.startDate)
+            .lte("date", args.endDate),
+        )
+        .collect();
     }
 
     allAppts.sort((a, b) => {
@@ -857,7 +1026,7 @@ export const getByDateRange = orgQuery({
       return dateCompare !== 0 ? dateCompare : a.startTime - b.startTime;
     });
 
-    return Promise.all(allAppts.map((appt) => enrichAppointment(ctx, appt)));
+    return batchEnrichAppointments(ctx, allAppts);
   },
 });
 
@@ -1079,21 +1248,7 @@ export const updateStatus = orgMutation({
 
     await ctx.db.patch(args.appointmentId, updates);
 
-    // Notify on no_show
-    if (args.status === "no_show" && appointment.staffId) {
-      await ctx.scheduler.runAfter(
-        0,
-        internal.notifications.createNotification,
-        {
-          organizationId: ctx.organizationId,
-          recipientStaffId: appointment.staffId,
-          type: "no_show" as const,
-          title: "No-Show",
-          message: `Customer did not show up for ${appointment.date} at ${formatMinutesShort(appointment.startTime)}`,
-          appointmentId: args.appointmentId,
-        },
-      );
-    }
+    // No-show and status change notifications are handled by triggers (convex/lib/triggers.ts)
 
     // Update customer stats on completed / no_show
     if (args.status === "completed" || args.status === "no_show") {
@@ -1177,27 +1332,7 @@ export const cancel = orgMutation({
       updatedAt: now,
     });
 
-    // Notify assigned staff about cancellation
-    if (appointment.staffId) {
-      await ctx.scheduler.runAfter(
-        0,
-        internal.notifications.createNotification,
-        {
-          organizationId: ctx.organizationId,
-          recipientStaffId: appointment.staffId,
-          type: "cancellation" as const,
-          title: "Appointment Cancelled",
-          message: `Appointment on ${appointment.date} at ${formatMinutesShort(appointment.startTime)} was cancelled`,
-          appointmentId: args.appointmentId,
-        },
-      );
-    }
-
-    // Send cancellation email (async, non-blocking)
-    await ctx.scheduler.runAfter(0, internal.email.sendCancellationEmail, {
-      appointmentId: args.appointmentId,
-      organizationId: ctx.organizationId,
-    });
+    // Notifications & emails are handled automatically by triggers (convex/lib/triggers.ts)
 
     return { success: true };
   },
@@ -1319,15 +1454,7 @@ export const reschedule = orgMutation({
       updatedAt: now,
     });
 
-    // Notify assigned staff about reschedule
-    await ctx.scheduler.runAfter(0, internal.notifications.createNotification, {
-      organizationId: ctx.organizationId,
-      recipientStaffId: targetStaffId,
-      type: "reschedule" as const,
-      title: "Appointment Rescheduled",
-      message: `Appointment moved to ${args.newDate} at ${formatMinutesShort(args.newStartTime)}`,
-      appointmentId: appointment._id,
-    });
+    // Notifications are handled automatically by triggers (convex/lib/triggers.ts)
 
     return { success: true };
   },
@@ -1441,17 +1568,29 @@ export const cancelByUser = authedMutation({
       });
     }
 
-    // Enforce 2-hour cancellation policy
+    // Read cancellation policy from settings
+    const orgSettings = await ctx.db
+      .query("organizationSettings")
+      .withIndex("organizationId", (q) =>
+        q.eq("organizationId", appointment.organizationId),
+      )
+      .first();
+    const cancellationPolicyHours =
+      orgSettings?.bookingSettings?.cancellationPolicyHours ?? 2;
+    const timezone = orgSettings?.timezone ?? "Europe/Istanbul";
+
+    // Enforce cancellation policy
     const appointmentEpoch = dateTimeToEpoch(
       appointment.date,
       appointment.startTime,
+      timezone,
     );
-    const twoHoursBefore = appointmentEpoch - 2 * 60 * 60 * 1000;
-    if (Date.now() > twoHoursBefore) {
+    const policyBefore =
+      appointmentEpoch - cancellationPolicyHours * 60 * 60 * 1000;
+    if (Date.now() > policyBefore) {
       throw new ConvexError({
         code: ErrorCode.VALIDATION_ERROR,
-        message:
-          "Appointments can only be cancelled at least 2 hours before the start time",
+        message: `Appointments can only be cancelled at least ${cancellationPolicyHours} hours before the start time`,
       });
     }
 
@@ -1464,27 +1603,7 @@ export const cancelByUser = authedMutation({
       updatedAt: now,
     });
 
-    // Notify assigned staff
-    if (appointment.staffId) {
-      await ctx.scheduler.runAfter(
-        0,
-        internal.notifications.createNotification,
-        {
-          organizationId: appointment.organizationId,
-          recipientStaffId: appointment.staffId,
-          type: "cancellation" as const,
-          title: "Customer Cancelled",
-          message: `${customer.name} cancelled their appointment on ${appointment.date} at ${formatMinutesShort(appointment.startTime)}`,
-          appointmentId: appointment._id,
-        },
-      );
-    }
-
-    // Send cancellation email
-    await ctx.scheduler.runAfter(0, internal.email.sendCancellationEmail, {
-      appointmentId: appointment._id,
-      organizationId: appointment.organizationId,
-    });
+    // Notifications & emails are handled automatically by triggers (convex/lib/triggers.ts)
 
     return { success: true };
   },
@@ -1546,17 +1665,29 @@ export const rescheduleByUser = authedMutation({
       });
     }
 
-    // Enforce 2-hour policy
+    // Read cancellation policy from settings (also applies to reschedule)
+    const orgSettings = await ctx.db
+      .query("organizationSettings")
+      .withIndex("organizationId", (q) =>
+        q.eq("organizationId", appointment.organizationId),
+      )
+      .first();
+    const cancellationPolicyHours =
+      orgSettings?.bookingSettings?.cancellationPolicyHours ?? 2;
+    const timezone = orgSettings?.timezone ?? "Europe/Istanbul";
+
+    // Enforce reschedule policy
     const appointmentEpoch = dateTimeToEpoch(
       appointment.date,
       appointment.startTime,
+      timezone,
     );
-    const twoHoursBefore = appointmentEpoch - 2 * 60 * 60 * 1000;
-    if (Date.now() > twoHoursBefore) {
+    const policyBefore =
+      appointmentEpoch - cancellationPolicyHours * 60 * 60 * 1000;
+    if (Date.now() > policyBefore) {
       throw new ConvexError({
         code: ErrorCode.VALIDATION_ERROR,
-        message:
-          "Appointments can only be rescheduled at least 2 hours before the start time",
+        message: `Appointments can only be rescheduled at least ${cancellationPolicyHours} hours before the start time`,
       });
     }
 
@@ -1625,32 +1756,8 @@ export const rescheduleByUser = authedMutation({
     // Delete the slot lock
     await ctx.db.delete(myLock._id);
 
-    // Notify assigned staff (staffId guaranteed non-null by guard above)
-    if (appointment.staffId) {
-      await ctx.scheduler.runAfter(
-        0,
-        internal.notifications.createNotification,
-        {
-          organizationId: appointment.organizationId,
-          recipientStaffId: appointment.staffId,
-          type: "reschedule" as const,
-          title: "Customer Rescheduled",
-          message: `${customer.name} rescheduled to ${args.newDate} at ${formatMinutesShort(args.newStartTime)}`,
-          appointmentId: appointment._id,
-        },
-      );
-    }
+    // Notifications are handled automatically by triggers (convex/lib/triggers.ts)
 
     return { success: true };
   },
 });
-
-// =============================================================================
-// Helpers
-// =============================================================================
-
-function formatMinutesShort(minutes: number): string {
-  const h = Math.floor(minutes / 60);
-  const m = minutes % 60;
-  return `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}`;
-}

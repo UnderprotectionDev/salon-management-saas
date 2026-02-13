@@ -2,6 +2,7 @@
  * Booking module constants
  */
 
+// Legacy step types (kept for backward compatibility)
 export const BOOKING_STEPS = [
   "services",
   "staff",
@@ -18,6 +19,23 @@ export const STEP_LABELS: Record<BookingStep, string> = {
   datetime: "Date & Time",
   info: "Your Info",
   confirm: "Confirm",
+};
+
+// Accordion-based booking panels (new)
+export const BOOKING_PANELS = [
+  "services",
+  "staff",
+  "datetime",
+  "confirm",
+] as const;
+
+export type BookingPanel = (typeof BOOKING_PANELS)[number];
+
+export const PANEL_LABELS: Record<BookingPanel, string> = {
+  services: "Service Selection",
+  staff: "Staff Selection",
+  datetime: "Date & Time",
+  confirm: "Details & Confirmation",
 };
 
 export const MAX_ADVANCE_DAYS = 30;

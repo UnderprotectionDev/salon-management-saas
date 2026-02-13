@@ -107,6 +107,60 @@ export const listPublic = publicQuery({
   },
 });
 
+/**
+ * Public settings for booking page — curated subset, no billing/subscription.
+ */
+export const getPublicSettings = publicQuery({
+  args: { organizationId: v.id("organization") },
+  returns: v.union(
+    v.object({
+      phone: v.optional(v.string()),
+      email: v.optional(v.string()),
+      website: v.optional(v.string()),
+      address: addressValidator,
+      businessHours: businessHoursValidator,
+      bookingSettings: v.optional(
+        v.object({
+          cancellationPolicyHours: v.optional(v.number()),
+          minAdvanceBookingMinutes: v.optional(v.number()),
+          maxAdvanceBookingDays: v.optional(v.number()),
+          allowOnlineBooking: v.optional(v.boolean()),
+        }),
+      ),
+    }),
+    v.null(),
+  ),
+  handler: async (ctx, args) => {
+    const settings = await ctx.db
+      .query("organizationSettings")
+      .withIndex("organizationId", (q) =>
+        q.eq("organizationId", args.organizationId),
+      )
+      .first();
+
+    if (!settings) return null;
+
+    return {
+      phone: settings.phone,
+      email: settings.email,
+      website: settings.website,
+      address: settings.address,
+      businessHours: settings.businessHours,
+      bookingSettings: settings.bookingSettings
+        ? {
+            cancellationPolicyHours:
+              settings.bookingSettings.cancellationPolicyHours,
+            minAdvanceBookingMinutes:
+              settings.bookingSettings.minAdvanceBookingMinutes,
+            maxAdvanceBookingDays:
+              settings.bookingSettings.maxAdvanceBookingDays,
+            allowOnlineBooking: settings.bookingSettings.allowOnlineBooking,
+          }
+        : undefined,
+    };
+  },
+});
+
 export const listForUser = authedQuery({
   args: {},
   returns: v.array(organizationWithRoleValidator),

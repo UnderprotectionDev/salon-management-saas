@@ -4,7 +4,9 @@
  */
 
 import type { GenericDatabaseReader } from "convex/server";
+import { ConvexError } from "convex/values";
 import type { DataModel } from "../_generated/dataModel";
+import { ErrorCode } from "./functions";
 
 const CHARS = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
 
@@ -35,7 +37,8 @@ export async function ensureUniqueCode(
     }
   }
   // Extremely unlikely to reach here with 30^6 = ~729M combinations
-  throw new Error(
-    "Failed to generate unique confirmation code after 10 attempts",
-  );
+  throw new ConvexError({
+    code: ErrorCode.INTERNAL_ERROR,
+    message: "Failed to generate unique confirmation code after 10 attempts",
+  });
 }

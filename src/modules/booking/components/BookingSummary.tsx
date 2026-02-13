@@ -18,6 +18,7 @@ type BookingSummaryProps = {
     _id: Id<"services">;
     name: string;
     duration: number;
+    bufferTime?: number;
     price: number;
   }>;
   staffName: string;
@@ -60,10 +61,13 @@ export function BookingSummary({
   const totalPrice = services.reduce((sum, s) => sum + s.price, 0);
   const totalDuration = services.reduce((sum, s) => sum + s.duration, 0);
 
-  const formattedDate = new Date(`${date}T00:00:00`).toLocaleDateString(
-    "en-US",
-    { weekday: "long", year: "numeric", month: "long", day: "numeric" },
-  );
+  const [yr, mo, dy] = date.split("-").map(Number);
+  const formattedDate = new Date(yr, mo - 1, dy).toLocaleDateString("en-US", {
+    weekday: "long",
+    year: "numeric",
+    month: "long",
+    day: "numeric",
+  });
 
   const handleConfirm = async () => {
     setIsSubmitting(true);
@@ -97,8 +101,13 @@ export function BookingSummary({
       }
 
       onConfirm(result);
-    } catch (error: any) {
-      toast.error(error?.data?.message ?? "Failed to create appointment");
+    } catch (error: unknown) {
+      const message =
+        error instanceof Error
+          ? error.message
+          : ((error as { data?: { message?: string } })?.data?.message ??
+            "Failed to create appointment");
+      toast.error(message);
     } finally {
       setIsSubmitting(false);
     }
@@ -134,7 +143,8 @@ export function BookingSummary({
             {services.map((s) => (
               <div key={s._id} className="flex justify-between text-sm py-1">
                 <span>
-                  {s.name} ({s.duration} min)
+                  {s.name} ({s.duration} min
+                  {s.bufferTime ? ` + ${s.bufferTime} min prep` : ""})
                 </span>
                 <span>{formatPrice(s.price)}</span>
               </div>

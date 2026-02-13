@@ -66,7 +66,7 @@ export function RescheduleDialog({
 
   // Filter staff who can perform all services
   const eligibleStaff = (staffMembers ?? []).filter((s) => {
-    const staffServiceIds = (s as any).serviceIds ?? [];
+    const staffServiceIds = s.serviceIds ?? [];
     return serviceIds.every((sid: Id<"services">) =>
       staffServiceIds.includes(sid),
     );
@@ -106,8 +106,11 @@ export function RescheduleDialog({
       });
       toast.success("Appointment rescheduled successfully");
       setOpen(false);
-    } catch (error: any) {
-      toast.error(error?.data?.message ?? "Failed to reschedule appointment");
+    } catch (error: unknown) {
+      const msg =
+        (error as { data?: { message?: string } })?.data?.message ??
+        "Failed to reschedule appointment";
+      toast.error(msg);
     } finally {
       setIsSubmitting(false);
     }

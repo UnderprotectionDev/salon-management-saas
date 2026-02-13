@@ -2,6 +2,7 @@ import { ConvexError, v } from "convex/values";
 import { internalMutation } from "./_generated/server";
 import { isOverlapping } from "./lib/dateTime";
 import { authedMutation, ErrorCode } from "./lib/functions";
+import { rateLimiter } from "./lib/rateLimits";
 
 /**
  * Acquire a slot lock to prevent double booking.
@@ -22,6 +23,17 @@ export const acquire = authedMutation({
     expiresAt: v.number(),
   }),
   handler: async (ctx, args) => {
+    // Rate limit (per user)
+    const { ok, retryAfter } = await rateLimiter.limit(ctx, "acquireSlotLock", {
+      key: ctx.user._id,
+    });
+    if (!ok) {
+      throw new ConvexError({
+        code: ErrorCode.RATE_LIMITED,
+        message: `Too many slot lock attempts. Try again in ${Math.ceil((retryAfter ?? 60000) / 1000)} seconds.`,
+      });
+    }
+
     // Validate time range
     if (args.startTime < 0 || args.endTime < 0) {
       throw new ConvexError({
@@ -33,6 +45,15 @@ export const acquire = authedMutation({
       throw new ConvexError({
         code: ErrorCode.VALIDATION_ERROR,
         message: "End time must be after start time",
+      });
+    }
+
+    // Cross-validate: staff must belong to the organization
+    const staff = await ctx.db.get(args.staffId);
+    if (!staff || staff.organizationId !== args.organizationId) {
+      throw new ConvexError({
+        code: ErrorCode.VALIDATION_ERROR,
+        message: "Staff does not belong to this organization",
       });
     }
 

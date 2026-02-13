@@ -1,6 +1,7 @@
 import { Triggers } from "convex-helpers/server/triggers";
 import { internal } from "../_generated/api";
 import type { DataModel } from "../_generated/dataModel";
+import { formatMinutesShort } from "./dateTime";
 
 export const triggers = new Triggers<DataModel>();
 
@@ -8,7 +9,8 @@ export const triggers = new Triggers<DataModel>();
 // Appointment Triggers
 // =============================================================================
 // Automatically send notifications and emails when appointments change.
-// This replaces ~12 manual ctx.scheduler.runAfter() calls in appointments.ts.
+// All notification/email logic lives here — mutations should NOT call
+// ctx.scheduler.runAfter() for notifications directly.
 
 triggers.register("appointments", async (ctx, change) => {
   const { operation, oldDoc, newDoc } = change;
@@ -17,7 +19,6 @@ triggers.register("appointments", async (ctx, change) => {
   // INSERT → new_booking notification + confirmation email
   // -------------------------------------------------------------------------
   if (operation === "insert" && newDoc) {
-    // Fetch customer name for notification message
     const customer = await ctx.db.get(newDoc.customerId);
     const customerName = customer?.name ?? "Customer";
 
@@ -41,6 +42,28 @@ triggers.register("appointments", async (ctx, change) => {
   // -------------------------------------------------------------------------
   if (operation === "update" && oldDoc && newDoc) {
     const statusChanged = oldDoc.status !== newDoc.status;
+
+    // Confirmed (pending → confirmed)
+    if (statusChanged && newDoc.status === "confirmed") {
+      const customer = await ctx.db.get(newDoc.customerId);
+      const customerName = customer?.name ?? "Customer";
+
+      if (newDoc.staffId) {
+        await ctx.scheduler.runAfter(
+          0,
+          internal.notifications.createNotification,
+          {
+            organizationId: newDoc.organizationId,
+            recipientStaffId: newDoc.staffId,
+            type: "status_change" as const,
+            title: "Appointment Confirmed",
+            message: `${customerName}'s appointment on ${newDoc.date} at ${formatMinutesShort(newDoc.startTime)} has been confirmed`,
+            appointmentId: newDoc._id,
+          },
+        );
+      }
+      return;
+    }
 
     // Cancelled
     if (statusChanged && newDoc.status === "cancelled") {
@@ -116,13 +139,3 @@ triggers.register("appointments", async (ctx, change) => {
     }
   }
 });
-
-// =============================================================================
-// Helpers
-// =============================================================================
-
-function formatMinutesShort(minutes: number): string {
-  const h = Math.floor(minutes / 60);
-  const m = minutes % 60;
-  return `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}`;
-}

@@ -374,6 +374,13 @@ export const availableSlotValidator = v.object({
   endTime: v.number(),
 });
 
+/** Date availability for date picker */
+export const dateAvailabilityValidator = v.object({
+  date: v.string(),
+  hasAvailability: v.boolean(),
+  slotCount: v.number(),
+});
+
 /** Public appointment view (excludes sensitive fields) */
 export const publicAppointmentValidator = v.object({
   _id: v.id("appointments"),
