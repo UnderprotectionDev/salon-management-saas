@@ -31,6 +31,7 @@ import type * as lib_rateLimits from "../lib/rateLimits.js";
 import type * as lib_relationships from "../lib/relationships.js";
 import type * as lib_scheduleResolver from "../lib/scheduleResolver.js";
 import type * as lib_triggers from "../lib/triggers.js";
+import type * as lib_validation from "../lib/validation.js";
 import type * as lib_validators from "../lib/validators.js";
 import type * as members from "../members.js";
 import type * as migrations_roleCleanup from "../migrations/roleCleanup.js";
@@ -82,6 +83,7 @@ declare const fullApi: ApiFromModules<{
   "lib/relationships": typeof lib_relationships;
   "lib/scheduleResolver": typeof lib_scheduleResolver;
   "lib/triggers": typeof lib_triggers;
+  "lib/validation": typeof lib_validation;
   "lib/validators": typeof lib_validators;
   members: typeof members;
   "migrations/roleCleanup": typeof migrations_roleCleanup;

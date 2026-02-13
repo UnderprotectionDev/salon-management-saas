@@ -13,12 +13,15 @@ import {
   orgQuery,
   publicQuery,
 } from "./lib/functions";
-import { isValidTurkishPhone } from "./lib/phone";
 import { rateLimiter } from "./lib/rateLimits";
+import {
+  validateEmail,
+  validatePhone,
+  validateSlug,
+  validateString,
+  validateUrl,
+} from "./lib/validation";
 
-/**
- * Slugs reserved for app routes. Prevents routing conflicts.
- */
 const RESERVED_SLUGS = new Set([
   "dashboard",
   "settings",
@@ -184,36 +187,18 @@ export const create = authedMutation({
     if (!ok) {
       throw new ConvexError({
         code: ErrorCode.RATE_LIMITED,
-        message: `Organization creation limit exceeded. Try again in ${Math.ceil(retryAfter! / 1000 / 60 / 60)} hours.`,
+        message: `Organization creation limit exceeded. Try again in ${Math.ceil((retryAfter ?? 0) / 1000 / 60 / 60)} hours.`,
       });
     }
 
     const now = Date.now();
 
-    // Validate name length
-    const trimmedName = args.name.trim();
-    if (trimmedName.length < 2 || trimmedName.length > 100) {
-      throw new ConvexError({
-        code: ErrorCode.INVALID_INPUT,
-        message: "Salon name must be between 2 and 100 characters",
-      });
-    }
+    const trimmedName = validateString(args.name, "Salon name", {
+      min: 2,
+      max: 100,
+    });
+    const trimmedSlug = validateSlug(args.slug);
 
-    // Validate slug format (lowercase letters, numbers, hyphens only; no leading/trailing/consecutive hyphens)
-    const trimmedSlug = args.slug.trim().toLowerCase();
-    if (
-      !/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(trimmedSlug) ||
-      trimmedSlug.length < 2 ||
-      trimmedSlug.length > 50
-    ) {
-      throw new ConvexError({
-        code: ErrorCode.INVALID_INPUT,
-        message:
-          "URL slug must be 2-50 characters, start and end with a letter or number, and can only contain lowercase letters, numbers, and hyphens (no consecutive hyphens)",
-      });
-    }
-
-    // Check reserved slugs
     if (RESERVED_SLUGS.has(trimmedSlug)) {
       throw new ConvexError({
         code: ErrorCode.INVALID_INPUT,
@@ -221,23 +206,9 @@ export const create = authedMutation({
       });
     }
 
-    // Validate phone if provided
-    if (args.phone && !isValidTurkishPhone(args.phone)) {
-      throw new ConvexError({
-        code: ErrorCode.INVALID_INPUT,
-        message: "Invalid phone format. Expected: +90 5XX XXX XX XX",
-      });
-    }
+    if (args.phone) validatePhone(args.phone);
+    if (args.email) validateEmail(args.email);
 
-    // Validate email if provided
-    if (args.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(args.email)) {
-      throw new ConvexError({
-        code: ErrorCode.INVALID_INPUT,
-        message: "Invalid email format",
-      });
-    }
-
-    // Check if user already belongs to an organization
     const existingMembership = await ctx.db
       .query("member")
       .withIndex("userId", (q) => q.eq("userId", ctx.user._id))
@@ -314,9 +285,6 @@ export const create = authedMutation({
   },
 });
 
-/**
- * Update organization
- */
 export const update = adminMutation({
   args: {
     name: v.optional(v.string()),
@@ -325,7 +293,6 @@ export const update = adminMutation({
   },
   returns: v.id("organization"),
   handler: async (ctx, args) => {
-    // Skip no-op updates
     if (
       args.name === undefined &&
       args.description === undefined &&
@@ -341,38 +308,19 @@ export const update = adminMutation({
       updatedAt: number;
     } = { updatedAt: Date.now() };
 
-    // Validate and trim name
     if (args.name !== undefined) {
-      const trimmedName = args.name.trim();
-      if (trimmedName.length < 2 || trimmedName.length > 100) {
-        throw new ConvexError({
-          code: ErrorCode.INVALID_INPUT,
-          message: "Salon name must be between 2 and 100 characters",
-        });
-      }
-      updates.name = trimmedName;
+      updates.name = validateString(args.name, "Salon name", {
+        min: 2,
+        max: 100,
+      });
     }
-
-    // Validate description length
     if (args.description !== undefined) {
-      if (args.description.length > 500) {
-        throw new ConvexError({
-          code: ErrorCode.INVALID_INPUT,
-          message: "Description must be at most 500 characters",
-        });
-      }
-      updates.description = args.description;
+      updates.description = validateString(args.description, "Description", {
+        max: 500,
+      });
     }
-
-    // Validate logo URL format
     if (args.logo !== undefined) {
-      if (args.logo !== "" && !/^https?:\/\/.+/i.test(args.logo)) {
-        throw new ConvexError({
-          code: ErrorCode.INVALID_INPUT,
-          message: "Logo must be a valid URL",
-        });
-      }
-      updates.logo = args.logo;
+      updates.logo = validateUrl(args.logo, "Logo");
     }
 
     await ctx.db.patch(ctx.organizationId, updates);
@@ -381,9 +329,6 @@ export const update = adminMutation({
   },
 });
 
-/**
- * Update organization settings
- */
 export const updateSettings = adminMutation({
   args: {
     email: v.optional(v.string()),
@@ -412,29 +357,10 @@ export const updateSettings = adminMutation({
       });
     }
 
-    // Validate phone if provided
-    if (
-      args.phone !== undefined &&
-      args.phone !== "" &&
-      !isValidTurkishPhone(args.phone)
-    ) {
-      throw new ConvexError({
-        code: ErrorCode.INVALID_INPUT,
-        message: "Invalid phone format. Expected: +90 5XX XXX XX XX",
-      });
-    }
-
-    // Validate email if provided
-    if (
-      args.email !== undefined &&
-      args.email !== "" &&
-      !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(args.email)
-    ) {
-      throw new ConvexError({
-        code: ErrorCode.INVALID_INPUT,
-        message: "Invalid email format",
-      });
-    }
+    if (args.phone !== undefined && args.phone !== "")
+      validatePhone(args.phone);
+    if (args.email !== undefined && args.email !== "")
+      validateEmail(args.email);
 
     const updates: Partial<Doc<"organizationSettings">> & {
       updatedAt: number;
