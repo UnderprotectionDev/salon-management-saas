@@ -23,24 +23,25 @@ export const list = orgQuery({
       )
       .collect();
 
-    // Get service counts for each category
-    const categoriesWithCounts = await Promise.all(
-      categories.map(async (category) => {
-        const services = await ctx.db
-          .query("services")
-          .withIndex("by_org_category", (q) =>
-            q
-              .eq("organizationId", ctx.organizationId)
-              .eq("categoryId", category._id),
-          )
-          .collect();
+    // Batch fetch all services once and count per category (avoids N+1)
+    const allServices = await ctx.db
+      .query("services")
+      .withIndex("by_organization", (q) =>
+        q.eq("organizationId", ctx.organizationId),
+      )
+      .collect();
 
-        return {
-          ...category,
-          serviceCount: services.length,
-        };
-      }),
-    );
+    const countMap = new Map<string, number>();
+    for (const svc of allServices) {
+      if (svc.categoryId) {
+        countMap.set(svc.categoryId, (countMap.get(svc.categoryId) ?? 0) + 1);
+      }
+    }
+
+    const categoriesWithCounts = categories.map((category) => ({
+      ...category,
+      serviceCount: countMap.get(category._id) ?? 0,
+    }));
 
     // Sort by sortOrder
     return categoriesWithCounts.sort((a, b) => a.sortOrder - b.sortOrder);
@@ -149,6 +150,33 @@ export const update = ownerMutation({
       });
     }
     return updated;
+  },
+});
+
+/**
+ * Reorder service categories.
+ * Accepts an ordered array of category IDs and updates their sortOrder.
+ */
+export const reorder = ownerMutation({
+  args: {
+    categoryIds: v.array(v.id("serviceCategories")),
+  },
+  returns: v.boolean(),
+  handler: async (ctx, args) => {
+    // Validate all categories belong to this organization
+    const updates = args.categoryIds.map(async (id, index) => {
+      const category = await ctx.db.get(id);
+      if (!category || category.organizationId !== ctx.organizationId) {
+        throw new ConvexError({
+          code: ErrorCode.NOT_FOUND,
+          message: "Category not found",
+        });
+      }
+      await ctx.db.patch(id, { sortOrder: index + 1, updatedAt: Date.now() });
+    });
+
+    await Promise.all(updates);
+    return true;
   },
 });
 
