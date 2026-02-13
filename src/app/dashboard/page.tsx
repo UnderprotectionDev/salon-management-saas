@@ -58,6 +58,7 @@ import {
   TimeSlotGrid,
 } from "@/modules/booking";
 import { formatMinutesAsTime } from "@/modules/booking/lib/constants";
+import { OnboardingBanner, OnboardingWizard } from "@/modules/onboarding";
 import { InvitationBanner, useOrganizations } from "@/modules/organization";
 import { formatPrice } from "@/modules/services/lib/currency";
 import { api } from "../../../convex/_generated/api";
@@ -826,7 +827,20 @@ export default function DashboardPage() {
     api.admin.checkIsSuperAdmin,
     user ? {} : "skip",
   );
+  const userProfile = useQuery(api.userProfile.get, user ? {} : "skip");
+  const acceptConsent = useMutation(api.userProfile.acceptConsent);
   const [isSigningOut, setIsSigningOut] = useState(false);
+  const [showWizard, setShowWizard] = useState(false);
+
+  // Auto-create user profile with KVKK consent on first login
+  // (user accepted by signing in — consent text shown on sign-in page)
+  useEffect(() => {
+    if (userProfile === null && user) {
+      acceptConsent({}).catch(() => {
+        // Silent fail — will retry on next render
+      });
+    }
+  }, [userProfile, user, acceptConsent]);
 
   const handleSignOut = async () => {
     setIsSigningOut(true);
@@ -926,6 +940,23 @@ export default function DashboardPage() {
             </div>
           </CardHeader>
         </Card>
+
+        {/* Onboarding Wizard */}
+        {userProfile && (
+          <OnboardingWizard
+            open={showWizard}
+            onOpenChange={setShowWizard}
+            initialProfile={userProfile}
+          />
+        )}
+
+        {/* Onboarding Banner */}
+        {userProfile && (
+          <OnboardingBanner
+            profile={userProfile}
+            onStartWizard={() => setShowWizard(true)}
+          />
+        )}
 
         {/* Pending Invitations */}
         <InvitationBanner />

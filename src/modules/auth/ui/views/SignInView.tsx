@@ -29,6 +29,27 @@ export function SignInView({ callbackUrl }: SignInViewProps) {
 
         <div className="space-y-6">
           <SocialButton onClick={handleGoogleSignIn} />
+          <p className="text-center text-xs text-black/50 leading-relaxed">
+            By signing in, you agree to our{" "}
+            <a
+              href="/privacy"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="underline underline-offset-2 hover:text-black transition-colors"
+            >
+              Privacy Policy
+            </a>{" "}
+            and{" "}
+            <a
+              href="/terms"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="underline underline-offset-2 hover:text-black transition-colors"
+            >
+              Terms of Service
+            </a>
+            .
+          </p>
         </div>
 
         <AuthFooter />

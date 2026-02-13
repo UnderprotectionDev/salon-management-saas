@@ -531,6 +531,53 @@ export default defineSchema({
     bannedAt: v.number(),
   }).index("by_user", ["userId"]),
 
+  // User Profile — cross-organization customer profile (onboarding data)
+  userProfile: defineTable({
+    userId: v.string(), // Better Auth user ID (unique per user)
+    // Profile info
+    phone: v.optional(v.string()), // +90 5XX XXX XX XX (auto-saved from first booking)
+    gender: v.optional(
+      v.union(v.literal("male"), v.literal("female"), v.literal("unspecified")),
+    ),
+    dateOfBirth: v.optional(v.string()), // ISO date "1990-05-15"
+    // Hair info
+    hairType: v.optional(
+      v.union(
+        v.literal("straight"),
+        v.literal("wavy"),
+        v.literal("curly"),
+        v.literal("very_curly"),
+      ),
+    ),
+    hairLength: v.optional(
+      v.union(
+        v.literal("short"),
+        v.literal("medium"),
+        v.literal("long"),
+        v.literal("very_long"),
+      ),
+    ),
+    // Allergies & sensitivities
+    allergies: v.optional(v.array(v.string())), // ["ppd", "ammonia", "latex", ...]
+    allergyNotes: v.optional(v.string()),
+    // KVKK consents
+    dataProcessingConsent: v.boolean(),
+    dataProcessingConsentAt: v.number(),
+    marketingConsent: v.optional(v.boolean()),
+    marketingConsentAt: v.optional(v.number()),
+    consentWithdrawnAt: v.optional(v.number()),
+    // Notification preferences (managed from settings)
+    emailReminders: v.optional(v.boolean()),
+    marketingEmails: v.optional(v.boolean()),
+    // Onboarding state
+    onboardingCompleted: v.boolean(),
+    onboardingCompletedAt: v.optional(v.number()),
+    onboardingDismissedAt: v.optional(v.number()),
+    // Timestamps
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  }).index("by_userId", ["userId"]),
+
   // Notifications — staff notifications for booking events
   notifications: defineTable({
     organizationId: v.id("organization"),

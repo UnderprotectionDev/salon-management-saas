@@ -3,22 +3,22 @@
 import { useQuery } from "convex/react";
 import { useParams, useSearchParams } from "next/navigation";
 import { useEffect, useState } from "react";
-import { authClient } from "@/lib/auth-client";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
+import { authClient } from "@/lib/auth-client";
 import {
-  ServiceSelector,
-  StaffSelector,
-  DatePicker,
-  TimeSlotGrid,
+  BOOKING_STEPS,
+  BookingConfirmation,
   BookingForm,
   BookingSummary,
-  BookingConfirmation,
+  DatePicker,
+  ServiceSelector,
   SlotLockCountdown,
-  useBookingFlow,
-  BOOKING_STEPS,
   STEP_LABELS,
+  StaffSelector,
+  TimeSlotGrid,
+  useBookingFlow,
 } from "@/modules/booking";
 import { api } from "../../../../../convex/_generated/api";
 
@@ -39,6 +39,12 @@ export default function BookingPage() {
   } = useBookingFlow();
 
   const session = authClient.useSession();
+
+  // User profile for pre-filling customer info
+  const userProfile = useQuery(
+    api.userProfile.get,
+    session.data?.user ? {} : "skip",
+  );
 
   // Pre-fill from URL params (Book Again flow)
   const [prefilled, setPrefilled] = useState(false);
@@ -299,7 +305,7 @@ export default function BookingPage() {
                 <BookingForm
                   initialValues={{
                     name: state.customerName || session.data?.user?.name || "",
-                    phone: state.customerPhone,
+                    phone: state.customerPhone || userProfile?.phone || "",
                     email:
                       state.customerEmail || session.data?.user?.email || "",
                     notes: state.customerNotes,

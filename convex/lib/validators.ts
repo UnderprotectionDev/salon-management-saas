@@ -123,6 +123,25 @@ export const paymentStatusValidator = literals(
   "refunded",
 );
 
+/** User profile gender: male | female | unspecified */
+export const genderValidator = literals("male", "female", "unspecified");
+
+/** Hair type: straight | wavy | curly | very_curly */
+export const hairTypeValidator = literals(
+  "straight",
+  "wavy",
+  "curly",
+  "very_curly",
+);
+
+/** Hair length: short | medium | long | very_long */
+export const hairLengthValidator = literals(
+  "short",
+  "medium",
+  "long",
+  "very_long",
+);
+
 /** Notification type */
 export const notificationTypeValidator = literals(
   "new_booking",
@@ -251,6 +270,9 @@ export const appointmentServiceDocValidator = vv.doc("appointmentServices");
 
 /** Slot lock document validator */
 export const slotLockDocValidator = vv.doc("slotLocks");
+
+/** User profile document validator */
+export const userProfileDocValidator = vv.doc("userProfile");
 
 /** Notification document validator */
 export const notificationDocValidator = vv.doc("notifications");
@@ -533,6 +555,24 @@ export const userAppointmentDetailValidator = v.object({
   cancelledAt: v.optional(v.number()),
   rescheduleCount: v.optional(v.number()),
   services: v.array(serviceItemWithId),
+});
+
+/** User onboarding profile (lightweight for dashboard banner / wizard) */
+export const userOnboardingProfileValidator = v.object({
+  _id: v.id("userProfile"),
+  phone: v.optional(v.string()),
+  gender: v.optional(genderValidator),
+  dateOfBirth: v.optional(v.string()),
+  hairType: v.optional(hairTypeValidator),
+  hairLength: v.optional(hairLengthValidator),
+  allergies: v.optional(v.array(v.string())),
+  allergyNotes: v.optional(v.string()),
+  dataProcessingConsent: v.boolean(),
+  marketingConsent: v.optional(v.boolean()),
+  emailReminders: v.optional(v.boolean()),
+  marketingEmails: v.optional(v.boolean()),
+  onboardingCompleted: v.boolean(),
+  onboardingDismissedAt: v.optional(v.number()),
 });
 
 /** Customer profile for dashboard (cross-org) */
