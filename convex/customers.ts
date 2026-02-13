@@ -2,12 +2,12 @@ import { ConvexError, v } from "convex/values";
 import type { Doc, Id } from "./_generated/dataModel";
 import type { DatabaseReader } from "./_generated/server";
 import {
-  adminMutation,
   authedMutation,
   authedQuery,
   ErrorCode,
   orgMutation,
   orgQuery,
+  ownerMutation,
 } from "./lib/functions";
 import { isValidTurkishPhone } from "./lib/phone";
 import { rateLimiter } from "./lib/rateLimits";
@@ -129,10 +129,7 @@ export const get = orgQuery({
     // Staff can only see their own customers
     const isStaffOnly = ctx.member.role === "staff";
     if (isStaffOnly && ctx.staff?._id) {
-      const staffCustomerIds = await getStaffCustomerIds(
-        ctx.db,
-        ctx.staff._id,
-      );
+      const staffCustomerIds = await getStaffCustomerIds(ctx.db, ctx.staff._id);
       if (!staffCustomerIds.has(customer._id as string)) {
         return null;
       }
@@ -311,9 +308,7 @@ export const searchByPhone = orgQuery({
 
     // Staff: only their customers
     if (staffCustomerIds) {
-      filtered = filtered.filter((c) =>
-        staffCustomerIds.has(c._id as string),
-      );
+      filtered = filtered.filter((c) => staffCustomerIds.has(c._id as string));
     }
 
     return filtered.slice(0, 10).map((c) => ({
@@ -457,10 +452,7 @@ export const update = orgMutation({
     // Staff can only update their own customers
     const isStaffOnly = ctx.member.role === "staff";
     if (isStaffOnly && ctx.staff?._id) {
-      const staffCustomerIds = await getStaffCustomerIds(
-        ctx.db,
-        ctx.staff._id,
-      );
+      const staffCustomerIds = await getStaffCustomerIds(ctx.db, ctx.staff._id);
       if (!staffCustomerIds.has(customer._id as string)) {
         throw new ConvexError({
           code: ErrorCode.FORBIDDEN,
@@ -546,7 +538,7 @@ export const update = orgMutation({
  * Delete a customer (hard delete)
  * Admin/owner only
  */
-export const remove = adminMutation({
+export const remove = ownerMutation({
   args: { customerId: v.id("customers") },
   returns: v.null(),
   handler: async (ctx, args) => {
@@ -568,7 +560,7 @@ export const remove = adminMutation({
  * Keeps primary, merges stats from duplicate, deletes duplicate
  * Admin/owner only
  */
-export const merge = adminMutation({
+export const merge = ownerMutation({
   args: {
     primaryCustomerId: v.id("customers"),
     duplicateCustomerId: v.id("customers"),

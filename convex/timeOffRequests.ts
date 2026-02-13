@@ -1,9 +1,9 @@
 import { ConvexError, v } from "convex/values";
 import {
-  adminMutation,
   ErrorCode,
   orgMutation,
   orgQuery,
+  ownerMutation,
 } from "./lib/functions";
 import { rateLimiter } from "./lib/rateLimits";
 import {
@@ -187,7 +187,7 @@ export const request = orgMutation({
  * Approve a pending time-off request (admin/owner only).
  * Creates schedule overrides for each day in the range.
  */
-export const approve = adminMutation({
+export const approve = ownerMutation({
   args: {
     requestId: v.id("timeOffRequests"),
   },
@@ -254,7 +254,7 @@ export const approve = adminMutation({
  * Reject a pending time-off request (admin/owner only).
  * If the request was previously approved, also removes associated schedule overrides.
  */
-export const reject = adminMutation({
+export const reject = ownerMutation({
   args: {
     requestId: v.id("timeOffRequests"),
     rejectionReason: v.optional(v.string()),

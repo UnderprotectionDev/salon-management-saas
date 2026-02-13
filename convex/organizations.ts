@@ -6,11 +6,11 @@ import {
   DEFAULT_STAFF_SCHEDULE,
 } from "./lib/defaults";
 import {
-  adminMutation,
   authedMutation,
   authedQuery,
   ErrorCode,
   orgQuery,
+  ownerMutation,
   publicQuery,
 } from "./lib/functions";
 import { rateLimiter } from "./lib/rateLimits";
@@ -285,7 +285,7 @@ export const create = authedMutation({
   },
 });
 
-export const update = adminMutation({
+export const update = ownerMutation({
   args: {
     name: v.optional(v.string()),
     description: v.optional(v.string()),
@@ -329,7 +329,7 @@ export const update = adminMutation({
   },
 });
 
-export const updateSettings = adminMutation({
+export const updateSettings = ownerMutation({
   args: {
     email: v.optional(v.string()),
     phone: v.optional(v.string()),

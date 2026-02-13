@@ -1,10 +1,10 @@
 import { ConvexError, v } from "convex/values";
 import type { Doc } from "./_generated/dataModel";
 import {
-  adminMutation,
   ErrorCode,
   orgMutation,
   orgQuery,
+  ownerMutation,
   publicQuery,
 } from "./lib/functions";
 import { rateLimiter } from "./lib/rateLimits";
@@ -170,7 +170,7 @@ export const get = orgQuery({
  * Create a new service
  * Rate limited: 50/day per organization
  */
-export const create = adminMutation({
+export const create = ownerMutation({
   args: {
     name: v.string(),
     description: v.optional(v.string()),
@@ -310,7 +310,7 @@ export const update = orgMutation({
  * Soft-delete a service (set status to inactive)
  * Does not hard-delete since future bookings may reference it
  */
-export const remove = adminMutation({
+export const remove = ownerMutation({
   args: { serviceId: v.id("services") },
   returns: v.boolean(),
   handler: async (ctx, args) => {
@@ -352,7 +352,7 @@ export const remove = adminMutation({
  * Assign or unassign staff to a service
  * Adds/removes the service ID from staff.serviceIds
  */
-export const assignStaff = adminMutation({
+export const assignStaff = ownerMutation({
   args: {
     serviceId: v.id("services"),
     staffId: v.id("staff"),

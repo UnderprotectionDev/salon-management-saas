@@ -91,13 +91,12 @@ Always use custom wrappers from `convex/lib/functions.ts`, never raw `query()`/`
 | `publicQuery` | None | — |
 | `authedQuery/Mutation` | Required | `ctx.user` |
 | `orgQuery/Mutation` | Required + membership | `ctx.user`, `ctx.organizationId`, `ctx.member`, `ctx.staff` |
-| `adminQuery/Mutation` | Required + owner role | Same as org + role check |
-| `ownerQuery/Mutation` | Required + owner only | Same as org + owner check |
+| `ownerQuery/Mutation` | Required + owner role | Same as org + role check + `ctx.role` |
 | `superAdminQuery/Mutation` | Required + env email | `ctx.user`, `ctx.isSuperAdmin` |
 
 ### Organization-scoped Wrappers
 
-`orgQuery`/`orgMutation` (and `adminQuery`/`adminMutation`, `ownerQuery`/`ownerMutation`) require `organizationId` to be passed from the **frontend**, then automatically move it from `args` to `ctx.organizationId`.
+`orgQuery`/`orgMutation` (and `ownerQuery`/`ownerMutation`) require `organizationId` to be passed from the **frontend**, then automatically move it from `args` to `ctx.organizationId`.
 
 **Your handler should NOT define `organizationId` in `args`** — it's already handled by the wrapper and available via `ctx.organizationId`.
 
@@ -136,7 +135,7 @@ import { ErrorCode } from "./lib/functions";
 throw new ConvexError({ code: ErrorCode.NOT_FOUND, message: "Staff not found" });
 ```
 
-Available codes: `UNAUTHENTICATED`, `FORBIDDEN`, `ADMIN_REQUIRED`, `OWNER_REQUIRED`, `NOT_FOUND`, `ALREADY_EXISTS`, `VALIDATION_ERROR`, `INVALID_INPUT`, `RATE_LIMITED`, `INTERNAL_ERROR`
+Available codes: `UNAUTHENTICATED`, `FORBIDDEN`, `OWNER_REQUIRED`, `NOT_FOUND`, `ALREADY_EXISTS`, `VALIDATION_ERROR`, `INVALID_INPUT`, `RATE_LIMITED`, `INTERNAL_ERROR`
 
 ## Domain Rules
 

@@ -154,8 +154,7 @@ Use hooks from `@/modules/organization`:
 | `publicMutation`       | None                   | —                                                           | Public operations (booking, slot locks) |
 | `authedQuery/Mutation` | Required               | `ctx.user`                                                  | User-scoped data (profile, orgs list) |
 | `orgQuery/Mutation`    | Required + membership  | `ctx.user`, `ctx.organizationId`, `ctx.member`, `ctx.staff` | All org-scoped operations             |
-| `adminQuery/Mutation`  | Required + owner       | Same as org + owner role check                              | Staff management, settings, reports   |
-| `ownerQuery/Mutation`  | Required + owner only  | Same as org + owner check                                   | Billing, org deletion                 |
+| `ownerQuery/Mutation`  | Required + owner       | Same as org + owner role check + `ctx.role`                 | Staff mgmt, settings, billing, reports |
 | `superAdminQuery/Mutation` | Required + env email | `ctx.user`, `ctx.isSuperAdmin`                            | Platform admin panel                  |
 
 **Key behavior:**
@@ -222,7 +221,7 @@ Rate limits configured in `convex/lib/rateLimits.ts` using `@convex-dev/rate-lim
 ```typescript
 import { rateLimiter } from "./lib/rateLimits";
 
-export const create = adminMutation({
+export const create = ownerMutation({
   args: { email: v.string() /* ... */ },
   handler: async (ctx, args) => {
     await rateLimiter.limit(ctx, "createInvitation", {
@@ -304,7 +303,7 @@ Defined in `convex/crons.ts`:
 
 Functions throw `ConvexError` with an `ErrorCode` enum from `convex/lib/functions.ts`:
 
-`UNAUTHENTICATED`, `FORBIDDEN`, `ADMIN_REQUIRED`, `OWNER_REQUIRED`, `NOT_FOUND`, `ALREADY_EXISTS`, `VALIDATION_ERROR`, `INVALID_INPUT`, `RATE_LIMITED`, `INTERNAL_ERROR`
+`UNAUTHENTICATED`, `FORBIDDEN`, `OWNER_REQUIRED`, `NOT_FOUND`, `ALREADY_EXISTS`, `VALIDATION_ERROR`, `INVALID_INPUT`, `RATE_LIMITED`, `INTERNAL_ERROR`
 
 ## Code Style
 
@@ -364,7 +363,7 @@ SUPER_ADMIN_EMAILS=dev@example.com  # Comma-separated list of superadmin emails
 - Actions are for external API calls only (email, payments, etc.)
 - Actions can't access `ctx.db` — use `ctx.runQuery(internal.xxx)` / `ctx.runMutation(internal.xxx)` instead
 - Avoid N+1 queries: use index range queries (`.gte()/.lte()`) and pre-fetch lookups into Maps
-- **Roles:** Only `"owner"` and `"staff"` — no admin/member roles. `adminQuery`/`adminMutation` check for owner role.
+- **Roles:** Only `"owner"` and `"staff"` — no admin/member roles. `ownerQuery`/`ownerMutation` enforce owner role.
 - **Triggers:** `convex/lib/triggers.ts` uses `convex-helpers/server/triggers` to auto-fire side effects (notifications, emails) on appointment inserts/updates. All mutations use `triggerMutation` base (handled by function wrappers).
 
 ### Tailwind v4
@@ -396,7 +395,7 @@ bunx convex dev
 1. Update schema: `convex/schema.ts`
 2. Wait for type regeneration (Convex dev server must be running)
 3. Create Convex functions: `convex/[feature].ts`
-   - Use custom wrappers (`orgQuery`, `adminMutation`)
+   - Use custom wrappers (`orgQuery`, `ownerMutation`)
    - Add return validators to `convex/lib/validators.ts`
    - Apply rate limiting if needed
 4. Create frontend module: `src/modules/[feature]/`

@@ -6,7 +6,7 @@
  */
 
 import { ConvexError, v } from "convex/values";
-import { adminMutation, authedMutation, ErrorCode } from "./lib/functions";
+import { authedMutation, ErrorCode, ownerMutation } from "./lib/functions";
 
 // =============================================================================
 // Constants
@@ -51,7 +51,7 @@ export const generateUploadUrl = authedMutation({
  * Save organization logo
  * Called after file is uploaded to storage
  */
-export const saveOrganizationLogo = adminMutation({
+export const saveOrganizationLogo = ownerMutation({
   args: {
     storageId: v.id("_storage"),
     fileName: v.string(),
@@ -102,7 +102,7 @@ export const saveOrganizationLogo = adminMutation({
 /**
  * Delete organization logo
  */
-export const deleteOrganizationLogo = adminMutation({
+export const deleteOrganizationLogo = ownerMutation({
   args: {},
   returns: v.null(),
   handler: async (ctx) => {
@@ -211,7 +211,7 @@ export const saveStaffImage = authedMutation({
  * Save service image
  * Called after file is uploaded to storage
  */
-export const saveServiceImage = adminMutation({
+export const saveServiceImage = ownerMutation({
   args: {
     serviceId: v.id("services"),
     storageId: v.id("_storage"),

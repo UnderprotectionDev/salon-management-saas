@@ -2,7 +2,6 @@ import { ConvexError, v } from "convex/values";
 import type { Id } from "./_generated/dataModel";
 import type { MutationCtx } from "./_generated/server";
 import {
-  adminMutation,
   authedMutation,
   authedQuery,
   ErrorCode,
@@ -12,10 +11,6 @@ import {
 } from "./lib/functions";
 import { memberDocValidator, memberRoleValidator } from "./lib/validators";
 
-/**
- * Cascade-delete all data associated with a staff profile.
- * Removes: scheduleOverrides, timeOffRequests, staffOvertime, notifications, slotLocks.
- */
 async function cascadeDeleteStaffData(
   ctx: MutationCtx,
   staffId: Id<"staff">,
@@ -64,13 +59,6 @@ async function cascadeDeleteStaffData(
   }
 }
 
-// =============================================================================
-// Queries
-// =============================================================================
-
-/**
- * Get members of an organization
- */
 export const list = orgQuery({
   args: {},
   returns: v.array(memberDocValidator),
@@ -84,9 +72,6 @@ export const list = orgQuery({
   },
 });
 
-/**
- * Get current user's membership in an organization
- */
 export const getCurrent = authedQuery({
   args: { organizationId: v.id("organization") },
   returns: v.union(memberDocValidator, v.null()),
@@ -100,22 +85,13 @@ export const getCurrent = authedQuery({
   },
 });
 
-// =============================================================================
-// Mutations
-// =============================================================================
-
-/**
- * Add a new member to an organization
- * Only owner/admin can add members
- */
-export const add = adminMutation({
+export const add = ownerMutation({
   args: {
-    userId: v.string(), // Better Auth user ID
+    userId: v.string(),
     role: memberRoleValidator,
   },
   returns: v.id("member"),
   handler: async (ctx, args) => {
-    // Cannot add another owner
     if (args.role === "owner") {
       throw new ConvexError({
         code: ErrorCode.VALIDATION_ERROR,
@@ -123,7 +99,6 @@ export const add = adminMutation({
       });
     }
 
-    // Check if user is already a member of ANY organization
     const existingMembership = await ctx.db
       .query("member")
       .withIndex("userId", (q) => q.eq("userId", args.userId))
@@ -151,11 +126,6 @@ export const add = adminMutation({
   },
 });
 
-/**
- * Update member role
- * Only owner can change roles
- * Uses authedMutation with manual check since memberId is input
- */
 export const updateRole = authedMutation({
   args: {
     memberId: v.id("member"),
@@ -171,7 +141,6 @@ export const updateRole = authedMutation({
       });
     }
 
-    // Check if current user is owner
     const currentMembership = await ctx.db
       .query("member")
       .withIndex("organizationId_userId", (q) =>
@@ -191,7 +160,6 @@ export const updateRole = authedMutation({
       });
     }
 
-    // Cannot change owner role
     if (member.role === "owner") {
       throw new ConvexError({
         code: ErrorCode.VALIDATION_ERROR,
@@ -199,7 +167,6 @@ export const updateRole = authedMutation({
       });
     }
 
-    // Cannot make someone else owner
     if (args.role === "owner") {
       throw new ConvexError({
         code: ErrorCode.VALIDATION_ERROR,
@@ -216,11 +183,6 @@ export const updateRole = authedMutation({
   },
 });
 
-/**
- * Remove a member from organization
- * Owner/admin can remove members, cannot remove owner
- * Uses authedMutation with manual check since memberId is input
- */
 export const remove = authedMutation({
   args: { memberId: v.id("member") },
   returns: v.boolean(),
@@ -233,7 +195,6 @@ export const remove = authedMutation({
       });
     }
 
-    // Check if current user has permission
     const currentMembership = await ctx.db
       .query("member")
       .withIndex("organizationId_userId", (q) =>
@@ -253,7 +214,6 @@ export const remove = authedMutation({
       });
     }
 
-    // Cannot remove owner
     if (member.role === "owner") {
       throw new ConvexError({
         code: ErrorCode.VALIDATION_ERROR,
@@ -261,7 +221,6 @@ export const remove = authedMutation({
       });
     }
 
-    // Cannot remove self (use leave instead)
     if (member.userId === ctx.user._id) {
       throw new ConvexError({
         code: ErrorCode.VALIDATION_ERROR,
@@ -269,7 +228,6 @@ export const remove = authedMutation({
       });
     }
 
-    // Cascading: Remove staff profile and all associated data
     const staffProfile = await ctx.db
       .query("staff")
       .withIndex("memberId", (q) => q.eq("memberId", args.memberId))
@@ -290,10 +248,6 @@ export const remove = authedMutation({
   },
 });
 
-/**
- * Transfer organization ownership to another member
- * Only owner can transfer ownership
- */
 export const transferOwnership = ownerMutation({
   args: {
     newOwnerId: v.id("member"),
@@ -308,7 +262,6 @@ export const transferOwnership = ownerMutation({
       });
     }
 
-    // Must be in the same organization
     if (newOwner.organizationId !== ctx.organizationId) {
       throw new ConvexError({
         code: ErrorCode.VALIDATION_ERROR,
@@ -316,7 +269,6 @@ export const transferOwnership = ownerMutation({
       });
     }
 
-    // Cannot transfer to self
     if (newOwner.userId === ctx.user._id) {
       throw new ConvexError({
         code: ErrorCode.VALIDATION_ERROR,
@@ -324,7 +276,6 @@ export const transferOwnership = ownerMutation({
       });
     }
 
-    // Cannot transfer to someone already owner
     if (newOwner.role === "owner") {
       throw new ConvexError({
         code: ErrorCode.VALIDATION_ERROR,
@@ -334,13 +285,11 @@ export const transferOwnership = ownerMutation({
 
     const now = Date.now();
 
-    // Demote current owner to staff
     await ctx.db.patch(ctx.member._id, {
       role: "staff",
       updatedAt: now,
     });
 
-    // Promote new owner
     await ctx.db.patch(args.newOwnerId, {
       role: "owner",
       updatedAt: now,
@@ -350,10 +299,6 @@ export const transferOwnership = ownerMutation({
   },
 });
 
-/**
- * Leave an organization
- * Any member can leave except owner
- */
 export const leave = authedMutation({
   args: { organizationId: v.id("organization") },
   returns: v.boolean(),
@@ -379,7 +324,6 @@ export const leave = authedMutation({
       });
     }
 
-    // Cascading: Remove staff profile and all associated data
     const staffProfile = await ctx.db
       .query("staff")
       .withIndex("memberId", (q) => q.eq("memberId", membership._id))

@@ -19,7 +19,6 @@ export const ErrorCode = {
   UNAUTHENTICATED: "UNAUTHENTICATED",
   // Authorization errors
   FORBIDDEN: "FORBIDDEN",
-  ADMIN_REQUIRED: "ADMIN_REQUIRED",
   OWNER_REQUIRED: "OWNER_REQUIRED",
   SUPER_ADMIN_REQUIRED: "SUPER_ADMIN_REQUIRED",
   // Resource errors
@@ -209,68 +208,6 @@ export const orgMutation = customMutation(triggerMutation, {
       throw new ConvexError({
         code: ErrorCode.FORBIDDEN,
         message: "You don't have access to this organization",
-      });
-    }
-
-    return {
-      ctx: { user, organizationId: args.organizationId, member, staff },
-      args: {},
-    };
-  },
-});
-
-export const adminQuery = customQuery(baseQuery, {
-  args: { organizationId: v.id("organization") },
-  input: async (ctx, args) => {
-    const user = await getAuthUser(ctx);
-    const { member, staff } = await resolveOrgContext(
-      ctx,
-      user,
-      args.organizationId,
-    );
-
-    if (!member) {
-      throw new ConvexError({
-        code: ErrorCode.FORBIDDEN,
-        message: "You don't have access to this organization",
-      });
-    }
-
-    if (member.role !== "owner" && !isSuperAdminEmail(user.email)) {
-      throw new ConvexError({
-        code: ErrorCode.ADMIN_REQUIRED,
-        message: "Admin access required",
-      });
-    }
-
-    return {
-      ctx: { user, organizationId: args.organizationId, member, staff },
-      args: {},
-    };
-  },
-});
-
-export const adminMutation = customMutation(triggerMutation, {
-  args: { organizationId: v.id("organization") },
-  input: async (ctx, args) => {
-    const user = await getAuthUser(ctx);
-    const { member, staff } = await resolveOrgContext(
-      ctx,
-      user,
-      args.organizationId,
-    );
-
-    if (!member) {
-      throw new ConvexError({
-        code: ErrorCode.FORBIDDEN,
-        message: "You don't have access to this organization",
-      });
-    }
-
-    if (member.role !== "owner" && !isSuperAdminEmail(user.email)) {
-      throw new ConvexError({
-        code: ErrorCode.ADMIN_REQUIRED,
-        message: "Admin access required",
       });
     }
 

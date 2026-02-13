@@ -3,12 +3,12 @@ import { internal } from "./_generated/api";
 import { internalMutation } from "./_generated/server";
 import { DEFAULT_STAFF_SCHEDULE } from "./lib/defaults";
 import {
-  adminMutation,
   authedMutation,
   authedQuery,
   ErrorCode,
   isSuperAdminEmail,
   orgQuery,
+  ownerMutation,
 } from "./lib/functions";
 import { rateLimiter } from "./lib/rateLimits";
 import {
@@ -108,7 +108,7 @@ export const getPendingForCurrentUser = authedQuery({
  * Only owner/admin can invite members
  * Rate limited: 20/day per organization
  */
-export const create = adminMutation({
+export const create = ownerMutation({
   args: {
     email: v.string(),
     name: v.string(),

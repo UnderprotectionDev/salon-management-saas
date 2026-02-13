@@ -1,5 +1,5 @@
 import { ConvexError, v } from "convex/values";
-import { adminMutation, ErrorCode, orgQuery } from "./lib/functions";
+import { ErrorCode, orgQuery, ownerMutation } from "./lib/functions";
 import {
   serviceCategoryDocValidator,
   serviceCategoryWithCountValidator,
@@ -54,7 +54,7 @@ export const list = orgQuery({
 /**
  * Create a service category
  */
-export const create = adminMutation({
+export const create = ownerMutation({
   args: {
     name: v.string(),
     description: v.optional(v.string()),
@@ -98,7 +98,7 @@ export const create = adminMutation({
 /**
  * Update a service category
  */
-export const update = adminMutation({
+export const update = ownerMutation({
   args: {
     categoryId: v.id("serviceCategories"),
     name: v.optional(v.string()),
@@ -156,7 +156,7 @@ export const update = adminMutation({
  * Delete a service category
  * Services in this category become uncategorized (categoryId = undefined)
  */
-export const remove = adminMutation({
+export const remove = ownerMutation({
   args: {
     categoryId: v.id("serviceCategories"),
   },
