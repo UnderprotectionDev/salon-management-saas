@@ -73,27 +73,29 @@ export const listByOrg = orgQuery({
       );
     }
 
-    // Enrich with staff names
-    const enriched = await Promise.all(
-      requests.map(async (request) => {
-        const staff = await ctx.db.get(request.staffId);
-        const staffName = staff?.name ?? "Unknown";
-
-        let approvedByName: string | undefined;
-        if (request.approvedBy) {
-          const approver = await ctx.db.get(request.approvedBy);
-          approvedByName = approver?.name;
-        }
-
-        return {
-          ...request,
-          staffName,
-          approvedByName,
-        };
-      }),
+    // Batch fetch all referenced staff (avoids N+1)
+    const staffIds = [
+      ...new Set([
+        ...requests.map((r) => r.staffId),
+        ...requests
+          .map((r) => r.approvedBy)
+          .filter((id): id is NonNullable<typeof id> => id != null),
+      ]),
+    ];
+    const staffDocs = await Promise.all(staffIds.map((id) => ctx.db.get(id)));
+    const staffMap = new Map(
+      staffDocs
+        .filter((s): s is NonNullable<typeof s> => s != null)
+        .map((s) => [s._id, s.name]),
     );
 
-    return enriched;
+    return requests.map((request) => ({
+      ...request,
+      staffName: staffMap.get(request.staffId) ?? "Unknown",
+      approvedByName: request.approvedBy
+        ? (staffMap.get(request.approvedBy) ?? "Unknown")
+        : undefined,
+    }));
   },
 });
 
@@ -157,9 +159,17 @@ export const request = orgMutation({
     }
 
     // Rate limit per staff member
-    await rateLimiter.limit(ctx, "createTimeOffRequest", {
-      key: ctx.staff._id,
-    });
+    const { ok, retryAfter } = await rateLimiter.limit(
+      ctx,
+      "createTimeOffRequest",
+      { key: ctx.staff._id },
+    );
+    if (!ok) {
+      throw new ConvexError({
+        code: ErrorCode.RATE_LIMITED,
+        message: `Rate limit exceeded. Try again in ${Math.ceil((retryAfter ?? 60000) / 1000 / 60)} minutes.`,
+      });
+    }
 
     // Validate date range
     if (args.startDate > args.endDate) {

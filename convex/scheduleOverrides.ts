@@ -22,6 +22,15 @@ export const listByStaff = orgQuery({
   },
   returns: v.array(scheduleOverrideDocValidator),
   handler: async (ctx, args) => {
+    // Verify staff belongs to this organization
+    const staff = await ctx.db.get(args.staffId);
+    if (!staff || staff.organizationId !== ctx.organizationId) {
+      throw new ConvexError({
+        code: ErrorCode.NOT_FOUND,
+        message: "Staff not found",
+      });
+    }
+
     const overrides = await ctx.db
       .query("scheduleOverrides")
       .withIndex("by_staff_date", (q) => q.eq("staffId", args.staffId))
@@ -77,6 +86,15 @@ export const create = orgMutation({
   },
   returns: v.id("scheduleOverrides"),
   handler: async (ctx, args) => {
+    // Verify staff belongs to this organization
+    const targetStaff = await ctx.db.get(args.staffId);
+    if (!targetStaff || targetStaff.organizationId !== ctx.organizationId) {
+      throw new ConvexError({
+        code: ErrorCode.NOT_FOUND,
+        message: "Staff not found",
+      });
+    }
+
     // Permission check: own staff profile or owner
     const isOwnProfile = ctx.staff?._id === args.staffId;
     const isOwner = ctx.member.role === "owner";
@@ -89,9 +107,17 @@ export const create = orgMutation({
     }
 
     // Rate limit
-    await rateLimiter.limit(ctx, "createScheduleOverride", {
-      key: ctx.organizationId,
-    });
+    const { ok, retryAfter } = await rateLimiter.limit(
+      ctx,
+      "createScheduleOverride",
+      { key: ctx.organizationId },
+    );
+    if (!ok) {
+      throw new ConvexError({
+        code: ErrorCode.RATE_LIMITED,
+        message: `Rate limit exceeded. Try again in ${Math.ceil((retryAfter ?? 60000) / 1000 / 60)} minutes.`,
+      });
+    }
 
     // Validate: custom_hours requires startTime and endTime
     if (args.type === "custom_hours") {

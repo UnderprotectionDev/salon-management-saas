@@ -1,9 +1,9 @@
 import { ConvexError, v } from "convex/values";
 import {
-  authedMutation,
   authedQuery,
   ErrorCode,
   internalMutation,
+  orgMutation,
   orgQuery,
   publicQuery,
 } from "./lib/functions";
@@ -106,38 +106,22 @@ export const getCurrentStaff = authedQuery({
   },
 });
 
-export const get = authedQuery({
+export const get = orgQuery({
   args: { staffId: v.id("staff") },
   returns: v.union(staffDocValidator, v.null()),
   handler: async (ctx, args) => {
     const staff = await ctx.db.get(args.staffId);
-    if (!staff) {
+    if (!staff || staff.organizationId !== ctx.organizationId) {
       return null;
-    }
-
-    // Manual org access check
-    const member = await ctx.db
-      .query("member")
-      .withIndex("organizationId_userId", (q) =>
-        q.eq("organizationId", staff.organizationId).eq("userId", ctx.user._id),
-      )
-      .first();
-
-    if (!member) {
-      throw new ConvexError({
-        code: ErrorCode.FORBIDDEN,
-        message: "You don't have access to this staff member",
-      });
     }
 
     return staff;
   },
 });
 
-export const createProfile = authedMutation({
+export const createProfile = orgMutation({
   args: {
     userId: v.string(),
-    organizationId: v.id("organization"),
     memberId: v.id("member"),
     name: v.string(),
     email: v.string(),
@@ -150,30 +134,21 @@ export const createProfile = authedMutation({
   },
   returns: v.id("staff"),
   handler: async (ctx, args) => {
-    if (args.userId !== ctx.user._id) {
-      const currentMembership = await ctx.db
-        .query("member")
-        .withIndex("organizationId_userId", (q) =>
-          q
-            .eq("organizationId", args.organizationId)
-            .eq("userId", ctx.user._id),
-        )
-        .first();
+    // Permission: creating for someone else requires owner role
+    if (args.userId !== ctx.user._id && ctx.member.role !== "owner") {
+      throw new ConvexError({
+        code: ErrorCode.FORBIDDEN,
+        message: "You don't have permission to add staff to this organization",
+      });
+    }
 
-      if (!currentMembership || currentMembership.role !== "owner") {
-        throw new ConvexError({
-          code: ErrorCode.FORBIDDEN,
-          message:
-            "You don't have permission to add staff to this organization",
-        });
-      }
-    } else {
-      // User is creating their own profile - verify they have a valid member record
+    // Creating own profile: verify valid member record
+    if (args.userId === ctx.user._id) {
       const membership = await ctx.db.get(args.memberId);
       if (
         !membership ||
         membership.userId !== ctx.user._id ||
-        membership.organizationId !== args.organizationId
+        membership.organizationId !== ctx.organizationId
       ) {
         throw new ConvexError({
           code: ErrorCode.VALIDATION_ERROR,
@@ -185,7 +160,7 @@ export const createProfile = authedMutation({
     const existing = await ctx.db
       .query("staff")
       .withIndex("organizationId_userId", (q) =>
-        q.eq("organizationId", args.organizationId).eq("userId", args.userId),
+        q.eq("organizationId", ctx.organizationId).eq("userId", args.userId),
       )
       .first();
 
@@ -210,7 +185,7 @@ export const createProfile = authedMutation({
 
     const staffId = await ctx.db.insert("staff", {
       userId: args.userId,
-      organizationId: args.organizationId,
+      organizationId: ctx.organizationId,
       memberId: args.memberId,
       name: args.name,
       email: args.email,
@@ -228,7 +203,7 @@ export const createProfile = authedMutation({
   },
 });
 
-export const updateProfile = authedMutation({
+export const updateProfile = orgMutation({
   args: {
     staffId: v.id("staff"),
     name: v.optional(v.string()),
@@ -236,34 +211,21 @@ export const updateProfile = authedMutation({
     imageUrl: v.optional(v.string()),
     bio: v.optional(v.string()),
     status: v.optional(staffStatusValidator),
-    serviceIds: v.optional(v.array(v.string())),
+    serviceIds: v.optional(v.array(v.id("services"))),
     defaultSchedule: v.optional(staffScheduleValidator),
   },
   returns: v.id("staff"),
   handler: async (ctx, args) => {
     const staff = await ctx.db.get(args.staffId);
-    if (!staff) {
+    if (!staff || staff.organizationId !== ctx.organizationId) {
       throw new ConvexError({
         code: ErrorCode.NOT_FOUND,
         message: "Staff not found",
       });
     }
 
-    const member = await ctx.db
-      .query("member")
-      .withIndex("organizationId_userId", (q) =>
-        q.eq("organizationId", staff.organizationId).eq("userId", ctx.user._id),
-      )
-      .first();
-
-    if (!member) {
-      throw new ConvexError({
-        code: ErrorCode.FORBIDDEN,
-        message: "You don't have access to this organization",
-      });
-    }
-
-    if (staff.userId !== ctx.user._id && member.role !== "owner") {
+    // Permission: only own profile or owner
+    if (staff.userId !== ctx.user._id && ctx.member.role !== "owner") {
       throw new ConvexError({
         code: ErrorCode.FORBIDDEN,
         message: "You don't have permission to update this staff profile",
@@ -319,23 +281,27 @@ export const getResolvedSchedule = orgQuery({
       });
     }
 
-    // Fetch overrides in date range
-    const overrides = await ctx.db
+    // Fetch overrides in date range using index range query
+    const filteredOverrides = await ctx.db
       .query("scheduleOverrides")
-      .withIndex("by_staff_date", (q) => q.eq("staffId", args.staffId))
+      .withIndex("by_staff_date", (q) =>
+        q
+          .eq("staffId", args.staffId)
+          .gte("date", args.startDate)
+          .lte("date", args.endDate),
+      )
       .collect();
-    const filteredOverrides = overrides.filter(
-      (o) => o.date >= args.startDate && o.date <= args.endDate,
-    );
 
-    // Fetch overtime entries in date range
-    const overtime = await ctx.db
+    // Fetch overtime entries in date range using index range query
+    const filteredOvertime = await ctx.db
       .query("staffOvertime")
-      .withIndex("by_staff_date", (q) => q.eq("staffId", args.staffId))
+      .withIndex("by_staff_date", (q) =>
+        q
+          .eq("staffId", args.staffId)
+          .gte("date", args.startDate)
+          .lte("date", args.endDate),
+      )
       .collect();
-    const filteredOvertime = overtime.filter(
-      (o) => o.date >= args.startDate && o.date <= args.endDate,
-    );
 
     return resolveScheduleRange({
       startDate: args.startDate,

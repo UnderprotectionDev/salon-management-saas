@@ -266,15 +266,34 @@ export const update = orgMutation({
       });
     }
 
-    // Staff can only update services they're assigned to
+    // Staff permission restrictions
     const isStaffOnly = ctx.member.role === "staff";
     if (isStaffOnly) {
+      // Staff can only update services they're assigned to
       const staffServiceIds = ctx.staff?.serviceIds ?? [];
       if (!staffServiceIds.includes(args.serviceId)) {
         throw new ConvexError({
           code: ErrorCode.FORBIDDEN,
           message: "You can only edit services assigned to you",
         });
+      }
+
+      // Staff cannot modify sensitive fields (price, status, visibility)
+      const sensitiveFields = [
+        "price",
+        "priceType",
+        "status",
+        "showOnline",
+        "isPopular",
+      ] as const;
+      for (const field of sensitiveFields) {
+        if (args[field] !== undefined) {
+          throw new ConvexError({
+            code: ErrorCode.FORBIDDEN,
+            message:
+              "Only salon owners can change pricing, status, and visibility settings",
+          });
+        }
       }
     }
 
@@ -344,6 +363,32 @@ export const remove = ownerMutation({
       }
     }
 
+    return true;
+  },
+});
+
+/**
+ * Reorder services.
+ * Accepts an ordered array of service IDs and updates their sortOrder.
+ */
+export const reorder = ownerMutation({
+  args: {
+    serviceIds: v.array(v.id("services")),
+  },
+  returns: v.boolean(),
+  handler: async (ctx, args) => {
+    const updates = args.serviceIds.map(async (id, index) => {
+      const service = await ctx.db.get(id);
+      if (!service || service.organizationId !== ctx.organizationId) {
+        throw new ConvexError({
+          code: ErrorCode.NOT_FOUND,
+          message: "Service not found",
+        });
+      }
+      await ctx.db.patch(id, { sortOrder: index + 1 });
+    });
+
+    await Promise.all(updates);
     return true;
   },
 });
