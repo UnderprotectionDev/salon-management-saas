@@ -5,18 +5,26 @@ Guide for AI coding agents working in this repository.
 ## Commands
 
 ```bash
+# Development
 bun install              # Install dependencies
 bun run dev              # Next.js dev server (localhost:3000)
-bunx convex dev          # Convex backend + type generation (run in separate terminal)
-bun run lint             # Biome check (linter + formatter)
-bun run format           # Biome auto-format
-bun run build            # Production build (includes TypeScript type check)
+bunx convex dev          # Convex backend + type generation (MUST run in separate terminal)
 bun run email:dev        # React Email preview server (port 3001)
+
+# Linting & Formatting
+bun run lint             # Biome check (linter + formatter)
+bun run format           # Biome auto-format with --write
+
+# Build & Type Checking
+bun run build            # Production build (runs TypeScript type check + Next.js build)
+
+# Utilities
+bun run sync-products    # Initialize Polar products (runs convex/init.ts)
 ```
 
-Always use `bun`, never `npm` or `yarn`. No test framework is configured; there are no test files.
+**Important:** Always use `bun`, never `npm` or `yarn`. No test framework configured.
 
-Schema changes require `bunx convex dev` running to regenerate types in `convex/_generated/`.
+**Critical:** Schema changes require `bunx convex dev` running to regenerate types in `convex/_generated/`.
 
 ## Tech Stack
 
@@ -82,6 +90,32 @@ src/
   emails/                # React Email templates
 ```
 
+## Frontend Patterns
+
+```typescript
+// Queries
+const data = useQuery(api.services.list, { organizationId: org._id });
+
+// Mutations
+const update = useMutation(api.services.update);
+await update({ id, organizationId, data });
+
+// Error handling
+try {
+  await mutation({ organizationId, ...args });
+  toast.success("Success");
+} catch (error) {
+  if (error instanceof ConvexError) {
+    toast.error(error.data.message || "An error occurred");
+  } else {
+    toast.error("Unexpected error");
+  }
+}
+
+// Organization context
+const org = useActiveOrganization(); // Always pass org._id to org-scoped functions
+```
+
 ## Convex Function Wrappers
 
 Always use custom wrappers from `convex/lib/functions.ts`, never raw `query()`/`mutation()`:
@@ -101,30 +135,27 @@ Always use custom wrappers from `convex/lib/functions.ts`, never raw `query()`/`
 **Your handler should NOT define `organizationId` in `args`** — it's already handled by the wrapper and available via `ctx.organizationId`.
 
 ```typescript
-// ❌ WRONG - don't add organizationId to handler args
-export const getSettings = orgQuery({
-  args: { organizationId: v.id("organization") }, // ❌ Already handled by wrapper
+// ❌ WRONG
+export const get = orgQuery({
+  args: { organizationId: v.id("organization") }, // Already handled!
   handler: async (ctx) => { ... },
 });
 
-// ✅ CORRECT - organizationId comes from context
-export const getSettings = orgQuery({
-  args: {}, // ✅ Empty (or your own params)
+// ✅ CORRECT
+export const get = orgQuery({
+  args: {}, // organizationId auto-injected into ctx
   handler: async (ctx) => {
-    const orgId = ctx.organizationId; // ✅ Available in context
-    // ...
+    const orgId = ctx.organizationId; // Available here
   },
 });
 
 // Frontend must pass organizationId
-useQuery(api.organizations.getSettings, { 
-  organizationId: activeOrganization._id // ✅ Required
-});
+useQuery(api.organizations.get, { organizationId: org._id });
 ```
 
-All queries and mutations must have a `returns:` validator. Shared validators live in `convex/lib/validators.ts` and are derived from the schema via `typedV(schema)`.
+All queries/mutations must have `returns:` validator. Shared validators in `convex/lib/validators.ts` use `typedV(schema)`.
 
-## Error Handling
+## Error Handling (Backend)
 
 Throw `ConvexError` with an `ErrorCode`:
 
