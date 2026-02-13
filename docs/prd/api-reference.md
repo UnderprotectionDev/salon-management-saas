@@ -10,8 +10,8 @@
 | `publicQuery/Mutation` | None | — | Public data, booking |
 | `authedQuery/Mutation` | Required | `ctx.user` | User-scoped |
 | `orgQuery/Mutation` | Required + membership | `ctx.user, organizationId, member, staff` | Org-scoped |
-| `adminQuery/Mutation` | Required + admin/owner | Same + role check | Staff mgmt, settings |
-| `ownerQuery/Mutation` | Required + owner only | Same + owner check | Billing, deletion |
+| `ownerQuery/Mutation` | Required + owner only | Same + owner check | Staff mgmt, settings, billing, reports |
+| `superAdminQuery/Mutation` | Required + env email | `ctx.user, isSuperAdmin` | Platform admin |
 
 `orgQuery`/`orgMutation` auto-inject `organizationId` from args. ErrorCode enum for structured errors.
 
@@ -39,10 +39,10 @@
 |----------|---------|------|---------|
 | `staff.list` | orgQuery | `status?` | `array(staffDoc)` |
 | `staff.get` | orgQuery | `staffId` | `staffDoc \| null` |
-| `staff.update` | adminMutation | `staffId, name?, phone?, bio?, defaultSchedule?` | `id("staff")` |
+| `staff.update` | ownerMutation | `staffId, name?, phone?, bio?, defaultSchedule?` | `id("staff")` |
 | `staff.listPublicActive` | publicQuery | `organizationId` | `array({_id, name, imageUrl?, bio?, serviceIds?})` |
 | `staff.getResolvedSchedule` | orgQuery | `staffId, startDate, endDate` | `array({date, available, effectiveStart, effectiveEnd, overtimeWindows, overrideType, isTimeOff})` |
-| `invitations.create` | adminMutation | `email, name, role, serviceIds?` | `id("invitation")` |
+| `invitations.create` | ownerMutation | `email, name, role, serviceIds?` | `id("invitation")` |
 | `invitations.accept` | authedMutation | `token` | `{organizationId, organizationSlug}` |
 | `members.updateRole` | ownerMutation | `memberId, role` | `{success}` |
 
@@ -51,15 +51,15 @@
 | Function | Wrapper | Args | Returns |
 |----------|---------|------|---------|
 | `serviceCategories.list` | orgQuery | `{}` | `array(categoryWithCount)` |
-| `serviceCategories.create` | adminMutation | `name, description?` | `id("serviceCategories")` |
-| `serviceCategories.update` | adminMutation | `categoryId, name?, description?` | `id("serviceCategories")` |
-| `serviceCategories.remove` | adminMutation | `categoryId` | `null` |
+| `serviceCategories.create` | ownerMutation | `name, description?` | `id("serviceCategories")` |
+| `serviceCategories.update` | ownerMutation | `categoryId, name?, description?` | `id("serviceCategories")` |
+| `serviceCategories.remove` | ownerMutation | `categoryId` | `null` |
 | `services.list` | orgQuery | `categoryId?, status?` | `array(serviceWithCategory)` |
 | `services.get` | orgQuery | `serviceId` | `serviceWithCategory \| null` |
-| `services.create` | adminMutation | `name, description?, duration, bufferTime?, price, priceType, categoryId?` | `id("services")` |
-| `services.update` | adminMutation | `serviceId, name?, duration?, price?, priceType?, categoryId?, isPopular?, showOnline?, status?` | `id("services")` |
-| `services.remove` | adminMutation | `serviceId` | `null` (soft-delete) |
-| `services.assignStaff` | adminMutation | `serviceId, staffId, assign: boolean` | `null` |
+| `services.create` | ownerMutation | `name, description?, duration, bufferTime?, price, priceType, categoryId?` | `id("services")` |
+| `services.update` | ownerMutation | `serviceId, name?, duration?, price?, priceType?, categoryId?, isPopular?, showOnline?, status?` | `id("services")` |
+| `services.remove` | ownerMutation | `serviceId` | `null` (soft-delete) |
+| `services.assignStaff` | ownerMutation | `serviceId, staffId, assign: boolean` | `null` |
 | `services.listPublic` | publicQuery | `organizationId` | `array({_id, name, description?, duration, price, priceType, imageUrl?, isPopular, categoryName?})` |
 | `services.getStaffForService` | orgQuery | `serviceId` | `array({_id, name, imageUrl?, assigned})` |
 
@@ -91,9 +91,9 @@
 | `customers.get` | orgQuery | `customerId` | `customerWithStaff \| null` |
 | `customers.create` | orgMutation | `name, phone, email?, preferredStaffId?, customerNotes?, staffNotes?, tags?, source?` | `id("customers")` |
 | `customers.update` | orgMutation | `customerId, name?, email?, phone?, preferredStaffId?, customerNotes?, staffNotes?, tags?` | `customerDoc` |
-| `customers.remove` | adminMutation | `customerId` | `null` (hard delete) |
+| `customers.remove` | ownerMutation | `customerId` | `null` (hard delete) |
 | `customers.advancedSearch` | orgQuery | `query?, accountStatus?, source?, totalVisits/Spent/NoShow min/max?, tags?, lastVisitDays?` | `{customers, totalCount}` |
-| `customers.merge` | adminMutation | `primaryCustomerId, duplicateCustomerId` | `{success}` |
+| `customers.merge` | ownerMutation | `primaryCustomerId, duplicateCustomerId` | `{success}` |
 | `customers.linkToCurrentUser` | authedMutation | `customerId` | `{success}` |
 | `customers.searchByPhone` | orgQuery | `phonePrefix` | `array(customerListItem)` |
 
@@ -109,8 +109,8 @@
 | `timeOffRequests.getMyRequests` | orgQuery | `{}` | `array(timeOffRequestDoc)` |
 | `timeOffRequests.getPendingCount` | orgQuery | `{}` | `number` |
 | `timeOffRequests.request` | orgMutation | `startDate, endDate, type, reason?` | `id("timeOffRequests")` |
-| `timeOffRequests.approve` | adminMutation | `requestId` | `id("timeOffRequests")` |
-| `timeOffRequests.reject` | adminMutation | `requestId, rejectionReason?` | `id("timeOffRequests")` |
+| `timeOffRequests.approve` | ownerMutation | `requestId` | `id("timeOffRequests")` |
+| `timeOffRequests.reject` | ownerMutation | `requestId, rejectionReason?` | `id("timeOffRequests")` |
 | `timeOffRequests.cancel` | orgMutation | `requestId` | `null` (deletes record) |
 | `staffOvertime.listByStaff` | orgQuery | `staffId, startDate?, endDate?` | `array(staffOvertimeDoc)` |
 | `staffOvertime.listByDate` | orgQuery | `date` | `array(staffOvertimeDoc)` |
@@ -122,9 +122,9 @@
 | Function | Wrapper | Args | Returns |
 |----------|---------|------|---------|
 | `files.generateUploadUrl` | mutation | `{}` | `string` (upload URL) |
-| `files.saveOrganizationLogo` | adminMutation | `storageId, fileName, fileType, fileSize` | `string` (CDN URL) |
+| `files.saveOrganizationLogo` | ownerMutation | `storageId, fileName, fileType, fileSize` | `string` (CDN URL) |
 | `files.saveStaffImage` | authedMutation | `staffId, storageId, fileName, fileType, fileSize` | `string` (CDN URL) |
-| `files.saveServiceImage` | adminMutation | `serviceId, storageId, fileName, fileType, fileSize` | `string` (CDN URL) |
+| `files.saveServiceImage` | ownerMutation | `serviceId, storageId, fileName, fileType, fileSize` | `string` (CDN URL) |
 
 Upload flow: `generateUploadUrl()` → `fetch(url, {method: "POST", body: file})` → `save*({storageId, ...})`
 
@@ -148,9 +148,9 @@ Webhook routes registered in `convex/http.ts` via `polar.registerRoutes()`:
 | Function | Wrapper | Args | Returns |
 |----------|---------|------|---------|
 | `analytics.getDashboardStats` | orgQuery | `date` | `dashboardStats` |
-| `reports.getRevenueReport` | adminQuery | `startDate, endDate` | `revenueReport` (totalRevenue, expectedRevenue, completionRate, cancellationRate, statusBreakdown, daily[], byService[], byStaff[]) |
-| `reports.getStaffPerformanceReport` | adminQuery | `startDate, endDate` | `staffPerformanceReport` (staff[]: appointments, completed, noShows, revenue, utilization%) |
-| `reports.getCustomerReport` | adminQuery | `startDate, endDate` | `customerReport` (totalActive, newInPeriod, retentionRate, monthly[], topCustomers[]) |
+| `reports.getRevenueReport` | ownerQuery | `startDate, endDate` | `revenueReport` (totalRevenue, expectedRevenue, completionRate, cancellationRate, statusBreakdown, daily[], byService[], byStaff[]) |
+| `reports.getStaffPerformanceReport` | ownerQuery | `startDate, endDate` | `staffPerformanceReport` (staff[]: appointments, completed, noShows, revenue, utilization%) |
+| `reports.getCustomerReport` | ownerQuery | `startDate, endDate` | `customerReport` (totalActive, newInPeriod, retentionRate, monthly[], topCustomers[]) |
 
 ## Notifications
 
@@ -160,6 +160,33 @@ Webhook routes registered in `convex/http.ts` via `polar.registerRoutes()`:
 | `notifications.getUnreadCount` | orgQuery | `{}` | `number` |
 | `notifications.markAsRead` | orgMutation | `notificationId` | `null` |
 | `notifications.markAllAsRead` | orgMutation | `{}` | `null` |
+
+## SuperAdmin Platform Management
+
+> **Access:** Environment-based via `SUPER_ADMIN_EMAILS` env var (comma-separated email list)
+
+| Function | Wrapper | Args | Returns |
+|----------|---------|------|---------|
+| `admin.checkIsSuperAdmin` | authedQuery | `{}` | `boolean` |
+| `admin.getPlatformStats` | superAdminQuery | `{}` | `{totalOrgs, activeOrgs, totalUsers, totalAppointments, totalRevenue}` |
+| `admin.listAllOrganizations` | superAdminQuery | `status?, limit?, cursor?` | `{organizations[], nextCursor?}` |
+| `admin.suspendOrganization` | superAdminMutation | `organizationId, reason?` | `{success}` |
+| `admin.unsuspendOrganization` | superAdminMutation | `organizationId` | `{success}` |
+| `admin.deleteOrganization` | superAdminMutation | `organizationId, reason?` | `{success}` (cascading delete) |
+| `admin.updateSubscriptionManually` | superAdminMutation | `organizationId, status, plan?, currentPeriodEnd?` | `{success}` |
+| `admin.listAllUsers` | superAdminQuery | `banned?, limit?, cursor?` | `{users[], nextCursor?}` |
+| `admin.banUser` | superAdminMutation | `userId, reason?` | `{success}` |
+| `admin.unbanUser` | superAdminMutation | `userId` | `{success}` |
+| `admin.getActionLog` | superAdminQuery | `limit?, cursor?` | `{actions[], nextCursor?}` |
+
+**Permissions:** SuperAdmins bypass org membership checks (synthetic owner member). Ban check in `getAuthUser` — banned users get FORBIDDEN on any authenticated request.
+
+**Rate limits:** `suspendOrganization` (10/hour), `deleteOrganization` (5/day), `banUser` (10/hour)
+
+**Cascading behaviors:**
+- `deleteOrganization`: Deletes org + settings + members + staff + services + customers + appointments + all related data
+- `suspendOrganization`: Sets `subscriptionStatus: "suspended"`, blocks all booking/staff operations
+- `banUser`: Creates record in `bannedUsers` table, blocks all authenticated requests
 
 ## Email Notifications (Internal)
 
@@ -245,8 +272,8 @@ All email actions use retry (3 attempts, exponential backoff). Triggered via `ct
 
 | Function | Wrapper | Args | Returns |
 |----------|---------|------|---------|
-| `aiForecasts.generate` | adminMutation | `type: weekly\|monthly` | `{forecastId}` |
-| `aiForecasts.get` | adminQuery | `type: weekly\|monthly` | `aiForecastDoc \| null` |
+| `aiForecasts.generate` | ownerMutation | `type: weekly\|monthly` | `{forecastId}` |
+| `aiForecasts.get` | ownerQuery | `type: weekly\|monthly` | `aiForecastDoc \| null` |
 | `aiCareSchedules.generate` | orgMutation | `customerId` | `{scheduleId}` |
 | `aiCareSchedules.get` | orgQuery | `customerId` | `aiCareScheduleDoc \| null` |
 

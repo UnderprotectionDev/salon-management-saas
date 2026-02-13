@@ -31,9 +31,11 @@
 
 **Service:** active | inactive (soft-delete)
 
-**Member Roles:** owner (1 per org, full access) | admin (operations) | member (own schedule only)
+**Member Roles:** owner (1 per org, full access) | staff (own schedule only)
 
-**Subscription:** trialing | active | past_due | canceled | unpaid
+**Subscription:** trialing | active | past_due | canceled | unpaid | suspended | pending_payment
+
+**SuperAdmin:** Platform administrator with environment-based access (`SUPER_ADMIN_EMAILS`)
 
 ## Time Conventions
 

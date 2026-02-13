@@ -39,7 +39,7 @@ async function enrichAppointment(
 ) {
   const [customer, staff] = await Promise.all([
     ctx.db.get(appointment.customerId),
-    ctx.db.get(appointment.staffId),
+    appointment.staffId ? ctx.db.get(appointment.staffId) : null,
   ]);
 
   const apptServices = await ctx.db
@@ -52,7 +52,7 @@ async function enrichAppointment(
     customerName: customer?.name ?? "Unknown",
     customerPhone: customer?.phone ?? "",
     customerEmail: customer?.email,
-    staffName: staff?.name ?? "Unknown",
+    staffName: staff?.name ?? "Deleted staff",
     staffImageUrl: staff?.imageUrl,
     services: apptServices.map((s) => ({
       serviceId: s.serviceId,
@@ -477,7 +477,7 @@ export const listForCurrentUser = authedQuery({
       allAppointments.map(async (appt) => {
         const [org, staff] = await Promise.all([
           ctx.db.get(appt.organizationId),
-          ctx.db.get(appt.staffId),
+          appt.staffId ? ctx.db.get(appt.staffId) : null,
         ]);
 
         const apptServices = await ctx.db
@@ -492,7 +492,7 @@ export const listForCurrentUser = authedQuery({
           endTime: appt.endTime,
           status: appt.status,
           confirmationCode: appt.confirmationCode,
-          staffName: staff?.name ?? "Unknown",
+          staffName: staff?.name ?? "Deleted staff",
           staffImageUrl: staff?.imageUrl,
           total: appt.total,
           organizationName: org?.name ?? "Unknown",
@@ -983,7 +983,7 @@ export const updateStatus = orgMutation({
     await ctx.db.patch(args.appointmentId, updates);
 
     // Notify on no_show
-    if (args.status === "no_show") {
+    if (args.status === "no_show" && appointment.staffId) {
       await ctx.scheduler.runAfter(
         0,
         internal.notifications.createNotification,
@@ -1081,14 +1081,20 @@ export const cancel = orgMutation({
     });
 
     // Notify assigned staff about cancellation
-    await ctx.scheduler.runAfter(0, internal.notifications.createNotification, {
-      organizationId: ctx.organizationId,
-      recipientStaffId: appointment.staffId,
-      type: "cancellation" as const,
-      title: "Appointment Cancelled",
-      message: `Appointment on ${appointment.date} at ${formatMinutesShort(appointment.startTime)} was cancelled`,
-      appointmentId: args.appointmentId,
-    });
+    if (appointment.staffId) {
+      await ctx.scheduler.runAfter(
+        0,
+        internal.notifications.createNotification,
+        {
+          organizationId: ctx.organizationId,
+          recipientStaffId: appointment.staffId,
+          type: "cancellation" as const,
+          title: "Appointment Cancelled",
+          message: `Appointment on ${appointment.date} at ${formatMinutesShort(appointment.startTime)} was cancelled`,
+          appointmentId: args.appointmentId,
+        },
+      );
+    }
 
     // Send cancellation email (async, non-blocking)
     await ctx.scheduler.runAfter(0, internal.email.sendCancellationEmail, {
@@ -1148,6 +1154,13 @@ export const reschedule = orgMutation({
     }
 
     const targetStaffId = args.newStaffId ?? appointment.staffId;
+    if (!targetStaffId) {
+      throw new ConvexError({
+        code: ErrorCode.VALIDATION_ERROR,
+        message:
+          "Cannot reschedule: no staff assigned. Please select a new staff member.",
+      });
+    }
 
     // Validate slot availability (exclude self from conflict check)
     const staff = await validateSlotAvailability(ctx, {
@@ -1244,7 +1257,7 @@ export const getForUser = authedQuery({
 
     const [org, staff] = await Promise.all([
       ctx.db.get(appointment.organizationId),
-      ctx.db.get(appointment.staffId),
+      appointment.staffId ? ctx.db.get(appointment.staffId) : null,
     ]);
 
     const apptServices = await ctx.db
@@ -1261,7 +1274,7 @@ export const getForUser = authedQuery({
       endTime: appointment.endTime,
       status: appointment.status,
       confirmationCode: appointment.confirmationCode,
-      staffName: staff?.name ?? "Unknown",
+      staffName: staff?.name ?? "Deleted staff",
       staffImageUrl: staff?.imageUrl,
       staffId: appointment.staffId,
       total: appointment.total,
@@ -1355,14 +1368,20 @@ export const cancelByUser = authedMutation({
     });
 
     // Notify assigned staff
-    await ctx.scheduler.runAfter(0, internal.notifications.createNotification, {
-      organizationId: appointment.organizationId,
-      recipientStaffId: appointment.staffId,
-      type: "cancellation" as const,
-      title: "Customer Cancelled",
-      message: `${customer.name} cancelled their appointment on ${appointment.date} at ${formatMinutesShort(appointment.startTime)}`,
-      appointmentId: appointment._id,
-    });
+    if (appointment.staffId) {
+      await ctx.scheduler.runAfter(
+        0,
+        internal.notifications.createNotification,
+        {
+          organizationId: appointment.organizationId,
+          recipientStaffId: appointment.staffId,
+          type: "cancellation" as const,
+          title: "Customer Cancelled",
+          message: `${customer.name} cancelled their appointment on ${appointment.date} at ${formatMinutesShort(appointment.startTime)}`,
+          appointmentId: appointment._id,
+        },
+      );
+    }
 
     // Send cancellation email
     await ctx.scheduler.runAfter(0, internal.email.sendCancellationEmail, {
@@ -1466,6 +1485,13 @@ export const rescheduleByUser = authedMutation({
     }
 
     // Validate slot availability
+    if (!appointment.staffId) {
+      throw new ConvexError({
+        code: ErrorCode.VALIDATION_ERROR,
+        message:
+          "Cannot reschedule: no staff assigned. Please contact the salon.",
+      });
+    }
     await validateSlotAvailability(ctx, {
       staffId: appointment.staffId,
       date: args.newDate,
@@ -1502,15 +1528,21 @@ export const rescheduleByUser = authedMutation({
     // Delete the slot lock
     await ctx.db.delete(myLock._id);
 
-    // Notify assigned staff
-    await ctx.scheduler.runAfter(0, internal.notifications.createNotification, {
-      organizationId: appointment.organizationId,
-      recipientStaffId: appointment.staffId,
-      type: "reschedule" as const,
-      title: "Customer Rescheduled",
-      message: `${customer.name} rescheduled to ${args.newDate} at ${formatMinutesShort(args.newStartTime)}`,
-      appointmentId: appointment._id,
-    });
+    // Notify assigned staff (staffId guaranteed non-null by guard above)
+    if (appointment.staffId) {
+      await ctx.scheduler.runAfter(
+        0,
+        internal.notifications.createNotification,
+        {
+          organizationId: appointment.organizationId,
+          recipientStaffId: appointment.staffId,
+          type: "reschedule" as const,
+          title: "Customer Rescheduled",
+          message: `${customer.name} rescheduled to ${args.newDate} at ${formatMinutesShort(args.newStartTime)}`,
+          appointmentId: appointment._id,
+        },
+      );
+    }
 
     return { success: true };
   },

@@ -167,9 +167,11 @@ export const sendBookingConfirmation = internalAction({
     );
 
     // 6. Fetch staff
-    const staff = await ctx.runQuery(internal.email_helpers.getStaff, {
-      staffId: appointment.staffId,
-    });
+    const staff = appointment.staffId
+      ? await ctx.runQuery(internal.email_helpers.getStaff, {
+          staffId: appointment.staffId,
+        })
+      : null;
 
     const orgName = org?.name ?? "Salon";
     const orgSlug = org?.slug ?? "";
@@ -260,9 +262,11 @@ export const send24HourReminder = internalAction({
       internal.email_helpers.getAppointmentServices,
       { appointmentId: args.appointmentId },
     );
-    const staff = await ctx.runQuery(internal.email_helpers.getStaff, {
-      staffId: appointment.staffId,
-    });
+    const staff = appointment.staffId
+      ? await ctx.runQuery(internal.email_helpers.getStaff, {
+          staffId: appointment.staffId,
+        })
+      : null;
 
     const orgName = org?.name ?? "Salon";
     const orgSlug = org?.slug ?? "";
@@ -330,9 +334,11 @@ export const sendCancellationEmail = internalAction({
       internal.email_helpers.getAppointmentServices,
       { appointmentId: args.appointmentId },
     );
-    const staff = await ctx.runQuery(internal.email_helpers.getStaff, {
-      staffId: appointment.staffId,
-    });
+    const staff = appointment.staffId
+      ? await ctx.runQuery(internal.email_helpers.getStaff, {
+          staffId: appointment.staffId,
+        })
+      : null;
 
     const orgName = org?.name ?? "Salon";
     const orgSlug = org?.slug ?? "";

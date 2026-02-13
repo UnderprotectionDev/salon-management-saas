@@ -79,37 +79,31 @@ export const listPublic = publicQuery({
     }),
   ),
   handler: async (ctx) => {
-    const orgs = await ctx.db.query("organization").take(200);
+    // Batch fetch: 2 queries total instead of N+1
+    const [orgs, allSettings] = await Promise.all([
+      ctx.db.query("organization").take(200),
+      ctx.db.query("organizationSettings").collect(),
+    ]);
+
+    // Build lookup map for O(1) access
+    const settingsMap = new Map(
+      allSettings.map((s) => [s.organizationId.toString(), s]),
+    );
 
     // Filter out suspended organizations
-    const results: {
-      _id: (typeof orgs)[number]["_id"];
-      _creationTime: number;
-      name: string;
-      slug: string;
-      logo?: string;
-      description?: string;
-    }[] = [];
-
-    for (const org of orgs) {
-      const settings = await ctx.db
-        .query("organizationSettings")
-        .withIndex("organizationId", (q) => q.eq("organizationId", org._id))
-        .first();
-
-      if (settings?.subscriptionStatus === "suspended") continue;
-
-      results.push({
+    return orgs
+      .filter((org) => {
+        const settings = settingsMap.get(org._id.toString());
+        return settings?.subscriptionStatus !== "suspended";
+      })
+      .map((org) => ({
         _id: org._id,
         _creationTime: org._creationTime,
         name: org.name,
         slug: org.slug,
         logo: org.logo,
         description: org.description,
-      });
-    }
-
-    return results;
+      }));
   },
 });
 

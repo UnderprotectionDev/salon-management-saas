@@ -406,7 +406,7 @@ export default defineSchema({
   appointments: defineTable({
     organizationId: v.id("organization"),
     customerId: v.id("customers"),
-    staffId: v.id("staff"),
+    staffId: v.union(v.id("staff"), v.null()), // Nullable: set to null when staff is removed
     date: v.string(), // "YYYY-MM-DD"
     startTime: v.number(), // Minutes from midnight (540 = 09:00)
     endTime: v.number(),
@@ -474,10 +474,11 @@ export default defineSchema({
   })
     .index("by_organization", ["organizationId"])
     .index("by_org_date", ["organizationId", "date"])
-    .index("by_staff_date", ["staffId", "date"])
+    .index("by_staff_date", ["staffId", "date"]) // Note: Does not include null staffId
     .index("by_customer", ["customerId"])
     .index("by_confirmation", ["confirmationCode"])
-    .index("by_org_status", ["organizationId", "status"]),
+    .index("by_org_status", ["organizationId", "status"])
+    .index("by_org_status_date", ["organizationId", "status", "date"]),
 
   // Appointment Services — services included in an appointment (junction table)
   appointmentServices: defineTable({
@@ -486,7 +487,7 @@ export default defineSchema({
     serviceName: v.string(), // Denormalized for history
     duration: v.number(), // minutes
     price: v.number(), // kuruş
-    staffId: v.id("staff"),
+    staffId: v.union(v.id("staff"), v.null()), // Nullable: set to null when staff is removed
   }).index("by_appointment", ["appointmentId"]),
 
   // Slot Locks — temporary locks to prevent double booking

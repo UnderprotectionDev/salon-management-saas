@@ -128,12 +128,14 @@ src/
 
 **Sidebar Navigation:** Dashboard, Calendar, Staff, Appointments, Services, Customers, Reports, Settings, Billing
 
-**Admin Panel (`/admin`):** Platform-level management for SuperAdmins (env-based). Dashboard, Organizations, Users, Action Log
+**Admin Panel (`/admin`):** Platform-level management for SuperAdmins (env-based via `SUPER_ADMIN_EMAILS`). Dashboard (platform stats), Organizations (suspend/delete), Users (ban/unban), Action Log (audit trail).
 
 **User Flow:** Sign in → No orgs? → `/onboarding` → Create org → `/{slug}/dashboard`
 **Public Booking:** `/{slug}/book` → Select services → Pick time → Enter info → Confirmation code
 
 **Multi-Tenancy:** Every table includes `organizationId` for tenant isolation. Custom function wrappers (`orgQuery`, `orgMutation`) automatically enforce membership checks. One salon per user.
+
+**SuperAdmin Access:** SuperAdmins (defined via `SUPER_ADMIN_EMAILS` env var) bypass org membership checks via `resolveOrgContext` helper. Synthetic owner member created at runtime. All actions logged to `adminActions` table. Ban check in `getAuthUser` blocks banned users at auth layer.
 
 ### Organization Context
 
@@ -156,6 +158,8 @@ Use hooks from `@/modules/organization`:
 | `orgQuery/Mutation`    | Required + membership  | `ctx.user`, `ctx.organizationId`, `ctx.member`, `ctx.staff` | All org-scoped operations             |
 | `ownerQuery/Mutation`  | Required + owner       | Same as org + owner role check + `ctx.role`                 | Staff mgmt, settings, billing, reports |
 | `superAdminQuery/Mutation` | Required + env email | `ctx.user`, `ctx.isSuperAdmin`                            | Platform admin panel                  |
+
+**Role System:** 2-tier model (owner/staff). Originally implemented with 3-tier (owner/admin/member) but simplified in commit 1d49327 for clearer permission boundaries.
 
 **Key behavior:**
 
@@ -232,7 +236,7 @@ export const create = ownerMutation({
 });
 ```
 
-**Available rate limits:** `createInvitation`, `resendInvitation`, `createOrganization`, `addMember`, `createService`, `createCustomer`, `createScheduleOverride`, `createTimeOffRequest`, `createOvertime`, `createBooking`, `cancelBooking`, `rescheduleBooking`, `cancelSubscription`
+**Available rate limits:** `createInvitation`, `resendInvitation`, `createOrganization`, `addMember`, `createService`, `createCustomer`, `createScheduleOverride`, `createTimeOffRequest`, `createOvertime`, `createBooking`, `cancelBooking`, `rescheduleBooking`, `cancelSubscription`, `suspendOrganization`, `deleteOrganization`, `banUser`
 
 ## Convex Components
 
@@ -279,6 +283,7 @@ Defined in `convex/crons.ts`:
 | `convex/lib/validators.ts`  | Shared return type validators (~910 lines)                          |
 | `convex/lib/rateLimits.ts`  | Rate limiting configuration                                         |
 | `convex/lib/triggers.ts`    | Appointment triggers (auto notifications + emails on changes)        |
+| `convex/admin.ts`           | SuperAdmin platform management (~705 lines, 11 functions)            |
 
 **Frontend (key infrastructure):**
 
@@ -303,7 +308,7 @@ Defined in `convex/crons.ts`:
 
 Functions throw `ConvexError` with an `ErrorCode` enum from `convex/lib/functions.ts`:
 
-`UNAUTHENTICATED`, `FORBIDDEN`, `OWNER_REQUIRED`, `NOT_FOUND`, `ALREADY_EXISTS`, `VALIDATION_ERROR`, `INVALID_INPUT`, `RATE_LIMITED`, `INTERNAL_ERROR`
+`UNAUTHENTICATED`, `FORBIDDEN`, `OWNER_REQUIRED`, `SUPER_ADMIN_REQUIRED`, `NOT_FOUND`, `ALREADY_EXISTS`, `VALIDATION_ERROR`, `INVALID_INPUT`, `RATE_LIMITED`, `INTERNAL_ERROR`
 
 ## Code Style
 
@@ -337,8 +342,8 @@ POLAR_SERVER=sandbox             # "sandbox" or "production"
 POLAR_PRODUCT_MONTHLY_ID=...     # Monthly plan product ID
 POLAR_PRODUCT_YEARLY_ID=...      # Yearly plan product ID
 
-# SuperAdmin
-SUPER_ADMIN_EMAILS=dev@example.com  # Comma-separated list of superadmin emails
+# SuperAdmin (Platform Management)
+SUPER_ADMIN_EMAILS=dev@example.com  # Comma-separated list of superadmin emails (enables /admin access)
 ```
 
 ## Critical Gotchas
@@ -363,7 +368,8 @@ SUPER_ADMIN_EMAILS=dev@example.com  # Comma-separated list of superadmin emails
 - Actions are for external API calls only (email, payments, etc.)
 - Actions can't access `ctx.db` — use `ctx.runQuery(internal.xxx)` / `ctx.runMutation(internal.xxx)` instead
 - Avoid N+1 queries: use index range queries (`.gte()/.lte()`) and pre-fetch lookups into Maps
-- **Roles:** Only `"owner"` and `"staff"` — no admin/member roles. `ownerQuery`/`ownerMutation` enforce owner role.
+- **Roles:** Only `"owner"` and `"staff"` in member table. Owner has full access (1 per org), staff can only manage own schedule. `ownerQuery`/`ownerMutation` enforce owner role. Originally implemented with 3-tier (owner/admin/member) but simplified for clearer permissions.
+- **SuperAdmin:** Separate from org roles. Environment-based access via `SUPER_ADMIN_EMAILS`. SuperAdmins bypass org membership via synthetic owner member. Used for platform management (/admin), not org operations.
 - **Triggers:** `convex/lib/triggers.ts` uses `convex-helpers/server/triggers` to auto-fire side effects (notifications, emails) on appointment inserts/updates. All mutations use `triggerMutation` base (handled by function wrappers).
 
 ### Tailwind v4

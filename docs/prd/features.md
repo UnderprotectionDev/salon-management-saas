@@ -87,17 +87,18 @@ All customer self-service features live on the `/dashboard` page.
 
 ### Permission Matrix
 
-| Permission | Owner | Admin | Member |
-|------------|-------|-------|--------|
-| Dashboard, all schedules | ✅ | ✅ | ❌ |
-| Own schedule | ✅ | ✅ | ✅ |
-| Create appointments (any staff) | ✅ | ✅ | ❌ |
-| Book outside hours | ✅ | ✅ | ❌ |
-| Define own overtime | ✅ | ✅ | ✅ |
-| Manage services | ✅ | ✅ | ❌ |
-| Approve/reject time-off | ✅ | ✅ | ❌ |
-| Request time-off | ✅ | ✅ | ✅ |
-| Settings & billing | ✅ | ❌ | ❌ |
+| Permission | Owner | Staff |
+|------------|-------|-------|
+| Dashboard, all schedules | ✅ | ❌ |
+| Own schedule | ✅ | ✅ |
+| Create appointments (any staff) | ✅ | ❌ |
+| Book outside hours | ✅ | ❌ |
+| Define own overtime | ✅ | ✅ |
+| Manage services | ✅ | ❌ |
+| Approve/reject time-off | ✅ | ❌ |
+| Request time-off | ✅ | ✅ |
+| Settings & billing | ✅ | ❌ |
+| Reports & analytics | ✅ | ❌ |
 
 ### Schedule System
 1. **Default schedule** - weekly recurring hours on `staff.defaultSchedule`
@@ -156,7 +157,7 @@ Resend integration via `resend@6.9.1` + `@react-email/components`. All email sen
 
 > **Files:** `convex/reports.ts` (~603 lines), `src/modules/reports/` (16 files)
 
-Three `adminQuery` functions for admin/owner users only. Member role sees "Admin access required" message.
+Three `orgQuery` functions with role-based data filtering. Owner sees all data, staff members see only their own data (filtered appointments and performance stats).
 
 **Revenue report:** Total + expected revenue, completion/cancellation rates, status breakdown bar, dual Y-axis AreaChart (daily revenue + appointments), by-service table, by-staff table, period-over-period % change.
 **Staff performance:** Sortable table with appointments, completed, no-shows, revenue, utilization %. No-show rate >10% highlighted. Utilization uses `resolveSchedule()` for accurate scheduled minutes.
@@ -164,6 +165,95 @@ Three `adminQuery` functions for admin/owner users only. Member role sees "Admin
 
 **Date range:** URL-persisted `?from=&to=`, presets (Today, 7d, 30d, This/Last month), max 1 year.
 **CSV export:** UTF-8 BOM for Turkish chars, CSV injection sanitization, filename: `{type}_{from}_to_{to}.csv`.
+**Access:** Owner sees all data, staff members see filtered data (their own appointments and performance only).
+
+---
+
+## SuperAdmin Platform Management
+
+> **Files:** `convex/admin.ts` (~705 lines), `src/app/admin/` (layout + 4 pages)
+> **Access:** Environment-based via `SUPER_ADMIN_EMAILS` env var
+
+Platform-level management interface for monitoring and controlling the entire SaaS application.
+
+### Platform Dashboard
+
+**Stats overview:**
+- Total organizations (count)
+- Active organizations (with active/trialing subscriptions)
+- Total users (across all orgs)
+- Total appointments (all-time)
+- Total revenue (sum of all completed appointments)
+
+**Display:** Large metric cards with trend indicators.
+
+### Organization Management
+
+**List view:**
+- Searchable/filterable table: Org name, slug, subscription status, created date, total staff, total appointments
+- Status filter: All, Active, Pending Payment, Suspended, Canceled
+- Pagination with 50/page
+
+**Actions:**
+- **Suspend:** Sets `subscriptionStatus: "suspended"`, blocks all booking/staff operations. Requires optional reason (logged to audit).
+- **Unsuspend:** Restores organization access. Only available for suspended orgs.
+- **Delete:** Cascading delete (org + settings + members + staff + services + customers + appointments + all related data). Requires reason + confirmation dialog.
+- **Manual Subscription Update:** Override subscription status/plan/period for support cases. SuperAdmin only.
+
+**Permission model:** SuperAdmins bypass org membership check via `resolveOrgContext` helper (synthetic owner member created at runtime).
+
+**Impersonation:** When SuperAdmin accesses org they're not a member of, red warning banner shown: "SuperAdmin Mode: Viewing [Org Name] as platform administrator."
+
+### User Management
+
+**List view:**
+- Searchable table: Email, name, organizations (count + list), banned status, created date
+- Filter: All, Banned, Active
+- Pagination with 50/page
+
+**Actions:**
+- **Ban User:** Creates record in `bannedUsers` table. Banned users blocked at auth layer (`getAuthUser`) before any function execution. All authenticated requests return FORBIDDEN. Requires optional reason.
+- **Unban User:** Removes ban record, restores access.
+
+**Ban enforcement:** Check happens in `getAuthUser` before any authenticated operation. Banned users cannot sign in, make API calls, or access any authenticated routes.
+
+### Action Log
+
+Full audit trail of all SuperAdmin actions with infinite scroll.
+
+**Columns:** Timestamp, Action, Performed By (email), Target Type, Target ID, Reason/Details
+
+**Actions logged:** suspend_org, unsuspend_org, delete_org, manual_subscription_update, ban_user, unban_user
+
+**Schema:** `adminActions` table with `by_timestamp` index.
+
+### Business Rules
+
+| Rule | Details |
+|------|---------|
+| Access control | Email in `SUPER_ADMIN_EMAILS` env var (comma-separated) |
+| Org bypass | Synthetic owner member created for any org access |
+| Ban check | Runs in `getAuthUser`, blocks all authenticated requests |
+| Audit logging | All actions logged to `adminActions` with timestamp, performer, target, details |
+| Rate limits | Suspend (10/hr), Delete (5/day), Ban (10/hr) |
+| Cascading delete | deleteOrganization removes ALL related data across all tables |
+| Impersonation banner | Red warning shown when accessing non-member org |
+
+### Frontend Implementation
+
+**Route:** `/admin` (requires SuperAdmin email in env)
+
+**Layout:** Sidebar with Dashboard, Organizations, Users, Action Log tabs
+
+**Dashboard access:** Shield icon button in main app header (visible only for SuperAdmins)
+
+**Components:**
+- PlatformStatsCards
+- OrganizationTable with SuspendDialog, DeleteDialog, ManualSubscriptionDialog
+- UserTable with BanDialog, UnbanDialog
+- ActionLogInfiniteScroll
+
+**Permission UI:** Non-SuperAdmins redirected to 404 if they try to access `/admin`
 
 ---
 

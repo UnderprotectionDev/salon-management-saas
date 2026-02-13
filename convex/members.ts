@@ -1,5 +1,6 @@
 import { ConvexError, v } from "convex/values";
-import type { Id } from "./_generated/dataModel";
+import { components } from "./_generated/api";
+import type { Doc, Id } from "./_generated/dataModel";
 import type { MutationCtx } from "./_generated/server";
 import {
   authedMutation,
@@ -11,7 +12,29 @@ import {
 } from "./lib/functions";
 import { memberDocValidator, memberRoleValidator } from "./lib/validators";
 
-async function cascadeDeleteStaffData(
+/**
+ * Revoke all Better Auth sessions for a given user.
+ * This forces the user to re-authenticate after being removed/leaving.
+ *
+ * @internal - Shared helper used by both members.remove/leave and users.deleteMyAccount
+ */
+export async function revokeUserSessions(ctx: MutationCtx, userId: string) {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any -- Component API union type requires assertion
+  const adapter = components.betterAuth.adapter as any;
+
+  await adapter.deleteMany({
+    model: "session",
+    where: [{ field: "userId", value: userId }],
+  });
+}
+
+/**
+ * Cascade delete staff-related data when removing a staff member.
+ * This nullifies staffId references instead of deleting records to preserve history.
+ *
+ * @internal - Shared helper used by both members.remove and users.deleteMyAccount
+ */
+export async function cascadeDeleteStaffData(
   ctx: MutationCtx,
   staffId: Id<"staff">,
   organizationId: Id<"organization">,
@@ -56,6 +79,59 @@ async function cascadeDeleteStaffData(
     .collect();
   for (const lock of locks) {
     await ctx.db.delete(lock._id);
+  }
+
+  // Nullify staffId on appointments (preserve history, mark as unassigned)
+  // Use by_organization index + filter instead of by_staff_date to avoid issues with null staffId
+  const allAppointments = await ctx.db
+    .query("appointments")
+    .withIndex("by_organization", (q) => q.eq("organizationId", organizationId))
+    .collect();
+
+  const appointments = allAppointments.filter((apt) => apt.staffId === staffId);
+
+  for (const apt of appointments) {
+    await ctx.db.patch(apt._id, { staffId: null });
+  }
+
+  // Nullify staffId on appointment services (batch query to avoid N+1)
+  // Collect all appointmentIds first, then query all services in one go
+  const appointmentIds = appointments.map((apt) => apt._id);
+
+  if (appointmentIds.length > 0) {
+    // Query all appointment services for this organization
+    // Note: This could be optimized with a by_organization index on appointmentServices
+    // For now, we filter in memory after fetching by appointment
+    const allServices: Doc<"appointmentServices">[] = [];
+    for (const aptId of appointmentIds) {
+      const services = await ctx.db
+        .query("appointmentServices")
+        .withIndex("by_appointment", (q) => q.eq("appointmentId", aptId))
+        .collect();
+      allServices.push(...services);
+    }
+
+    // Update only services assigned to this staff
+    for (const svc of allServices) {
+      if (svc.staffId === staffId) {
+        await ctx.db.patch(svc._id, { staffId: null });
+      }
+    }
+  }
+
+  // Clear preferredStaffId on customers who preferred this staff
+  // Use filter to avoid loading all customers into memory unnecessarily
+  const allCustomers = await ctx.db
+    .query("customers")
+    .withIndex("by_organization", (q) => q.eq("organizationId", organizationId))
+    .collect();
+
+  const customersWithPreference = allCustomers.filter(
+    (customer) => customer.preferredStaffId === staffId,
+  );
+
+  for (const customer of customersWithPreference) {
+    await ctx.db.patch(customer._id, { preferredStaffId: undefined });
   }
 }
 
@@ -244,6 +320,9 @@ export const remove = authedMutation({
 
     await ctx.db.delete(args.memberId);
 
+    // Revoke all sessions so the removed user is immediately logged out
+    await revokeUserSessions(ctx, member.userId);
+
     return true;
   },
 });
@@ -335,6 +414,9 @@ export const leave = authedMutation({
     }
 
     await ctx.db.delete(membership._id);
+
+    // Revoke all sessions so the leaving user must re-authenticate
+    await revokeUserSessions(ctx, ctx.user._id);
 
     return true;
   },

@@ -191,17 +191,20 @@ export function AppointmentList({
                             appointmentStartTime={appt.startTime}
                           />
                           {(appt.status === "pending" ||
-                            appt.status === "confirmed") && (
-                            <RescheduleDialog
-                              appointmentId={appt._id}
-                              organizationId={organizationId}
-                              currentDate={appt.date}
-                              currentStartTime={appt.startTime}
-                              currentEndTime={appt.endTime}
-                              staffId={appt.staffId}
-                              serviceIds={appt.services.map((s) => s.serviceId)}
-                            />
-                          )}
+                            appt.status === "confirmed") &&
+                            appt.staffId && (
+                              <RescheduleDialog
+                                appointmentId={appt._id}
+                                organizationId={organizationId}
+                                currentDate={appt.date}
+                                currentStartTime={appt.startTime}
+                                currentEndTime={appt.endTime}
+                                staffId={appt.staffId}
+                                serviceIds={appt.services.map(
+                                  (s) => s.serviceId,
+                                )}
+                              />
+                            )}
                           <CancelAppointmentDialog
                             appointmentId={appt._id}
                             organizationId={organizationId}

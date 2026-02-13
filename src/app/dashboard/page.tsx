@@ -390,13 +390,15 @@ function BookAgainButton({
 }: {
   organizationSlug: string;
   serviceIds: Id<"services">[];
-  staffId: Id<"staff">;
+  staffId: Id<"staff"> | null;
 }) {
   const params = new URLSearchParams();
   if (serviceIds.length > 0) {
     params.set("services", serviceIds.join(","));
   }
-  params.set("staff", staffId);
+  if (staffId) {
+    params.set("staff", staffId);
+  }
 
   return (
     <Button variant="outline" size="sm" asChild>
@@ -522,12 +524,14 @@ function AppointmentCard({ appointment }: { appointment: UserAppointment }) {
             <div className="flex gap-2 mt-3 pt-3 border-t">
               {isActive && (
                 <>
-                  <UserRescheduleDialog
-                    appointmentId={appointment._id as Id<"appointments">}
-                    organizationId={detail.organizationId}
-                    staffId={detail.staffId}
-                    serviceIds={detail.services.map((s) => s.serviceId)}
-                  />
+                  {detail.staffId && (
+                    <UserRescheduleDialog
+                      appointmentId={appointment._id as Id<"appointments">}
+                      organizationId={detail.organizationId}
+                      staffId={detail.staffId}
+                      serviceIds={detail.services.map((s) => s.serviceId)}
+                    />
+                  )}
                   <UserCancelDialog
                     appointmentId={appointment._id as Id<"appointments">}
                   />
