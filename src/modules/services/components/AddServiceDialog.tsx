@@ -5,7 +5,9 @@ import { useMutation, useQuery } from "convex/react";
 import { Loader2, Plus } from "lucide-react";
 import { useState } from "react";
 import { z } from "zod";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
   Dialog,
   DialogContent,
@@ -22,6 +24,7 @@ import {
   FieldLabel,
 } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import {
   Select,
   SelectContent,
@@ -29,6 +32,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { Separator } from "@/components/ui/separator";
+import { Skeleton } from "@/components/ui/skeleton";
 import { Textarea } from "@/components/ui/textarea";
 import { api } from "../../../../convex/_generated/api";
 import type { Id } from "../../../../convex/_generated/dataModel";
@@ -58,8 +63,13 @@ export function AddServiceDialog({
   onSuccess,
 }: AddServiceDialogProps) {
   const [open, setOpen] = useState(false);
+  const [selectedStaffIds, setSelectedStaffIds] = useState<Set<Id<"staff">>>(
+    new Set(),
+  );
   const createService = useMutation(api.services.create);
+  const assignStaff = useMutation(api.services.assignStaff);
   const categories = useQuery(api.serviceCategories.list, { organizationId });
+  const allStaff = useQuery(api.staff.list, { organizationId });
 
   const form = useForm({
     defaultValues: {
@@ -73,7 +83,7 @@ export function AddServiceDialog({
     },
     onSubmit: async ({ value }) => {
       try {
-        await createService({
+        const serviceId = await createService({
           organizationId,
           name: value.name,
           description: value.description || undefined,
@@ -86,8 +96,24 @@ export function AddServiceDialog({
           price: liraToKurus(value.price),
           priceType: value.priceType,
         });
+
+        // Assign selected staff to the newly created service
+        if (selectedStaffIds.size > 0) {
+          await Promise.all(
+            [...selectedStaffIds].map((staffId) =>
+              assignStaff({
+                organizationId,
+                serviceId,
+                staffId,
+                assign: true,
+              }),
+            ),
+          );
+        }
+
         setOpen(false);
         form.reset();
+        setSelectedStaffIds(new Set());
         onSuccess?.();
       } catch (error) {
         const message =
@@ -104,8 +130,23 @@ export function AddServiceDialog({
     setOpen(newOpen);
     if (!newOpen) {
       form.reset();
+      setSelectedStaffIds(new Set());
     }
   };
+
+  const toggleStaff = (staffId: Id<"staff">) => {
+    setSelectedStaffIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(staffId)) {
+        next.delete(staffId);
+      } else {
+        next.add(staffId);
+      }
+      return next;
+    });
+  };
+
+  const activeStaff = allStaff?.filter((s) => s.status === "active");
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
@@ -115,7 +156,7 @@ export function AddServiceDialog({
           Add Service
         </Button>
       </DialogTrigger>
-      <DialogContent className="sm:max-w-lg">
+      <DialogContent className="sm:max-w-lg max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Add Service</DialogTitle>
           <DialogDescription>
@@ -330,6 +371,46 @@ export function AddServiceDialog({
                   </Field>
                 )}
               </form.Field>
+            </div>
+
+            <Separator />
+
+            {/* Staff Assignment */}
+            <div className="space-y-2">
+              <Label>Assign Staff</Label>
+              {allStaff === undefined ? (
+                <div className="space-y-2">
+                  {[1, 2].map((i) => (
+                    <Skeleton key={i} className="h-10 w-full" />
+                  ))}
+                </div>
+              ) : activeStaff && activeStaff.length > 0 ? (
+                <div className="space-y-1">
+                  {activeStaff.map((staff) => (
+                    <label
+                      key={staff._id}
+                      className="flex items-center gap-3 rounded-md p-2 hover:bg-accent cursor-pointer"
+                    >
+                      <Checkbox
+                        checked={selectedStaffIds.has(staff._id)}
+                        onCheckedChange={() => toggleStaff(staff._id)}
+                        disabled={form.state.isSubmitting}
+                      />
+                      <Avatar className="size-7">
+                        <AvatarImage src={staff.imageUrl ?? undefined} />
+                        <AvatarFallback className="text-xs">
+                          {staff.name[0]?.toUpperCase()}
+                        </AvatarFallback>
+                      </Avatar>
+                      <span className="text-sm truncate">{staff.name}</span>
+                    </label>
+                  ))}
+                </div>
+              ) : (
+                <p className="text-sm text-muted-foreground py-2">
+                  No active staff members
+                </p>
+              )}
             </div>
 
             <form.Subscribe selector={(state) => state.errors}>
