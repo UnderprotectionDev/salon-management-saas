@@ -51,6 +51,7 @@ import type * as staffOvertime from "../staffOvertime.js";
 import type * as subscriptions from "../subscriptions.js";
 import type * as subscriptions_helpers from "../subscriptions_helpers.js";
 import type * as timeOffRequests from "../timeOffRequests.js";
+import type * as userProfile from "../userProfile.js";
 import type * as users from "../users.js";
 
 import type {
@@ -103,6 +104,7 @@ declare const fullApi: ApiFromModules<{
   subscriptions: typeof subscriptions;
   subscriptions_helpers: typeof subscriptions_helpers;
   timeOffRequests: typeof timeOffRequests;
+  userProfile: typeof userProfile;
   users: typeof users;
 }>;
 
