@@ -4,6 +4,7 @@ import { useQuery } from "convex/react";
 import {
   ArrowLeft,
   CalendarDays,
+  Clock,
   GitMerge,
   Mail,
   Phone,
@@ -23,13 +24,14 @@ import {
 } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { useOrganization } from "@/modules/organization";
 import { CustomerStats, MergeCustomerDialog } from "@/modules/customers";
 import { EditCustomerDialog } from "@/modules/customers/components/EditCustomerDialog";
 import {
   ACCOUNT_STATUS_LABELS,
   SOURCE_LABELS,
 } from "@/modules/customers/lib/constants";
+import { useOrganization } from "@/modules/organization";
+import { formatPrice } from "@/modules/services/lib/currency";
 import { api } from "../../../../../../convex/_generated/api";
 import type { Id } from "../../../../../../convex/_generated/dataModel";
 
@@ -79,6 +81,122 @@ function getInitials(name: string): string {
     .join("")
     .toUpperCase()
     .slice(0, 2);
+}
+
+const STATUS_COLORS: Record<string, string> = {
+  pending: "bg-yellow-100 text-yellow-800",
+  confirmed: "bg-blue-100 text-blue-800",
+  checked_in: "bg-indigo-100 text-indigo-800",
+  in_progress: "bg-purple-100 text-purple-800",
+  completed: "bg-green-100 text-green-800",
+  cancelled: "bg-red-100 text-red-800",
+  no_show: "bg-gray-100 text-gray-800",
+};
+
+const STATUS_LABELS: Record<string, string> = {
+  pending: "Pending",
+  confirmed: "Confirmed",
+  checked_in: "Checked In",
+  in_progress: "In Progress",
+  completed: "Completed",
+  cancelled: "Cancelled",
+  no_show: "No Show",
+};
+
+function formatTime(minutes: number): string {
+  const hours = Math.floor(minutes / 60);
+  const mins = minutes % 60;
+  return `${hours.toString().padStart(2, "0")}:${mins.toString().padStart(2, "0")}`;
+}
+
+function CustomerActivityTab({
+  customerId,
+  organizationId,
+}: {
+  customerId: Id<"customers">;
+  organizationId: Id<"organization"> | undefined;
+}) {
+  const appointments = useQuery(
+    api.appointments.getByCustomer,
+    organizationId ? { organizationId, customerId } : "skip",
+  );
+
+  if (appointments === undefined) {
+    return (
+      <Card>
+        <CardContent className="space-y-4 py-6">
+          {Array.from({ length: 3 }).map((_, i) => (
+            <Skeleton key={i} className="h-20 w-full" />
+          ))}
+        </CardContent>
+      </Card>
+    );
+  }
+
+  if (appointments.length === 0) {
+    return (
+      <Card>
+        <CardContent className="flex flex-col items-center justify-center py-12">
+          <CalendarDays className="mb-4 size-12 text-muted-foreground" />
+          <h3 className="text-lg font-medium">No appointments yet</h3>
+          <p className="text-sm text-muted-foreground">
+            This customer hasn&apos;t had any appointments.
+          </p>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>Appointment History</CardTitle>
+        <CardDescription>
+          {appointments.length} appointment
+          {appointments.length !== 1 ? "s" : ""}
+        </CardDescription>
+      </CardHeader>
+      <CardContent>
+        <div className="space-y-3">
+          {appointments.map((apt) => (
+            <div
+              key={apt._id}
+              className="flex items-start justify-between rounded-lg border p-4"
+            >
+              <div className="space-y-1">
+                <div className="flex items-center gap-2">
+                  <span className="font-medium">{apt.date}</span>
+                  <span className="flex items-center gap-1 text-sm text-muted-foreground">
+                    <Clock className="size-3" />
+                    {formatTime(apt.startTime)} - {formatTime(apt.endTime)}
+                  </span>
+                </div>
+                <div className="text-sm text-muted-foreground">
+                  {apt.services?.length
+                    ? apt.services.map((s) => s.serviceName).join(", ")
+                    : "No services"}
+                </div>
+                <div className="text-sm text-muted-foreground">
+                  Staff: {apt.staffName ?? "Unassigned"}
+                </div>
+              </div>
+              <div className="flex flex-col items-end gap-1">
+                <Badge
+                  variant="secondary"
+                  className={STATUS_COLORS[apt.status] ?? ""}
+                >
+                  {STATUS_LABELS[apt.status] ?? apt.status}
+                </Badge>
+                <span className="text-sm font-medium">
+                  {formatPrice(apt.total)}
+                </span>
+              </div>
+            </div>
+          ))}
+        </div>
+      </CardContent>
+    </Card>
+  );
 }
 
 export default function CustomerDetailPage() {
@@ -263,16 +381,10 @@ export default function CustomerDetailPage() {
 
         {/* Activity Tab */}
         <TabsContent value="activity" className="space-y-6">
-          <Card>
-            <CardContent className="flex flex-col items-center justify-center py-12">
-              <CalendarDays className="mb-4 size-12 text-muted-foreground" />
-              <h3 className="text-lg font-medium">Coming Soon</h3>
-              <p className="text-sm text-muted-foreground">
-                Appointment history will appear here after the booking engine is
-                implemented.
-              </p>
-            </CardContent>
-          </Card>
+          <CustomerActivityTab
+            customerId={customerId}
+            organizationId={activeOrganization?._id}
+          />
         </TabsContent>
       </Tabs>
 

@@ -882,6 +882,103 @@ export const get = orgQuery({
 });
 
 /**
+ * Get appointments for a specific customer (for Activity tab).
+ * Returns most recent first with staff name and services.
+ */
+export const getByCustomer = orgQuery({
+  args: {
+    customerId: v.id("customers"),
+    limit: v.optional(v.number()),
+  },
+  returns: v.array(
+    v.object({
+      _id: v.id("appointments"),
+      date: v.string(),
+      startTime: v.number(),
+      endTime: v.number(),
+      status: appointmentStatusValidator,
+      staffName: v.string(),
+      total: v.number(),
+      paymentStatus: v.optional(
+        v.union(
+          v.literal("pending"),
+          v.literal("paid"),
+          v.literal("partial"),
+          v.literal("refunded"),
+        ),
+      ),
+      services: v.array(
+        v.object({
+          serviceName: v.string(),
+          duration: v.number(),
+          price: v.number(),
+        }),
+      ),
+    }),
+  ),
+  handler: async (ctx, args) => {
+    // Verify customer belongs to this org before fetching appointments
+    const customer = await ctx.db.get(args.customerId);
+    if (!customer || customer.organizationId !== ctx.organizationId) {
+      return [];
+    }
+
+    const maxResults = Math.min(args.limit ?? 50, 200);
+
+    const appointments = await ctx.db
+      .query("appointments")
+      .withIndex("by_customer", (q) => q.eq("customerId", args.customerId))
+      .order("desc")
+      .take(maxResults);
+
+    // Batch fetch staff names
+    const staffIds = [
+      ...new Set(
+        appointments
+          .map((a) => a.staffId)
+          .filter((id): id is Id<"staff"> => id != null),
+      ),
+    ];
+    const staffDocs = await Promise.all(staffIds.map((id) => ctx.db.get(id)));
+    const staffMap = new Map(
+      staffDocs
+        .filter((s): s is NonNullable<typeof s> => s != null)
+        .map((s) => [s._id, s.name]),
+    );
+
+    // Batch fetch appointment services
+    const results = await Promise.all(
+      appointments.map(async (apt) => {
+        const apptServices = await ctx.db
+          .query("appointmentServices")
+          .withIndex("by_appointment", (q) => q.eq("appointmentId", apt._id))
+          .collect();
+
+        return {
+          _id: apt._id,
+          date: apt.date,
+          startTime: apt.startTime,
+          endTime: apt.endTime,
+          status: apt.status,
+          staffName: apt.staffId
+            ? (staffMap.get(apt.staffId) ?? "Deleted staff")
+            : "Deleted staff",
+          total: apt.total,
+          paymentStatus: apt.paymentStatus,
+          services: apptServices.map((s) => ({
+            serviceName: s.serviceName,
+            duration: s.duration,
+            price: s.price,
+          })),
+        };
+      }),
+    );
+
+    return results;
+  },
+});
+
+/**
  * Update appointment status (staff action).
  * Valid transitions: pending->confirmed, confirmed->checked_in,
  * checked_in->in_progress, in_progress->completed, any->no_show

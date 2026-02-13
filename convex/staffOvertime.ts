@@ -19,6 +19,15 @@ export const listByStaff = orgQuery({
   },
   returns: v.array(staffOvertimeDocValidator),
   handler: async (ctx, args) => {
+    // Verify staff belongs to this organization
+    const staff = await ctx.db.get(args.staffId);
+    if (!staff || staff.organizationId !== ctx.organizationId) {
+      throw new ConvexError({
+        code: ErrorCode.NOT_FOUND,
+        message: "Staff not found",
+      });
+    }
+
     const entries = await ctx.db
       .query("staffOvertime")
       .withIndex("by_staff_date", (q) => q.eq("staffId", args.staffId))
@@ -73,6 +82,15 @@ export const create = orgMutation({
   },
   returns: v.id("staffOvertime"),
   handler: async (ctx, args) => {
+    // Verify staff belongs to this organization
+    const targetStaff = await ctx.db.get(args.staffId);
+    if (!targetStaff || targetStaff.organizationId !== ctx.organizationId) {
+      throw new ConvexError({
+        code: ErrorCode.NOT_FOUND,
+        message: "Staff not found",
+      });
+    }
+
     // Permission check: own staff profile or owner
     const isOwnProfile = ctx.staff?._id === args.staffId;
     const isOwner = ctx.member.role === "owner";
@@ -85,9 +103,16 @@ export const create = orgMutation({
     }
 
     // Rate limit
-    await rateLimiter.limit(ctx, "createOvertime", {
+    const { ok, retryAfter } = await rateLimiter.limit(ctx, "createOvertime", {
       key: args.staffId,
     });
+    if (!ok) {
+      const minutes = Math.ceil((retryAfter ?? 60000) / 1000 / 60);
+      throw new ConvexError({
+        code: ErrorCode.RATE_LIMITED,
+        message: `Rate limit exceeded. Try again in ${minutes} ${minutes === 1 ? "minute" : "minutes"}.`,
+      });
+    }
 
     // Validate: startTime must be before endTime (HH:MM string comparison works)
     if (args.startTime >= args.endTime) {

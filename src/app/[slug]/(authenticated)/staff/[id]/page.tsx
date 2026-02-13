@@ -7,6 +7,7 @@ import {
   Calendar,
   CalendarClock,
   Mail,
+  Package,
   Phone,
   Plus,
   User,
@@ -38,8 +39,8 @@ import {
   TimeOffRequestForm,
   TimeOffRequestList,
 } from "@/modules/staff";
-import { DAY_LABELS, DAYS } from "@/modules/staff/lib/constants";
 import type { StaffSchedule } from "@/modules/staff/components/ScheduleEditor";
+import { DAY_LABELS, DAYS } from "@/modules/staff/lib/constants";
 import { api } from "../../../../../../convex/_generated/api";
 import type { Id } from "../../../../../../convex/_generated/dataModel";
 
@@ -65,6 +66,48 @@ function getStatusColor(
     case "inactive":
       return "destructive";
   }
+}
+
+function StaffServiceList({
+  organizationId,
+  serviceIds,
+}: {
+  organizationId: Id<"organization">;
+  serviceIds: Id<"services">[];
+}) {
+  const allServices = useQuery(api.services.list, { organizationId });
+
+  if (serviceIds.length === 0) {
+    return (
+      <p className="text-sm text-muted-foreground">No services assigned yet</p>
+    );
+  }
+
+  if (allServices === undefined) {
+    return (
+      <div className="flex flex-wrap gap-2">
+        {serviceIds.map((id) => (
+          <Skeleton key={id} className="h-6 w-24" />
+        ))}
+      </div>
+    );
+  }
+
+  const serviceMap = new Map(allServices.map((s) => [s._id, s]));
+
+  return (
+    <div className="flex flex-wrap gap-2">
+      {serviceIds.map((id) => {
+        const service = serviceMap.get(id);
+        if (!service) return null;
+        return (
+          <Badge key={id} variant="secondary">
+            {service.name}
+          </Badge>
+        );
+      })}
+    </div>
+  );
 }
 
 function StaffDetailSkeleton() {
@@ -106,8 +149,13 @@ export default function StaffDetailPage() {
   const staffId = params.id as Id<"staff">;
   const slug = params.slug as string;
 
-  const { currentStaff, currentRole } = useOrganization();
-  const staff = useQuery(api.staff.get, { staffId });
+  const { activeOrganization, currentStaff, currentRole } = useOrganization();
+  const staff = useQuery(
+    api.staff.get,
+    activeOrganization
+      ? { staffId, organizationId: activeOrganization._id }
+      : "skip",
+  );
   const [isEditing, setIsEditing] = useState(false);
   const [editSchedule, setEditSchedule] = useState<StaffSchedule | null>(null);
   const [showOverrideDialog, setShowOverrideDialog] = useState(false);
@@ -329,18 +377,16 @@ export default function StaffDetailPage() {
               {/* Service assignments */}
               <Card>
                 <CardHeader>
-                  <CardTitle>Service Assignments</CardTitle>
+                  <CardTitle className="flex items-center gap-2">
+                    <Package className="size-5" />
+                    Service Assignments
+                  </CardTitle>
                 </CardHeader>
                 <CardContent>
-                  {staff.serviceIds && staff.serviceIds.length > 0 ? (
-                    <p className="text-sm text-muted-foreground">
-                      {staff.serviceIds.length} service(s) assigned
-                    </p>
-                  ) : (
-                    <p className="text-sm text-muted-foreground">
-                      No services assigned yet
-                    </p>
-                  )}
+                  <StaffServiceList
+                    organizationId={activeOrganization!._id}
+                    serviceIds={staff.serviceIds ?? []}
+                  />
                 </CardContent>
               </Card>
 
