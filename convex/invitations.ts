@@ -17,13 +17,6 @@ import {
   invitationWithOrgValidator,
 } from "./lib/validators";
 
-// =============================================================================
-// Queries
-// =============================================================================
-
-/**
- * List invitations for an organization
- */
 export const list = orgQuery({
   args: {},
   returns: v.array(invitationDocValidator),
@@ -37,10 +30,6 @@ export const list = orgQuery({
   },
 });
 
-/**
- * Check if there are pending invitations for the current user's email.
- * Requires authentication to prevent email enumeration attacks.
- */
 export const hasPendingInvitations = authedQuery({
   args: {},
   returns: v.boolean(),
@@ -55,16 +44,11 @@ export const hasPendingInvitations = authedQuery({
 
     if (!invitation) return false;
 
-    // Check if expired
     const now = Date.now();
     return !invitation.expiresAt || invitation.expiresAt > now;
   },
 });
 
-/**
- * Get pending invitations for the current authenticated user
- * Returns invitations with organization info for in-app approval
- */
 export const getPendingForCurrentUser = authedQuery({
   args: {},
   returns: v.array(invitationWithOrgValidator),
@@ -99,15 +83,6 @@ export const getPendingForCurrentUser = authedQuery({
   },
 });
 
-// =============================================================================
-// Mutations
-// =============================================================================
-
-/**
- * Create an invitation for a new staff member
- * Only owner/admin can invite members
- * Rate limited: 20/day per organization
- */
 export const create = ownerMutation({
   args: {
     email: v.string(),
@@ -117,7 +92,6 @@ export const create = ownerMutation({
   },
   returns: v.id("invitation"),
   handler: async (ctx, args) => {
-    // Rate limit check (per organization)
     const { ok, retryAfter } = await rateLimiter.limit(
       ctx,
       "createInvitation",

@@ -14,15 +14,6 @@ import {
   staffStatusValidator,
 } from "./lib/validators";
 
-// =============================================================================
-// Public Queries
-// =============================================================================
-
-/**
- * List active staff for public booking page.
- * Returns minimal info (no auth required).
- * Filters out staff who can't be booked (no schedule or no services).
- */
 export const listPublicActive = publicQuery({
   args: { organizationId: v.id("organization") },
   returns: v.array(
@@ -60,13 +51,6 @@ export const listPublicActive = publicQuery({
   },
 });
 
-// =============================================================================
-// Queries
-// =============================================================================
-
-/**
- * List all staff members in an organization
- */
 export const list = orgQuery({
   args: {},
   returns: v.array(staffDocValidator),
@@ -96,9 +80,6 @@ export const listActive = orgQuery({
   },
 });
 
-/**
- * Get staff member by user ID in an organization
- */
 export const getByUser = orgQuery({
   args: { userId: v.string() },
   returns: v.union(staffDocValidator, v.null()),
@@ -112,9 +93,6 @@ export const getByUser = orgQuery({
   },
 });
 
-/**
- * Get current user's staff profile in an organization
- */
 export const getCurrentStaff = authedQuery({
   args: { organizationId: v.id("organization") },
   returns: v.union(staffDocValidator, v.null()),
@@ -128,10 +106,6 @@ export const getCurrentStaff = authedQuery({
   },
 });
 
-/**
- * Get staff member by ID
- * Uses authedQuery with manual org check since staffId is the input
- */
 export const get = authedQuery({
   args: { staffId: v.id("staff") },
   returns: v.union(staffDocValidator, v.null()),
@@ -160,14 +134,6 @@ export const get = authedQuery({
   },
 });
 
-// =============================================================================
-// Mutations
-// =============================================================================
-
-/**
- * Create a new staff profile
- * Uses authedMutation for bootstrap case (first owner has no staff yet)
- */
 export const createProfile = authedMutation({
   args: {
     userId: v.string(),
@@ -184,10 +150,7 @@ export const createProfile = authedMutation({
   },
   returns: v.id("staff"),
   handler: async (ctx, args) => {
-    // Security check: user can only create their own staff profile
-    // OR must have existing org access (for admin adding staff)
     if (args.userId !== ctx.user._id) {
-      // Check if the current user has permission to add staff (owner/admin)
       const currentMembership = await ctx.db
         .query("member")
         .withIndex("organizationId_userId", (q) =>
@@ -219,7 +182,6 @@ export const createProfile = authedMutation({
       }
     }
 
-    // Check if staff profile already exists
     const existing = await ctx.db
       .query("staff")
       .withIndex("organizationId_userId", (q) =>
@@ -236,7 +198,6 @@ export const createProfile = authedMutation({
 
     const now = Date.now();
 
-    // If no schedule provided, use sensible default (9-5 Mon-Fri)
     const defaultSchedule = args.defaultSchedule ?? {
       monday: { available: true, start: "09:00", end: "17:00" },
       tuesday: { available: true, start: "09:00", end: "17:00" },
@@ -267,10 +228,6 @@ export const createProfile = authedMutation({
   },
 });
 
-/**
- * Update a staff profile
- * Uses authedMutation with manual org check since staffId is the input
- */
 export const updateProfile = authedMutation({
   args: {
     staffId: v.id("staff"),
@@ -292,7 +249,6 @@ export const updateProfile = authedMutation({
       });
     }
 
-    // Manual org access check
     const member = await ctx.db
       .query("member")
       .withIndex("organizationId_userId", (q) =>
@@ -307,7 +263,6 @@ export const updateProfile = authedMutation({
       });
     }
 
-    // Authorization: only allow self-update or admin/owner
     if (staff.userId !== ctx.user._id && member.role !== "owner") {
       throw new ConvexError({
         code: ErrorCode.FORBIDDEN,
@@ -331,14 +286,6 @@ export const updateProfile = authedMutation({
   },
 });
 
-// =============================================================================
-// Schedule Resolution
-// =============================================================================
-
-/**
- * Get resolved schedule for a staff member over a date range.
- * Combines default schedule, overrides, and overtime into a unified view.
- */
 export const getResolvedSchedule = orgQuery({
   args: {
     staffId: v.id("staff"),
@@ -400,15 +347,6 @@ export const getResolvedSchedule = orgQuery({
   },
 });
 
-// =============================================================================
-// Data Migration
-// =============================================================================
-
-/**
- * Migrate existing staff to have default schedules.
- * Populates default 9-5 Mon-Fri schedule for active staff without schedules.
- * This is a one-time migration to fix the booking flow.
- */
 export const migrateStaffSchedules = internalMutation({
   args: {},
   returns: v.object({

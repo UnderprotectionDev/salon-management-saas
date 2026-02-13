@@ -55,6 +55,7 @@ export function BookingSummary({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const createAppointment = useMutation(api.appointments.create);
   const linkCustomer = useMutation(api.customers.linkToCurrentUser);
+  const savePhoneToProfile = useMutation(api.userProfile.savePhoneFromBooking);
 
   const totalPrice = services.reduce((sum, s) => sum + s.price, 0);
   const totalDuration = services.reduce((sum, s) => sum + s.duration, 0);
@@ -87,6 +88,13 @@ export function BookingSummary({
       linkCustomer({ customerId: result.customerId }).catch(() => {
         // Silently ignore if linking fails
       });
+
+      // Save phone to user profile (best-effort, auto-fills for next booking)
+      if (customer.phone) {
+        savePhoneToProfile({ phone: customer.phone }).catch(() => {
+          // Silently ignore if saving fails
+        });
+      }
 
       onConfirm(result);
     } catch (error: any) {
