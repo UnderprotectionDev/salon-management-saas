@@ -54,6 +54,7 @@ export function StaffProfileForm({
     onSubmit: async ({ value }) => {
       try {
         await updateProfile({
+          organizationId: staff.organizationId,
           staffId: staff._id,
           name: value.name,
           phone: value.phone || undefined,
