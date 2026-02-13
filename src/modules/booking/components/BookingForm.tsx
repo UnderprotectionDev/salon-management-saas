@@ -1,31 +1,34 @@
 "use client";
 
+import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { useState } from "react";
+
+type CustomerInfo = {
+  name: string;
+  phone: string;
+  email: string;
+  notes: string;
+};
 
 type BookingFormProps = {
-  initialValues: {
-    name: string;
-    phone: string;
-    email: string;
-    notes: string;
-  };
-  onSubmit: (values: {
-    name: string;
-    phone: string;
-    email: string;
-    notes: string;
-  }) => void;
-  onBack: () => void;
+  initialValues: CustomerInfo;
+  onSubmit: (values: CustomerInfo) => void;
+  onBack?: () => void;
+  /** When true, renders without navigation buttons (used in accordion confirm panel) */
+  inline?: boolean;
+  /** Called on every field change */
+  onChange?: (values: CustomerInfo) => void;
 };
 
 export function BookingForm({
   initialValues,
   onSubmit,
   onBack,
+  inline = false,
+  onChange,
 }: BookingFormProps) {
   const [name, setName] = useState(initialValues.name);
   const [phone, setPhone] = useState(initialValues.phone);
@@ -35,17 +38,43 @@ export function BookingForm({
 
   const validate = (): boolean => {
     const newErrors: Record<string, string> = {};
-    if (!name.trim()) newErrors.name = "Name is required";
+    if (!name.trim()) newErrors.name = "Full name is required";
     if (!phone.trim()) {
-      newErrors.phone = "Phone is required";
+      newErrors.phone = "Phone number is required";
     } else if (!/^\+90 5\d{2} \d{3} \d{2} \d{2}$/.test(phone)) {
-      newErrors.phone = "Use format: +90 5XX XXX XX XX";
+      newErrors.phone = "Format: +90 5XX XXX XX XX";
     }
     if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
       newErrors.email = "Invalid email address";
     }
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
+  };
+
+  const notifyChange = (values: CustomerInfo) => {
+    if (onChange) {
+      onChange(values);
+    }
+  };
+
+  const handleNameChange = (value: string) => {
+    setName(value);
+    notifyChange({ name: value, phone, email, notes });
+  };
+
+  const handlePhoneChange = (value: string) => {
+    setPhone(value);
+    notifyChange({ name, phone: value, email, notes });
+  };
+
+  const handleEmailChange = (value: string) => {
+    setEmail(value);
+    notifyChange({ name, phone, email: value, notes });
+  };
+
+  const handleNotesChange = (value: string) => {
+    setNotes(value);
+    notifyChange({ name, phone, email, notes: value });
   };
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -58,11 +87,11 @@ export function BookingForm({
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
       <div className="space-y-2">
-        <Label htmlFor="name">Name *</Label>
+        <Label htmlFor="name">Full Name *</Label>
         <Input
           id="name"
           value={name}
-          onChange={(e) => setName(e.target.value)}
+          onChange={(e) => handleNameChange(e.target.value)}
           placeholder="Your full name"
           aria-required="true"
           aria-invalid={!!errors.name}
@@ -80,7 +109,7 @@ export function BookingForm({
         <Input
           id="phone"
           value={phone}
-          onChange={(e) => setPhone(e.target.value)}
+          onChange={(e) => handlePhoneChange(e.target.value)}
           placeholder="+90 5XX XXX XX XX"
           aria-required="true"
           aria-invalid={!!errors.phone}
@@ -99,8 +128,8 @@ export function BookingForm({
           id="email"
           type="email"
           value={email}
-          onChange={(e) => setEmail(e.target.value)}
-          placeholder="your@email.com"
+          onChange={(e) => handleEmailChange(e.target.value)}
+          placeholder="example@email.com"
           aria-invalid={!!errors.email}
           aria-describedby={errors.email ? "email-error" : undefined}
         />
@@ -116,18 +145,22 @@ export function BookingForm({
         <Textarea
           id="notes"
           value={notes}
-          onChange={(e) => setNotes(e.target.value)}
+          onChange={(e) => handleNotesChange(e.target.value)}
           placeholder="Any special requests or notes..."
           rows={3}
         />
       </div>
 
-      <div className="flex gap-3 pt-2">
-        <Button type="button" variant="outline" onClick={onBack}>
-          Back
-        </Button>
-        <Button type="submit">Continue</Button>
-      </div>
+      {!inline && (
+        <div className="flex gap-3 pt-2">
+          {onBack && (
+            <Button type="button" variant="outline" onClick={onBack}>
+              Back
+            </Button>
+          )}
+          <Button type="submit">Continue</Button>
+        </div>
+      )}
     </form>
   );
 }

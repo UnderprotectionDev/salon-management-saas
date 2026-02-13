@@ -45,8 +45,11 @@ export function CancelAppointmentDialog({
       toast.success("Appointment cancelled");
       setOpen(false);
       setReason("");
-    } catch (error: any) {
-      toast.error(error?.data?.message ?? "Failed to cancel appointment");
+    } catch (error: unknown) {
+      const msg =
+        (error as { data?: { message?: string } })?.data?.message ??
+        "Failed to cancel appointment";
+      toast.error(msg);
     }
   };
 

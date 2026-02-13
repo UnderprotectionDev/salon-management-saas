@@ -70,16 +70,24 @@ export function UpdateStatusDropdown({
 
   if (!actions || actions.length === 0) return null;
 
-  const handleStatusChange = async (status: string) => {
+  const handleStatusChange = async (newStatus: string) => {
     try {
       await updateStatus({
         organizationId,
         appointmentId,
-        status: status as any,
+        status: newStatus as
+          | "confirmed"
+          | "checked_in"
+          | "in_progress"
+          | "completed"
+          | "no_show",
       });
       toast.success("Status updated");
-    } catch (error: any) {
-      toast.error(error?.data?.message ?? "Failed to update status");
+    } catch (error: unknown) {
+      const msg =
+        (error as { data?: { message?: string } })?.data?.message ??
+        "Failed to update status";
+      toast.error(msg);
     }
   };
 

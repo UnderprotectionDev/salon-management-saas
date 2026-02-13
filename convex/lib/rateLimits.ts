@@ -155,6 +155,26 @@ export const rateLimiter = new RateLimiter(components.rateLimiter, {
   },
 
   /**
+   * Slot lock acquisition limit (per user)
+   * 10 per minute
+   */
+  acquireSlotLock: {
+    kind: "token bucket",
+    rate: 10,
+    period: MINUTE,
+  },
+
+  /**
+   * Confirmation code lookup limit (per organization)
+   * 10 per minute
+   */
+  confirmationCodeLookup: {
+    kind: "token bucket",
+    rate: 10,
+    period: MINUTE,
+  },
+
+  /**
    * Randevu iptal limiti (kullanıcı başına)
    * Saatte max 3 iptal
    */

@@ -2,10 +2,9 @@
 
 import { useState } from "react";
 import type { Id } from "../../../../convex/_generated/dataModel";
-import type { BookingStep } from "../lib/constants";
 
 export type BookingState = {
-  step: BookingStep;
+  // Selections
   serviceIds: Id<"services">[];
   staffId: Id<"staff"> | null;
   date: string | null;
@@ -13,10 +12,6 @@ export type BookingState = {
   slotEndTime: number | null;
   lockId: Id<"slotLocks"> | null;
   lockExpiresAt: number | null;
-  customerName: string;
-  customerPhone: string;
-  customerEmail: string;
-  customerNotes: string;
   sessionId: string;
 };
 
@@ -25,7 +20,6 @@ const generateSessionId = () =>
 
 export function useBookingFlow() {
   const [state, setState] = useState<BookingState>({
-    step: "services",
     serviceIds: [],
     staffId: null,
     date: null,
@@ -33,21 +27,61 @@ export function useBookingFlow() {
     slotEndTime: null,
     lockId: null,
     lockExpiresAt: null,
-    customerName: "",
-    customerPhone: "",
-    customerEmail: "",
-    customerNotes: "",
     sessionId: generateSessionId(),
   });
 
-  const setStep = (step: BookingStep) => setState((s) => ({ ...s, step }));
+  // Set services with smart reset
+  const setServiceIds = (
+    serviceIds: Id<"services">[],
+    eligibleStaffIds?: Id<"staff">[],
+  ) =>
+    setState((s) => {
+      // Check if current staff is still eligible
+      const staffStillEligible =
+        s.staffId === null ||
+        !eligibleStaffIds ||
+        eligibleStaffIds.includes(s.staffId);
 
-  const setServiceIds = (serviceIds: Id<"services">[]) =>
-    setState((s) => ({ ...s, serviceIds }));
+      if (staffStillEligible) {
+        // Staff is fine, but datetime needs reset (service duration changed)
+        return {
+          ...s,
+          serviceIds,
+          date: null,
+          slotStartTime: null,
+          slotEndTime: null,
+          lockId: null,
+          lockExpiresAt: null,
+        };
+      }
 
+      // Staff is no longer eligible - reset staff + datetime
+      return {
+        ...s,
+        serviceIds,
+        staffId: null,
+        date: null,
+        slotStartTime: null,
+        slotEndTime: null,
+        lockId: null,
+        lockExpiresAt: null,
+      };
+    });
+
+  // Set staff with smart reset
   const setStaffId = (staffId: Id<"staff"> | null) =>
-    setState((s) => ({ ...s, staffId }));
+    setState((s) => ({
+      ...s,
+      staffId,
+      // Reset datetime when staff changes (availability differs)
+      date: null,
+      slotStartTime: null,
+      slotEndTime: null,
+      lockId: null,
+      lockExpiresAt: null,
+    }));
 
+  // Set date with smart reset (only time resets)
   const setDate = (date: string | null) =>
     setState((s) => ({
       ...s,
@@ -58,11 +92,13 @@ export function useBookingFlow() {
       lockExpiresAt: null,
     }));
 
+  // Set time slot (optionally resolve staff from "any available" slot)
   const setSlot = (
     startTime: number,
     endTime: number,
     lockId: Id<"slotLocks"> | null,
     lockExpiresAt?: number | null,
+    resolvedStaffId?: Id<"staff">,
   ) =>
     setState((s) => ({
       ...s,
@@ -70,25 +106,14 @@ export function useBookingFlow() {
       slotEndTime: endTime,
       lockId,
       lockExpiresAt: lockExpiresAt ?? null,
+      // When "any staff" was selected, capture the resolved staff from the slot
+      staffId:
+        resolvedStaffId && s.staffId === null ? resolvedStaffId : s.staffId,
     }));
 
-  const setCustomerInfo = (info: {
-    name: string;
-    phone: string;
-    email: string;
-    notes: string;
-  }) =>
-    setState((s) => ({
-      ...s,
-      customerName: info.name,
-      customerPhone: info.phone,
-      customerEmail: info.email,
-      customerNotes: info.notes,
-    }));
-
+  // Full reset
   const reset = () =>
     setState({
-      step: "services",
       serviceIds: [],
       staffId: null,
       date: null,
@@ -96,21 +121,31 @@ export function useBookingFlow() {
       slotEndTime: null,
       lockId: null,
       lockExpiresAt: null,
-      customerName: "",
-      customerPhone: "",
-      customerEmail: "",
-      customerNotes: "",
       sessionId: generateSessionId(),
     });
 
+  // Derived: check if all selections are complete for confirmation
+  const canConfirm =
+    state.serviceIds.length > 0 &&
+    state.date !== null &&
+    state.slotStartTime !== null &&
+    state.slotEndTime !== null;
+
+  // Derived: which steps are enabled
+  const hasServices = state.serviceIds.length > 0;
+  const hasStaff = true; // Staff step is always enabled (user can skip to "any available")
+  const hasDatetime = state.date !== null && state.slotStartTime !== null;
+
   return {
     state,
-    setStep,
     setServiceIds,
     setStaffId,
     setDate,
     setSlot,
-    setCustomerInfo,
     reset,
+    canConfirm,
+    hasServices,
+    hasStaff,
+    hasDatetime,
   };
 }

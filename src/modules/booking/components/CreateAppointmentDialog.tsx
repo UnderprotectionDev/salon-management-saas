@@ -168,8 +168,11 @@ export function CreateAppointmentDialog({
           source: "walk_in",
         });
         finalCustomerId = newId;
-      } catch (error: any) {
-        toast.error(error?.data?.message ?? "Failed to create customer");
+      } catch (error: unknown) {
+        const msg =
+          (error as { data?: { message?: string } })?.data?.message ??
+          "Failed to create customer";
+        toast.error(msg);
         return;
       }
     }
@@ -194,8 +197,11 @@ export function CreateAppointmentDialog({
       toast.success(`Appointment created: ${result.confirmationCode}`);
       setOpen(false);
       resetForm();
-    } catch (error: any) {
-      toast.error(error?.data?.message ?? "Failed to create appointment");
+    } catch (error: unknown) {
+      const msg =
+        (error as { data?: { message?: string } })?.data?.message ??
+        "Failed to create appointment";
+      toast.error(msg);
     } finally {
       setIsSubmitting(false);
     }
@@ -388,7 +394,7 @@ export function CreateAppointmentDialog({
                     />
                     <span className="flex-1 text-sm">{service.name}</span>
                     <span className="text-xs text-muted-foreground">
-                      {service.duration}dk · {formatPrice(service.price)}
+                      {service.duration}min · {formatPrice(service.price)}
                     </span>
                   </label>
                 ))}
@@ -415,7 +421,12 @@ export function CreateAppointmentDialog({
           {/* Source */}
           <div className="space-y-2">
             <Label>Source</Label>
-            <Select value={source} onValueChange={(v: any) => setSource(v)}>
+            <Select
+              value={source}
+              onValueChange={(v: string) =>
+                setSource(v as "walk_in" | "phone" | "staff")
+              }
+            >
               <SelectTrigger>
                 <SelectValue />
               </SelectTrigger>
