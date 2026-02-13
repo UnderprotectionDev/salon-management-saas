@@ -28,9 +28,10 @@ export function CalendarView() {
     api.staff.listActive,
     orgId ? { organizationId: orgId } : "skip",
   );
-  const staffList = isStaffOnly && currentStaff && allStaffList
-    ? allStaffList.filter((s) => s._id === currentStaff._id)
-    : allStaffList;
+  const staffList =
+    isStaffOnly && currentStaff && allStaffList
+      ? allStaffList.filter((s) => s._id === currentStaff._id)
+      : allStaffList;
 
   // Day view data
   const dayAppointments = useQuery(

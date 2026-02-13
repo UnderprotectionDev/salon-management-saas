@@ -61,7 +61,8 @@
 ## Implementation Details
 
 ### Backend
-- `convex/reports.ts` (~350 lines) — 3 `adminQuery` functions
+- `convex/reports.ts` (~350 lines) — 3 `orgQuery` functions (`getRevenueReport`, `getStaffPerformanceReport`, `getCustomerReport`)
+- Access control: Owner sees all data, staff members see filtered data (own appointments/stats only via `staffFilter`)
 - Range queries via `by_org_date` index with `.gte().lte()` (single query per report)
 - Batch-fetched appointment services and staff names (avoids N+1)
 - UTC date parsing with `parseDateUTC()` helper
@@ -71,7 +72,7 @@
 - `src/modules/reports/` — 14 files (hooks, lib, 11 components)
 - Route: `src/app/[slug]/(authenticated)/reports/page.tsx` with Tabs (Revenue, Staff, Customers)
 - BarChart3 icon in sidebar nav (after Customers, before Settings)
-- Admin/Owner only — member role sees "Admin access required", null role shows loading skeleton
+- Access: Both owner and staff can access. Staff members see filtered data (their own appointments/performance only)
 - Charts: recharts AreaChart (dual Y-axis) + BarChart via shadcn ChartContainer
 - Accessibility: StatusBar segments are keyboard-focusable with ARIA meter role
 

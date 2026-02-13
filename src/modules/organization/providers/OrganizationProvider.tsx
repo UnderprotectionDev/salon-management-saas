@@ -116,12 +116,17 @@ export function OrganizationProvider({ children }: { children: ReactNode }) {
   );
 
   // Clear active org and localStorage when user signs out
+  // The isSigningOut guard prevents clearing during token refresh flickers
   useEffect(() => {
-    if (!isAuthenticated || (!isSessionPending && session === null)) {
+    if (
+      isSigningOut ||
+      !isAuthenticated ||
+      (!isSessionPending && session === null)
+    ) {
       setActiveOrgState(null);
       localStorage.removeItem("activeOrganizationId");
     }
-  }, [isAuthenticated, session, isSessionPending]);
+  }, [isSigningOut, isAuthenticated, session, isSessionPending]);
 
   // Auto-set active organization if only one exists and none is set
   useEffect(() => {

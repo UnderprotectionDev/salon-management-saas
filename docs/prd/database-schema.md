@@ -62,17 +62,28 @@ erDiagram
 - `businessHours?: {monday..sunday: {open, close, closed}}`
 - `bookingSettings?: {minAdvanceBookingMinutes?, maxAdvanceBookingDays?, slotDurationMinutes?, bufferBetweenBookingsMinutes?, allowOnlineBooking?, cancellationPolicyHours?}`
 - `subscriptionStatus?: active|trialing|past_due|canceled|unpaid|suspended|pending_payment`
+  - `pending_payment`: New org awaiting first subscription purchase
+  - `suspended`: Subscription expired after grace period, booking/operations blocked
 - `subscriptionPlan?, polarSubscriptionId?, polarCustomerId?, trialEndsAt?, currentPeriodEnd?, gracePeriodEndsAt?, suspendedAt?, cancelledAt?`
 - Indexes: `organizationId`, `by_polar_subscription` (on `polarSubscriptionId`)
 
 ### `member`
-- `organizationId, userId: string, role: owner|admin|member`
+- `organizationId, userId: string, role: owner|staff`
 - Indexes: `organizationId`, `userId`, `organizationId_userId`
-- Owner (1 per org): full access + billing. Admin: operations. Member: own schedule only.
+- Owner (1 per org): full access including billing, settings, reports, staff management. Staff: own schedule, time-off requests, overtime only.
+
+**Migration Note (Role Consolidation):**
+The role enum was consolidated from `owner|admin|member` to `owner|staff` (completed in commit 1d49327). This breaking schema change required migration:
+- All existing `admin` and `member` role values were converted to `staff`
+- Permission boundaries simplified: `owner` has full access, `staff` has limited self-service access
+- `ownerQuery`/`ownerMutation` wrappers enforce owner role checks (previously `adminQuery`/`adminMutation`)
+- No additional data reconciliation needed as permission checks already handled at function wrapper level
+- Rollback: Not supported - forward-only migration with clear permission boundaries
 
 ### `invitation`
-- `organizationId, email, name, role: admin|member, phone?, status: pending|accepted|expired|cancelled|rejected, invitedBy, expiresAt?`
+- `organizationId, email, name, role: staff, phone?, status: pending|accepted|expired|cancelled|rejected, invitedBy, expiresAt?`
 - Indexes: `organizationId`, `email`, `organizationId_email`, `status`
+- Note: Ownership transfers handled separately, invitations are for staff only
 
 ### `staff`
 - `userId, organizationId, memberId` (links to member for role)
@@ -224,6 +235,22 @@ Schema exists in PRD. Products with pricing, inventory tracking, supplier info.
 ### `auditLogs`
 - `organizationId, userId, action, resourceType, resourceId?, details?, ipAddress?, timestamp`
 - Table exists, helper functions pending.
+
+### `adminActions` (SuperAdmin)
+- `action: string` (suspend_org, delete_org, ban_user, etc.)
+- `performedBy: string` (SuperAdmin userId)
+- `targetType: string` (organization, user, subscription)
+- `targetId?: string`
+- `details?: object` (reason, old/new values)
+- `timestamp: number`
+- Index: `by_timestamp`
+
+### `bannedUsers` (SuperAdmin)
+- `userId: string` (Better Auth user ID)
+- `bannedBy: string` (SuperAdmin userId)
+- `reason?: string`
+- `bannedAt: number`
+- Index: `by_user_id`
 
 ## Index Usage Guide
 

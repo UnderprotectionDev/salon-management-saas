@@ -2,9 +2,9 @@ import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
 
 // Public routes that don't require authentication
-// Matches: /, /sign-in, /api/auth/*, /[slug]/book, /[slug]/appointment/[code]
+// Matches: /, /sign-in, /api/auth/*, /api/polar/*, /[slug]/book, /[slug]/appointment/[code]
 const PUBLIC_ROUTE_REGEX =
-  /^\/($|sign-in(\/|$)|api\/auth(\/|$)|[^/]+\/book$|[^/]+\/appointment\/[^/]+$)/;
+  /^\/($|sign-in(\/|$)|api\/auth(\/|$)|api\/polar(\/|$)|[^/]+\/book$|[^/]+\/appointment\/[^/]+$)/;
 
 export function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
@@ -23,7 +23,7 @@ export function proxy(request: NextRequest) {
     const signInUrl = new URL("/sign-in", request.url);
     // Preserve full path including query string
     const redirectPath = pathname + request.nextUrl.search;
-    signInUrl.searchParams.set("redirect", redirectPath);
+    signInUrl.searchParams.set("callbackUrl", redirectPath);
     return NextResponse.redirect(signInUrl);
   }
 

@@ -10,11 +10,11 @@ All-in-one salon management platform for Turkish beauty salons (1-10 staff). Sol
 
 | Persona | Role | Goals | Key Tasks |
 |---------|------|-------|-----------|
-| Salon Owner (Ahmet) | Owner, 35-55 | Revenue visibility, reduce ops burden | Dashboard, manage staff, configure services, reports |
-| Admin Staff (Ayse) | Admin, 22-35 | Fast booking, schedule coordination | Book appointments, check-in, manage schedule, approve time-off |
+| Salon Owner (Ahmet) | Owner, 35-55 | Revenue visibility, reduce ops burden | Dashboard, manage staff, configure services, reports, billing |
+| Staff Member (Ayse) | Staff, 22-35 | Manage own schedule, track appointments | View own schedule, request time-off, define overtime |
 | Customer (Mehmet) | End user, 25-45 | Easy online booking, manage own bookings | Browse services, book online, cancel/reschedule |
 
-**Roles:** Owner > Admin > Member (no separate Receptionist role). Auth via Google OAuth.
+**Roles:** Owner (full access, 1 per org) | Staff (own schedule only). Auth via Google OAuth.
 
 ## Business Model
 

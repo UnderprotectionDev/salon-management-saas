@@ -216,17 +216,21 @@ export const getRevenueReport = orgQuery({
           dailyMap[appt.date].completed++;
         }
 
-        // Staff breakdown
-        if (!staffMap.has(appt.staffId)) {
-          staffMap.set(appt.staffId, {
-            staffName: staffNameMap.get(appt.staffId as string) ?? "Unknown",
-            appointments: 0,
-            revenue: 0,
-          });
+        // Staff breakdown (skip if staff was deleted)
+        if (!appt.staffId) {
+          // Still counted in totals, but not in per-staff breakdown
+        } else {
+          if (!staffMap.has(appt.staffId)) {
+            staffMap.set(appt.staffId, {
+              staffName: staffNameMap.get(appt.staffId as string) ?? "Unknown",
+              appointments: 0,
+              revenue: 0,
+            });
+          }
+          const staffEntry = staffMap.get(appt.staffId)!;
+          staffEntry.appointments++;
+          staffEntry.revenue += appt.total;
         }
-        const staffEntry = staffMap.get(appt.staffId)!;
-        staffEntry.appointments++;
-        staffEntry.revenue += appt.total;
 
         // Service breakdown
         const services = apptServiceMap.get(appt._id) ?? [];

@@ -4,13 +4,15 @@
 
 ## Summary
 
-Established complete multi-tenant architecture: organization CRUD, member roles (owner/admin/member), staff profiles, RLS via custom function wrappers, file storage (3-step upload), invitation system, ownership transfer, and settings pages.
+Established complete multi-tenant architecture: organization CRUD, member roles (originally owner/admin/member, later simplified to owner/staff in commit 1d49327), staff profiles, RLS via custom function wrappers, file storage (3-step upload), invitation system, ownership transfer, and settings pages.
+
+**Role Evolution Note:** Initially implemented with 3-tier roles (owner/admin/member) using `adminQuery/Mutation` wrappers. Later simplified to 2-tier (owner/staff) with `ownerQuery/Mutation` wrappers for clearer permission boundaries and reduced complexity.
 
 ## What Was Built
 
 - **Database:** organization, organizationSettings, member, staff, invitation, files tables
-- **RLS:** Custom wrappers in `convex/lib/functions.ts` (publicQuery → ownerMutation hierarchy)
-- **Validators:** `convex/lib/validators.ts` (231 lines initial)
+- **RLS:** Custom wrappers in `convex/lib/functions.ts` (publicQuery → authedQuery → orgQuery → ownerQuery → superAdminQuery hierarchy)
+- **Validators:** `convex/lib/validators.ts` (231 lines initial, now ~910 lines)
 - **Rate Limits:** `convex/lib/rateLimits.ts` (104 lines initial)
 - **File Storage:** `convex/files.ts` - 3-step upload (generate URL → upload → save metadata)
 - **Frontend:** Onboarding wizard, org switcher, staff profile/schedule editor, settings tabs (General/Contact/Address/Members/Invitations), logo upload, ownership transfer dialog

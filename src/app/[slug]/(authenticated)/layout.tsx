@@ -200,7 +200,7 @@ function AuthenticatedLayoutContent({
       // Notify that sign out is complete
       window.dispatchEvent(new Event("auth:signed-out"));
 
-      router.push("/sign-in");
+      router.replace("/sign-in");
     } catch (error) {
       console.error("Sign out failed:", error);
       window.dispatchEvent(new Event("auth:signed-out"));

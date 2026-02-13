@@ -6,26 +6,21 @@ import { betterAuth } from "better-auth";
 import { components } from "../_generated/api";
 import type { DataModel } from "../_generated/dataModel";
 import authConfig from "../auth.config";
-// import schema from "./schema";
 
-// Better Auth Component
-export const authComponent = createClient<DataModel, any>(
-  components.betterAuth,
-  {
-    // local: { schema },
-    verbose: false,
-  },
-);
+// Better Auth Component (used by @better-auth/cli for schema generation)
+export const authComponent = createClient<DataModel>(components.betterAuth, {
+  verbose: false,
+});
 
 // Better Auth Options
 export const createAuthOptions = (ctx: GenericCtx<DataModel>) => {
   return {
-    appName: "My App",
+    appName: "Salon Management",
     baseURL: process.env.SITE_URL,
     secret: process.env.BETTER_AUTH_SECRET,
     database: authComponent.adapter(ctx),
     emailAndPassword: {
-      enabled: true,
+      enabled: false,
     },
     plugins: [convex({ authConfig })],
   } satisfies BetterAuthOptions;

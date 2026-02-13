@@ -38,6 +38,8 @@ export function DayView({
     apptsByStaff.set(staff._id, []);
   }
   for (const appt of appointments) {
+    // Appointments without staffId are not displayed in the day view
+    if (!appt.staffId) continue;
     const list = apptsByStaff.get(appt.staffId);
     if (list) list.push(appt);
   }

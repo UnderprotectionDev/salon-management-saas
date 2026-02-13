@@ -147,7 +147,7 @@ export function TransferOwnershipDialog({
                       selectedMember?.email ||
                       "this member"}
                   </strong>
-                  . You will be demoted to Admin. This cannot be easily undone.
+                  . You will be demoted to Staff. This cannot be easily undone.
                 </AlertDescription>
               </Alert>
             </div>

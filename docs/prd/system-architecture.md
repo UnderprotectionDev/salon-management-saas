@@ -65,10 +65,10 @@ Custom wrappers in `convex/lib/functions.ts` with progressive access levels:
 | `publicQuery/Mutation` | None | — |
 | `authedQuery/Mutation` | Required | `ctx.user` |
 | `orgQuery/Mutation` | Required + membership | `ctx.user, organizationId, member, staff` |
-| `adminQuery/Mutation` | Required + admin/owner | Same + role check |
 | `ownerQuery/Mutation` | Required + owner only | Same + owner check |
+| `superAdminQuery/Mutation` | Required + env email | `ctx.user, isSuperAdmin` |
 
-**ErrorCode enum:** UNAUTHENTICATED, FORBIDDEN, ADMIN_REQUIRED, OWNER_REQUIRED, NOT_FOUND, ALREADY_EXISTS, VALIDATION_ERROR, INVALID_INPUT, RATE_LIMITED, INTERNAL_ERROR
+**ErrorCode enum:** UNAUTHENTICATED, FORBIDDEN, OWNER_REQUIRED, SUPER_ADMIN_REQUIRED, NOT_FOUND, ALREADY_EXISTS, VALIDATION_ERROR, INVALID_INPUT, RATE_LIMITED, INTERNAL_ERROR
 
 ## Rate Limiting
 
@@ -89,6 +89,9 @@ Custom wrappers in `convex/lib/functions.ts` with progressive access levels:
 | createOvertime | 10/day | staff |
 | createCustomer | 30/hour | org |
 | cancelSubscription | 3/hour | org |
+| suspendOrganization | 10/hour | superadmin |
+| deleteOrganization | 5/day | superadmin |
+| banUser | 10/hour | superadmin |
 | aiPhotoAnalysis | 5/hour | customer |
 | aiSimulation | 3/hour | customer |
 | aiChat | 30/hour | customer |
@@ -127,6 +130,7 @@ convex/
 ├── aiCredits.ts, aiForecasts.ts, aiCareSchedules.ts, aiMoodBoard.ts
 ├── aiActions.tsx              # "use node" - external AI calls (Gateway, fal.ai)
 ├── lib/aiConstants.ts         # Credit costs, model configs, provider routing
+├── admin.ts (~705 lines)      # SuperAdmin platform management
 ├── files.ts, users.ts, auth.ts, http.ts
 └── auth.config.ts, convex.config.ts
 
@@ -160,6 +164,7 @@ src/
 │   ├── settings/               # 8 files
 │   ├── auth/                   # 11 files
 │   └── convex/                 # ConvexClientProvider
+├── admin/                      # Admin panel layout + 4 pages (Dashboard, Organizations, Users, Action Log)
 └── middleware.ts               # Auth middleware
 ```
 
@@ -179,9 +184,10 @@ src/
 | `/:slug/settings` | Auth+Org | Org settings |
 | `/:slug/billing` | Auth+Org | Subscription management |
 | `/:slug/ai` | Public | Customer AI features (photo analysis, simulation, chat, mood board, care schedule) |
-| `/:slug/ai-insights` | Auth+Org (admin) | Organization AI features (revenue forecast, credit management) |
+| `/:slug/ai-insights` | Auth+Org (owner) | Organization AI features (revenue forecast, credit management) |
 | `/:slug/book` | Public | Public booking |
 | `/:slug/appointment/:code` | Public | Appointment lookup |
+| `/admin` | Auth+SuperAdmin | Platform management (stats, orgs, users, action log) |
 
 ## Deployment
 
@@ -192,3 +198,30 @@ src/
 | Production | Custom domain | Convex production |
 
 CI/CD: Push to GitHub → Vercel builds Next.js → Convex deploys functions.
+
+## SuperAdmin Platform
+
+**Access model:** Environment-based via `SUPER_ADMIN_EMAILS` env var. Comma-separated list of email addresses.
+
+**Permission model:**
+- SuperAdmins bypass org membership and owner role checks via `resolveOrgContext` helper
+- Synthetic owner member created at runtime for any org access
+- Ban check in `getAuthUser` — banned users blocked at auth layer before any function execution
+- All platform actions logged to `adminActions` audit table
+
+**Capabilities:**
+1. **Platform Stats**: Total orgs, active orgs, total users, appointments, revenue
+2. **Organization Management**: List, suspend, unsuspend, delete orgs, manual subscription updates
+3. **User Management**: List users, ban/unban accounts
+4. **Action Log**: Full audit trail of all SuperAdmin actions with timestamp, target, details
+
+**Implementation:**
+- Backend: `convex/admin.ts` (~705 lines) - 11 functions
+- Frontend: `/admin` layout with 4 pages (Dashboard, Organizations, Users, Action Log)
+- Impersonation banner: Red warning shown when SuperAdmin views non-member org
+- Dashboard button: Shield icon shown in header for SuperAdmin access
+
+**Security:**
+- Rate limits: suspend (10/hr), delete (5/day), ban (10/hr)
+- Cascading deletes: deleteOrganization removes all related data
+- Audit trail: All actions logged with performedBy, targetType, targetId, details

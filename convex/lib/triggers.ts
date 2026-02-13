@@ -1,6 +1,6 @@
 import { Triggers } from "convex-helpers/server/triggers";
-import type { DataModel } from "../_generated/dataModel";
 import { internal } from "../_generated/api";
+import type { DataModel } from "../_generated/dataModel";
 
 export const triggers = new Triggers<DataModel>();
 
@@ -51,18 +51,20 @@ triggers.register("appointments", async (ctx, change) => {
           ? `${customerName} cancelled`
           : "Appointment Cancelled";
 
-      await ctx.scheduler.runAfter(
-        0,
-        internal.notifications.createNotification,
-        {
-          organizationId: newDoc.organizationId,
-          recipientStaffId: newDoc.staffId,
-          type: "cancellation" as const,
-          title: cancelledByLabel,
-          message: `Appointment on ${newDoc.date} at ${formatMinutesShort(newDoc.startTime)} was cancelled`,
-          appointmentId: newDoc._id,
-        },
-      );
+      if (newDoc.staffId) {
+        await ctx.scheduler.runAfter(
+          0,
+          internal.notifications.createNotification,
+          {
+            organizationId: newDoc.organizationId,
+            recipientStaffId: newDoc.staffId,
+            type: "cancellation" as const,
+            title: cancelledByLabel,
+            message: `Appointment on ${newDoc.date} at ${formatMinutesShort(newDoc.startTime)} was cancelled`,
+            appointmentId: newDoc._id,
+          },
+        );
+      }
 
       await ctx.scheduler.runAfter(0, internal.email.sendCancellationEmail, {
         appointmentId: newDoc._id,
@@ -78,25 +80,27 @@ triggers.register("appointments", async (ctx, change) => {
       const rescheduledByCustomer =
         newDoc.rescheduleHistory?.at(-1)?.rescheduledBy === "customer";
 
-      await ctx.scheduler.runAfter(
-        0,
-        internal.notifications.createNotification,
-        {
-          organizationId: newDoc.organizationId,
-          recipientStaffId: newDoc.staffId,
-          type: "reschedule" as const,
-          title: rescheduledByCustomer
-            ? "Customer Rescheduled"
-            : "Appointment Rescheduled",
-          message: `${customerName} rescheduled to ${newDoc.date} at ${formatMinutesShort(newDoc.startTime)}`,
-          appointmentId: newDoc._id,
-        },
-      );
+      if (newDoc.staffId) {
+        await ctx.scheduler.runAfter(
+          0,
+          internal.notifications.createNotification,
+          {
+            organizationId: newDoc.organizationId,
+            recipientStaffId: newDoc.staffId,
+            type: "reschedule" as const,
+            title: rescheduledByCustomer
+              ? "Customer Rescheduled"
+              : "Appointment Rescheduled",
+            message: `${customerName} rescheduled to ${newDoc.date} at ${formatMinutesShort(newDoc.startTime)}`,
+            appointmentId: newDoc._id,
+          },
+        );
+      }
       return;
     }
 
     // No-show
-    if (statusChanged && newDoc.status === "no_show") {
+    if (statusChanged && newDoc.status === "no_show" && newDoc.staffId) {
       await ctx.scheduler.runAfter(
         0,
         internal.notifications.createNotification,

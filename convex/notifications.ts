@@ -1,6 +1,10 @@
 import { ConvexError, v } from "convex/values";
-import { ErrorCode, orgMutation, orgQuery } from "./lib/functions";
-import { internalMutation } from "./lib/functions";
+import {
+  ErrorCode,
+  internalMutation,
+  orgMutation,
+  orgQuery,
+} from "./lib/functions";
 import {
   notificationDocValidator,
   notificationTypeValidator,
@@ -285,6 +289,12 @@ export const sendReminders = internalMutation({
     }
 
     for (const appt of todayAppts) {
+      // Skip if no staff assigned
+      if (!appt.staffId) {
+        await ctx.db.patch(appt._id, { reminderSentAt: now });
+        continue;
+      }
+
       // Create reminder for the assigned staff
       await ctx.db.insert("notifications", {
         organizationId: appt.organizationId,

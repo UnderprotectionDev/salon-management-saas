@@ -209,6 +209,20 @@ export const rateLimiter = new RateLimiter(components.rateLimiter, {
     rate: 10,
     period: HOUR,
   },
+
+  // ==========================================================================
+  // Account Deletion
+  // ==========================================================================
+
+  /**
+   * Account deletion limit (per user)
+   * 1 per day — prevents accidental rapid re-creation/deletion
+   */
+  deleteAccount: {
+    kind: "fixed window",
+    rate: 1,
+    period: DAY,
+  },
 });
 
 // Re-export time constants for use elsewhere
