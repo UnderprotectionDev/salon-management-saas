@@ -48,9 +48,11 @@ export const list = orgQuery({
   args: {
     search: v.optional(v.string()),
     accountStatus: v.optional(customerAccountStatusValidator),
+    limit: v.optional(v.number()),
   },
   returns: v.array(customerListItemValidator),
   handler: async (ctx, args) => {
+    const maxResults = Math.min(args.limit ?? 200, 500);
     const isStaffOnly = ctx.member.role === "staff";
     const staffCustomerIds =
       isStaffOnly && ctx.staff?._id
@@ -67,14 +69,14 @@ export const list = orgQuery({
             .search("name", args.search as string)
             .eq("organizationId", ctx.organizationId),
         )
-        .collect();
+        .take(maxResults);
     } else {
       customers = await ctx.db
         .query("customers")
         .withIndex("by_organization", (q) =>
           q.eq("organizationId", ctx.organizationId),
         )
-        .collect();
+        .take(maxResults);
     }
 
     // Staff: only their customers
@@ -535,7 +537,11 @@ export const update = orgMutation({
 });
 
 /**
- * Delete a customer (hard delete)
+ * Delete a customer.
+ * - Blocks deletion if customer has active/pending appointments
+ * - If customer has past appointments, preserves customer name in staff notes
+ *   and then hard-deletes the customer record
+ * - Hard-deletes immediately if customer has no appointments
  * Admin/owner only
  */
 export const remove = ownerMutation({
@@ -547,6 +553,42 @@ export const remove = ownerMutation({
       throw new ConvexError({
         code: ErrorCode.NOT_FOUND,
         message: "Customer not found",
+      });
+    }
+
+    // Check for existing appointments
+    const appointments = await ctx.db
+      .query("appointments")
+      .withIndex("by_customer", (q) => q.eq("customerId", args.customerId))
+      .collect();
+
+    // Block deletion if there are active/pending appointments
+    const activeStatuses = [
+      "pending",
+      "confirmed",
+      "checked_in",
+      "in_progress",
+    ];
+    const hasActiveAppointments = appointments.some((apt) =>
+      activeStatuses.includes(apt.status),
+    );
+
+    if (hasActiveAppointments) {
+      throw new ConvexError({
+        code: ErrorCode.VALIDATION_ERROR,
+        message:
+          "Cannot delete customer with active or pending appointments. Cancel the appointments first.",
+      });
+    }
+
+    // Record deleted customer info on past appointments.
+    // Note: customerId remains as a dangling reference since the schema requires it (non-optional).
+    // The staffNotes annotation preserves the customer name for historical context.
+    for (const apt of appointments) {
+      await ctx.db.patch(apt._id, {
+        staffNotes: [apt.staffNotes, `(Deleted customer: ${customer.name})`]
+          .filter(Boolean)
+          .join(" "),
       });
     }
 
@@ -615,6 +657,18 @@ export const merge = ownerMutation({
     const mergedCustomerNotes =
       primary.customerNotes || duplicate.customerNotes;
     const mergedStaffNotes = primary.staffNotes || duplicate.staffNotes;
+
+    // Reassign all appointments from duplicate to primary
+    const duplicateAppointments = await ctx.db
+      .query("appointments")
+      .withIndex("by_customer", (q) =>
+        q.eq("customerId", args.duplicateCustomerId),
+      )
+      .collect();
+
+    for (const apt of duplicateAppointments) {
+      await ctx.db.patch(apt._id, { customerId: args.primaryCustomerId });
+    }
 
     // Update primary with merged data
     await ctx.db.patch(args.primaryCustomerId, {
