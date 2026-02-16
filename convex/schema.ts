@@ -147,6 +147,7 @@ export default defineSchema({
         v.literal("active"),
         v.literal("trialing"),
         v.literal("past_due"),
+        v.literal("canceling"),
         v.literal("canceled"),
         v.literal("unpaid"),
         v.literal("suspended"),
@@ -161,6 +162,8 @@ export default defineSchema({
     gracePeriodEndsAt: v.optional(v.number()),
     suspendedAt: v.optional(v.number()),
     cancelledAt: v.optional(v.number()),
+    cancellationReason: v.optional(v.string()),
+    cancellationComment: v.optional(v.string()),
     // Timestamps
     createdAt: v.number(),
     updatedAt: v.number(),

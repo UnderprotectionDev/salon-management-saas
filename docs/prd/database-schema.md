@@ -61,10 +61,14 @@ erDiagram
 - `timezone?: string` ("Europe/Istanbul"), `currency?: string`, `locale?: string`
 - `businessHours?: {monday..sunday: {open, close, closed}}`
 - `bookingSettings?: {minAdvanceBookingMinutes?, maxAdvanceBookingDays?, slotDurationMinutes?, bufferBetweenBookingsMinutes?, allowOnlineBooking?, cancellationPolicyHours?}`
-- `subscriptionStatus?: active|trialing|past_due|canceled|unpaid|suspended|pending_payment`
+- `subscriptionStatus?: active|trialing|past_due|canceling|canceled|unpaid|suspended|pending_payment`
   - `pending_payment`: New org awaiting first subscription purchase
+  - `canceling`: Cancellation requested but subscription still active until period end (user can reactivate or switch plans)
+  - `canceled`: Subscription has actually ended (`endedAt` set by Polar webhook)
   - `suspended`: Subscription expired after grace period, booking/operations blocked
 - `subscriptionPlan?, polarSubscriptionId?, polarCustomerId?, trialEndsAt?, currentPeriodEnd?, gracePeriodEndsAt?, suspendedAt?, cancelledAt?`
+- `cancellationReason?: string` (Polar `CustomerCancellationReason`: too_expensive, missing_features, switched_service, unused, customer_service, low_quality, too_complex, other)
+- `cancellationComment?: string` (free-text feedback from user)
 - Indexes: `organizationId`, `by_polar_subscription` (on `polarSubscriptionId`)
 
 ### `member`

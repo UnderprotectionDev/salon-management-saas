@@ -126,7 +126,7 @@ convex/
 ├── slots.ts, slotLocks.ts, crons.ts
 ├── scheduleOverrides.ts, timeOffRequests.ts, staffOvertime.ts
 ├── serviceCategories.ts, appointmentServices.ts
-├── polar.ts, polarSync.ts, subscriptions.ts, subscriptions_helpers.ts
+├── polar.ts, polarActions.ts, polarSync.ts, subscriptions.ts, subscriptions_helpers.ts
 ├── analytics.ts, reports.ts (~603 lines), notifications.ts
 ├── email.tsx (~380 lines), email_helpers.ts
 ├── aiAnalysis.ts, aiSimulations.ts, aiChat.ts
@@ -154,7 +154,7 @@ src/
 │   ├── services/               # 11 files
 │   ├── staff/                  # 12 files
 │   ├── organization/           # 4 files (Provider, switcher, hooks)
-│   ├── billing/                # 6 files (subscription, plans, cancel)
+│   ├── billing/                # 9 components + 1 hook (subscription, plans, cancel, reactivate, plan change, billing history)
 │   ├── dashboard/              # 5 files (stats, charts)
 │   ├── calendar/               # 15 files (day/week views, DnD, staff filter, reschedule, status actions)
 │   ├── notifications/          # 4 files (bell, panel)
