@@ -50,6 +50,13 @@ async function getAppointmentsForDateRange(
 }
 
 function validateDateRange(startDate: string, endDate: string) {
+  const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
+  if (!dateRegex.test(startDate) || !dateRegex.test(endDate)) {
+    throw new ConvexError({
+      code: ErrorCode.INVALID_INPUT,
+      message: "Date must be in YYYY-MM-DD format",
+    });
+  }
   if (startDate > endDate) {
     throw new ConvexError({
       code: ErrorCode.INVALID_INPUT,
@@ -78,7 +85,13 @@ export const getRevenueReport = orgQuery({
   returns: revenueReportValidator,
   handler: async (ctx, args) => {
     const isStaffOnly = ctx.member.role === "staff";
-    const staffFilter = isStaffOnly ? ctx.staff?._id : undefined;
+    if (isStaffOnly && !ctx.staff) {
+      throw new ConvexError({
+        code: ErrorCode.FORBIDDEN,
+        message: "Staff record not found for current user",
+      });
+    }
+    const staffFilter = isStaffOnly ? ctx.staff!._id : undefined;
 
     const dates = validateDateRange(args.startDate, args.endDate);
     let appointments = await getAppointmentsForDateRange(
@@ -112,6 +125,9 @@ export const getRevenueReport = orgQuery({
       { staffName: string; appointments: number; revenue: number }
     > = new Map();
 
+    // Hourly distribution (9:00-21:00, startTime in minutes from midnight)
+    const hourlyMap: Map<number, number> = new Map();
+
     let totalRevenue = 0;
     let expectedRevenue = 0;
     let totalAppointments = 0;
@@ -127,32 +143,31 @@ export const getRevenueReport = orgQuery({
       noShow: 0,
     };
 
-    // Pre-fetch all appointment services in one batch
-    const completedApptIds = appointments
-      .filter((a) => a.status === "completed")
-      .map((a) => a._id);
-
-    const allApptServices = await ctx.db
-      .query("appointmentServices")
-      .withIndex("by_appointment")
-      .collect();
+    // Fetch appointment services only for completed appointments (index-scoped)
+    const completedApptIds = new Set(
+      appointments.filter((a) => a.status === "completed").map((a) => a._id),
+    );
 
     // Build lookup: appointmentId -> services[]
     const apptServiceMap = new Map<
       Id<"appointments">,
       Array<{ serviceId: Id<"services">; serviceName: string; price: number }>
     >();
-    for (const s of allApptServices) {
-      if (!completedApptIds.includes(s.appointmentId)) continue;
-      if (!apptServiceMap.has(s.appointmentId)) {
-        apptServiceMap.set(s.appointmentId, []);
-      }
-      apptServiceMap.get(s.appointmentId)!.push({
-        serviceId: s.serviceId,
-        serviceName: s.serviceName,
-        price: s.price,
-      });
-    }
+    const serviceQueries = Array.from(completedApptIds).map(async (apptId) => {
+      const services = await ctx.db
+        .query("appointmentServices")
+        .withIndex("by_appointment", (q) => q.eq("appointmentId", apptId))
+        .collect();
+      apptServiceMap.set(
+        apptId,
+        services.map((s) => ({
+          serviceId: s.serviceId,
+          serviceName: s.serviceName,
+          price: s.price,
+        })),
+      );
+    });
+    await Promise.all(serviceQueries);
 
     // Pre-fetch all org staff for name lookup
     const allStaff = await ctx.db
@@ -168,6 +183,10 @@ export const getRevenueReport = orgQuery({
 
     for (const appt of appointments) {
       totalAppointments++;
+
+      // Track hourly distribution (hour from startTime)
+      const hour = Math.floor(appt.startTime / 60);
+      hourlyMap.set(hour, (hourlyMap.get(hour) || 0) + 1);
 
       // Count status breakdown
       switch (appt.status) {
@@ -322,6 +341,9 @@ export const getRevenueReport = orgQuery({
           ...data,
         }))
         .sort((a, b) => b.revenue - a.revenue),
+      hourlyDistribution: Array.from(hourlyMap.entries())
+        .map(([hour, count]) => ({ hour, count }))
+        .sort((a, b) => a.hour - b.hour),
     };
   },
 });
@@ -338,7 +360,13 @@ export const getStaffPerformanceReport = orgQuery({
   returns: staffPerformanceReportValidator,
   handler: async (ctx, args) => {
     const isStaffOnly = ctx.member.role === "staff";
-    const staffFilter = isStaffOnly ? ctx.staff?._id : undefined;
+    if (isStaffOnly && !ctx.staff) {
+      throw new ConvexError({
+        code: ErrorCode.FORBIDDEN,
+        message: "Staff record not found for current user",
+      });
+    }
+    const staffFilter = isStaffOnly ? ctx.staff!._id : undefined;
 
     const dates = validateDateRange(args.startDate, args.endDate);
 
@@ -383,22 +411,26 @@ export const getStaffPerformanceReport = orgQuery({
       let appointmentMinutes = 0;
       let scheduledMinutes = 0;
 
-      // Get overrides and overtime for the entire range
-      const overrides = await ctx.db
+      // Get overrides and overtime for the date range (bounded by index)
+      const rangeOverrides = await ctx.db
         .query("scheduleOverrides")
-        .withIndex("by_staff_date", (q) => q.eq("staffId", staff._id))
+        .withIndex("by_staff_date", (q) =>
+          q
+            .eq("staffId", staff._id)
+            .gte("date", args.startDate)
+            .lte("date", args.endDate),
+        )
         .collect();
-      const rangeOverrides = overrides.filter(
-        (o) => o.date >= args.startDate && o.date <= args.endDate,
-      );
 
-      const overtimeEntries = await ctx.db
+      const rangeOvertime = await ctx.db
         .query("staffOvertime")
-        .withIndex("by_staff_date", (q) => q.eq("staffId", staff._id))
+        .withIndex("by_staff_date", (q) =>
+          q
+            .eq("staffId", staff._id)
+            .gte("date", args.startDate)
+            .lte("date", args.endDate),
+        )
         .collect();
-      const rangeOvertime = overtimeEntries.filter(
-        (o) => o.date >= args.startDate && o.date <= args.endDate,
-      );
 
       // Calculate scheduled minutes per date
       for (const dateStr of dates) {
@@ -482,7 +514,13 @@ export const getCustomerReport = orgQuery({
   returns: customerReportValidator,
   handler: async (ctx, args) => {
     const isStaffOnly = ctx.member.role === "staff";
-    const staffFilter = isStaffOnly ? ctx.staff?._id : undefined;
+    if (isStaffOnly && !ctx.staff) {
+      throw new ConvexError({
+        code: ErrorCode.FORBIDDEN,
+        message: "Staff record not found for current user",
+      });
+    }
+    const staffFilter = isStaffOnly ? ctx.staff!._id : undefined;
 
     validateDateRange(args.startDate, args.endDate);
 
@@ -513,9 +551,7 @@ export const getCustomerReport = orgQuery({
       );
     }
 
-    const totalActive = customers.filter(
-      (c) => (c.totalVisits ?? 0) > 0,
-    ).length;
+    // totalActive will be computed after customerStats is built (unique customers in current period)
 
     // Customers created in date range (use UTC to avoid timezone ambiguity)
     const startEpoch = parseDateUTC(args.startDate).getTime();
@@ -567,6 +603,7 @@ export const getCustomerReport = orgQuery({
 
     // Retention: customers with 2+ completed appointments / total unique customers
     const uniqueCustomers = customerStats.size;
+    const totalActive = uniqueCustomers; // Active = unique customers with completed appointments in period
     const returningCount = Array.from(customerStats.values()).filter(
       (s) => s.appointments >= 2,
     ).length;
@@ -634,10 +671,98 @@ export const getCustomerReport = orgQuery({
         returningCustomers: entry.returningSet.size,
       }));
 
+    // Previous period comparison (same logic as revenue report)
+    const periodLength =
+      (parseDateUTC(args.endDate).getTime() -
+        parseDateUTC(args.startDate).getTime()) /
+      (24 * 60 * 60 * 1000);
+    const prevStart = parseDateUTC(args.startDate);
+    prevStart.setUTCDate(prevStart.getUTCDate() - periodLength);
+    const prevEnd = parseDateUTC(args.startDate);
+    prevEnd.setUTCDate(prevEnd.getUTCDate() - 1);
+    const prevStartStr = formatDateStr(prevStart);
+    const prevEndStr = formatDateStr(prevEnd);
+    const prevStartEpoch = prevStart.getTime();
+    const prevEndEpoch = prevEnd.getTime() + 24 * 60 * 60 * 1000 - 1;
+
+    // Previous period active = unique customers with completed appointments in prev period
+    // (not all-time active, which would always equal current totalActive)
+    const prevNewInPeriod = customers.filter(
+      (c) =>
+        c._creationTime >= prevStartEpoch && c._creationTime <= prevEndEpoch,
+    ).length;
+
+    let prevAppointments = await getAppointmentsForDateRange(
+      ctx.db,
+      ctx.organizationId,
+      prevStartStr,
+      prevEndStr,
+    );
+    if (staffFilter) {
+      prevAppointments = prevAppointments.filter(
+        (a) => a.staffId === staffFilter,
+      );
+    }
+    const prevCompleted = prevAppointments.filter(
+      (a) => a.status === "completed",
+    );
+    const prevUniqueCustomerIds = new Set(
+      prevCompleted.map((a) => a.customerId as string),
+    );
+    const prevUniqueCustomers = prevUniqueCustomerIds.size;
+    const prevTotalActive = prevUniqueCustomerIds.size;
+
+    // Build customer stats up to the end of previous period (not current period)
+    const allHistoricalAppts = await getAppointmentsForDateRange(
+      ctx.db,
+      ctx.organizationId,
+      "2020-01-01", // Far past date to get all historical data
+      prevEndStr,
+    );
+    const historicalCompletedAppts = allHistoricalAppts.filter(
+      (a) => a.status === "completed",
+    );
+    const prevPeriodCustomerStats = new Map<string, number>();
+    for (const appt of historicalCompletedAppts) {
+      const custId = appt.customerId as string;
+      prevPeriodCustomerStats.set(
+        custId,
+        (prevPeriodCustomerStats.get(custId) || 0) + 1,
+      );
+    }
+
+    const prevReturningCount = prevCompleted.filter((a) => {
+      const custId = a.customerId as string;
+      const historicalCount = prevPeriodCustomerStats.get(custId) || 0;
+      return historicalCount >= 2;
+    }).length;
+    const prevRetentionRate =
+      prevUniqueCustomers > 0
+        ? Math.round((prevReturningCount / prevUniqueCustomers) * 100)
+        : 0;
+
+    const totalActiveChange =
+      prevTotalActive > 0
+        ? Math.round(((totalActive - prevTotalActive) / prevTotalActive) * 100)
+        : 0;
+    const newInPeriodChange =
+      prevNewInPeriod > 0
+        ? Math.round(((newInPeriod - prevNewInPeriod) / prevNewInPeriod) * 100)
+        : 0;
+    const retentionRateChange =
+      prevRetentionRate > 0
+        ? Math.round(
+            ((retentionRate - prevRetentionRate) / prevRetentionRate) * 100,
+          )
+        : 0;
+
     return {
       totalActive,
+      totalActiveChange,
       newInPeriod,
+      newInPeriodChange,
       retentionRate,
+      retentionRateChange,
       avgAppointmentsPerCustomer,
       monthly,
       topCustomers,

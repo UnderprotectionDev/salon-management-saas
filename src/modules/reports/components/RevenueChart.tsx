@@ -45,10 +45,15 @@ export function RevenueChart({
         <CartesianGrid vertical={false} />
         <XAxis
           dataKey="date"
-          tickLine={false}
-          axisLine={false}
+          tickFormatter={(value) => {
+            const date = new Date(value);
+            return date.toLocaleDateString("en-US", {
+              month: "short",
+              day: "numeric",
+            });
+          }}
+          tick={{ fontSize: 12 }}
           tickMargin={8}
-          fontSize={12}
         />
         <YAxis
           yAxisId="revenue"

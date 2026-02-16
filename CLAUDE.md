@@ -128,6 +128,14 @@ src/
 
 **Sidebar Navigation:** Dashboard, Calendar, Staff, Appointments, Services, Customers, Reports, Settings, Billing
 
+**Reports & Analytics (`/{slug}/reports`):** 
+- **Revenue Report:** Daily breakdowns, service/staff revenue, 2 charts (service popularity pie, peak hours bar), expanded CSV export (3 options)
+- **Staff Performance:** KPI cards, utilization chart (color-coded), comparison table with no-show highlights
+- **Customer Analytics:** Trend indicators (vs previous period), new vs returning chart, top customers table, retention rate
+- **Customer Dashboard (`/dashboard/stats`):** Personal statistics for end-users (total visits, spending trends, favorite services, visit history across all salons)
+- All reports use date range picker with presets (Today, 7d, 30d, This/Last month, Custom up to 1 year)
+- Access: Owner sees all data, staff sees filtered data (own appointments only)
+
 **Admin Panel (`/admin`):** Platform-level management for SuperAdmins (env-based via `SUPER_ADMIN_EMAILS`). Dashboard (platform stats), Organizations (suspend/delete), Users (ban/unban), Action Log (audit trail).
 
 **User Flow:** Sign in → No orgs? → `/onboarding` → Create org → `/{slug}/dashboard`
