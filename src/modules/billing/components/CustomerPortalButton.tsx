@@ -1,11 +1,12 @@
 "use client";
 
-import { Button } from "@/components/ui/button";
-import { api } from "../../../../convex/_generated/api";
 import { useAction } from "convex/react";
+import { ConvexError } from "convex/values";
 import { ExternalLink, Loader2 } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
+import { Button } from "@/components/ui/button";
+import { api } from "../../../../convex/_generated/api";
 
 export function CustomerPortalButton() {
   const generatePortalUrl = useAction(
@@ -20,7 +21,12 @@ export function CustomerPortalButton() {
       window.location.href = result.url;
     } catch (error) {
       console.error("Customer portal error:", error);
-      toast.error("Failed to open customer portal. Please try again.");
+      const message =
+        error instanceof ConvexError
+          ? (error.data as { message?: string })?.message ||
+            "Failed to open customer portal."
+          : "Failed to open customer portal. Please try again.";
+      toast.error(message);
     } finally {
       setIsLoading(false);
     }

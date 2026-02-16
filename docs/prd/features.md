@@ -133,16 +133,20 @@ Digital catalog + inventory management. No e-commerce/online sales.
 
 ## SaaS Billing
 
-> **Files:** `convex/polar.ts`, `convex/polarSync.ts`, `convex/subscriptions.ts`, `convex/subscriptions_helpers.ts`, `convex/http.ts` (webhook routes), `convex/crons.ts`
-> **Frontend:** `src/modules/billing/` (7 components), `src/app/[slug]/(authenticated)/billing/page.tsx`
+> **Files:** `convex/polar.ts`, `convex/polarActions.ts`, `convex/polarSync.ts`, `convex/subscriptions.ts`, `convex/subscriptions_helpers.ts`, `convex/http.ts` (webhook routes), `convex/crons.ts`
+> **Frontend:** `src/modules/billing/` (9 components + 1 hook), `src/app/[slug]/(authenticated)/billing/page.tsx`
 
-Polar.sh integration via `@convex-dev/polar`. Dynamic pricing fetched from Polar API.
+Polar.sh integration via `@convex-dev/polar`. Dynamic pricing fetched from Polar API. All currency/date formatting uses `tr-TR` locale.
 
-**Subscription states:** pending_payment → active → (payment_failed) → grace_period → suspended | canceled
-**Webhook handling:** `onSubscriptionCreated` (maps customer → org), `onSubscriptionUpdated` (status sync, `canceledAt` forces canceled)
-**Suspended access:** `SuspendedOverlay` blocks all pages except billing. `GracePeriodBanner` warns during grace period.
+**Subscription states:** pending_payment → active → (payment_failed) → past_due → grace_period → suspended. Active → canceling → canceled (period end). Canceling → active (reactivate or plan change).
+**Webhook handling:** `onSubscriptionCreated` (maps customer → org), `onSubscriptionUpdated` (status sync via `mapPolarStatus(status, canceledAt, endedAt)` — differentiates "canceling" vs "canceled")
+**Suspended access:** `SuspendedOverlay` (accessible: role=alertdialog, focus trap, aria attributes) blocks all pages except billing. `GracePeriodBanner` warns during grace period. Both use shared `useSubscriptionStatus` hook.
 **Booking enforcement:** `appointments.create` / `createByStaff` block if subscription is suspended/canceled/pending_payment.
-**Cancellation:** `CancelSubscriptionDialog` with toast feedback, `e.preventDefault()` to control dialog close, rate limited (3/hour).
+**Cancellation:** `CancelSubscriptionDialog` with reason survey (8 reasons from Polar enum + free comment), sets status to "canceling" (not "canceled"), `cancelAtPeriodEnd: true` sent to Polar API. Rate limited (3/hour).
+**Reactivation:** When canceling, current plan card shows "Reactivate Plan" button. Sends `cancelAtPeriodEnd: false` to Polar API, sets local status back to "active".
+**Plan change:** Active/canceling subscriptions show "Switch to {Plan}" with confirmation dialog. Uses `@convex-dev/polar`'s `changeCurrentSubscription` (Polar handles proration). Also undoes pending cancellation.
+**Billing history:** Fetched via Polar Customer Portal API (`customerPortalOrdersList` with customer session token). Table shows date, product, billing reason, amount, status.
+**Owner-only:** Staff members see disabled plan buttons ("Only owners can manage plans"). Cancel/reactivate buttons only shown to owners.
 **Env vars:** `POLAR_ORGANIZATION_TOKEN`, `POLAR_WEBHOOK_SECRET`, `POLAR_SERVER`, `POLAR_PRODUCT_MONTHLY_ID`, `POLAR_PRODUCT_YEARLY_ID`
 
 ---

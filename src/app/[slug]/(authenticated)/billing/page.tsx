@@ -1,17 +1,20 @@
 "use client";
 
+import { useAction, useQuery } from "convex/react";
+import { ConvexError } from "convex/values";
+import { Loader2, RefreshCw } from "lucide-react";
+import { useState } from "react";
+import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
-import { useOrganization } from "@/modules/organization";
 import {
+  BillingHistory,
+  CancelSubscriptionDialog,
   CustomerPortalButton,
   PlanCard,
   SubscriptionWidget,
 } from "@/modules/billing";
-import { useAction, useQuery } from "convex/react";
-import { Loader2, RefreshCw } from "lucide-react";
-import { useState } from "react";
-import { toast } from "sonner";
+import { useOrganization } from "@/modules/organization";
 import { api } from "../../../../../convex/_generated/api";
 
 export default function BillingPage() {
@@ -54,15 +57,24 @@ export default function BillingPage() {
       toast.success("Products synced successfully");
     } catch (error) {
       console.error("Failed to sync products:", error);
-      toast.error("Failed to sync products. Please try again.");
+      const message =
+        error instanceof ConvexError
+          ? (error.data as { message?: string })?.message ||
+            "Failed to sync products."
+          : "Failed to sync products. Please try again.";
+      toast.error(message);
     } finally {
       setIsSyncing(false);
     }
   };
 
   const isOwner = currentRole === "owner";
+  const isCanceling = subscription.status === "canceling";
+  // "canceling" = still active on Polar until period end, can switch plans
   const isActive =
-    subscription.status === "active" || subscription.status === "past_due";
+    subscription.status === "active" ||
+    subscription.status === "past_due" ||
+    isCanceling;
   const currentPlan = subscription.plan;
   const polarSubId = subscription.polarSubscriptionId ?? undefined;
 
@@ -109,7 +121,10 @@ export default function BillingPage() {
                 product={products.monthly}
                 benefits={benefitsMap[products.monthly.id]}
                 isCurrent={isMonthly}
+                isCanceling={isCanceling}
                 subscriptionId={isActive ? polarSubId : undefined}
+                organizationId={activeOrganization._id}
+                isOwner={isOwner}
               />
             )}
             {products?.yearly && (
@@ -118,7 +133,10 @@ export default function BillingPage() {
                 badge={isYearly ? undefined : "Save 17%"}
                 benefits={benefitsMap[products.yearly.id]}
                 isCurrent={isYearly}
+                isCanceling={isCanceling}
                 subscriptionId={isActive ? polarSubId : undefined}
+                organizationId={activeOrganization._id}
+                isOwner={isOwner}
               />
             )}
           </div>
@@ -126,10 +144,24 @@ export default function BillingPage() {
       </div>
 
       {isOwner && isActive && (
-        <div className="flex gap-4">
-          <CustomerPortalButton />
+        <div className="space-y-4">
+          {isCanceling && (
+            <div className="rounded-lg border border-amber-500 bg-amber-50 p-4 text-sm dark:bg-amber-950/20">
+              <p className="font-medium text-amber-800 dark:text-amber-200">
+                Your subscription is scheduled to cancel at the end of your
+                billing period. You can switch to a different plan to continue
+                using your salon.
+              </p>
+            </div>
+          )}
+          <div className="flex gap-4">
+            <CustomerPortalButton />
+            {!isCanceling && <CancelSubscriptionDialog />}
+          </div>
         </div>
       )}
+
+      {isOwner && isActive && <BillingHistory />}
 
       {(subscription.status === "suspended" ||
         subscription.status === "pending_payment") && (

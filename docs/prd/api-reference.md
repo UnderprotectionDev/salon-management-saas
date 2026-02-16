@@ -132,16 +132,29 @@ Upload flow: `generateUploadUrl()` → `fetch(url, {method: "POST", body: file})
 
 | Function | Wrapper | Args | Returns |
 |----------|---------|------|---------|
-| `subscriptions.getSubscriptionStatus` | orgQuery | `{}` | `{status, plan?, currentPeriodEnd?, gracePeriodEndsAt?, cancelledAt?}` |
+| `subscriptions.getSubscriptionStatus` | orgQuery | `{}` | `{status, plan?, polarSubscriptionId?, trialEndsAt?, currentPeriodEnd?, gracePeriodEndsAt?, suspendedAt?, cancelledAt?}` |
 | `subscriptions.isSuspended` | orgQuery | `{}` | `boolean` |
-| `subscriptions.cancelSubscription` | ownerMutation | `{}` | `null` |
-| `polar.generateCheckoutLink` | action | `productIds, origin, successUrl, subscriptionId?` | `{url}` |
-| `polarSync.triggerSync` | action (auth required) | `{}` | — |
+| `subscriptions.cancelSubscription` | ownerMutation | `reason?, comment?` | `null` (sets status to "canceling", schedules Polar cancelAtPeriodEnd) |
+| `subscriptions.reactivateSubscription` | ownerMutation | `{}` | `null` (sets status back to "active", schedules Polar uncancel) |
+| `polarActions.generateCheckoutLink` | action | `productIds, origin, successUrl, subscriptionId?` | `{url}` |
+| `polarActions.generateCustomerPortalUrl` | action | `{}` | `{url}` |
+| `polarActions.getBillingHistory` | action | `{}` | `array({id, createdAt, amount, currency, productName, status, billingReason})` |
+| `polarActions.cancelInPolar` | internalAction | `polarSubscriptionId, reason?, comment?` | `null` (cancelAtPeriodEnd: true + reason to Polar API) |
+| `polarActions.reactivateInPolar` | internalAction | `polarSubscriptionId` | `null` (cancelAtPeriodEnd: false to Polar API) |
+| `polar.changeCurrentSubscription` | action | `productId` | `void` (switches plan via Polar subscriptionsUpdate) |
+| `polar.cancelCurrentSubscription` | action | `{}` | `void` |
+| `polar.getConfiguredProducts` | query | `{}` | `{monthly?, yearly?}` |
+| `polarSync.triggerSync` | action (super-admin only) | `{}` | — |
 | `polarSync.getProductBenefits` | query | `{}` | `array({polarProductId, benefits})` |
 
 Webhook routes registered in `convex/http.ts` via `polar.registerRoutes()`:
 - `onSubscriptionCreated`: Maps Polar customer → org owner → activates subscription
-- `onSubscriptionUpdated`: Finds org by `polarSubscriptionId` (indexed) → syncs status
+- `onSubscriptionUpdated`: Finds org by `polarSubscriptionId` (indexed) → syncs status via `mapPolarStatus(status, canceledAt, endedAt)`
+
+Subscription state transitions:
+- Cancel: `active` → `cancelSubscription()` → `"canceling"` → Polar webhook (period end) → `"canceled"`
+- Reactivate: `"canceling"` → `reactivateSubscription()` → `"active"` → Polar webhook confirms
+- Plan change: `"active"/"canceling"` → `changeCurrentSubscription()` → Polar webhook → `"active"` (new plan)
 
 ## Reports & Analytics
 

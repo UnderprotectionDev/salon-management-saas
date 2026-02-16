@@ -38,6 +38,7 @@ export const subscriptionStatusValidator = literals(
   "active",
   "trialing",
   "past_due",
+  "canceling",
   "canceled",
   "unpaid",
   "suspended",

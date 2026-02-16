@@ -3,8 +3,7 @@ import { productsList } from "@polar-sh/sdk/funcs/productsList.js";
 import { ConvexError, v } from "convex/values";
 import { internal } from "./_generated/api";
 import { action, internalAction, internalMutation } from "./_generated/server";
-import { ErrorCode } from "./lib/functions";
-import { publicQuery } from "./lib/functions";
+import { ErrorCode, isSuperAdminEmail, publicQuery } from "./lib/functions";
 import { polar } from "./polar";
 
 // =============================================================================
@@ -13,14 +12,17 @@ import { polar } from "./polar";
 
 export const syncProducts = internalAction({
   args: {},
+  returns: v.null(),
   handler: async (ctx) => {
     await polar.syncProducts(ctx);
     await fetchAndStoreBenefits(ctx);
+    return null;
   },
 });
 
 export const triggerSync = action({
   args: {},
+  returns: v.null(),
   handler: async (ctx) => {
     const identity = await ctx.auth.getUserIdentity();
     if (!identity) {
@@ -29,8 +31,19 @@ export const triggerSync = action({
         message: "Authentication required to trigger sync",
       });
     }
+
+    // Only super admins can trigger manual product sync
+    const email = identity.email ?? "";
+    if (!isSuperAdminEmail(email)) {
+      throw new ConvexError({
+        code: ErrorCode.FORBIDDEN,
+        message: "Only administrators can sync products",
+      });
+    }
+
     await polar.syncProducts(ctx);
     await fetchAndStoreBenefits(ctx);
+    return null;
   },
 });
 

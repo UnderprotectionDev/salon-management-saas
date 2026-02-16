@@ -1,6 +1,6 @@
 import { Polar } from "@convex-dev/polar";
-import type { DataModel } from "./_generated/dataModel";
 import { api, components } from "./_generated/api";
+import type { DataModel } from "./_generated/dataModel";
 
 export const polar: Polar<DataModel, { monthly: string; yearly: string }> =
   new Polar(components.polar, {
@@ -25,6 +25,7 @@ export const polar: Polar<DataModel, { monthly: string; yearly: string }> =
 
 const polarApi = polar.api();
 export const cancelCurrentSubscription = polarApi.cancelCurrentSubscription;
+export const changeCurrentSubscription = polarApi.changeCurrentSubscription;
 export const generateCustomerPortalUrl = polarApi.generateCustomerPortalUrl;
 export const getConfiguredProducts = polarApi.getConfiguredProducts;
 export const listAllProducts = polarApi.listAllProducts;

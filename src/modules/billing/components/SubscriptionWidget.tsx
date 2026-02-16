@@ -1,5 +1,6 @@
 "use client";
 
+import type { Infer } from "convex/values";
 import { Badge } from "@/components/ui/badge";
 import {
   Card,
@@ -9,7 +10,6 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import type { subscriptionDetailValidator } from "../../../../convex/lib/validators";
-import type { Infer } from "convex/values";
 
 type SubscriptionDetail = Infer<typeof subscriptionDetailValidator>;
 
@@ -23,6 +23,7 @@ const STATUS_LABELS: Record<
   active: { label: "Active", variant: "default" },
   trialing: { label: "Trial", variant: "secondary" },
   past_due: { label: "Past Due", variant: "destructive" },
+  canceling: { label: "Canceling", variant: "secondary" },
   canceled: { label: "Canceled", variant: "outline" },
   suspended: { label: "Suspended", variant: "destructive" },
   unpaid: { label: "Unpaid", variant: "destructive" },
@@ -31,9 +32,9 @@ const STATUS_LABELS: Record<
 
 function formatDate(timestamp: number | undefined) {
   if (!timestamp) return "—";
-  return new Date(timestamp).toLocaleDateString("en-US", {
-    month: "short",
+  return new Date(timestamp).toLocaleDateString(undefined, {
     day: "numeric",
+    month: "long",
     year: "numeric",
   });
 }

@@ -10,6 +10,7 @@ const VALID_STATUSES = new Set([
   "active",
   "trialing",
   "past_due",
+  "canceling",
   "canceled",
   "unpaid",
   "suspended",
@@ -20,6 +21,7 @@ type AppSubscriptionStatus =
   | "active"
   | "trialing"
   | "past_due"
+  | "canceling"
   | "canceled"
   | "unpaid"
   | "suspended"
@@ -27,14 +29,24 @@ type AppSubscriptionStatus =
 
 /**
  * Map Polar subscription status to our app's status.
+ *
+ * Key distinction:
+ * - "canceling" = canceledAt is set but endedAt is null (subscription still active until period end)
+ * - "canceled"  = endedAt is set (subscription has actually ended)
+ *
  * Unknown statuses default to "active" to avoid breaking the DB.
  */
 function mapPolarStatus(
   polarStatus: string,
   canceledAt: unknown,
+  endedAt: unknown,
 ): AppSubscriptionStatus {
-  // If canceledAt is set, always treat as canceled
-  if (canceledAt) return "canceled";
+  // If subscription has actually ended, it's truly canceled
+  if (endedAt) return "canceled";
+
+  // If cancellation requested but not yet ended, it's in "canceling" state
+  // (still active on Polar, user can switch plans)
+  if (canceledAt) return "canceling";
 
   // Map known Polar statuses to our statuses
   if (VALID_STATUSES.has(polarStatus)) {
@@ -82,12 +94,14 @@ polar.registerRoutes(http, {
       ? new Date(data.currentPeriodEnd).getTime()
       : undefined;
 
+    const status = mapPolarStatus(data.status, data.canceledAt, data.endedAt);
+
     await ctx.runMutation(internal.subscriptions.updateFromWebhook, {
       organizationId: member.organizationId,
-      subscriptionStatus: "active",
+      subscriptionStatus: status,
       polarSubscriptionId: data.id,
       polarCustomerId: data.customerId,
-      subscriptionPlan: data.product?.name ?? "pro",
+      subscriptionPlan: data.product?.name ?? "unknown",
       currentPeriodEnd,
     });
   },
@@ -105,7 +119,7 @@ polar.registerRoutes(http, {
       return;
     }
 
-    const status = mapPolarStatus(data.status, data.canceledAt);
+    const status = mapPolarStatus(data.status, data.canceledAt, data.endedAt);
 
     const currentPeriodEnd = data.currentPeriodEnd
       ? new Date(data.currentPeriodEnd).getTime()
@@ -116,7 +130,7 @@ polar.registerRoutes(http, {
       subscriptionStatus: status,
       polarSubscriptionId: data.id,
       subscriptionPlan:
-        data.product?.name ?? settings.subscriptionPlan ?? "pro",
+        data.product?.name ?? settings.subscriptionPlan ?? "unknown",
       currentPeriodEnd,
     });
   },
