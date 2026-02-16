@@ -64,14 +64,17 @@ export function CustomerReport() {
             <ReportCard
               title="Total Active Customers"
               value={String(report.totalActive)}
+              change={report.totalActiveChange}
             />
             <ReportCard
               title="New in Period"
               value={String(report.newInPeriod)}
+              change={report.newInPeriodChange}
             />
             <ReportCard
               title="Retention Rate"
               value={`${report.retentionRate}%`}
+              change={report.retentionRateChange}
             />
             <ReportCard
               title="Avg Appointments"

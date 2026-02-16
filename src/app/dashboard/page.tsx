@@ -2,6 +2,7 @@
 
 import { useConvexAuth, useMutation, useQuery } from "convex/react";
 import {
+  BarChart3,
   Bell,
   Building2,
   Calendar,
@@ -922,6 +923,12 @@ export default function DashboardPage() {
                   </Link>
                 </Button>
               )}
+              <Button variant="outline" size="sm" asChild>
+                <Link href="/dashboard/stats">
+                  <BarChart3 className="mr-2 size-4" />
+                  My Stats
+                </Link>
+              </Button>
               <Button variant="outline" size="sm" asChild>
                 <Link href="/settings">
                   <Settings className="mr-2 size-4" />

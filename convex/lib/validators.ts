@@ -487,6 +487,12 @@ export const statusBreakdownValidator = v.object({
   noShow: v.number(),
 });
 
+/** Hourly distribution data point */
+export const hourlyDistributionValidator = v.object({
+  hour: v.number(),
+  count: v.number(),
+});
+
 /** Full revenue report */
 export const revenueReportValidator = v.object({
   totalRevenue: v.number(),
@@ -501,6 +507,7 @@ export const revenueReportValidator = v.object({
   daily: v.array(revenueDailyPointValidator),
   byService: v.array(revenueByServiceValidator),
   byStaff: v.array(revenueByStaffValidator),
+  hourlyDistribution: v.array(hourlyDistributionValidator),
 });
 
 /** Staff performance entry */
@@ -600,8 +607,11 @@ export const customerProfileValidator = v.object({
 /** Customer analytics report */
 export const customerReportValidator = v.object({
   totalActive: v.number(),
+  totalActiveChange: v.number(),
   newInPeriod: v.number(),
+  newInPeriodChange: v.number(),
   retentionRate: v.number(),
+  retentionRateChange: v.number(),
   avgAppointmentsPerCustomer: v.number(),
   monthly: v.array(monthlyNewVsReturningValidator),
   topCustomers: v.array(topCustomerValidator),

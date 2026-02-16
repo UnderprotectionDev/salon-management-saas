@@ -1,6 +1,5 @@
 "use client";
 
-import type { Id } from "../../../../convex/_generated/dataModel";
 import {
   Table,
   TableBody,
@@ -10,6 +9,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { formatPrice } from "@/modules/services/lib/currency";
+import type { Id } from "../../../../convex/_generated/dataModel";
 
 type CustomerRow = {
   customerId: Id<"customers">;
