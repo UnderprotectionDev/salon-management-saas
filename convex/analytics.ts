@@ -2,7 +2,6 @@ import { v } from "convex/values";
 import type { Id } from "./_generated/dataModel";
 import type { DatabaseReader } from "./_generated/server";
 import { orgQuery } from "./lib/functions";
-import { getDatesBetween } from "./lib/scheduleResolver";
 import { dashboardStatsValidator } from "./lib/validators";
 
 /**
@@ -152,22 +151,22 @@ async function computeMonthlyRevenue(
   endDate: string,
   staffId?: Id<"staff">,
 ): Promise<number> {
-  const dates = getDatesBetween(startDate, endDate);
+  // Single range query instead of per-day loop (was N+1, now 1 query)
+  const allAppts = await db
+    .query("appointments")
+    .withIndex("by_org_date", (q) =>
+      q
+        .eq("organizationId", organizationId)
+        .gte("date", startDate)
+        .lte("date", endDate),
+    )
+    .collect();
+
   let total = 0;
-
-  for (const dateStr of dates) {
-    const dayAppts = await db
-      .query("appointments")
-      .withIndex("by_org_date", (q) =>
-        q.eq("organizationId", organizationId).eq("date", dateStr),
-      )
-      .collect();
-
-    for (const appt of dayAppts) {
-      if (appt.status === "completed") {
-        if (!staffId || appt.staffId === staffId) {
-          total += appt.total ?? 0;
-        }
+  for (const appt of allAppts) {
+    if (appt.status === "completed") {
+      if (!staffId || appt.staffId === staffId) {
+        total += appt.total ?? 0;
       }
     }
   }

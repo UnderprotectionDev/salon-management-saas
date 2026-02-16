@@ -11,7 +11,6 @@ import {
 import type { AppointmentWithDetails } from "../lib/types";
 import { formatDateStr } from "../lib/utils";
 import { AppointmentBlock } from "./AppointmentBlock";
-import { TimeAxis } from "./TimeAxis";
 
 type WeekViewProps = {
   appointments: AppointmentWithDetails[];
@@ -67,24 +66,19 @@ export function WeekView({
       ref={scrollRef}
       className="overflow-auto rounded-lg border bg-background"
     >
-      <div className="flex min-w-fit">
-        <TimeAxis />
-        <div className="flex flex-1">
-          {days.map((day) => {
-            const dayDate = parseISO(day);
-            const isToday = day === todayStr;
-            const dayAppts = (apptsByDate.get(day) ?? []).filter(
-              (a) => a.status !== "cancelled" && a.status !== "no_show",
-            );
-
-            return (
-              <div
-                key={day}
-                className={`min-w-[140px] flex-1 border-r last:border-r-0 ${isToday ? "bg-blue-50/30" : ""}`}
-              >
-                {/* Day header */}
+      <div className="min-w-fit">
+        {/* Sticky header row — separate from the grid so time axis and day
+            columns start at exactly the same vertical position */}
+        <div className="sticky top-0 z-10 flex border-b bg-background">
+          <div className="w-16 shrink-0 border-r" />
+          <div className="flex flex-1">
+            {days.map((day) => {
+              const dayDate = parseISO(day);
+              const isToday = day === todayStr;
+              return (
                 <div
-                  className={`sticky top-0 z-10 border-b p-2 text-center ${isToday ? "bg-blue-50" : "bg-background"}`}
+                  key={day}
+                  className={`min-w-[140px] flex-1 border-r last:border-r-0 p-2 text-center ${isToday ? "bg-blue-50" : "bg-background"}`}
                 >
                   <div className="text-xs text-muted-foreground">
                     {format(dayDate, "EEE")}
@@ -95,28 +89,63 @@ export function WeekView({
                     {format(dayDate, "d")}
                   </div>
                 </div>
+              );
+            })}
+          </div>
+        </div>
 
-                {/* Time grid + appointments */}
-                <div className="relative">
-                  {hours.map((hour) => (
-                    <div
-                      key={hour}
-                      className="border-b border-dashed border-muted"
-                      style={{ height: HOUR_HEIGHT }}
-                    />
-                  ))}
-
-                  {dayAppts.map((appt) => (
-                    <AppointmentBlock
-                      key={appt._id}
-                      appointment={appt}
-                      onClick={() => onAppointmentClick(appt)}
-                    />
-                  ))}
-                </div>
+        {/* Grid content: time axis + day columns side by side */}
+        <div className="flex">
+          {/* Time axis */}
+          <div className="relative w-16 shrink-0 border-r">
+            {hours.map((hour) => (
+              <div
+                key={hour}
+                className="relative border-b border-dashed border-muted"
+                style={{ height: HOUR_HEIGHT }}
+              >
+                <span className="absolute -top-2.5 right-2 text-xs text-muted-foreground tabular-nums">
+                  {String(hour).padStart(2, "0")}:00
+                </span>
               </div>
-            );
-          })}
+            ))}
+          </div>
+
+          {/* Day columns */}
+          <div className="flex flex-1">
+            {days.map((day) => {
+              const isToday = day === todayStr;
+              const dayAppts = (apptsByDate.get(day) ?? []).filter(
+                (a) => a.status !== "cancelled" && a.status !== "no_show",
+              );
+
+              return (
+                <div
+                  key={day}
+                  className={`min-w-[140px] flex-1 border-r last:border-r-0 ${isToday ? "bg-blue-50/30" : ""}`}
+                >
+                  <div className="relative">
+                    {hours.map((hour) => (
+                      <div
+                        key={hour}
+                        className="border-b border-dashed border-muted"
+                        style={{ height: HOUR_HEIGHT }}
+                      />
+                    ))}
+
+                    {dayAppts.map((appt) => (
+                      <AppointmentBlock
+                        key={appt._id}
+                        appointment={appt}
+                        onClick={() => onAppointmentClick(appt)}
+                        isDragDisabled
+                      />
+                    ))}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
         </div>
       </div>
     </div>

@@ -156,7 +156,7 @@ src/
 │   ├── organization/           # 4 files (Provider, switcher, hooks)
 │   ├── billing/                # 6 files (subscription, plans, cancel)
 │   ├── dashboard/              # 5 files (stats, charts)
-│   ├── calendar/               # 13 files (day/week views, DnD)
+│   ├── calendar/               # 15 files (day/week views, DnD, staff filter, reschedule, status actions)
 │   ├── notifications/          # 4 files (bell, panel)
 │   ├── reports/                # 16 files (revenue, staff, customer reports, CSV export)
 │   ├── ai/

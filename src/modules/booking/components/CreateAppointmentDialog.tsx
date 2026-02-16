@@ -45,6 +45,14 @@ import { formatMinutesAsTime } from "../lib/constants";
 type CreateAppointmentDialogProps = {
   organizationId: Id<"organization">;
   date: string;
+  /** Pre-select a staff member (e.g. from calendar slot click). */
+  initialStaffId?: Id<"staff">;
+  /** Pre-select a start time in minutes from midnight. */
+  initialTime?: number;
+  /** Controlled open state – when provided, hides the built-in trigger. */
+  externalOpen?: boolean;
+  /** Controlled open change handler. */
+  onExternalOpenChange?: (open: boolean) => void;
 };
 
 function getNearestQuarterHour(): string {
@@ -57,16 +65,26 @@ function getNearestQuarterHour(): string {
 export function CreateAppointmentDialog({
   organizationId,
   date,
+  initialStaffId,
+  initialTime,
+  externalOpen,
+  onExternalOpenChange,
 }: CreateAppointmentDialogProps) {
-  const [open, setOpen] = useState(false);
+  const [internalOpen, setInternalOpen] = useState(false);
+  const open = externalOpen ?? internalOpen;
+  const setOpen = onExternalOpenChange ?? setInternalOpen;
   const [isSubmitting, setIsSubmitting] = useState(false);
   const currentStaff = useCurrentStaff();
 
   // Form state
   const [customerId, setCustomerId] = useState<Id<"customers"> | "">("");
-  const [staffId, setStaffId] = useState<Id<"staff"> | "">("");
+  const [staffId, setStaffId] = useState<Id<"staff"> | "">(
+    initialStaffId ?? "",
+  );
   const [serviceIds, setServiceIds] = useState<Id<"services">[]>([]);
-  const [startTime, setStartTime] = useState("");
+  const [startTime, setStartTime] = useState(
+    initialTime !== undefined ? String(initialTime) : "",
+  );
   const [source, setSource] = useState<"walk_in" | "phone" | "staff">(
     "walk_in",
   );
@@ -100,12 +118,16 @@ export function CreateAppointmentDialog({
   const createByStaff = useMutation(api.appointments.createByStaff);
   const createCustomer = useMutation(api.customers.create);
 
-  // Default staff to current user's staff profile
+  // Default staff to initialStaffId or current user's staff profile
   useEffect(() => {
-    if (open && currentStaff && !staffId) {
-      setStaffId(currentStaff._id);
+    if (open && !staffId) {
+      if (initialStaffId) {
+        setStaffId(initialStaffId);
+      } else if (currentStaff) {
+        setStaffId(currentStaff._id);
+      }
     }
-  }, [open, currentStaff, staffId]);
+  }, [open, currentStaff, staffId, initialStaffId]);
 
   // Default start time to nearest quarter hour
   useEffect(() => {
@@ -215,12 +237,14 @@ export function CreateAppointmentDialog({
         if (!v) resetForm();
       }}
     >
-      <DialogTrigger asChild>
-        <Button>
-          <Plus className="mr-2 size-4" />
-          New Appointment
-        </Button>
-      </DialogTrigger>
+      {externalOpen === undefined && (
+        <DialogTrigger asChild>
+          <Button>
+            <Plus className="mr-2 size-4" />
+            New Appointment
+          </Button>
+        </DialogTrigger>
+      )}
       <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Create Appointment</DialogTitle>

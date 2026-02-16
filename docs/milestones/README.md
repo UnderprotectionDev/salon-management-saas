@@ -8,7 +8,7 @@
 | 2 | Services, Staff & Customers | ✅ Complete | 4 |
 | 3 | Booking Engine Core | ✅ Complete | 4 |
 | 4 | Booking Operations | ✅ Complete | 5 |
-| 5 | Dashboard & Calendar | ✅ Complete | 4 |
+| 5 | Dashboard & Calendar | ✅ Complete | 7 |
 | 6 | SaaS Billing (Polar.sh) | ✅ Complete | 5 |
 | 7 | Email Notifications (Resend) | ✅ Complete | 3 |
 | 8 | Reports & Analytics | ✅ Complete | 5 |

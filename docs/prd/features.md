@@ -18,9 +18,16 @@
 
 ## Admin Dashboard
 
-Dashboard metrics: today's appointments (total/completed/upcoming/no-shows/walk-ins), weekly bookings (+% change), monthly revenue (+% change, avg ticket).
+Dashboard metrics: today's appointments (total/completed/upcoming/no-shows/walk-ins), weekly bookings (+% change), monthly revenue (+% change, avg ticket). Revenue computed via single range query (no N+1).
 
-**Calendar views:** Day (staff columns, 15-min rows, drag-drop reschedule), Week, Month.
+**Calendar views:**
+- **Day view:** Staff columns, 15-min rows, sticky headers, current time indicator (red line)
+- **Week view:** 7-day grid with aligned time axis and sticky day headers
+- **Staff filter:** Owner-only dropdown to filter by specific staff member (both views)
+- **Appointment blocks:** Status color-coded + left border color-coded by service type (10-color deterministic palette). Hover tooltip (400ms): customer, time, services, status, price
+- **Click-to-create:** Click empty slot in day view → pre-filled appointment dialog (staff + time)
+- **Drag-and-drop reschedule (day view):** `@dnd-kit/core`, pending/confirmed only, ghost overlay, drop target highlight. Confirmation dialog with editable time selector showing appointment's actual duration, 15-min steps, target staff's occupied slots disabled with "(Dolu)" label
+- **Status actions:** Detail modal with state-specific buttons (Confirm, Check-In, Start, Complete, No-Show, Cancel with confirmation, Reschedule with date/time/staff picker)
 
 **Settings pages:** Business info, working hours, booking settings (advance window, min notice, cancellation window, slot duration, staff selection toggle).
 
