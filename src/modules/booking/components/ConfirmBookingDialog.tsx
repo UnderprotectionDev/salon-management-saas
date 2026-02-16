@@ -124,10 +124,14 @@ export function ConfirmBookingDialog({
         sessionId,
       });
 
-      // Best-effort: link customer and save phone
-      linkCustomer({ customerId: result.customerId }).catch(() => {});
+      // Best-effort: link customer and save phone (log errors for debugging)
+      linkCustomer({ customerId: result.customerId }).catch((e: unknown) =>
+        console.error("Failed to link customer:", e),
+      );
       if (phone) {
-        savePhoneToProfile({ phone: phone.trim() }).catch(() => {});
+        savePhoneToProfile({ phone: phone.trim() }).catch((e: unknown) =>
+          console.error("Failed to save phone to profile:", e),
+        );
       }
 
       onConfirm({

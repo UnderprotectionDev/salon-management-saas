@@ -142,13 +142,13 @@ Polar.sh integration via `@convex-dev/polar`. Dynamic pricing fetched from Polar
 
 ## Email Notifications
 
-> **Files:** `convex/email.tsx` (~467 lines), `convex/email_helpers.ts`, `convex/lib/ics.ts`, `src/emails/` (4 templates + 4 shared components)
+> **Files:** `convex/email.tsx` (~380 lines), `convex/email_helpers.ts`, `convex/lib/ics.ts`, `src/emails/` (3 templates + 4 shared components)
 
 Resend integration via `resend@6.9.1` + `@react-email/components`. All email sending is via Convex `internalAction` with retry (3 attempts, exponential backoff).
 
-**Email types:** Booking confirmation (with ICS attachment), 24-hour reminder, cancellation notification, staff invitation.
+**Email types:** Booking confirmation (with ICS attachment), cancellation notification, staff invitation.
 **Triggers:** `ctx.scheduler.runAfter(0)` in appointment create/cancel and invitation create/resend.
-**Cron:** Daily at 09:00 UTC for 24-hour reminders.
+**Note:** 24-hour reminder emails were removed. Only event-driven emails (on booking/cancellation) are sent.
 **Env vars:** `RESEND_API_KEY`, `RESEND_FROM_EMAIL`, `SITE_URL`
 
 ---

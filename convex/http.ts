@@ -1,6 +1,8 @@
 import { httpRouter } from "convex/server";
 import { internal } from "./_generated/api";
+import { httpAction } from "./_generated/server";
 import { authComponent, createAuth } from "./auth";
+import { rateLimiter } from "./lib/rateLimits";
 import { polar } from "./polar";
 
 /** Valid subscription statuses in our app */
@@ -118,6 +120,73 @@ polar.registerRoutes(http, {
       currentPeriodEnd,
     });
   },
+});
+
+// =============================================================================
+// Appointment: Confirmation Code Lookup (rate-limited)
+// =============================================================================
+
+http.route({
+  path: "/api/appointments/by-confirmation",
+  method: "GET",
+  handler: httpAction(async (ctx, request) => {
+    const url = new URL(request.url);
+    const code = url.searchParams.get("code");
+    const orgId = url.searchParams.get("orgId");
+
+    if (!code || !orgId) {
+      return new Response(
+        JSON.stringify({ error: "Missing code or orgId parameter" }),
+        { status: 400, headers: { "Content-Type": "application/json" } },
+      );
+    }
+
+    // Validate confirmation code format (6 chars, alphanumeric excluding 0/O/I/1)
+    if (!/^[A-HJ-NP-Z2-9]{6}$/.test(code)) {
+      return new Response(JSON.stringify({ error: "Invalid code format" }), {
+        status: 400,
+        headers: { "Content-Type": "application/json" },
+      });
+    }
+
+    // Rate limit by org + code combo to prevent brute-force enumeration
+    const { ok, retryAfter } = await rateLimiter.limit(
+      ctx,
+      "confirmationCodeLookup",
+      { key: `${orgId}:${code}` },
+    );
+    if (!ok) {
+      return new Response(
+        JSON.stringify({
+          error: "Rate limit exceeded",
+          retryAfter: Math.ceil((retryAfter ?? 60000) / 1000),
+        }),
+        {
+          status: 429,
+          headers: {
+            "Content-Type": "application/json",
+            "Retry-After": String(Math.ceil((retryAfter ?? 60000) / 1000)),
+          },
+        },
+      );
+    }
+
+    const result = await ctx.runQuery(
+      internal.appointments._getByConfirmationCode,
+      {
+        organizationId: orgId as never,
+        confirmationCode: code,
+      },
+    );
+
+    return new Response(JSON.stringify({ data: result }), {
+      status: 200,
+      headers: {
+        "Content-Type": "application/json",
+        "Cache-Control": "no-store",
+      },
+    });
+  }),
 });
 
 export default http;

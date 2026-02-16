@@ -5,7 +5,6 @@ import { v } from "convex/values";
 import { Resend } from "resend";
 import BookingConfirmation from "../src/emails/BookingConfirmation";
 import Cancellation from "../src/emails/Cancellation";
-import Reminder24Hour from "../src/emails/Reminder24Hour";
 import StaffInvitation from "../src/emails/StaffInvitation";
 import { internal } from "./_generated/api";
 import { internalAction } from "./_generated/server";
@@ -216,94 +215,6 @@ export const sendBookingConfirmation = internalAction({
       });
     } else {
       console.error(`[email] Failed to send confirmation: ${result.error}`);
-    }
-  },
-});
-
-/**
- * Send 24-hour reminder email to customer.
- * Called from daily cron job via scheduler.
- */
-export const send24HourReminder = internalAction({
-  args: {
-    appointmentId: v.id("appointments"),
-  },
-  handler: async (ctx, args) => {
-    const appointment = await ctx.runQuery(
-      internal.email_helpers.getAppointmentData,
-      { appointmentId: args.appointmentId },
-    );
-    if (!appointment) return;
-
-    // Skip if already sent (idempotency)
-    if (appointment.reminderSentAt) {
-      console.log(`[email] Reminder already sent for ${args.appointmentId}`);
-      return;
-    }
-
-    // Skip if cancelled/completed
-    if (
-      appointment.status === "cancelled" ||
-      appointment.status === "completed" ||
-      appointment.status === "no_show"
-    ) {
-      return;
-    }
-
-    const customer = await ctx.runQuery(internal.email_helpers.getCustomer, {
-      customerId: appointment.customerId,
-    });
-    if (!customer?.email) return;
-
-    const org = await ctx.runQuery(internal.email_helpers.getOrganization, {
-      organizationId: appointment.organizationId,
-    });
-    const services = await ctx.runQuery(
-      internal.email_helpers.getAppointmentServices,
-      { appointmentId: args.appointmentId },
-    );
-    const staff = appointment.staffId
-      ? await ctx.runQuery(internal.email_helpers.getStaff, {
-          staffId: appointment.staffId,
-        })
-      : null;
-
-    const orgName = org?.name ?? "Salon";
-    const orgSlug = org?.slug ?? "";
-    const siteUrl = getSiteUrl();
-
-    const html = await render(
-      <Reminder24Hour
-        organizationName={orgName}
-        organizationLogo={org?.logo}
-        customerName={customer.name}
-        confirmationCode={appointment.confirmationCode}
-        date={formatDateReadable(appointment.date)}
-        startTime={formatMinutesToTime(appointment.startTime)}
-        endTime={formatMinutesToTime(appointment.endTime)}
-        services={services.map((s) => ({
-          name: s.serviceName,
-          duration: s.duration,
-        }))}
-        staffName={staff?.name ?? "Staff"}
-        viewUrl={`${siteUrl}/${orgSlug}/appointment/${appointment.confirmationCode}`}
-      />,
-    );
-
-    const resend = createResendClient();
-    const result = await sendEmailWithRetry(resend, {
-      from: `${orgName} <${getFromEmail()}>`,
-      to: [customer.email],
-      subject: `Reminder: Appointment Tomorrow at ${formatMinutesToTime(appointment.startTime)} - ${orgName}`,
-      html,
-    });
-
-    if (result.success) {
-      await ctx.runMutation(internal.email_helpers.markReminderSent, {
-        appointmentId: args.appointmentId,
-      });
-    } else {
-      console.error(`[email] Failed to send reminder: ${result.error}`);
     }
   },
 });

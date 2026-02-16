@@ -1,5 +1,4 @@
 import { v } from "convex/values";
-import { internal } from "./_generated/api";
 import { internalMutation, internalQuery } from "./_generated/server";
 import {
   appointmentDocValidator,
@@ -106,60 +105,6 @@ export const markConfirmationSent = internalMutation({
     await ctx.db.patch(args.appointmentId, {
       confirmationSentAt: Date.now(),
     });
-    return null;
-  },
-});
-
-export const markReminderSent = internalMutation({
-  args: { appointmentId: v.id("appointments") },
-  returns: v.null(),
-  handler: async (ctx, args) => {
-    await ctx.db.patch(args.appointmentId, {
-      reminderSentAt: Date.now(),
-    });
-    return null;
-  },
-});
-
-/**
- * Daily cron job to send 24-hour advance reminder emails.
- * Finds all appointments for tomorrow that haven't received a reminder yet.
- */
-export const send24HourRemindersDaily = internalMutation({
-  args: {},
-  returns: v.null(),
-  handler: async (ctx) => {
-    const now = Date.now();
-    const in24Hours = now + 24 * 60 * 60 * 1000;
-    const tomorrow = new Date(in24Hours);
-    const tomorrowDateStr = `${tomorrow.getUTCFullYear()}-${String(tomorrow.getUTCMonth() + 1).padStart(2, "0")}-${String(tomorrow.getUTCDate()).padStart(2, "0")}`;
-
-    const orgs = await ctx.db.query("organization").collect();
-
-    for (const org of orgs) {
-      const appointments = await ctx.db
-        .query("appointments")
-        .withIndex("by_org_date", (q) =>
-          q.eq("organizationId", org._id).eq("date", tomorrowDateStr),
-        )
-        .filter((q) =>
-          q.and(
-            q.or(
-              q.eq(q.field("status"), "pending"),
-              q.eq(q.field("status"), "confirmed"),
-            ),
-            q.eq(q.field("reminderSentAt"), undefined),
-          ),
-        )
-        .collect();
-
-      for (const appt of appointments) {
-        await ctx.scheduler.runAfter(0, internal.email.send24HourReminder, {
-          appointmentId: appt._id,
-        });
-      }
-    }
-
     return null;
   },
 });

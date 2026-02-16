@@ -45,7 +45,10 @@ import {
 } from "@/components/ui/sidebar";
 import { authClient } from "@/lib/auth-client";
 import { GracePeriodBanner, SuspendedOverlay } from "@/modules/billing";
-import { NotificationBell } from "@/modules/notifications";
+import {
+  NotificationBell,
+  useNotificationToast,
+} from "@/modules/notifications";
 import {
   OrganizationProvider,
   OrganizationSwitcher,
@@ -118,6 +121,9 @@ function AuthenticatedLayoutContent({
 
   const { isAuthenticated, isLoading: isAuthLoading } = useConvexAuth();
   const { data: session } = authClient.useSession();
+
+  // Show toast when a new notification arrives (reactive subscription)
+  useNotificationToast();
   const isSuperAdmin = useQuery(
     api.admin.checkIsSuperAdmin,
     isAuthenticated ? {} : "skip",

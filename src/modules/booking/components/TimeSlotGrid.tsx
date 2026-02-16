@@ -48,30 +48,45 @@ export function TimeSlotGrid({
 
   const acquireLock = useMutation(api.slotLocks.acquire);
 
+  const tryAcquireLock = async (slot: NonNullable<typeof slots>[number]) => {
+    const result = await acquireLock({
+      organizationId,
+      staffId: slot.staffId,
+      date,
+      startTime: slot.startTime,
+      endTime: slot.endTime,
+      sessionId,
+    });
+    onSlotSelect(
+      slot.startTime,
+      slot.endTime,
+      result.lockId,
+      result.expiresAt,
+      slot.staffId,
+    );
+  };
+
   const handleSlotClick = async (slot: NonNullable<typeof slots>[number]) => {
     if (isLocking || disabled) return;
     setIsLocking(true);
     try {
-      const result = await acquireLock({
-        organizationId,
-        staffId: slot.staffId,
-        date,
-        startTime: slot.startTime,
-        endTime: slot.endTime,
-        sessionId,
-      });
-      onSlotSelect(
-        slot.startTime,
-        slot.endTime,
-        result.lockId,
-        result.expiresAt,
-        slot.staffId,
-      );
-    } catch (error: unknown) {
-      const msg =
-        (error as { data?: { message?: string } })?.data?.message ??
-        "Could not reserve time slot";
-      toast.error(msg);
+      await tryAcquireLock(slot);
+    } catch (_firstError: unknown) {
+      // Auto-retry once after 500ms
+      try {
+        await new Promise((r) => setTimeout(r, 500));
+        await tryAcquireLock(slot);
+      } catch (retryError: unknown) {
+        const msg =
+          (retryError as { data?: { message?: string } })?.data?.message ??
+          "Could not reserve time slot";
+        toast.error(msg, {
+          action: {
+            label: "Retry",
+            onClick: () => handleSlotClick(slot),
+          },
+        });
+      }
     } finally {
       setIsLocking(false);
     }
@@ -146,7 +161,8 @@ export function TimeSlotGrid({
             {staffSlots.map((slot) => {
               const isSelected =
                 selectedStartTime === slot.startTime &&
-                (selectedStaffId === undefined || selectedStaffId === slot.staffId);
+                (selectedStaffId === undefined ||
+                  selectedStaffId === slot.staffId);
               return (
                 <button
                   key={`${slot.staffId}-${slot.startTime}`}
