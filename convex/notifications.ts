@@ -1,5 +1,10 @@
 import { ConvexError, v } from "convex/values";
 import {
+  addDays,
+  getCurrentMinutes,
+  getTodayDateString,
+} from "./lib/dateTime";
+import {
   ErrorCode,
   internalMutation,
   orgMutation,
@@ -59,6 +64,30 @@ export const getUnreadCount = orgQuery({
       .collect();
 
     return unread.length;
+  },
+});
+
+/**
+ * Get the most recent notification for the current staff member.
+ * Used by the reactive toast system to detect new notifications.
+ */
+export const getLatest = orgQuery({
+  args: {},
+  returns: v.union(notificationDocValidator, v.null()),
+  handler: async (ctx) => {
+    if (!ctx.staff) return null;
+
+    // Query by org+staff index, ordered desc by _creationTime (default),
+    // and take the first (most recent) notification
+    return await ctx.db
+      .query("notifications")
+      .withIndex("by_org_staff", (q) =>
+        q
+          .eq("organizationId", ctx.organizationId)
+          .eq("recipientStaffId", ctx.staff!._id),
+      )
+      .order("desc")
+      .first();
   },
 });
 
@@ -252,46 +281,76 @@ export const sendReminders = internalMutation({
   returns: v.null(),
   handler: async (ctx) => {
     const now = Date.now();
-    const today = new Date(now);
-    const dateStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}-${String(today.getDate()).padStart(2, "0")}`;
+    // TODO: Consider per-org timezone when multi-timezone support is needed.
+    // Currently all salons operate in Turkey timezone.
+    const timezone = "Europe/Istanbul";
 
-    // Current time in minutes from midnight
-    const currentMinutes = today.getHours() * 60 + today.getMinutes();
+    // Use timezone-aware date and time
+    const dateStr = getTodayDateString(timezone);
+    const currentMinutes = getCurrentMinutes(timezone);
     const windowStart = currentMinutes + 25;
     const windowEnd = currentMinutes + 35;
 
-    // Get all orgs, then query each org's appointments for today via index
-    const orgs = await ctx.db.query("organization").collect();
+    // Handle midnight boundary: if window crosses into next day (windowEnd > 1439),
+    // we need to also check early-morning appointments on the next date.
+    const crossesMidnight = windowEnd > 1439;
+    const nextDateStr = crossesMidnight ? addDays(dateStr, 1) : null;
+    const wrappedWindowEnd = crossesMidnight ? windowEnd - 1440 : windowEnd;
 
-    const todayAppts = [];
-    for (const org of orgs) {
-      const orgAppts = await ctx.db
+    // Query confirmed/pending appointments via by_status_date index
+    const pendingAppts = await ctx.db
+      .query("appointments")
+      .withIndex("by_status_date", (q) =>
+        q.eq("status", "pending").eq("date", dateStr),
+      )
+      .collect();
+    const confirmedAppts = await ctx.db
+      .query("appointments")
+      .withIndex("by_status_date", (q) =>
+        q.eq("status", "confirmed").eq("date", dateStr),
+      )
+      .collect();
+
+    // Also query next day's appointments if window crosses midnight
+    let nextDayAppts: typeof pendingAppts = [];
+    if (nextDateStr) {
+      const nextPending = await ctx.db
         .query("appointments")
-        .withIndex("by_org_date", (q) =>
-          q.eq("organizationId", org._id).eq("date", dateStr),
-        )
-        .filter((q) =>
-          q.and(
-            q.or(
-              q.eq(q.field("status"), "pending"),
-              q.eq(q.field("status"), "confirmed"),
-            ),
-            q.eq(q.field("reminderSentAt"), undefined),
-          ),
+        .withIndex("by_status_date", (q) =>
+          q.eq("status", "pending").eq("date", nextDateStr),
         )
         .collect();
-
-      for (const a of orgAppts) {
-        if (a.startTime >= windowStart && a.startTime <= windowEnd) {
-          todayAppts.push(a);
-        }
-      }
+      const nextConfirmed = await ctx.db
+        .query("appointments")
+        .withIndex("by_status_date", (q) =>
+          q.eq("status", "confirmed").eq("date", nextDateStr),
+        )
+        .collect();
+      nextDayAppts = [...nextPending, ...nextConfirmed];
     }
+
+    // Filter today's appointments: startTime within [windowStart, min(windowEnd, 1439)]
+    const todayFiltered = [...pendingAppts, ...confirmedAppts].filter(
+      (a) =>
+        a.notificationReminderSentAt === undefined &&
+        a.startTime >= windowStart &&
+        a.startTime <= Math.min(windowEnd, 1439),
+    );
+
+    // Filter next day's appointments: startTime within [0, wrappedWindowEnd]
+    const nextDayFiltered = nextDayAppts.filter(
+      (a) =>
+        a.notificationReminderSentAt === undefined &&
+        a.startTime >= 0 &&
+        a.startTime <= wrappedWindowEnd,
+    );
+
+    const todayAppts = [...todayFiltered, ...nextDayFiltered];
 
     for (const appt of todayAppts) {
       // Skip if no staff assigned
       if (!appt.staffId) {
-        await ctx.db.patch(appt._id, { reminderSentAt: now });
+        await ctx.db.patch(appt._id, { notificationReminderSentAt: now });
         continue;
       }
 
@@ -307,8 +366,8 @@ export const sendReminders = internalMutation({
         createdAt: now,
       });
 
-      // Mark reminder as sent
-      await ctx.db.patch(appt._id, { reminderSentAt: now });
+      // Mark notification reminder as sent
+      await ctx.db.patch(appt._id, { notificationReminderSentAt: now });
     }
 
     return null;

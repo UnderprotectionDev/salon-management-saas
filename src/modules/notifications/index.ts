@@ -1,3 +1,4 @@
 export { NotificationBell } from "./components/NotificationBell";
-export { NotificationPanel } from "./components/NotificationPanel";
 export { NotificationItem } from "./components/NotificationItem";
+export { NotificationPanel } from "./components/NotificationPanel";
+export { useNotificationToast } from "./hooks/useNotificationToast";

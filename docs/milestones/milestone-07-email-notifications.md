@@ -1,12 +1,11 @@
 # Milestone 7: Email Notifications (Resend)
 
-**Status:** ✅ Complete | **User Stories:** 4
+**Status:** ✅ Complete | **User Stories:** 3
 
 ## Goals
 
 - Resend integration with React Email templates
 - Booking confirmation email with ICS attachment
-- 24-hour advance reminder (daily cron at 09:00 UTC)
 - Cancellation notification (customer + staff)
 - Staff invitation email (migrate to React Email)
 
@@ -19,15 +18,15 @@
 - Mobile-responsive, org branding
 - Files: `convex/email.tsx`, `src/emails/BookingConfirmation.tsx`, `convex/lib/ics.ts`
 
-### US-024: 24-Hour Advance Reminder
-- Scheduler: daily at 09:00 UTC
-- Finds appointments starting in 24h, status pending/confirmed
-- Includes reschedule + cancel links
-- Retry: up to 3 attempts
-- Files: `src/emails/Reminder24Hour.tsx`, `convex/email_helpers.ts`, `convex/crons.ts`
+### ~~US-024: 24-Hour Advance Reminder~~ (Removed)
+- **Removed:** Reminder emails were removed from the system. Only appointment creation and cancellation emails are sent.
+- ~~Scheduler: daily at 09:00 UTC~~
+- Removed files: `src/emails/Reminder24Hour.tsx`, `send24HourRemindersDaily` in `convex/email_helpers.ts`, `send24HourReminder` in `convex/email.tsx`, cron job in `convex/crons.ts`
+- Schema fields removed: `reminderSentAt`, `emailReminderSentAt`
+- `markReminderSent` mutation removed from `email_helpers.ts`
 
 ### US-028: Cancellation Email
-- Sent on status → "cancelled"
+- Sent on status -> "cancelled"
 - Includes: Reason, original details, "Book again" link
 - Sent to customer and staff
 - Files: `src/emails/Cancellation.tsx`
@@ -48,3 +47,4 @@
 ## Non-Goals
 
 - Email customization per org, unsubscribe, multi-language
+- **Reminder emails** - Removed; only booking confirmation and cancellation emails are sent

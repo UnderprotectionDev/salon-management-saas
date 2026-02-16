@@ -15,8 +15,7 @@ export type BookingState = {
   sessionId: string;
 };
 
-const generateSessionId = () =>
-  `${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
+const generateSessionId = () => crypto.randomUUID();
 
 export function useBookingFlow() {
   const [state, setState] = useState<BookingState>({

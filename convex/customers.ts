@@ -299,6 +299,8 @@ export const searchByPhone = orgQuery({
         ? await getStaffCustomerIds(ctx.db, ctx.staff._id)
         : null;
 
+    // Fetch all org customers for substring phone matching
+    // .collect() instead of .take(200) to avoid silently missing matches in larger orgs
     const customers = await ctx.db
       .query("customers")
       .withIndex("by_organization", (q) =>

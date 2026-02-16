@@ -82,7 +82,7 @@ Custom wrappers in `convex/lib/functions.ts` with progressive access levels:
 | addMember | 10/hour | org |
 | createService | 20/hour | org |
 | createBooking | 10/hour | org |
-| cancelBooking | 5/hour | org |
+| cancelBooking | 3/hour | user |
 | rescheduleBooking | 3/hour | org |
 | createScheduleOverride | 30/day | org |
 | createTimeOffRequest | 5/day | staff |
@@ -92,6 +92,9 @@ Custom wrappers in `convex/lib/functions.ts` with progressive access levels:
 | suspendOrganization | 10/hour | superadmin |
 | deleteOrganization | 5/day | superadmin |
 | banUser | 10/hour | superadmin |
+| acquireSlotLock | 10/min | user |
+| confirmationCodeLookup | 10/min | org+code |
+| deleteAccount | 1/day | user |
 | aiPhotoAnalysis | 5/hour | customer |
 | aiSimulation | 3/hour | customer |
 | aiChat | 30/hour | customer |
@@ -116,7 +119,7 @@ convex/
 │   ├── relationships.ts  # DB relationship helpers
 │   └── rls.ts            # RLS helpers
 ├── schema.ts             # Database schema (~533 lines)
-├── appointments.ts       # ~1,425 lines
+├── appointments.ts       # ~1,700 lines
 ├── customers.ts          # ~610 lines
 ├── services.ts           # ~411 lines
 ├── staff.ts (~447 lines), members.ts, organizations.ts, invitations.ts
@@ -125,7 +128,7 @@ convex/
 ├── serviceCategories.ts, appointmentServices.ts
 ├── polar.ts, polarSync.ts, subscriptions.ts, subscriptions_helpers.ts
 ├── analytics.ts, reports.ts (~603 lines), notifications.ts
-├── email.tsx (~467 lines), email_helpers.ts
+├── email.tsx (~380 lines), email_helpers.ts
 ├── aiAnalysis.ts, aiSimulations.ts, aiChat.ts
 ├── aiCredits.ts, aiForecasts.ts, aiCareSchedules.ts, aiMoodBoard.ts
 ├── aiActions.tsx              # "use node" - external AI calls (Gateway, fal.ai)

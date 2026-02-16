@@ -2,11 +2,14 @@ import { paginationOptsValidator } from "convex/server";
 import { ConvexError, v } from "convex/values";
 import type { Doc, Id } from "./_generated/dataModel";
 import type { DatabaseReader } from "./_generated/server";
+import { internalQuery } from "./_generated/server";
 import { ensureUniqueCode } from "./lib/confirmation";
 import {
   dateTimeToEpoch,
+  getTodayDateString,
   isOverlapping,
   timeStringToMinutes,
+  validateDateString,
 } from "./lib/dateTime";
 import {
   authedMutation,
@@ -49,10 +52,10 @@ async function enrichAppointment(
 
   return {
     ...appointment,
-    customerName: customer?.name ?? "Unknown",
+    customerName: customer?.name ?? "Silinen Musteri",
     customerPhone: customer?.phone ?? "",
     customerEmail: customer?.email,
-    staffName: staff?.name ?? "Deleted staff",
+    staffName: staff?.name ?? "Silinen Personel",
     staffImageUrl: staff?.imageUrl,
     services: apptServices.map((s) => ({
       serviceId: s.serviceId,
@@ -120,10 +123,10 @@ async function batchEnrichAppointments(
 
     return {
       ...appt,
-      customerName: customer?.name ?? "Unknown",
+      customerName: customer?.name ?? "Silinen Musteri",
       customerPhone: customer?.phone ?? "",
       customerEmail: customer?.email,
-      staffName: staff?.name ?? "Deleted staff",
+      staffName: staff?.name ?? "Silinen Personel",
       staffImageUrl: staff?.imageUrl,
       services: apptServices.map((s) => ({
         serviceId: s.serviceId,
@@ -500,6 +503,9 @@ export const create = authedMutation({
 /**
  * Look up an appointment by confirmation code (public).
  * Returns a limited view excluding sensitive fields.
+ *
+ * Note: Also available as rate-limited HTTP action at /api/appointments/by-confirmation.
+ * The publicQuery version is kept for backward compatibility and reactive subscriptions.
  */
 export const getByConfirmationCode = publicQuery({
   args: {
@@ -508,6 +514,65 @@ export const getByConfirmationCode = publicQuery({
   },
   returns: v.union(publicAppointmentValidator, v.null()),
   handler: async (ctx, args) => {
+    // Validate confirmation code format (6 chars, alphanumeric excluding 0/O/I/1)
+    if (!/^[A-HJ-NP-Z2-9]{6}$/.test(args.confirmationCode)) {
+      return null;
+    }
+
+    const appointment = await ctx.db
+      .query("appointments")
+      .withIndex("by_confirmation", (q) =>
+        q.eq("confirmationCode", args.confirmationCode),
+      )
+      .first();
+
+    if (!appointment || appointment.organizationId !== args.organizationId) {
+      return null;
+    }
+
+    const enriched = await enrichAppointment(ctx, appointment);
+
+    return {
+      _id: enriched._id,
+      date: enriched.date,
+      startTime: enriched.startTime,
+      endTime: enriched.endTime,
+      status: enriched.status,
+      source: enriched.source,
+      confirmationCode: enriched.confirmationCode,
+      staffName: enriched.staffName,
+      staffImageUrl: enriched.staffImageUrl,
+      staffId: enriched.staffId,
+      customerName: enriched.customerName,
+      customerPhone: enriched.customerPhone,
+      customerNotes: enriched.customerNotes,
+      cancelledAt: enriched.cancelledAt,
+      rescheduleCount: enriched.rescheduleCount,
+      total: enriched.total,
+      services: enriched.services.map((s) => ({
+        serviceId: s.serviceId,
+        serviceName: s.serviceName,
+        duration: s.duration,
+        price: s.price,
+      })),
+    };
+  },
+});
+
+/**
+ * Internal version of getByConfirmationCode for HTTP action rate limiting.
+ */
+export const _getByConfirmationCode = internalQuery({
+  args: {
+    organizationId: v.id("organization"),
+    confirmationCode: v.string(),
+  },
+  returns: v.union(publicAppointmentValidator, v.null()),
+  handler: async (ctx, args) => {
+    if (!/^[A-HJ-NP-Z2-9]{6}$/.test(args.confirmationCode)) {
+      return null;
+    }
+
     const appointment = await ctx.db
       .query("appointments")
       .withIndex("by_confirmation", (q) =>
@@ -556,24 +621,24 @@ export const listForCurrentUser = authedQuery({
   args: {},
   returns: v.array(userAppointmentValidator),
   handler: async (ctx) => {
-    // Find customer records linked to this user (limit to 50)
+    // Find customer records linked to this user (limit to 20 orgs)
     const customerRecords = await ctx.db
       .query("customers")
       .withIndex("by_user", (q) => q.eq("userId", ctx.user._id))
-      .take(50);
+      .take(20);
 
     if (customerRecords.length === 0) {
       return [];
     }
 
-    // Gather appointments from all customer records (limit to 100 per customer)
+    // Gather appointments from all customer records (limit to 50 per customer)
     const allAppointments: Doc<"appointments">[] = [];
     for (const customer of customerRecords) {
       const appts = await ctx.db
         .query("appointments")
         .withIndex("by_customer", (q) => q.eq("customerId", customer._id))
         .order("desc")
-        .take(100);
+        .take(50);
       allAppointments.push(...appts);
     }
 
@@ -634,10 +699,10 @@ export const listForCurrentUser = authedQuery({
         endTime: appt.endTime,
         status: appt.status,
         confirmationCode: appt.confirmationCode,
-        staffName: staff?.name ?? "Deleted staff",
+        staffName: staff?.name ?? "Silinen Personel",
         staffImageUrl: staff?.imageUrl,
         total: appt.total,
-        organizationName: org?.name ?? "Unknown",
+        organizationName: org?.name ?? "Bilinmeyen",
         organizationSlug: org?.slug ?? "",
         organizationLogo: org?.logo,
         services: apptServices.map((s) => ({
@@ -661,30 +726,63 @@ export const listForCurrentUser = authedQuery({
 export const list = orgQuery({
   args: {
     statusFilter: v.optional(appointmentStatusValidator),
+    startDate: v.optional(v.string()),
+    endDate: v.optional(v.string()),
   },
   returns: v.array(appointmentWithDetailsValidator),
   handler: async (ctx, args) => {
     const isStaffOnly = ctx.member.role === "staff";
     const staffFilter = isStaffOnly ? ctx.staff?._id : undefined;
 
+    // Validate date formats if provided
+    if (args.startDate && !validateDateString(args.startDate)) {
+      throw new ConvexError({
+        code: ErrorCode.VALIDATION_ERROR,
+        message: "Invalid startDate format. Expected YYYY-MM-DD.",
+      });
+    }
+    if (args.endDate && !validateDateString(args.endDate)) {
+      throw new ConvexError({
+        code: ErrorCode.VALIDATION_ERROR,
+        message: "Invalid endDate format. Expected YYYY-MM-DD.",
+      });
+    }
+
+    // Default to last 90 days if no date range specified (prevents unbounded fetches)
+    const todayStr = getTodayDateString("Europe/Istanbul");
+    const endDate = args.endDate ?? todayStr;
+    const startDate =
+      args.startDate ??
+      (() => {
+        // Parse as local date components to avoid UTC offset mismatch
+        const [year, month, day] = todayStr.split("-").map(Number);
+        const d = new Date(year, month - 1, day);
+        d.setDate(d.getDate() - 90);
+        return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+      })();
+
     let appointments: Doc<"appointments">[];
 
     if (isStaffOnly && staffFilter) {
-      // Staff: only their own appointments
-      appointments = await ctx.db
+      // Staff: fetch org range, then filter by staff in memory
+      const orgAppts = await ctx.db
         .query("appointments")
-        .withIndex("by_staff_date", (q) => q.eq("staffId", staffFilter))
+        .withIndex("by_org_date", (q) =>
+          q
+            .eq("organizationId", ctx.organizationId)
+            .gte("date", startDate)
+            .lte("date", endDate),
+        )
         .collect();
-      appointments = appointments.filter(
-        (a) => a.organizationId === ctx.organizationId,
+      appointments = orgAppts.filter(
+        (a) =>
+          a.staffId === staffFilter &&
+          (!args.statusFilter || a.status === args.statusFilter),
       );
-      if (args.statusFilter) {
-        appointments = appointments.filter(
-          (a) => a.status === args.statusFilter,
-        );
-      }
     } else if (args.statusFilter) {
-      appointments = await ctx.db
+      // Filter by status first, then date range in memory
+      // (by_org_status index doesn't include date, so we still need bounded fetch)
+      const statusAppts = await ctx.db
         .query("appointments")
         .withIndex("by_org_status", (q) =>
           q
@@ -692,11 +790,17 @@ export const list = orgQuery({
             .eq("status", args.statusFilter!),
         )
         .collect();
+      appointments = statusAppts.filter(
+        (a) => a.date >= startDate && a.date <= endDate,
+      );
     } else {
       appointments = await ctx.db
         .query("appointments")
-        .withIndex("by_organization", (q) =>
-          q.eq("organizationId", ctx.organizationId),
+        .withIndex("by_org_date", (q) =>
+          q
+            .eq("organizationId", ctx.organizationId)
+            .gte("date", startDate)
+            .lte("date", endDate),
         )
         .collect();
     }
@@ -729,7 +833,11 @@ export const listPaginated = orgQuery({
     const isStaffOnly = ctx.member.role === "staff";
     const staffFilter = isStaffOnly ? ctx.staff?._id : undefined;
 
-    let paginationResult;
+    let paginationResult: {
+      page: Doc<"appointments">[];
+      isDone: boolean;
+      continueCursor: string;
+    };
 
     if (isStaffOnly && staffFilter) {
       // Staff members can only paginate their own appointments.
@@ -945,6 +1053,14 @@ export const getByDate = orgQuery({
   },
   returns: v.array(appointmentWithDetailsValidator),
   handler: async (ctx, args) => {
+    // Validate date format
+    if (!validateDateString(args.date)) {
+      throw new ConvexError({
+        code: ErrorCode.VALIDATION_ERROR,
+        message: "Invalid date format. Expected YYYY-MM-DD.",
+      });
+    }
+
     // Staff can only see their own appointments
     const isStaffOnly = ctx.member.role === "staff";
     const effectiveStaffId =
@@ -990,6 +1106,17 @@ export const getByDateRange = orgQuery({
   },
   returns: v.array(appointmentWithDetailsValidator),
   handler: async (ctx, args) => {
+    // Validate date formats
+    if (
+      !validateDateString(args.startDate) ||
+      !validateDateString(args.endDate)
+    ) {
+      throw new ConvexError({
+        code: ErrorCode.VALIDATION_ERROR,
+        message: "Invalid date format. Expected YYYY-MM-DD.",
+      });
+    }
+
     // Staff can only see their own appointments
     const isStaffOnly = ctx.member.role === "staff";
     const effectiveStaffId =
@@ -1130,8 +1257,8 @@ export const getByCustomer = orgQuery({
           endTime: apt.endTime,
           status: apt.status,
           staffName: apt.staffId
-            ? (staffMap.get(apt.staffId) ?? "Deleted staff")
-            : "Deleted staff",
+            ? (staffMap.get(apt.staffId) ?? "Silinen Personel")
+            : "Silinen Personel",
           total: apt.total,
           paymentStatus: apt.paymentStatus,
           services: apptServices.map((s) => ({
@@ -1498,12 +1625,12 @@ export const getForUser = authedQuery({
       endTime: appointment.endTime,
       status: appointment.status,
       confirmationCode: appointment.confirmationCode,
-      staffName: staff?.name ?? "Deleted staff",
+      staffName: staff?.name ?? "Silinen Personel",
       staffImageUrl: staff?.imageUrl,
       staffId: appointment.staffId,
       total: appointment.total,
       organizationId: appointment.organizationId,
-      organizationName: org?.name ?? "Unknown",
+      organizationName: org?.name ?? "Bilinmeyen",
       organizationSlug: org?.slug ?? "",
       organizationLogo: org?.logo,
       customerNotes: appointment.customerNotes,
@@ -1539,9 +1666,10 @@ export const cancelByUser = authedMutation({
       });
     }
 
-    // Rate limit (before ownership check to prevent enumeration)
+    // Rate limit by user ID (not org) to prevent one user's cancellations
+    // from affecting all customers in the organization
     const { ok, retryAfter } = await rateLimiter.limit(ctx, "cancelBooking", {
-      key: appointment.organizationId,
+      key: ctx.user._id,
     });
     if (!ok) {
       throw new ConvexError({

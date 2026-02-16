@@ -72,7 +72,7 @@
 | `slotLocks.release` | publicMutation | `lockId, sessionId` | `null` |
 | `appointments.create` | publicMutation | `organizationId, staffId, date, startTime, endTime, serviceIds, customer: {name, phone, email?, notes?}, sessionId, source?` | `{appointmentId, confirmationCode, customerId}` |
 | `appointments.createByStaff` | orgMutation | `staffId, date, startTime, serviceIds, customerId, source: walk_in\|phone\|staff, customerNotes?, staffNotes?` | `{appointmentId, confirmationCode}` |
-| `appointments.list` | orgQuery | `statusFilter?` | `array(appointmentWithDetails)` |
+| `appointments.list` | orgQuery | `statusFilter?, startDate?, endDate?` | `array(appointmentWithDetails)` |
 | `appointments.get` | orgQuery | `appointmentId` | `appointmentWithDetails \| null` |
 | `appointments.getByDate` | orgQuery | `date, staffId?` | `array(appointmentWithDetails)` |
 | `appointments.getByConfirmationCode` | publicQuery | `organizationId, confirmationCode` | `publicAppointment \| null` |
@@ -157,6 +157,7 @@ Webhook routes registered in `convex/http.ts` via `polar.registerRoutes()`:
 | Function | Wrapper | Args | Returns |
 |----------|---------|------|---------|
 | `notifications.list` | orgQuery | `limit?` | `array(notificationDoc)` |
+| `notifications.getLatest` | orgQuery | `{}` | `notificationDoc \| null` |
 | `notifications.getUnreadCount` | orgQuery | `{}` | `number` |
 | `notifications.markAsRead` | orgMutation | `notificationId` | `null` |
 | `notifications.markAllAsRead` | orgMutation | `{}` | `null` |
@@ -193,11 +194,12 @@ Webhook routes registered in `convex/http.ts` via `polar.registerRoutes()`:
 | Function | Type | Trigger | Description |
 |----------|------|---------|-------------|
 | `email.sendBookingConfirmation` | internalAction | appointment create | Sends confirmation with ICS attachment |
-| `email.send24HourReminder` | internalAction | daily cron | Sends reminder for tomorrow's appointments |
 | `email.sendCancellationEmail` | internalAction | appointment cancel | Sends cancellation notice |
 | `email.sendInvitationEmail` | internalAction | invitation create/resend | Sends staff invitation link |
 
 All email actions use retry (3 attempts, exponential backoff). Triggered via `ctx.scheduler.runAfter(0)`.
+
+> **Note:** 24-hour reminder emails (`send24HourReminder`) were removed. Only event-driven emails are sent.
 
 ## Rate Limits
 
@@ -209,7 +211,7 @@ All email actions use retry (3 attempts, exponential backoff). Triggered via `ct
 | `addMember` | 10/hour | org |
 | `createService` | 20/hour | org |
 | `createBooking` | 10/hour | org |
-| `cancelBooking` | 5/hour | org |
+| `cancelBooking` | 3/hour | user (used by appointments.cancel, cancelByCustomer, cancelByUser) |
 | `rescheduleBooking` | 3/hour | org |
 | `createScheduleOverride` | 30/day | org |
 | `createTimeOffRequest` | 5/day | staff |
@@ -228,10 +230,11 @@ All email actions use retry (3 attempts, exponential backoff). Triggered via `ct
 |-----|----------|----------|
 | Cleanup expired slot locks | 1 minute | `slotLocks.cleanupExpired` |
 | Cleanup old notifications | 1 hour | `notifications.cleanupOld` |
-| Send appointment reminders | 5 minutes | `notifications.sendReminders` |
+| Send 30-min staff reminders | 5 minutes | `notifications.sendReminders` |
 | Check grace periods | 1 hour | `subscriptions.checkGracePeriods` |
 | Check trial expirations | 1 hour | `subscriptions.checkTrialExpirations` |
-| Send 24-hour email reminders | Daily (09:00 UTC) | `email.send24HourRemindersDaily` |
+| Sync Polar products | 1 hour | `polarSync.syncProducts` |
+| Expire old invitations | 1 hour | `invitations.expireOldInvitations` |
 | Cleanup expired AI forecasts | 6 hours | `aiForecasts.cleanupExpired` |
 | Check care schedules & notify | Weekly | `aiCareSchedules.checkAndNotify` |
 

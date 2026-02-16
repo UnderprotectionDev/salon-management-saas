@@ -258,19 +258,20 @@ Defined in `convex/crons.ts`:
 | Every 1 hour | `subscriptions.checkGracePeriods` | Suspend expired grace periods |
 | Every 1 hour | `subscriptions.checkTrialExpirations` | Handle expired trials |
 | Every 1 hour | `polarSync.syncProducts` | Sync products from Polar |
-| Daily 09:00 UTC | `email_helpers.send24HourRemindersDaily` | Send 24-hour email reminders |
+| Every 1 hour | `invitations.expireOldInvitations` | Expire old pending invitations |
 
 ## Email System
 
 **Architecture:** Convex actions (`.tsx` with `"use node"`) render React Email templates and send via Resend.
 
-- `convex/email.tsx` — 4 internalAction functions (confirmation, reminder, cancellation, invitation)
+- `convex/email.tsx` — 3 internalAction functions (confirmation, cancellation, invitation)
 - `convex/email_helpers.ts` — internalQuery/internalMutation helpers (actions can't access `ctx.db`)
-- `src/emails/` — React Email templates (BookingConfirmation, Reminder24Hour, Cancellation, StaffInvitation)
+- `src/emails/` — React Email templates (BookingConfirmation, Cancellation, StaffInvitation)
 - **Trigger pattern:** Convex triggers in `convex/lib/triggers.ts` auto-fire notifications and emails on appointment changes
 - **Retry:** 3 attempts with exponential backoff (1s, 2s, 4s)
-- **Idempotency:** Check `confirmationSentAt`/`reminderSentAt` before sending
+- **Idempotency:** Check `confirmationSentAt` before sending
 - Convex actions (.tsx) can import from `../src/` — esbuild handles JSX
+- **Note:** Reminder emails were removed. Only event-driven emails (booking confirmation, cancellation) are sent.
 
 ## Key Files
 

@@ -450,7 +450,8 @@ export default defineSchema({
     paidAt: v.optional(v.number()),
     customerNotes: v.optional(v.string()),
     staffNotes: v.optional(v.string()),
-    reminderSentAt: v.optional(v.number()),
+    notificationReminderSentAt: v.optional(v.number()), // 30-min in-app reminder
+    reminderSentAt: v.optional(v.number()), // Email/SMS reminder sent timestamp
     confirmationSentAt: v.optional(v.number()),
     // Reschedule tracking
     rescheduledAt: v.optional(v.number()),
@@ -478,7 +479,8 @@ export default defineSchema({
     .index("by_customer", ["customerId"])
     .index("by_confirmation", ["confirmationCode"])
     .index("by_org_status", ["organizationId", "status"])
-    .index("by_org_status_date", ["organizationId", "status", "date"]),
+    .index("by_org_status_date", ["organizationId", "status", "date"])
+    .index("by_status_date", ["status", "date"]),
 
   // Appointment Services — services included in an appointment (junction table)
   appointmentServices: defineTable({
@@ -501,6 +503,7 @@ export default defineSchema({
     expiresAt: v.number(), // 2 minute TTL
   })
     .index("by_staff_date", ["staffId", "date"])
+    .index("by_org_date", ["organizationId", "date"])
     .index("by_expiry", ["expiresAt"])
     .index("by_session", ["sessionId"]),
 

@@ -193,6 +193,21 @@ export function getCurrentMinutes(timezone: string = DEFAULT_TIMEZONE): number {
 }
 
 /**
+ * Validate that a string is a valid YYYY-MM-DD date.
+ * Checks format and that the date actually exists (e.g., rejects 2025-02-30).
+ */
+export function validateDateString(date: string): boolean {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) return false;
+  const parsed = new Date(`${date}T00:00:00Z`);
+  if (Number.isNaN(parsed.getTime())) return false;
+  // Verify roundtrip (catches invalid dates like Feb 30)
+  const y = parsed.getUTCFullYear();
+  const m = String(parsed.getUTCMonth() + 1).padStart(2, "0");
+  const d = String(parsed.getUTCDate()).padStart(2, "0");
+  return `${y}-${m}-${d}` === date;
+}
+
+/**
  * Add days to a date string and return "YYYY-MM-DD".
  * Uses UTC-safe parsing.
  */

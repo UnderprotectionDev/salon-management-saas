@@ -141,12 +141,13 @@ The role enum was consolidated from `owner|admin|member` to `owner|staff` (compl
 - `date: string, startTime: number` (minutes from midnight), `endTime: number`
 - `status: pending|confirmed|checked_in|in_progress|completed|cancelled|no_show`
 - `source: online|walk_in|phone|staff, confirmationCode: string`
-- Timestamps: `confirmedAt?, checkedInAt?, completedAt?, cancelledAt?`
+- Timestamps: `confirmedAt?` (customer confirmed appointment), `checkedInAt?, completedAt?, cancelledAt?`
 - Cancel: `cancelledBy?: customer|staff|system, cancellationReason?`
 - Pricing: `subtotal, discount?, total`
 - Reschedule: `rescheduledAt?, rescheduleCount?, rescheduleHistory?: array({from/to dates+times, rescheduledBy, rescheduledAt})`
-- `noShowAt?, customerNotes?, staffNotes?`
-- Indexes: `by_organization`, `by_org_date`, `by_staff_date`, `by_customer`, `by_confirmation`, `by_org_status`
+- Tracking: `noShowAt?` (when marked no-show), `notificationReminderSentAt?` (30-min reminder notification sent), `confirmationSentAt?` (booking confirmation email sent to customer)
+- `customerNotes?, staffNotes?`
+- Indexes: `by_organization`, `by_org_date`, `by_staff_date`, `by_customer`, `by_confirmation`, `by_org_status`, `by_status_date` (fields: `[status, date]`, used by cron for cross-org reminder queries)
 
 ### `appointmentServices`
 - `appointmentId, serviceId, serviceName, duration, price, staffId`
@@ -154,7 +155,7 @@ The role enum was consolidated from `owner|admin|member` to `owner|staff` (compl
 
 ### `slotLocks`
 - `organizationId, staffId, date, startTime, endTime, sessionId, expiresAt`
-- Indexes: `by_staff_date`, `by_expiry`, `by_session`
+- Indexes: `by_staff_date`, `by_expiry`, `by_session`, `by_org_date`
 - 2-min TTL, cleaned up by cron every 1 minute.
 
 ## Billing Tables
@@ -264,6 +265,7 @@ Schema exists in PRD. Products with pricing, inventory tracking, supplier info.
 | Staff schedule | `appointments.by_staff_date` |
 | Customer by phone | `customers.by_org_phone` |
 | Appointment by code | `appointments.by_confirmation` |
+| Appointments by status+date (cron) | `appointments.by_status_date` |
 | Subscription by Polar ID | `organizationSettings.by_polar_subscription` |
 | Product benefits | `productBenefits.polarProductId` |
 | Customer AI credits | `aiCredits.by_customer` |
