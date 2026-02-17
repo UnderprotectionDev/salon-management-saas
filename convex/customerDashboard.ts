@@ -72,11 +72,12 @@ export const getCustomerDashboard = authedQuery({
   handler: async (ctx) => {
     const userId = ctx.user._id;
 
-    // Find all customer records for this user across all salons
+    // Find all customer records for this user across all salons (capped, most recent first)
     const customers = await ctx.db
       .query("customers")
       .withIndex("by_user", (q) => q.eq("userId", userId))
-      .collect();
+      .order("desc")
+      .take(50);
 
     if (customers.length === 0) {
       // No customer records yet
@@ -93,16 +94,17 @@ export const getCustomerDashboard = authedQuery({
       };
     }
 
-    // Get all completed appointments for these customers
+    // Get completed appointments for these customers using compound index (no client-side filter)
     const customerIds = customers.map((c) => c._id);
     const appointmentsByCustomer = await Promise.all(
       customerIds.map(async (customerId) => {
-        const appts = await ctx.db
+        return ctx.db
           .query("appointments")
-          .withIndex("by_customer", (q) => q.eq("customerId", customerId))
-          .filter((q) => q.eq(q.field("status"), "completed"))
-          .collect();
-        return appts;
+          .withIndex("by_customer_status", (q) =>
+            q.eq("customerId", customerId).eq("status", "completed"),
+          )
+          .order("desc")
+          .take(200);
       }),
     );
     const allAppointments = appointmentsByCustomer.flat();
@@ -177,9 +179,15 @@ export const getCustomerDashboard = authedQuery({
           )
         : 0;
 
-    // Favorite services (fetch appointmentServices)
-    const serviceCountMap = new Map<string, { count: number; spent: number }>();
-    const apptServiceQueries = allAppointments.map(async (appt) => {
+    // Fetch appointmentServices only for recent appointments (cap at 50)
+    // to reduce N+1 queries while still covering favorite services + recent display
+    const recentForServices = allAppointments
+      .sort((a, b) => {
+        if (a.date === b.date) return b.startTime - a.startTime;
+        return b.date.localeCompare(a.date);
+      })
+      .slice(0, 50);
+    const apptServiceQueries = recentForServices.map(async (appt) => {
       const services = await ctx.db
         .query("appointmentServices")
         .withIndex("by_appointment", (q) => q.eq("appointmentId", appt._id))
@@ -188,6 +196,8 @@ export const getCustomerDashboard = authedQuery({
     });
     const allApptServices = (await Promise.all(apptServiceQueries)).flat();
 
+    // Favorite services (from recent 50 appointments)
+    const serviceCountMap = new Map<string, { count: number; spent: number }>();
     for (const svc of allApptServices) {
       if (!serviceCountMap.has(svc.serviceName)) {
         serviceCountMap.set(svc.serviceName, { count: 0, spent: 0 });
@@ -208,30 +218,24 @@ export const getCustomerDashboard = authedQuery({
       .sort((a, b) => b.count - a.count)
       .slice(0, 5);
 
-    // Recent appointments (last 10, with services)
-    const recentAppointments = allAppointments
-      .sort((a, b) => {
-        if (a.date === b.date) return b.startTime - a.startTime;
-        return b.date.localeCompare(a.date);
-      })
-      .slice(0, 10)
-      .map((appt) => {
-        const org = orgMap.get(appt.organizationId);
-        const apptServices = allApptServices.filter(
-          (s) => s.appointmentId === appt._id,
-        );
-        return {
-          appointmentId: appt._id,
-          salonName: org?.name ?? "Unknown Salon",
-          salonSlug: org?.slug ?? "",
-          date: appt.date,
-          startTime: appt.startTime,
-          endTime: appt.endTime,
-          status: appt.status,
-          services: apptServices.map((s) => s.serviceName),
-          total: appt.total,
-        };
-      });
+    // Recent appointments (last 10, with services) - already sorted in recentForServices
+    const recentAppointments = recentForServices.slice(0, 10).map((appt) => {
+      const org = orgMap.get(appt.organizationId);
+      const apptServices = allApptServices.filter(
+        (s) => s.appointmentId === appt._id,
+      );
+      return {
+        appointmentId: appt._id,
+        salonName: org?.name ?? "Unknown Salon",
+        salonSlug: org?.slug ?? "",
+        date: appt.date,
+        startTime: appt.startTime,
+        endTime: appt.endTime,
+        status: appt.status,
+        services: apptServices.map((s) => s.serviceName),
+        total: appt.total,
+      };
+    });
 
     // Salons breakdown
     const salonMap = new Map<

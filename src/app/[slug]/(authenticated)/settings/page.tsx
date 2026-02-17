@@ -1,7 +1,14 @@
 "use client";
 
 import { useQuery } from "convex/react";
-import { Building2, Clock, Mail, MapPin, Users } from "lucide-react";
+import {
+  Building2,
+  CalendarDays,
+  Clock,
+  Mail,
+  MapPin,
+  Users,
+} from "lucide-react";
 import { BusinessHoursEditor } from "@/components/business-hours/BusinessHoursEditor";
 import {
   Card,
@@ -15,6 +22,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useOrganization } from "@/modules/organization";
 import {
   AddressForm,
+  BookingSettingsForm,
   ContactInfoForm,
   GeneralInfoForm,
   InvitationsList,
@@ -87,6 +95,10 @@ export default function SettingsPage() {
           <TabsTrigger value="team" className="gap-2">
             <Users className="size-4" />
             Team
+          </TabsTrigger>
+          <TabsTrigger value="booking" className="gap-2">
+            <CalendarDays className="size-4" />
+            Booking
           </TabsTrigger>
         </TabsList>
 
@@ -194,6 +206,28 @@ export default function SettingsPage() {
             </CardHeader>
             <CardContent>
               <InvitationsList organizationId={activeOrganization._id} />
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        {/* Booking Settings Tab */}
+        <TabsContent value="booking">
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <CalendarDays className="size-5" />
+                Booking Settings
+              </CardTitle>
+              <CardDescription>
+                Configure online booking rules, cancellation policy, and
+                scheduling preferences
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <BookingSettingsForm
+                organizationId={activeOrganization._id}
+                settings={settings}
+              />
             </CardContent>
           </Card>
         </TabsContent>

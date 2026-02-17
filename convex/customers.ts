@@ -28,11 +28,23 @@ import {
 async function getStaffCustomerIds(
   db: DatabaseReader,
   staffId: Id<"staff">,
+  organizationId?: Id<"organization">,
 ): Promise<Set<string>> {
-  const appointments = await db
-    .query("appointments")
-    .withIndex("by_staff_date", (q) => q.eq("staffId", staffId))
-    .collect();
+  // Capped at 1000 most-recent appointments to avoid unbounded scans.
+  // Uses compound index when organizationId is provided to avoid in-memory filtering.
+  const appointments = organizationId
+    ? await db
+        .query("appointments")
+        .withIndex("by_staff_org_date", (q) =>
+          q.eq("staffId", staffId).eq("organizationId", organizationId),
+        )
+        .order("desc")
+        .take(1000)
+    : await db
+        .query("appointments")
+        .withIndex("by_staff_date", (q) => q.eq("staffId", staffId))
+        .order("desc")
+        .take(1000);
   return new Set(appointments.map((a) => a.customerId as string));
 }
 
@@ -56,7 +68,7 @@ export const list = orgQuery({
     const isStaffOnly = ctx.member.role === "staff";
     const staffCustomerIds =
       isStaffOnly && ctx.staff?._id
-        ? await getStaffCustomerIds(ctx.db, ctx.staff._id)
+        ? await getStaffCustomerIds(ctx.db, ctx.staff._id, ctx.organizationId)
         : null;
 
     let customers: Doc<"customers">[];
@@ -131,7 +143,11 @@ export const get = orgQuery({
     // Staff can only see their own customers
     const isStaffOnly = ctx.member.role === "staff";
     if (isStaffOnly && ctx.staff?._id) {
-      const staffCustomerIds = await getStaffCustomerIds(ctx.db, ctx.staff._id);
+      const staffCustomerIds = await getStaffCustomerIds(
+        ctx.db,
+        ctx.staff._id,
+        ctx.organizationId,
+      );
       if (!staffCustomerIds.has(customer._id as string)) {
         return null;
       }
@@ -172,7 +188,7 @@ export const advancedSearch = orgQuery({
     const isStaffOnly = ctx.member.role === "staff";
     const staffCustomerIds =
       isStaffOnly && ctx.staff?._id
-        ? await getStaffCustomerIds(ctx.db, ctx.staff._id)
+        ? await getStaffCustomerIds(ctx.db, ctx.staff._id, ctx.organizationId)
         : null;
 
     let customers: Doc<"customers">[];
@@ -185,14 +201,14 @@ export const advancedSearch = orgQuery({
             .search("name", args.query as string)
             .eq("organizationId", ctx.organizationId),
         )
-        .collect();
+        .take(500);
     } else {
       customers = await ctx.db
         .query("customers")
         .withIndex("by_organization", (q) =>
           q.eq("organizationId", ctx.organizationId),
         )
-        .collect();
+        .take(500);
     }
 
     // Staff: only their customers
@@ -296,17 +312,16 @@ export const searchByPhone = orgQuery({
     const isStaffOnly = ctx.member.role === "staff";
     const staffCustomerIds =
       isStaffOnly && ctx.staff?._id
-        ? await getStaffCustomerIds(ctx.db, ctx.staff._id)
+        ? await getStaffCustomerIds(ctx.db, ctx.staff._id, ctx.organizationId)
         : null;
 
-    // Fetch all org customers for substring phone matching
-    // .collect() instead of .take(200) to avoid silently missing matches in larger orgs
+    // Fetch org customers for substring phone matching (capped at 2000)
     const customers = await ctx.db
       .query("customers")
       .withIndex("by_organization", (q) =>
         q.eq("organizationId", ctx.organizationId),
       )
-      .collect();
+      .take(2000);
 
     let filtered = customers.filter((c) => c.phone.includes(args.phonePrefix));
 
@@ -456,7 +471,11 @@ export const update = orgMutation({
     // Staff can only update their own customers
     const isStaffOnly = ctx.member.role === "staff";
     if (isStaffOnly && ctx.staff?._id) {
-      const staffCustomerIds = await getStaffCustomerIds(ctx.db, ctx.staff._id);
+      const staffCustomerIds = await getStaffCustomerIds(
+        ctx.db,
+        ctx.staff._id,
+        ctx.organizationId,
+      );
       if (!staffCustomerIds.has(customer._id as string)) {
         throw new ConvexError({
           code: ErrorCode.FORBIDDEN,
@@ -710,27 +729,32 @@ export const getMyProfiles = authedQuery({
     const customers = await ctx.db
       .query("customers")
       .withIndex("by_user", (q) => q.eq("userId", ctx.user._id))
-      .collect();
+      .take(50);
 
-    const enriched = await Promise.all(
-      customers.map(async (c) => {
-        const org = await ctx.db.get(c.organizationId);
-        return {
-          _id: c._id,
-          name: c.name,
-          phone: c.phone,
-          email: c.email,
-          organizationId: c.organizationId,
-          organizationName: org?.name ?? "Unknown",
-          organizationSlug: org?.slug ?? "",
-          totalVisits: c.totalVisits ?? 0,
-          totalSpent: c.totalSpent ?? 0,
-          createdAt: c.createdAt,
-        };
-      }),
+    // Batch-fetch unique orgs to avoid N+1
+    const orgIds = [...new Set(customers.map((c) => c.organizationId))];
+    const orgDocs = await Promise.all(orgIds.map((id) => ctx.db.get(id)));
+    const orgMap = new Map(
+      orgDocs
+        .filter((o): o is NonNullable<typeof o> => o !== null)
+        .map((o) => [o._id, o]),
     );
 
-    return enriched;
+    return customers.map((c) => {
+      const org = orgMap.get(c.organizationId);
+      return {
+        _id: c._id,
+        name: c.name,
+        phone: c.phone,
+        email: c.email,
+        organizationId: c.organizationId,
+        organizationName: org?.name ?? "Unknown",
+        organizationSlug: org?.slug ?? "",
+        totalVisits: c.totalVisits ?? 0,
+        totalSpent: c.totalSpent ?? 0,
+        createdAt: c.createdAt,
+      };
+    });
   },
 });
 
@@ -747,6 +771,19 @@ export const updateMyProfile = authedMutation({
   },
   returns: v.object({ success: v.boolean() }),
   handler: async (ctx, args) => {
+    // Rate limit to prevent phone/email enumeration
+    const { ok, retryAfter } = await rateLimiter.limit(
+      ctx,
+      "updateCustomerProfile",
+      { key: ctx.user._id },
+    );
+    if (!ok) {
+      throw new ConvexError({
+        code: ErrorCode.RATE_LIMITED,
+        message: `Too many updates. Try again in ${Math.ceil((retryAfter ?? 60000) / 1000)} seconds.`,
+      });
+    }
+
     const customer = await ctx.db.get(args.customerId);
     if (!customer || customer.userId !== ctx.user._id) {
       throw new ConvexError({
@@ -820,6 +857,21 @@ export const linkToCurrentUser = authedMutation({
   },
   returns: v.object({ success: v.boolean() }),
   handler: async (ctx, args) => {
+    // Rate limit to prevent probing
+    const { ok, retryAfter } = await rateLimiter.limit(
+      ctx,
+      "linkCustomerToUser",
+      {
+        key: ctx.user._id,
+      },
+    );
+    if (!ok) {
+      throw new ConvexError({
+        code: ErrorCode.RATE_LIMITED,
+        message: `Too many requests. Try again in ${Math.ceil((retryAfter ?? 60000) / 1000)} seconds.`,
+      });
+    }
+
     const customer = await ctx.db.get(args.customerId);
     if (!customer) {
       return { success: false };

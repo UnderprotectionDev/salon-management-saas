@@ -27,11 +27,3 @@ export const SOURCES = [
   "staff",
   "import",
 ] as const;
-
-export const LAST_VISIT_OPTIONS = [
-  { label: "Today", days: 0 },
-  { label: "Last 7 days", days: 7 },
-  { label: "Last 30 days", days: 30 },
-  { label: "Last 90 days", days: 90 },
-  { label: "90+ days ago", days: -90 },
-] as const;

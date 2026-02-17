@@ -418,6 +418,7 @@ export const userAppointmentValidator = v.object({
   organizationSlug: v.string(),
   organizationLogo: v.optional(v.string()),
   services: v.array(serviceItemNoId),
+  cancellationPolicyHours: v.number(),
 });
 
 /** Appointment with enriched details (customer, staff, services) */

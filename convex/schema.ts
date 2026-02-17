@@ -479,7 +479,9 @@ export default defineSchema({
     .index("by_organization", ["organizationId"])
     .index("by_org_date", ["organizationId", "date"])
     .index("by_staff_date", ["staffId", "date"]) // Note: Does not include null staffId
+    .index("by_staff_org_date", ["staffId", "organizationId", "date"])
     .index("by_customer", ["customerId"])
+    .index("by_customer_status", ["customerId", "status"])
     .index("by_confirmation", ["confirmationCode"])
     .index("by_org_status", ["organizationId", "status"])
     .index("by_org_status_date", ["organizationId", "status", "date"])
@@ -607,4 +609,16 @@ export default defineSchema({
     .index("by_org_staff", ["organizationId", "recipientStaffId"])
     .index("by_staff_unread", ["recipientStaffId", "isRead"])
     .index("by_created", ["createdAt"]),
+
+  // =========================================================================
+  // Favorite Salons (user-level, cross-organization)
+  // =========================================================================
+
+  favoriteSalons: defineTable({
+    userId: v.string(),
+    organizationId: v.id("organization"),
+    createdAt: v.number(),
+  })
+    .index("by_user", ["userId"])
+    .index("by_user_org", ["userId", "organizationId"]),
 });
