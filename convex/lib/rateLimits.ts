@@ -140,7 +140,41 @@ export const rateLimiter = new RateLimiter(components.rateLimiter, {
   },
 
   // ==========================================================================
-  // Future: Booking Limits (ileride kullanılacak)
+  // Customer Profile Limits
+  // ==========================================================================
+
+  /**
+   * Profile update limit (per user)
+   * 10 per minute to prevent phone/email enumeration
+   */
+  updateCustomerProfile: {
+    kind: "token bucket",
+    rate: 10,
+    period: MINUTE,
+  },
+
+  /**
+   * Customer-user linking limit (per user)
+   * 10 per minute to prevent probing
+   */
+  linkCustomerToUser: {
+    kind: "token bucket",
+    rate: 10,
+    period: MINUTE,
+  },
+
+  /**
+   * Favorite salon toggle limit (per user)
+   * 20 per minute
+   */
+  toggleFavoriteSalon: {
+    kind: "token bucket",
+    rate: 20,
+    period: MINUTE,
+  },
+
+  // ==========================================================================
+  // Booking Limits
   // ==========================================================================
 
   /**

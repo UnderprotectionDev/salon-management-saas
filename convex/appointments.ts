@@ -642,25 +642,36 @@ export const listForCurrentUser = authedQuery({
       allAppointments.push(...appts);
     }
 
-    // Sort by date desc, then startTime asc
+    // Sort by date desc, then startTime asc; cap at 100 for enrichment
     allAppointments.sort((a, b) => {
       const dateCompare = b.date.localeCompare(a.date);
       return dateCompare !== 0 ? dateCompare : a.startTime - b.startTime;
     });
+    const cappedAppointments = allAppointments.slice(0, 100);
 
     // Batch fetch unique org and staff IDs
-    const orgIds = [...new Set(allAppointments.map((a) => a.organizationId))];
+    const orgIds = [
+      ...new Set(cappedAppointments.map((a) => a.organizationId)),
+    ];
     const staffIds = [
       ...new Set(
-        allAppointments
+        cappedAppointments
           .map((a) => a.staffId)
           .filter((id): id is Id<"staff"> => id != null),
       ),
     ];
 
-    const [orgDocs, staffDocs] = await Promise.all([
+    const [orgDocs, staffDocs, orgSettingsDocs] = await Promise.all([
       Promise.all(orgIds.map((id) => ctx.db.get(id))),
       Promise.all(staffIds.map((id) => ctx.db.get(id))),
+      Promise.all(
+        orgIds.map((id) =>
+          ctx.db
+            .query("organizationSettings")
+            .withIndex("organizationId", (q) => q.eq("organizationId", id))
+            .first(),
+        ),
+      ),
     ]);
 
     const orgMap = new Map(
@@ -673,10 +684,16 @@ export const listForCurrentUser = authedQuery({
         .filter((s): s is NonNullable<typeof s> => s != null)
         .map((s) => [s._id, s]),
     );
+    const policyMap = new Map(
+      orgIds.map((id, i) => [
+        id,
+        orgSettingsDocs[i]?.bookingSettings?.cancellationPolicyHours ?? 24,
+      ]),
+    );
 
     // Batch fetch appointment services
     const allServices = await Promise.all(
-      allAppointments.map((a) =>
+      cappedAppointments.map((a) =>
         ctx.db
           .query("appointmentServices")
           .withIndex("by_appointment", (q) => q.eq("appointmentId", a._id))
@@ -684,10 +701,10 @@ export const listForCurrentUser = authedQuery({
       ),
     );
     const servicesMap = new Map(
-      allAppointments.map((a, i) => [a._id, allServices[i]]),
+      cappedAppointments.map((a, i) => [a._id, allServices[i]]),
     );
 
-    return allAppointments.map((appt) => {
+    return cappedAppointments.map((appt) => {
       const org = orgMap.get(appt.organizationId);
       const staff = appt.staffId ? staffMap.get(appt.staffId) : null;
       const apptServices = servicesMap.get(appt._id) ?? [];
@@ -710,6 +727,7 @@ export const listForCurrentUser = authedQuery({
           duration: s.duration,
           price: s.price,
         })),
+        cancellationPolicyHours: policyMap.get(appt.organizationId) ?? 24,
       };
     });
   },
@@ -1704,7 +1722,7 @@ export const cancelByUser = authedMutation({
       )
       .first();
     const cancellationPolicyHours =
-      orgSettings?.bookingSettings?.cancellationPolicyHours ?? 2;
+      orgSettings?.bookingSettings?.cancellationPolicyHours ?? 24;
     const timezone = orgSettings?.timezone ?? "Europe/Istanbul";
 
     // Enforce cancellation policy
@@ -1760,11 +1778,12 @@ export const rescheduleByUser = authedMutation({
       });
     }
 
-    // Rate limit (before ownership check to prevent enumeration)
+    // Rate limit by user ID (not org) to prevent one user's reschedules
+    // from affecting all customers in the organization
     const { ok, retryAfter } = await rateLimiter.limit(
       ctx,
       "rescheduleBooking",
-      { key: appointment.organizationId },
+      { key: ctx.user._id },
     );
     if (!ok) {
       throw new ConvexError({
@@ -1801,7 +1820,7 @@ export const rescheduleByUser = authedMutation({
       )
       .first();
     const cancellationPolicyHours =
-      orgSettings?.bookingSettings?.cancellationPolicyHours ?? 2;
+      orgSettings?.bookingSettings?.cancellationPolicyHours ?? 24;
     const timezone = orgSettings?.timezone ?? "Europe/Istanbul";
 
     // Enforce reschedule policy

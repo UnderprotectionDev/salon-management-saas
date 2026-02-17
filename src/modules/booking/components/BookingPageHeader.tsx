@@ -1,7 +1,14 @@
 "use client";
 
+import { useMutation, useQuery } from "convex/react";
+import { Heart } from "lucide-react";
 import { useEffect, useState } from "react";
+import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { authClient } from "@/lib/auth-client";
+import { api } from "../../../../convex/_generated/api";
+import type { Id } from "../../../../convex/_generated/dataModel";
 
 type BusinessHoursDay = {
   open: string;
@@ -13,6 +20,7 @@ type BookingPageHeaderProps = {
   salonName: string;
   address?: { city?: string; state?: string } | null;
   businessHours?: Record<string, BusinessHoursDay | undefined> | null;
+  organizationId?: Id<"organization">;
 };
 
 const DAY_KEYS = [
@@ -40,7 +48,12 @@ function getTodayStatus(
   const [openH, openM] = today.open.split(":").map(Number);
   const [closeH, closeM] = today.close.split(":").map(Number);
 
-  if (Number.isNaN(openH) || Number.isNaN(openM) || Number.isNaN(closeH) || Number.isNaN(closeM)) {
+  if (
+    Number.isNaN(openH) ||
+    Number.isNaN(openM) ||
+    Number.isNaN(closeH) ||
+    Number.isNaN(closeM)
+  ) {
     return { isOpen: false };
   }
 
@@ -63,10 +76,12 @@ export function BookingPageHeader({
   salonName,
   address,
   businessHours,
+  organizationId,
 }: BookingPageHeaderProps) {
   // Compute date and open/closed status client-side only to avoid hydration mismatch
   const [dateStr, setDateStr] = useState("");
   const [isOpen, setIsOpen] = useState(false);
+  const [isTogglingFavorite, setIsTogglingFavorite] = useState(false);
 
   useEffect(() => {
     const now = new Date();
@@ -79,6 +94,31 @@ export function BookingPageHeader({
     );
     setIsOpen(getTodayStatus(businessHours).isOpen);
   }, [businessHours]);
+
+  const session = authClient.useSession();
+  const isAuthenticated = !!session.data?.user;
+
+  const isFavorite = useQuery(
+    api.favoriteSalons.isFavorite,
+    isAuthenticated && organizationId ? { organizationId } : "skip",
+  );
+
+  const toggleFavorite = useMutation(api.favoriteSalons.toggle);
+
+  const handleToggleFavorite = async () => {
+    if (!organizationId) return;
+    setIsTogglingFavorite(true);
+    try {
+      const result = await toggleFavorite({ organizationId });
+      toast.success(
+        result.isFavorite ? "Added to favorites" : "Removed from favorites",
+      );
+    } catch {
+      toast.error("Failed to update favorites. Please try again.");
+    } finally {
+      setIsTogglingFavorite(false);
+    }
+  };
 
   const location = [address?.city, address?.state].filter(Boolean).join(" / ");
 
@@ -112,15 +152,53 @@ export function BookingPageHeader({
               </Badge>
             </div>
           </div>
+          {isAuthenticated && organizationId && (
+            <Button
+              variant="ghost"
+              size="icon"
+              aria-label={
+                isFavorite ? "Remove from favorites" : "Add to favorites"
+              }
+              onClick={handleToggleFavorite}
+              disabled={isTogglingFavorite || isFavorite === undefined}
+            >
+              <Heart
+                className={
+                  isFavorite
+                    ? "size-5 fill-red-500 text-red-500"
+                    : "size-5 text-muted-foreground"
+                }
+              />
+            </Button>
+          )}
         </div>
-        {/* Mobile: only status */}
-        <div className="sm:hidden">
+        {/* Mobile: status + favorite */}
+        <div className="sm:hidden flex items-center gap-2">
           <Badge
             variant={isOpen ? "default" : "secondary"}
             className="text-[10px] uppercase tracking-widest"
           >
             {isOpen ? "Open" : "Closed"}
           </Badge>
+          {isAuthenticated && organizationId && (
+            <Button
+              variant="ghost"
+              size="icon"
+              aria-label={
+                isFavorite ? "Remove from favorites" : "Add to favorites"
+              }
+              onClick={handleToggleFavorite}
+              disabled={isTogglingFavorite || isFavorite === undefined}
+            >
+              <Heart
+                className={
+                  isFavorite
+                    ? "size-5 fill-red-500 text-red-500"
+                    : "size-5 text-muted-foreground"
+                }
+              />
+            </Button>
+          )}
         </div>
       </div>
     </header>

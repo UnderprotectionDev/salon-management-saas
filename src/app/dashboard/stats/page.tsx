@@ -2,6 +2,7 @@
 
 import { useConvexAuth, useQuery } from "convex/react";
 import {
+  ArrowLeft,
   Calendar,
   Clock,
   DollarSign,
@@ -25,6 +26,7 @@ import {
   YAxis,
 } from "recharts";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import {
   Card,
   CardContent,
@@ -551,11 +553,18 @@ export default function CustomerStatsPage() {
     <div className="min-h-screen bg-muted/30">
       <div className="container mx-auto p-4 lg:p-6 space-y-6">
         {/* Header */}
-        <div>
-          <h1 className="text-3xl font-bold">My Stats</h1>
-          <p className="text-muted-foreground mt-1">
-            Track your salon visits, spending, and favorite services
-          </p>
+        <div className="flex items-center gap-3">
+          <Button variant="ghost" size="icon" asChild>
+            <Link href="/dashboard" aria-label="Back to dashboard">
+              <ArrowLeft className="size-5" />
+            </Link>
+          </Button>
+          <div>
+            <h1 className="text-3xl font-bold">My Stats</h1>
+            <p className="text-muted-foreground mt-1">
+              Track your salon visits, spending, and favorite services
+            </p>
+          </div>
         </div>
 
         {/* KPI Cards */}

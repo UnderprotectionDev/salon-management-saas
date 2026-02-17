@@ -210,6 +210,7 @@ export default function BookingPage() {
         salonName={organization.name}
         address={settings?.address}
         businessHours={settings?.businessHours}
+        organizationId={organization._id}
       />
 
       {/* 2-column layout */}

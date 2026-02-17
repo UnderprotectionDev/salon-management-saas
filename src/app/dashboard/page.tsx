@@ -1,9 +1,9 @@
 "use client";
 
 import { useConvexAuth, useMutation, useQuery } from "convex/react";
+import { ConvexError } from "convex/values";
 import {
   BarChart3,
-  Bell,
   Building2,
   Calendar,
   CalendarDays,
@@ -102,14 +102,16 @@ function canModifyAppointment(
   date: string,
   startTime: number,
   status: string,
+  cancellationPolicyHours = 2,
 ): boolean {
   if (!isActiveStatus(status)) return false;
   const [year, month, day] = date.split("-").map(Number);
   const hours = Math.floor(startTime / 60);
   const minutes = startTime % 60;
   const appointmentDate = new Date(year, month - 1, day, hours, minutes);
-  const twoHoursBefore = appointmentDate.getTime() - 2 * 60 * 60 * 1000;
-  return Date.now() < twoHoursBefore;
+  const policyBefore =
+    appointmentDate.getTime() - cancellationPolicyHours * 60 * 60 * 1000;
+  return Date.now() < policyBefore;
 }
 
 // =============================================================================
@@ -184,8 +186,10 @@ function UserCancelDialog({
       setOpen(false);
     } catch (error: unknown) {
       toast.error(
-        (error as { data?: { message?: string } })?.data?.message ??
-          "Failed to cancel appointment",
+        error instanceof ConvexError
+          ? ((error.data as { message?: string })?.message ??
+              "An error occurred")
+          : "Unexpected error occurred",
       );
     } finally {
       setIsSubmitting(false);
@@ -305,8 +309,10 @@ function UserRescheduleDialog({
       setOpen(false);
     } catch (error: unknown) {
       toast.error(
-        (error as { data?: { message?: string } })?.data?.message ??
-          "Failed to reschedule appointment",
+        error instanceof ConvexError
+          ? ((error.data as { message?: string })?.message ??
+              "An error occurred")
+          : "Unexpected error occurred",
       );
     } finally {
       setIsSubmitting(false);
@@ -428,6 +434,7 @@ type UserAppointment = {
   organizationSlug: string;
   organizationLogo?: string;
   services: Array<{ serviceName: string; duration: number; price: number }>;
+  cancellationPolicyHours: number;
 };
 
 function AppointmentCard({ appointment }: { appointment: UserAppointment }) {
@@ -435,6 +442,7 @@ function AppointmentCard({ appointment }: { appointment: UserAppointment }) {
     appointment.date,
     appointment.startTime,
     appointment.status,
+    appointment.cancellationPolicyHours,
   );
   const isPast = isPastStatus(appointment.status);
 
@@ -656,8 +664,10 @@ function ProfileCard({ profile }: { profile: CustomerProfile }) {
       setIsEditing(false);
     } catch (error: unknown) {
       toast.error(
-        (error as { data?: { message?: string } })?.data?.message ??
-          "Failed to update profile",
+        error instanceof ConvexError
+          ? ((error.data as { message?: string })?.message ??
+              "An error occurred")
+          : "Unexpected error occurred",
       );
     } finally {
       setIsSubmitting(false);
@@ -813,6 +823,110 @@ function ProfilesSection() {
 }
 
 // =============================================================================
+// FavoriteSalonsSection
+// =============================================================================
+
+function FavoriteSalonsSection() {
+  const favorites = useQuery(api.favoriteSalons.list);
+  const toggleFavorite = useMutation(api.favoriteSalons.toggle);
+
+  if (favorites === undefined) {
+    return (
+      <Card>
+        <CardHeader>
+          <Skeleton className="h-6 w-40" />
+          <Skeleton className="h-4 w-48" />
+        </CardHeader>
+        <CardContent>
+          <Skeleton className="h-20 w-full" />
+        </CardContent>
+      </Card>
+    );
+  }
+
+  if (favorites.length === 0) {
+    return (
+      <Card>
+        <CardHeader>
+          <CardTitle>My Favorite Salons</CardTitle>
+          <CardDescription>Salons you&apos;ve saved</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <Empty className="border rounded-lg">
+            <EmptyMedia variant="icon">
+              <Heart className="size-5" />
+            </EmptyMedia>
+            <EmptyTitle>No favorite salons yet</EmptyTitle>
+            <EmptyDescription>
+              Save salons to favorites for quick access when booking.
+            </EmptyDescription>
+          </Empty>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  const handleRemove = async (organizationId: Id<"organization">) => {
+    try {
+      await toggleFavorite({ organizationId });
+      toast.success("Removed from favorites");
+    } catch (error: unknown) {
+      toast.error(
+        error instanceof ConvexError
+          ? ((error.data as { message?: string })?.message ??
+              "An error occurred")
+          : "Unexpected error occurred",
+      );
+    }
+  };
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>My Favorite Salons</CardTitle>
+        <CardDescription>
+          {favorites.length} salon{favorites.length > 1 ? "s" : ""} saved
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-3">
+        {favorites.map((fav) => (
+          <div
+            key={fav._id}
+            className="flex items-center justify-between rounded-lg border p-3"
+          >
+            <Link
+              href={`/${fav.organizationSlug}/book`}
+              className="flex items-center gap-3 flex-1 min-w-0"
+            >
+              <Avatar className="size-10">
+                {fav.organizationLogo && (
+                  <AvatarImage src={fav.organizationLogo} />
+                )}
+                <AvatarFallback>
+                  <Store className="size-4" />
+                </AvatarFallback>
+              </Avatar>
+              <div className="min-w-0">
+                <p className="font-medium truncate">{fav.organizationName}</p>
+                <p className="text-xs text-muted-foreground">Tap to book</p>
+              </div>
+            </Link>
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => handleRemove(fav.organizationId)}
+              aria-label={`Remove ${fav.organizationName} from favorites`}
+            >
+              <Heart className="size-4 fill-current text-red-500" />
+            </Button>
+          </div>
+        ))}
+      </CardContent>
+    </Card>
+  );
+}
+
+// =============================================================================
 // Main Dashboard Page
 // =============================================================================
 
@@ -863,7 +977,7 @@ export default function DashboardPage() {
 
       toast.success("Signed out successfully");
       router.push("/sign-in");
-    } catch (error) {
+    } catch (_error) {
       toast.error("Failed to sign out");
       window.dispatchEvent(new Event("auth:signed-out"));
       setIsSigningOut(false);
@@ -986,17 +1100,21 @@ export default function DashboardPage() {
               </CardHeader>
               <CardContent>
                 <Tabs defaultValue="upcoming">
-                  <TabsList>
+                  <TabsList aria-label="Appointment tabs">
                     <TabsTrigger value="upcoming">Upcoming</TabsTrigger>
                     <TabsTrigger value="past">Past</TabsTrigger>
                   </TabsList>
-                  <TabsContent value="upcoming" className="mt-4">
+                  <TabsContent
+                    value="upcoming"
+                    className="mt-4"
+                    aria-live="polite"
+                  >
                     <MyAppointmentsList
                       appointments={myAppointments}
                       filter="upcoming"
                     />
                   </TabsContent>
-                  <TabsContent value="past" className="mt-4">
+                  <TabsContent value="past" className="mt-4" aria-live="polite">
                     <MyAppointmentsList
                       appointments={myAppointments}
                       filter="past"
@@ -1009,43 +1127,28 @@ export default function DashboardPage() {
             {/* My Salon Profiles */}
             <ProfilesSection />
 
-            {/* My Favorite Salons */}
-            <Card>
-              <CardHeader>
-                <CardTitle>My Favorite Salons</CardTitle>
-                <CardDescription>Salons you've saved</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <Empty className="border rounded-lg">
-                  <EmptyMedia variant="icon">
-                    <Heart className="size-5" />
-                  </EmptyMedia>
-                  <EmptyTitle>No favorite salons yet</EmptyTitle>
-                  <EmptyDescription>
-                    Save salons to favorites for quick access.
-                  </EmptyDescription>
-                </Empty>
-              </CardContent>
-            </Card>
+            {/* My Favorite Salons - feature implemented below */}
+            <FavoriteSalonsSection />
           </div>
 
-          {/* Right Column - Notifications */}
+          {/* Right Column - Quick Links */}
           <div className="space-y-6">
             <Card>
               <CardHeader>
-                <CardTitle>Notifications</CardTitle>
-                <CardDescription>Recent activity</CardDescription>
+                <CardTitle>Quick Actions</CardTitle>
+                <CardDescription>Manage your account</CardDescription>
               </CardHeader>
-              <CardContent>
-                <Empty className="border rounded-lg">
-                  <EmptyMedia variant="icon">
-                    <Bell className="size-5" />
-                  </EmptyMedia>
-                  <EmptyTitle>No notifications</EmptyTitle>
-                  <EmptyDescription>
-                    New notifications will appear here.
-                  </EmptyDescription>
-                </Empty>
+              <CardContent className="space-y-2">
+                <Button
+                  variant="outline"
+                  className="w-full justify-start"
+                  asChild
+                >
+                  <Link href="/dashboard/stats">
+                    <BarChart3 className="mr-2 size-4" />
+                    View My Stats
+                  </Link>
+                </Button>
               </CardContent>
             </Card>
           </div>
