@@ -512,6 +512,73 @@ export default defineSchema({
     .index("by_expiry", ["expiresAt"])
     .index("by_session", ["sessionId"]),
 
+  // =========================================================================
+  // Products & Inventory (M11)
+  // =========================================================================
+
+  // Product Categories — grouping for products (per organization)
+  productCategories: defineTable({
+    organizationId: v.id("organization"),
+    name: v.string(),
+    description: v.optional(v.string()),
+    sortOrder: v.number(),
+    status: v.union(v.literal("active"), v.literal("inactive")),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  }).index("by_org", ["organizationId"]),
+
+  // Products — items sold by the salon (no e-commerce, catalog only)
+  products: defineTable({
+    organizationId: v.id("organization"),
+    categoryId: v.optional(v.id("productCategories")),
+    name: v.string(),
+    description: v.optional(v.string()),
+    sku: v.optional(v.string()),
+    brand: v.optional(v.string()),
+    // Pricing (kuruş integers — same as services)
+    costPrice: v.number(),
+    sellingPrice: v.number(),
+    // Supplier info (embedded, no separate table)
+    supplierInfo: v.optional(
+      v.object({
+        name: v.optional(v.string()),
+        phone: v.optional(v.string()),
+        email: v.optional(v.string()),
+        notes: v.optional(v.string()),
+      }),
+    ),
+    // Inventory
+    stockQuantity: v.number(),
+    lowStockThreshold: v.optional(v.number()),
+    // Status
+    status: v.union(v.literal("active"), v.literal("inactive")),
+    imageStorageId: v.optional(v.id("_storage")),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_org", ["organizationId"])
+    .index("by_org_category", ["organizationId", "categoryId"])
+    .index("by_org_status", ["organizationId", "status"]),
+
+  // Inventory Transactions — audit log for every stock change
+  inventoryTransactions: defineTable({
+    organizationId: v.id("organization"),
+    productId: v.id("products"),
+    staffId: v.optional(v.id("staff")),
+    type: v.union(
+      v.literal("restock"),
+      v.literal("adjustment"),
+      v.literal("waste"),
+    ),
+    quantity: v.number(), // signed: positive = add, negative = remove
+    previousStock: v.number(),
+    newStock: v.number(),
+    note: v.optional(v.string()),
+    createdAt: v.number(),
+  })
+    .index("by_product", ["productId"])
+    .index("by_org_date", ["organizationId", "createdAt"]),
+
   // Product Benefits — cached from Polar API
   productBenefits: defineTable({
     polarProductId: v.string(),

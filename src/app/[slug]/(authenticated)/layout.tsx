@@ -9,6 +9,7 @@ import {
   CreditCard,
   LayoutDashboard,
   LogOut,
+  Package,
   Scissors,
   Settings,
   Shield,
@@ -86,6 +87,11 @@ const menuItems = [
     title: "Customers",
     icon: UserRound,
     href: "/customers",
+  },
+  {
+    title: "Products",
+    icon: Package,
+    href: "/products",
   },
   {
     title: "Reports",

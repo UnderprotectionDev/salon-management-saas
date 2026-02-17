@@ -1,7 +1,9 @@
 "use client";
 
 import { useMutation, useQuery } from "convex/react";
-import { Heart } from "lucide-react";
+import { Heart, Package } from "lucide-react";
+import Link from "next/link";
+import { useParams } from "next/navigation";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
@@ -78,6 +80,9 @@ export function BookingPageHeader({
   businessHours,
   organizationId,
 }: BookingPageHeaderProps) {
+  const params = useParams();
+  const slug = typeof params.slug === "string" ? params.slug : "";
+
   // Compute date and open/closed status client-side only to avoid hydration mismatch
   const [dateStr, setDateStr] = useState("");
   const [isOpen, setIsOpen] = useState(false);
@@ -152,6 +157,14 @@ export function BookingPageHeader({
               </Badge>
             </div>
           </div>
+          {slug && (
+            <Button asChild variant="ghost" size="sm" className="gap-1.5">
+              <Link href={`/${slug}/catalog`}>
+                <Package className="size-4" />
+                Products
+              </Link>
+            </Button>
+          )}
           {isAuthenticated && organizationId && (
             <Button
               variant="ghost"
@@ -172,8 +185,20 @@ export function BookingPageHeader({
             </Button>
           )}
         </div>
-        {/* Mobile: status + favorite */}
+        {/* Mobile: products + status + favorite */}
         <div className="sm:hidden flex items-center gap-2">
+          {slug && (
+            <Button
+              asChild
+              variant="ghost"
+              size="icon"
+              aria-label="View products"
+            >
+              <Link href={`/${slug}/catalog`}>
+                <Package className="size-4" />
+              </Link>
+            </Button>
+          )}
           <Badge
             variant={isOpen ? "default" : "secondary"}
             className="text-[10px] uppercase tracking-widest"

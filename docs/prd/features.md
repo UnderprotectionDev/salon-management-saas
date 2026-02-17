@@ -12,7 +12,7 @@
 | Reports & Analytics | P1 | ✅ Implemented (M8) |
 | Dashboard Appointment Management | P1 | ✅ Implemented (M9) |
 | AI Features | P2 | 📋 Planned (M10A/B/C) |
-| Products & Inventory | P2 | 📋 Planned (future) |
+| Products & Inventory | P2 | ✅ Implemented (M11) |
 
 ---
 
@@ -122,12 +122,28 @@ Owner invites via email → pending invitation + staff record → staff accepts 
 
 ---
 
-## Products & Inventory (Planned)
+## Products & Inventory
 
-Digital catalog + inventory management. No e-commerce/online sales.
+> **Files:** `convex/productCategories.ts`, `convex/products.ts`, `convex/inventoryTransactions.ts`
+> **Frontend:** `src/modules/products/` (7 components), `src/app/[slug]/(authenticated)/products/page.tsx`
+> **Public:** `src/app/[slug]/(public)/catalog/page.tsx` — `/{slug}/catalog`
 
-**In scope:** Product CRUD, pricing (cost + selling + margin), inventory tracking, supplier info, low stock alerts, categories.
-**Out of scope:** Online sales, payment processing, purchase orders, barcode scanning.
+Owner-only management interface + public customer-facing catalog page. No e-commerce/online sales.
+
+**Pricing:** `costPrice` + `sellingPrice` (kuruş integers). Margin auto-calculated: `((sellingPrice - costPrice) / sellingPrice) * 100` — guarded on `sellingPrice > 0` (returns `undefined` when zero, preventing division by zero). Negative margin shown in red.
+
+**Inventory transactions:** Every stock change logs to `inventoryTransactions`. Types: `restock | adjustment | waste`. Previous/new stock snapshot stored per entry. `restock` quantity always forced positive; `waste` always forced negative; `adjustment` is signed as-entered.
+
+**Low stock alerts:** Products where `stockQuantity <= lowStockThreshold` show an amber alert icon. `products.countLowStock` owner query for dashboard integration.
+
+**Supplier info:** Embedded object on product (name, phone, email, notes). Not a separate table.
+
+**Public catalog (`products.listPublic`):** `publicQuery` — no auth required. Returns only `active` products with safe fields: name, brand, description, category, sellingPrice, inStock (boolean). Excludes: costPrice, margin, supplierInfo, lowStockThreshold, stockQuantity. URL: `/{slug}/catalog`. Navigation: homepage salon cards (Products button) and booking page header.
+
+**Access control:** All management queries/mutations use `ownerQuery`/`ownerMutation`. `productCategories.list` uses `ownerQuery` — staff members cannot access even directly via the Convex client.
+
+**In scope:** Category CRUD (with sort reorder), Product CRUD (soft-delete via `status: inactive`), pricing, inventory tracking, low stock alerts, search & filter by category, public catalog page.
+**Out of scope:** Online sales, payment processing, purchase orders, barcode scanning, appointment-linked product sales.
 
 ---
 

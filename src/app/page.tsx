@@ -1,7 +1,7 @@
 "use client";
 
 import { useQuery } from "convex/react";
-import { Building2, Calendar } from "lucide-react";
+import { Building2, Calendar, Package } from "lucide-react";
 import Link from "next/link";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
@@ -99,45 +99,56 @@ export default function Home() {
         {salons !== undefined && salons.length > 0 && (
           <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
             {salons.map((salon) => (
-              <Link key={salon._id} href={`/${salon.slug}/book`}>
-                <Card className="h-full hover:border-primary transition-colors cursor-pointer group">
-                  <CardHeader>
-                    <div className="flex items-start gap-4">
-                      <Avatar className="size-16 border-2">
-                        {salon.logo ? (
-                          <AvatarImage src={salon.logo} alt={salon.name} />
-                        ) : (
-                          <AvatarFallback>
-                            <Building2 className="size-6" />
-                          </AvatarFallback>
-                        )}
-                      </Avatar>
-                      <div className="flex-1 min-w-0">
-                        <CardTitle className="group-hover:text-primary transition-colors">
-                          {salon.name}
-                        </CardTitle>
-                        <CardDescription className="mt-1">
-                          /{salon.slug}
-                        </CardDescription>
-                      </div>
+              <Card
+                key={salon._id}
+                className="flex h-full flex-col hover:border-primary transition-colors"
+              >
+                <CardHeader>
+                  <Link
+                    href={`/${salon.slug}/book`}
+                    className="flex items-start gap-4 hover:opacity-80 transition-opacity"
+                  >
+                    <Avatar className="size-16 border-2">
+                      {salon.logo ? (
+                        <AvatarImage src={salon.logo} alt={salon.name} />
+                      ) : (
+                        <AvatarFallback>
+                          <Building2 className="size-6" />
+                        </AvatarFallback>
+                      )}
+                    </Avatar>
+                    <div className="flex-1 min-w-0">
+                      <CardTitle className="hover:text-primary transition-colors">
+                        {salon.name}
+                      </CardTitle>
+                      <CardDescription className="mt-1">
+                        /{salon.slug}
+                      </CardDescription>
                     </div>
-                  </CardHeader>
-                  <CardContent className="space-y-3">
-                    {salon.description && (
-                      <p className="text-sm text-muted-foreground line-clamp-2">
-                        {salon.description}
-                      </p>
-                    )}
-                    <Button
-                      variant="outline"
-                      className="w-full group-hover:bg-primary group-hover:text-primary-foreground transition-colors"
-                    >
-                      <Calendar className="mr-2 size-4" />
-                      Book Appointment
+                  </Link>
+                </CardHeader>
+                <CardContent className="flex flex-1 flex-col justify-end space-y-3">
+                  {salon.description && (
+                    <p className="text-sm text-muted-foreground line-clamp-2">
+                      {salon.description}
+                    </p>
+                  )}
+                  <div className="flex gap-2">
+                    <Button asChild variant="outline" className="flex-1">
+                      <Link href={`/${salon.slug}/book`}>
+                        <Calendar className="mr-2 size-4" />
+                        Book
+                      </Link>
                     </Button>
-                  </CardContent>
-                </Card>
-              </Link>
+                    <Button asChild variant="outline" className="flex-1">
+                      <Link href={`/${salon.slug}/catalog`}>
+                        <Package className="mr-2 size-4" />
+                        Products
+                      </Link>
+                    </Button>
+                  </div>
+                </CardContent>
+              </Card>
             ))}
           </div>
         )}
