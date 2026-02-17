@@ -1,6 +1,6 @@
 # Database Schema
 
-> **Source:** `convex/schema.ts` (~533 lines) | **Validators:** `convex/lib/validators.ts` (~910 lines)
+> **Source:** `convex/schema.ts` (~575 lines) | **Validators:** `convex/lib/validators.ts` (~760 lines)
 > Auth tables (`user`, `session`, `account`, `verification`, `jwks`) managed by Better Auth at `convex/betterAuth/schema.ts`.
 
 ## ER Diagram
@@ -30,6 +30,10 @@ erDiagram
     customers ||--o{ aiSimulations : requests
     customers ||--o{ aiChatThreads : starts
     customers ||--o{ aiMoodBoard : saves
+    organization ||--o{ productCategories : has
+    organization ||--o{ products : stocks
+    products }o--o| productCategories : belongs_to
+    products ||--o{ inventoryTransactions : logs
 ```
 
 ## Implementation Status
@@ -42,7 +46,7 @@ erDiagram
 | customers | ✅ | M2C |
 | appointments, appointmentServices, slotLocks | ✅ | M3-M4 |
 | auditLogs | ⚠️ Partial | Table exists, helpers pending |
-| products, productCategories, inventoryTransactions | 📋 | M8+ |
+| productCategories, products, inventoryTransactions | ✅ | M11 |
 | notifications | ✅ | M5 |
 | productBenefits | ✅ | M6 |
 | aiCredits, aiCreditTransactions | 📋 | M10A |
@@ -232,10 +236,34 @@ The role enum was consolidated from `owner|admin|member` to `owner|staff` (compl
 - Indexes: `by_customer`, `by_org`
 - Free feature (no credit cost)
 
-## Planned Tables
+## Product & Inventory Tables (M11)
 
-### `products` / `productCategories` / `inventoryTransactions` (M8+)
-Schema exists in PRD. Products with pricing, inventory tracking, supplier info.
+### `productCategories`
+- `organizationId: id("organization")`
+- `name: string`, `description?: string`, `sortOrder: number`
+- `status: "active" | "inactive"`
+- Indexes: `by_org`
+
+### `products`
+- `organizationId: id("organization")`, `categoryId?: id("productCategories")`
+- `name: string`, `description?: string`, `sku?: string`, `brand?: string`
+- `costPrice: number`, `sellingPrice: number` (kuruş integers)
+- `supplierInfo?: { name?, phone?, email?, notes? }`
+- `stockQuantity: number`, `lowStockThreshold?: number`
+- `status: "active" | "inactive"`
+- Indexes: `by_org`, `by_org_category`, `by_org_status`
+- Soft-delete via `status: "inactive"`. Margin computed in queries: `((sellingPrice - costPrice) / sellingPrice) * 100`, guarded on `sellingPrice > 0`.
+- **`productPublicValidator`:** Safe public subset exposed by `products.listPublic` (no costPrice, margin, supplierInfo, lowStockThreshold, stockQuantity). Used by `/{slug}/catalog`.
+
+### `inventoryTransactions`
+- `organizationId: id("organization")`, `productId: id("products")`, `staffId?: id("staff")`
+- `type: "restock" | "adjustment" | "waste"`
+- `quantity: number` (signed: positive=add, negative=remove), `previousStock: number`, `newStock: number`
+- `note?: string`, `createdAt: number`
+- Indexes: `by_product`, `by_org_date`
+- Append-only. `restock` always positive, `waste` always negative, `adjustment` signed as-entered.
+
+## Planned Tables
 
 ### `auditLogs`
 - `organizationId, userId, action, resourceType, resourceId?, details?, ipAddress?, timestamp`
@@ -279,3 +307,7 @@ Schema exists in PRD. Products with pricing, inventory tracking, supplier info.
 | Org forecasts | `aiForecasts.by_org_type` |
 | Care schedule check | `aiCareSchedules.by_next_check` |
 | Customer mood board | `aiMoodBoard.by_customer` |
+| Products in org | `products.by_org` |
+| Products by category | `products.by_org_category` |
+| Active products (public catalog) | `products.by_org_status` |
+| Inventory history | `inventoryTransactions.by_product` |

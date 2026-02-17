@@ -278,6 +278,15 @@ export const userProfileDocValidator = vv.doc("userProfile");
 /** Notification document validator */
 export const notificationDocValidator = vv.doc("notifications");
 
+/** Product category document validator */
+export const productCategoryDocValidator = vv.doc("productCategories");
+
+/** Product document validator */
+export const productDocValidator = vv.doc("products");
+
+/** Inventory transaction document validator */
+export const inventoryTransactionDocValidator = vv.doc("inventoryTransactions");
+
 /** Product benefits document validator */
 export const productBenefitsDocValidator = vv.doc("productBenefits");
 
@@ -681,3 +690,67 @@ export const adminActionLogValidator = v.object(
     ],
   ),
 );
+
+// =============================================================================
+// Product & Inventory Validators (M11)
+// =============================================================================
+
+/** Product category status: active | inactive */
+export const productCategoryStatusValidator = literals("active", "inactive");
+
+/** Product status: active | inactive */
+export const productStatusValidator = literals("active", "inactive");
+
+/** Inventory transaction type: restock | adjustment | waste */
+export const inventoryTransactionTypeValidator = literals(
+  "restock",
+  "adjustment",
+  "waste",
+);
+
+/** Product category with product count */
+export const productCategoryWithCountValidator = v.object(
+  withSystemFields("productCategories", {
+    ...schema.tables.productCategories.validator.fields,
+    productCount: v.number(),
+  }),
+);
+
+/** Product with category name (enriched query result) */
+export const productWithCategoryValidator = v.object(
+  withSystemFields("products", {
+    ...schema.tables.products.validator.fields,
+    categoryName: v.optional(v.string()),
+    isLowStock: v.boolean(),
+    margin: v.optional(v.number()), // percentage, omitted if sellingPrice is 0
+  }),
+);
+
+/** Inventory transaction with product name and staff name */
+export const inventoryTransactionWithDetailsValidator = v.object(
+  withSystemFields("inventoryTransactions", {
+    ...schema.tables.inventoryTransactions.validator.fields,
+    productName: v.string(),
+    staffName: v.optional(v.string()),
+  }),
+);
+
+/**
+ * Public-safe product data exposed on the customer-facing catalog page.
+ * Excludes sensitive internal fields: costPrice, margin, supplierInfo,
+ * lowStockThreshold, and exact stockQuantity.
+ */
+export const productPublicValidator = v.object({
+  _id: vv.id("products"),
+  _creationTime: v.number(),
+  organizationId: vv.id("organization"),
+  name: v.string(),
+  description: v.optional(v.string()),
+  categoryId: v.optional(vv.id("productCategories")),
+  categoryName: v.optional(v.string()),
+  brand: v.optional(v.string()),
+  sku: v.optional(v.string()),
+  sellingPrice: v.number(),
+  inStock: v.boolean(),
+  status: literals("active", "inactive"),
+});
