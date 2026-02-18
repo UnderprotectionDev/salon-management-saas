@@ -13,6 +13,7 @@ import {
   Scissors,
   Settings,
   Shield,
+  Sparkles,
   UserRound,
   Users,
 } from "lucide-react";
@@ -97,6 +98,11 @@ const menuItems = [
     title: "Reports",
     icon: BarChart3,
     href: "/reports",
+  },
+  {
+    title: "Design Studio",
+    icon: Sparkles,
+    href: "/ai",
   },
   {
     title: "Settings",

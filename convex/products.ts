@@ -267,10 +267,7 @@ export const create = ownerMutation({
       });
     }
 
-    if (
-      args.lowStockThreshold !== undefined &&
-      args.lowStockThreshold < 0
-    ) {
+    if (args.lowStockThreshold !== undefined && args.lowStockThreshold < 0) {
       throw new ConvexError({
         code: ErrorCode.INVALID_INPUT,
         message: "Low stock threshold must be non-negative",
@@ -384,10 +381,7 @@ export const update = ownerMutation({
       });
     }
 
-    if (
-      args.lowStockThreshold !== undefined &&
-      args.lowStockThreshold < 0
-    ) {
+    if (args.lowStockThreshold !== undefined && args.lowStockThreshold < 0) {
       throw new ConvexError({
         code: ErrorCode.INVALID_INPUT,
         message: "Low stock threshold must be non-negative",

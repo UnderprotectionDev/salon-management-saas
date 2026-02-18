@@ -277,6 +277,60 @@ export const rateLimiter = new RateLimiter(components.rateLimiter, {
     rate: 1,
     period: DAY,
   },
+
+  // ==========================================================================
+  // AI Feature Limits
+  // ==========================================================================
+
+  /**
+   * Photo analysis limit (per user)
+   * 5 per hour — prevents excessive API usage
+   */
+  aiPhotoAnalysis: {
+    kind: "token bucket",
+    rate: 5,
+    period: HOUR,
+  },
+
+  /**
+   * Care schedule generation limit (per user)
+   * 3 per hour — GPT-4o call
+   */
+  aiCareSchedule: {
+    kind: "token bucket",
+    rate: 3,
+    period: HOUR,
+  },
+
+  /**
+   * Virtual try-on limit (per user)
+   * 3 per hour — higher cost operation
+   */
+  aiVirtualTryOn: {
+    kind: "token bucket",
+    rate: 3,
+    period: HOUR,
+  },
+
+  /**
+   * Credit purchase limit (per user)
+   * 5 per hour — prevents accidental double purchases
+   */
+  aiCreditPurchase: {
+    kind: "fixed window",
+    rate: 5,
+    period: HOUR,
+  },
+
+  /**
+   * Test credit claim limit (per user)
+   * 3 per day — dev/testing only, prevents unlimited accumulation
+   */
+  aiClaimTestCredits: {
+    kind: "fixed window",
+    rate: 3,
+    period: DAY,
+  },
 });
 
 // Re-export time constants for use elsewhere

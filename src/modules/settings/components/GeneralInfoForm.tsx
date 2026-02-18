@@ -4,6 +4,7 @@ import { useForm } from "@tanstack/react-form";
 import { useMutation } from "convex/react";
 import { Loader2 } from "lucide-react";
 import { useState } from "react";
+import { toast } from "sonner";
 import { z } from "zod";
 import { LogoUpload } from "@/components/logo-upload";
 import { Button } from "@/components/ui/button";
@@ -14,6 +15,13 @@ import {
   FieldLabel,
 } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { api } from "../../../../convex/_generated/api";
 import type { Id } from "../../../../convex/_generated/dataModel";
@@ -22,6 +30,8 @@ import type { Id } from "../../../../convex/_generated/dataModel";
 // Types
 // =============================================================================
 
+type SalonType = "hair" | "nail" | "makeup" | "barber" | "spa" | "multi";
+
 // Minimal organization fields required by this component
 type OrganizationData = {
   _id: Id<"organization">;
@@ -29,12 +39,26 @@ type OrganizationData = {
   slug: string;
   description?: string | null;
   logo?: string | null;
+  salonType?: SalonType | null;
 };
 
 interface GeneralInfoFormProps {
   organization: OrganizationData;
   onSuccess?: () => void;
 }
+
+// =============================================================================
+// Constants
+// =============================================================================
+
+const SALON_TYPE_OPTIONS: { value: SalonType; label: string }[] = [
+  { value: "hair", label: "Hair Salon" },
+  { value: "nail", label: "Nail Salon" },
+  { value: "makeup", label: "Makeup Studio" },
+  { value: "barber", label: "Barber Shop" },
+  { value: "spa", label: "Spa" },
+  { value: "multi", label: "Multi-Service" },
+];
 
 // =============================================================================
 // Validators
@@ -60,20 +84,35 @@ export function GeneralInfoForm({
 }: GeneralInfoFormProps) {
   const [isEditing, setIsEditing] = useState(false);
   const updateOrganization = useMutation(api.organizations.update);
+  const updateSalonType = useMutation(api.organizations.updateSalonType);
 
   const form = useForm({
     defaultValues: {
       name: organization.name,
       description: organization.description ?? "",
+      salonType: organization.salonType ?? "",
     },
     onSubmit: async ({ value }) => {
-      await updateOrganization({
-        organizationId: organization._id,
-        name: value.name,
-        description: value.description || undefined,
-      });
-      setIsEditing(false);
-      onSuccess?.();
+      try {
+        await updateOrganization({
+          organizationId: organization._id,
+          name: value.name,
+          description: value.description || undefined,
+        });
+
+        if (value.salonType && value.salonType !== organization.salonType) {
+          await updateSalonType({
+            organizationId: organization._id,
+            salonType: value.salonType as SalonType,
+          });
+        }
+
+        toast.success("Settings saved");
+        setIsEditing(false);
+        onSuccess?.();
+      } catch {
+        toast.error("Failed to save settings");
+      }
     },
   });
 
@@ -81,6 +120,10 @@ export function GeneralInfoForm({
     form.reset();
     setIsEditing(false);
   };
+
+  const currentSalonTypeLabel =
+    SALON_TYPE_OPTIONS.find((o) => o.value === organization.salonType)?.label ??
+    null;
 
   if (!isEditing) {
     return (
@@ -118,6 +161,20 @@ export function GeneralInfoForm({
           </p>
         </div>
 
+        {/* Salon Type */}
+        <div>
+          <div className="text-sm font-medium text-muted-foreground">
+            Salon Type
+          </div>
+          <p className="mt-1 text-sm">
+            {currentSalonTypeLabel ?? (
+              <span className="text-muted-foreground italic">
+                Not set — required for AI features
+              </span>
+            )}
+          </p>
+        </div>
+
         {/* URL Slug (read-only) */}
         <div>
           <div className="text-sm font-medium text-muted-foreground">
@@ -144,7 +201,7 @@ export function GeneralInfoForm({
       <FieldGroup>
         {/* Logo */}
         <div>
-          <label className="text-sm font-medium">Logo</label>
+          <div className="text-sm font-medium">Logo</div>
           <div className="mt-2">
             <LogoUpload
               organizationId={organization._id}
@@ -213,11 +270,36 @@ export function GeneralInfoForm({
           }}
         </form.Field>
 
+        {/* Salon Type */}
+        <form.Field name="salonType">
+          {(field) => (
+            <Field>
+              <FieldLabel htmlFor={field.name}>Salon Type</FieldLabel>
+              <Select
+                value={field.state.value}
+                onValueChange={(v) => field.handleChange(v)}
+                disabled={form.state.isSubmitting}
+              >
+                <SelectTrigger id={field.name}>
+                  <SelectValue placeholder="Select salon type..." />
+                </SelectTrigger>
+                <SelectContent>
+                  {SALON_TYPE_OPTIONS.map((opt) => (
+                    <SelectItem key={opt.value} value={opt.value}>
+                      {opt.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </Field>
+          )}
+        </form.Field>
+
         {/* URL Slug (read-only) */}
         <div>
-          <label className="text-sm font-medium text-muted-foreground">
+          <div className="text-sm font-medium text-muted-foreground">
             URL Slug
-          </label>
+          </div>
           <p className="mt-1 text-sm font-mono text-muted-foreground">
             /{organization.slug}
           </p>

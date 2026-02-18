@@ -16,6 +16,7 @@ import {
   RotateCcw,
   Settings,
   Shield,
+  Sparkles,
   Store,
   User,
 } from "lucide-react";
@@ -1147,6 +1148,16 @@ export default function DashboardPage() {
                   <Link href="/dashboard/stats">
                     <BarChart3 className="mr-2 size-4" />
                     View My Stats
+                  </Link>
+                </Button>
+                <Button
+                  variant="outline"
+                  className="w-full justify-start"
+                  asChild
+                >
+                  <Link href="/dashboard/ai">
+                    <Sparkles className="mr-2 size-4" />
+                    AI Features
                   </Link>
                 </Button>
               </CardContent>

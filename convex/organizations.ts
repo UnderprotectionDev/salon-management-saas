@@ -21,6 +21,7 @@ import {
   validateString,
   validateUrl,
 } from "./lib/validation";
+import { salonTypeValidator } from "./lib/validators";
 
 const RESERVED_SLUGS = new Set([
   "dashboard",
@@ -430,5 +431,52 @@ export const updateSettings = ownerMutation({
     await ctx.db.patch(settings._id, updates);
 
     return settings._id;
+  },
+});
+
+// =============================================================================
+// Salon Type Management
+// =============================================================================
+
+/**
+ * Update the salon type for an organization.
+ * Used during onboarding and in settings.
+ */
+export const updateSalonType = ownerMutation({
+  args: {
+    salonType: salonTypeValidator,
+  },
+  returns: v.null(),
+  handler: async (ctx, args) => {
+    await ctx.db.patch(ctx.organizationId, {
+      salonType: args.salonType,
+      updatedAt: Date.now(),
+    });
+    return null;
+  },
+});
+
+/**
+ * Get the current salon type for an organization.
+ */
+export const getSalonType = orgQuery({
+  args: {},
+  returns: v.union(salonTypeValidator, v.null()),
+  handler: async (ctx) => {
+    const org = await ctx.db.get(ctx.organizationId);
+    return org?.salonType ?? null;
+  },
+});
+
+/**
+ * Get salon type by organizationId — accessible to any authenticated user
+ * (e.g. customers viewing /dashboard/ai who are not org members).
+ */
+export const getSalonTypePublic = authedQuery({
+  args: { organizationId: v.id("organization") },
+  returns: v.union(salonTypeValidator, v.null()),
+  handler: async (ctx, args) => {
+    const org = await ctx.db.get(args.organizationId);
+    return org?.salonType ?? null;
   },
 });

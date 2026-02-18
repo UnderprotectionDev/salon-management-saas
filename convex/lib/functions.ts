@@ -115,6 +115,13 @@ export const publicQuery = customQuery(baseQuery, {
   },
 });
 
+export const publicMutation = customMutation(triggerMutation, {
+  args: {},
+  input: async (_ctx, args) => {
+    return { ctx: {}, args };
+  },
+});
+
 export const authedQuery = customQuery(baseQuery, {
   args: {},
   input: async (ctx, _args) => {
