@@ -27,10 +27,7 @@ function formatICSDate(date: string, minutes: number): string {
 }
 
 function escapeICSText(text: string): string {
-  return text
-    .replace(/\\/g, "\\\\")
-    .replace(/;/g, "\\;")
-    .replace(/,/g, "\\,");
+  return text.replace(/\\/g, "\\\\").replace(/;/g, "\\;").replace(/,/g, "\\,");
 }
 
 /**

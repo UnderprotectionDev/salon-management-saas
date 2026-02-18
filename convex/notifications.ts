@@ -1,9 +1,5 @@
 import { ConvexError, v } from "convex/values";
-import {
-  addDays,
-  getCurrentMinutes,
-  getTodayDateString,
-} from "./lib/dateTime";
+import { addDays, getCurrentMinutes, getTodayDateString } from "./lib/dateTime";
 import {
   ErrorCode,
   internalMutation,

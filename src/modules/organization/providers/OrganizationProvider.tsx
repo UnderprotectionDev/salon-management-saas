@@ -17,6 +17,8 @@ type Organization = {
   name: string;
   slug: string;
   logo?: string | null;
+  description?: string | null;
+  salonType?: "hair" | "nail" | "makeup" | "barber" | "spa" | "multi" | null;
   role: "owner" | "staff";
   memberId: Id<"member">;
 };
@@ -110,6 +112,8 @@ export function OrganizationProvider({ children }: { children: ReactNode }) {
       name: org.name,
       slug: org.slug,
       logo: org.logo,
+      description: org.description,
+      salonType: org.salonType,
       role: org.role,
       memberId: org.memberId,
     }),

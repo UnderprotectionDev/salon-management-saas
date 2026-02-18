@@ -37,6 +37,13 @@ import {
 } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 import { Progress } from "@/components/ui/progress";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { useOrganizations } from "@/modules/organization";
 import { api } from "../../../convex/_generated/api";
@@ -44,6 +51,17 @@ import { api } from "../../../convex/_generated/api";
 // =============================================================================
 // Constants
 // =============================================================================
+
+type SalonType = "hair" | "nail" | "makeup" | "barber" | "spa" | "multi";
+
+const SALON_TYPE_OPTIONS: { value: SalonType; label: string }[] = [
+  { value: "hair", label: "Hair Salon" },
+  { value: "nail", label: "Nail Salon" },
+  { value: "makeup", label: "Makeup Studio" },
+  { value: "barber", label: "Barber Shop" },
+  { value: "spa", label: "Spa" },
+  { value: "multi", label: "Multi-Service" },
+];
 
 const STEPS = [
   { id: 1, name: "Basic Info", icon: Building2 },
@@ -92,6 +110,7 @@ interface OnboardingFormData {
   name: string;
   slug: string;
   description: string;
+  salonType: string;
   // Step 2: Location
   email: string;
   phone: string;
@@ -126,12 +145,14 @@ export default function OnboardingPage() {
 
   const createOrganization = useMutation(api.organizations.create);
   const updateSettings = useMutation(api.organizations.updateSettings);
+  const updateSalonType = useMutation(api.organizations.updateSalonType);
 
   const form = useForm({
     defaultValues: {
       name: "",
       slug: "",
       description: "",
+      salonType: "",
       email: "",
       phone: "",
       street: "",
@@ -187,6 +208,13 @@ export default function OnboardingPage() {
         },
         businessHours,
       });
+
+      if (value.salonType) {
+        await updateSalonType({
+          organizationId: result.organizationId,
+          salonType: value.salonType as SalonType,
+        });
+      }
 
       router.push(`/${result.slug}/dashboard`);
     } catch (error) {
@@ -401,6 +429,35 @@ export default function OnboardingPage() {
                         onChange={(e) => field.handleChange(e.target.value)}
                         rows={3}
                       />
+                    </Field>
+                  )}
+                </form.Field>
+
+                <form.Field name="salonType">
+                  {(field) => (
+                    <Field>
+                      <FieldLabel htmlFor={field.name}>
+                        Salon Type (optional)
+                      </FieldLabel>
+                      <Select
+                        value={field.state.value}
+                        onValueChange={(v) => field.handleChange(v)}
+                      >
+                        <SelectTrigger id={field.name}>
+                          <SelectValue placeholder="Select your salon type..." />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {SALON_TYPE_OPTIONS.map((opt) => (
+                            <SelectItem key={opt.value} value={opt.value}>
+                              {opt.label}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <FieldDescription>
+                        Enables AI-powered features like photo analysis and
+                        virtual try-on
+                      </FieldDescription>
                     </Field>
                   )}
                 </form.Field>

@@ -14,6 +14,35 @@ import {
   staffStatusValidator,
 } from "./lib/validators";
 
+/**
+ * List all active staff names for a salon (public).
+ * Used on the design portfolio page for the staff filter.
+ * Unlike listPublicActive, this does NOT filter by bookability.
+ */
+export const listNamesForOrg = publicQuery({
+  args: { organizationId: v.id("organization") },
+  returns: v.array(
+    v.object({
+      _id: v.id("staff"),
+      name: v.string(),
+      imageUrl: v.optional(v.string()),
+    }),
+  ),
+  handler: async (ctx, args) => {
+    const staff = await ctx.db
+      .query("staff")
+      .withIndex("organizationId_status", (q) =>
+        q.eq("organizationId", args.organizationId).eq("status", "active"),
+      )
+      .collect();
+    return staff.map((s) => ({
+      _id: s._id,
+      name: s.name,
+      imageUrl: s.imageUrl,
+    }));
+  },
+});
+
 export const listPublicActive = publicQuery({
   args: { organizationId: v.id("organization") },
   returns: v.array(

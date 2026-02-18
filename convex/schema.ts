@@ -11,6 +11,16 @@ export default defineSchema({
     slug: v.string(),
     description: v.optional(v.string()),
     logo: v.optional(v.string()),
+    salonType: v.optional(
+      v.union(
+        v.literal("hair"),
+        v.literal("nail"),
+        v.literal("makeup"),
+        v.literal("barber"),
+        v.literal("spa"),
+        v.literal("multi"),
+      ),
+    ),
     createdAt: v.number(),
     updatedAt: v.number(),
   })
@@ -688,4 +698,188 @@ export default defineSchema({
   })
     .index("by_user", ["userId"])
     .index("by_user_org", ["userId", "organizationId"]),
+
+  // =========================================================================
+  // AI Features (M10)
+  // =========================================================================
+
+  // AI Credits — balance per customer or organization pool
+  // AI Credits — user-level credit pool (org pool kept for org-purchased credits)
+  aiCredits: defineTable({
+    organizationId: v.optional(v.id("organization")), // null = global user pool
+    customerId: v.optional(v.id("customers")),
+    userId: v.optional(v.string()), // Better Auth user ID
+    poolType: v.union(v.literal("customer"), v.literal("org")),
+    balance: v.number(),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_org", ["organizationId"])
+    .index("by_org_customer", ["organizationId", "customerId"])
+    .index("by_org_pool", ["organizationId", "poolType"])
+    .index("by_user", ["userId"]),
+
+  // AI Credit Transactions — audit log for credit purchases, usage, and refunds
+  aiCreditTransactions: defineTable({
+    organizationId: v.optional(v.id("organization")),
+    creditId: v.id("aiCredits"),
+    type: v.union(
+      v.literal("purchase"),
+      v.literal("usage"),
+      v.literal("refund"),
+    ),
+    amount: v.number(), // positive for purchase/refund, negative for usage
+    featureType: v.optional(
+      v.union(
+        v.literal("photoAnalysis"),
+        v.literal("quickQuestion"),
+        v.literal("virtualTryOn"),
+        v.literal("careSchedule"),
+      ),
+    ),
+    referenceId: v.optional(v.string()), // ID of analysis/simulation/schedule
+    description: v.optional(v.string()),
+    createdAt: v.number(),
+  })
+    .index("by_credit", ["creditId"])
+    .index("by_org", ["organizationId"]),
+
+  // AI Analyses — photo analysis records (user-scoped, org optional for service matching)
+  aiAnalyses: defineTable({
+    organizationId: v.optional(v.id("organization")),
+    customerId: v.optional(v.id("customers")),
+    userId: v.optional(v.string()), // Better Auth user ID
+    imageStorageIds: v.array(v.id("_storage")), // 1-3 photos
+    salonType: v.union(
+      v.literal("hair"),
+      v.literal("nail"),
+      v.literal("makeup"),
+      v.literal("barber"),
+      v.literal("spa"),
+      v.literal("multi"),
+    ),
+    status: v.union(
+      v.literal("pending"),
+      v.literal("processing"),
+      v.literal("completed"),
+      v.literal("failed"),
+    ),
+    result: v.optional(v.any()), // Structured analysis result (type-specific)
+    recommendedServiceIds: v.optional(v.array(v.id("services"))),
+    quickAnswers: v.optional(v.any()), // Map<questionKey, answer> — ephemeral quick Q&A
+    errorMessage: v.optional(v.string()),
+    creditCost: v.number(), // 5 for single, 8 for multi
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_user", ["userId"])
+    .index("by_user_status", ["userId", "status"]),
+
+  // AI Simulations — virtual try-on records (user-scoped, org optional for catalog/gallery)
+  aiSimulations: defineTable({
+    organizationId: v.optional(v.id("organization")),
+    customerId: v.optional(v.id("customers")),
+    userId: v.optional(v.string()), // Better Auth user ID
+    imageStorageId: v.id("_storage"), // Source photo
+    simulationType: v.union(v.literal("catalog"), v.literal("prompt")),
+    designCatalogId: v.optional(v.id("designCatalog")),
+    promptText: v.optional(v.string()),
+    resultImageStorageId: v.optional(v.id("_storage")),
+    status: v.union(
+      v.literal("pending"),
+      v.literal("processing"),
+      v.literal("completed"),
+      v.literal("failed"),
+    ),
+    publicConsent: v.optional(v.boolean()),
+    galleryApprovedByOrg: v.optional(v.boolean()),
+    errorMessage: v.optional(v.string()),
+    creditCost: v.number(), // 10
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_user", ["userId"])
+    .index("by_org_gallery", [
+      "organizationId",
+      "publicConsent",
+      "galleryApprovedByOrg",
+    ]),
+
+  // AI Care Schedules — personalized care calendar (user-scoped)
+  aiCareSchedules: defineTable({
+    organizationId: v.optional(v.id("organization")),
+    customerId: v.optional(v.id("customers")),
+    userId: v.optional(v.string()), // Better Auth user ID
+    salonType: v.optional(
+      v.union(
+        v.literal("hair"),
+        v.literal("nail"),
+        v.literal("makeup"),
+        v.literal("barber"),
+        v.literal("spa"),
+        v.literal("multi"),
+      ),
+    ),
+    recommendations: v.array(
+      v.object({
+        title: v.string(),
+        description: v.string(),
+        recommendedDate: v.string(), // "YYYY-MM-DD"
+        serviceId: v.optional(v.id("services")),
+      }),
+    ),
+    nextCheckDate: v.optional(v.string()), // "YYYY-MM-DD"
+    status: v.union(
+      v.literal("active"),
+      v.literal("completed"),
+      v.literal("expired"),
+    ),
+    creditCost: v.number(), // 2
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_user", ["userId"])
+    .index("by_user_status", ["userId", "status"])
+    .index("by_next_check", ["nextCheckDate"]),
+
+  // AI Mood Board — saved looks and styles (user-scoped)
+  aiMoodBoard: defineTable({
+    organizationId: v.optional(v.id("organization")),
+    customerId: v.optional(v.id("customers")),
+    userId: v.optional(v.string()), // Better Auth user ID
+    imageStorageId: v.id("_storage"),
+    source: v.union(v.literal("analysis"), v.literal("tryon")),
+    analysisId: v.optional(v.id("aiAnalyses")),
+    simulationId: v.optional(v.id("aiSimulations")),
+    designCatalogId: v.optional(v.id("designCatalog")),
+    note: v.optional(v.string()),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  }).index("by_user", ["userId"]),
+
+  // Design Catalog — salon design portfolio for virtual try-on
+  designCatalog: defineTable({
+    organizationId: v.id("organization"),
+    name: v.string(),
+    category: v.string(),
+    imageStorageId: v.id("_storage"),
+    thumbnailStorageId: v.optional(v.id("_storage")),
+    description: v.optional(v.string()),
+    tags: v.array(v.string()),
+    salonType: v.union(
+      v.literal("hair"),
+      v.literal("nail"),
+      v.literal("makeup"),
+      v.literal("multi"),
+    ),
+    status: v.union(v.literal("active"), v.literal("inactive")),
+    sortOrder: v.number(),
+    createdByStaffId: v.optional(v.id("staff")),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_org", ["organizationId"])
+    .index("by_org_category", ["organizationId", "category"])
+    .index("by_org_status", ["organizationId", "status"])
+    .index("by_org_staff", ["organizationId", "createdByStaffId"]),
 });

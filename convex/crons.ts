@@ -52,4 +52,11 @@ crons.interval(
   {},
 );
 
+crons.cron(
+  "check care schedule reminders",
+  "0 9 * * 1", // Every Monday at 9 AM UTC
+  internal.aiCareSchedules.checkAndNotify,
+  {},
+);
+
 export default crons;
