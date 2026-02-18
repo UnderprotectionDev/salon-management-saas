@@ -7,6 +7,10 @@ import {
   withSystemFields,
 } from "convex-helpers/validators";
 import schema from "../schema";
+import {
+  aiAnalysisResultValidator,
+  aiQuickAnswersValidator,
+} from "./aiValidators";
 
 // Schema-typed v: provides vv.doc("tableName") and type-safe vv.id("tableName")
 const vv = typedV(schema);
@@ -833,6 +837,9 @@ export const aiMoodBoardDocValidator = vv.doc("aiMoodBoard");
 
 /** Design Catalog document validator */
 export const designCatalogDocValidator = vv.doc("designCatalog");
+
+// Re-export AI validators so other modules can import from validators.ts
+export { aiAnalysisResultValidator, aiQuickAnswersValidator };
 
 // --- Composite validators ---
 

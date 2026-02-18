@@ -9,7 +9,6 @@ import type { UsageHandler } from "@convex-dev/agent";
 import { Agent } from "@convex-dev/agent";
 import { gateway } from "ai";
 import { components } from "../_generated/api";
-import { ANALYSIS_FOCUS_BY_TYPE } from "./aiConstants";
 
 // =========================================================================
 // Usage Handler — logs token usage and integrates with credit transactions
@@ -39,17 +38,10 @@ Your analysis MUST be:
 - Professional and encouraging in tone
 - Specific and detailed (not generic)
 - Actionable with clear recommendations
-- Salon-type aware (focus on relevant features only)
-
-Focus areas by salon type:
-- Hair: ${ANALYSIS_FOCUS_BY_TYPE.hair.join(", ")}
-- Nail: ${ANALYSIS_FOCUS_BY_TYPE.nail.join(", ")}
-- Makeup: ${ANALYSIS_FOCUS_BY_TYPE.makeup.join(", ")}
-- Barber: ${ANALYSIS_FOCUS_BY_TYPE.barber.join(", ")}
-- Spa: ${ANALYSIS_FOCUS_BY_TYPE.spa.join(", ")}
+- Focused only on the salon-type-specific features listed in the user prompt
 
 Always provide:
-1. Feature analysis (type-specific)
+1. Feature analysis (type-specific, based on the focus areas in the prompt)
 2. Recommended services from the salon's catalog
 3. Care tips for home maintenance
 4. Product recommendations (general suggestions)

@@ -23,7 +23,7 @@ export const TRYON_ENABLED_TYPES: SalonType[] = [
 ];
 
 /**
- * Maps salon type to the body region used for try-on segmentation.
+ * Maps salon type to the body region used for try-on (used in VirtualTryOnView).
  */
 export const SALON_TYPE_TRYON_MODE_MAP: Record<
   string,

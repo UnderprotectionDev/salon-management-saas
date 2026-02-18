@@ -1,5 +1,9 @@
 import { defineSchema, defineTable } from "convex/server";
 import { v } from "convex/values";
+import {
+  aiAnalysisResultValidator,
+  aiQuickAnswersValidator,
+} from "./lib/aiValidators";
 
 // Application schema with organization management
 // Organization and member tables are managed here (not in Better Auth component)
@@ -707,7 +711,6 @@ export default defineSchema({
   // AI Credits — user-level credit pool (org pool kept for org-purchased credits)
   aiCredits: defineTable({
     organizationId: v.optional(v.id("organization")), // null = global user pool
-    customerId: v.optional(v.id("customers")),
     userId: v.optional(v.string()), // Better Auth user ID
     poolType: v.union(v.literal("customer"), v.literal("org")),
     balance: v.number(),
@@ -715,9 +718,10 @@ export default defineSchema({
     updatedAt: v.number(),
   })
     .index("by_org", ["organizationId"])
-    .index("by_org_customer", ["organizationId", "customerId"])
     .index("by_org_pool", ["organizationId", "poolType"])
-    .index("by_user", ["userId"]),
+    .index("by_user", ["userId"])
+    // Compound index: eliminates .filter(poolType) anti-pattern
+    .index("by_user_pool", ["userId", "poolType"]),
 
   // AI Credit Transactions — audit log for credit purchases, usage, and refunds
   aiCreditTransactions: defineTable({
@@ -737,17 +741,17 @@ export default defineSchema({
         v.literal("careSchedule"),
       ),
     ),
-    referenceId: v.optional(v.string()), // ID of analysis/simulation/schedule
+    referenceId: v.optional(v.string()), // ID of analysis/simulation/schedule, or Polar orderId for purchases
     description: v.optional(v.string()),
     createdAt: v.number(),
   })
     .index("by_credit", ["creditId"])
-    .index("by_org", ["organizationId"]),
+    .index("by_org", ["organizationId"])
+    .index("by_reference", ["referenceId"]),
 
   // AI Analyses — photo analysis records (user-scoped, org optional for service matching)
   aiAnalyses: defineTable({
     organizationId: v.optional(v.id("organization")),
-    customerId: v.optional(v.id("customers")),
     userId: v.optional(v.string()), // Better Auth user ID
     imageStorageIds: v.array(v.id("_storage")), // 1-3 photos
     salonType: v.union(
@@ -764,9 +768,9 @@ export default defineSchema({
       v.literal("completed"),
       v.literal("failed"),
     ),
-    result: v.optional(v.any()), // Structured analysis result (type-specific)
+    result: v.optional(aiAnalysisResultValidator), // Structured analysis result (type-specific)
     recommendedServiceIds: v.optional(v.array(v.id("services"))),
-    quickAnswers: v.optional(v.any()), // Map<questionKey, answer> — ephemeral quick Q&A
+    quickAnswers: v.optional(aiQuickAnswersValidator), // Map<questionKey, answer>
     errorMessage: v.optional(v.string()),
     creditCost: v.number(), // 5 for single, 8 for multi
     createdAt: v.number(),
@@ -778,7 +782,6 @@ export default defineSchema({
   // AI Simulations — virtual try-on records (user-scoped, org optional for catalog/gallery)
   aiSimulations: defineTable({
     organizationId: v.optional(v.id("organization")),
-    customerId: v.optional(v.id("customers")),
     userId: v.optional(v.string()), // Better Auth user ID
     imageStorageId: v.id("_storage"), // Source photo
     simulationType: v.union(v.literal("catalog"), v.literal("prompt")),
@@ -808,7 +811,6 @@ export default defineSchema({
   // AI Care Schedules — personalized care calendar (user-scoped)
   aiCareSchedules: defineTable({
     organizationId: v.optional(v.id("organization")),
-    customerId: v.optional(v.id("customers")),
     userId: v.optional(v.string()), // Better Auth user ID
     salonType: v.optional(
       v.union(
@@ -840,12 +842,14 @@ export default defineSchema({
   })
     .index("by_user", ["userId"])
     .index("by_user_status", ["userId", "status"])
-    .index("by_next_check", ["nextCheckDate"]),
+    // Compound index for filtering by salonType: eliminates .filter(salonType) anti-pattern
+    .index("by_user_status_salonType", ["userId", "status", "salonType"])
+    // Compound index for cron: find active schedules with due check dates
+    .index("by_status_nextCheck", ["status", "nextCheckDate"]),
 
   // AI Mood Board — saved looks and styles (user-scoped)
   aiMoodBoard: defineTable({
     organizationId: v.optional(v.id("organization")),
-    customerId: v.optional(v.id("customers")),
     userId: v.optional(v.string()), // Better Auth user ID
     imageStorageId: v.id("_storage"),
     source: v.union(v.literal("analysis"), v.literal("tryon")),

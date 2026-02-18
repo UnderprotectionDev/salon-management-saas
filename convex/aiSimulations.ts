@@ -80,6 +80,28 @@ export const createSimulation = authedMutation({
       }
     }
 
+    // Validate source photo: type and size
+    const imageMetadata = await ctx.storage.getMetadata(imageStorageId);
+    if (!imageMetadata) {
+      throw new ConvexError({
+        code: ErrorCode.VALIDATION_ERROR,
+        message: "Invalid image file",
+      });
+    }
+    const ALLOWED_TYPES = new Set(["image/jpeg", "image/png", "image/webp"]);
+    if (!ALLOWED_TYPES.has(imageMetadata.contentType ?? "")) {
+      throw new ConvexError({
+        code: ErrorCode.VALIDATION_ERROR,
+        message: "Only JPEG, PNG, and WebP images are allowed",
+      });
+    }
+    if (imageMetadata.size > 5 * 1024 * 1024) {
+      throw new ConvexError({
+        code: ErrorCode.VALIDATION_ERROR,
+        message: "Image must be 5 MB or smaller",
+      });
+    }
+
     await rateLimiter.limit(ctx, "aiVirtualTryOn", {
       key: userId,
       throws: true,
@@ -281,10 +303,11 @@ export const listByUser = authedQuery({
             "Cannot access another user's simulations without org context",
         });
       }
+      const orgId = args.organizationId;
       const membership = await ctx.db
         .query("member")
         .withIndex("organizationId_userId", (q) =>
-          q.eq("organizationId", args.organizationId!).eq("userId", callerId),
+          q.eq("organizationId", orgId).eq("userId", callerId),
         )
         .first();
       if (!membership) {

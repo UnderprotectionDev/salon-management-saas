@@ -227,6 +227,7 @@ export const reorder = ownerMutation({
 /**
  * List all designs for management (including inactive).
  * Staff see all org designs so they can see each other's work.
+ * Capped at 500 designs per org — sufficient for any realistic catalog.
  */
 export const listAllByOrg = orgQuery({
   args: {},
@@ -235,7 +236,7 @@ export const listAllByOrg = orgQuery({
     const designs = await ctx.db
       .query("designCatalog")
       .withIndex("by_org", (q) => q.eq("organizationId", ctx.organizationId))
-      .collect();
+      .take(500);
 
     return await Promise.all(
       designs.map(async (design) => {
@@ -279,6 +280,7 @@ export const listMyDesigns = orgQuery({
 
 /**
  * List active designs for customers, sorted by sortOrder.
+ * Capped at 200 active designs — standard customer-facing catalog limit.
  */
 export const listByOrg = publicQuery({
   args: {
@@ -291,7 +293,7 @@ export const listByOrg = publicQuery({
       .withIndex("by_org_status", (q) =>
         q.eq("organizationId", args.organizationId).eq("status", "active"),
       )
-      .collect();
+      .take(200);
 
     // Sort by sortOrder in memory (already fetched)
     designs.sort((a, b) => a.sortOrder - b.sortOrder);
@@ -327,6 +329,8 @@ export const listByStaff = publicQuery({
   },
   returns: v.array(designCatalogPublicValidator),
   handler: async (ctx, args) => {
+    // by_org_staff index doesn't encode status, so we take a capped set and
+    // filter in memory. by_org_status is used for the "all active" branch.
     const allActive = args.staffId
       ? (
           await ctx.db
@@ -336,14 +340,14 @@ export const listByStaff = publicQuery({
                 .eq("organizationId", args.organizationId)
                 .eq("createdByStaffId", args.staffId),
             )
-            .collect()
+            .take(200)
         ).filter((d) => d.status === "active")
       : await ctx.db
           .query("designCatalog")
           .withIndex("by_org_status", (q) =>
             q.eq("organizationId", args.organizationId).eq("status", "active"),
           )
-          .collect();
+          .take(200);
 
     const designs = allActive.sort((a, b) => a.sortOrder - b.sortOrder);
 
@@ -373,6 +377,8 @@ export const listByCategory = publicQuery({
   },
   returns: v.array(designCatalogPublicValidator),
   handler: async (ctx, args) => {
+    // by_org_category index doesn't include status — filter in memory after
+    // a capped fetch (categories are usually a small subset of the full catalog).
     const designs = await ctx.db
       .query("designCatalog")
       .withIndex("by_org_category", (q) =>
@@ -380,7 +386,7 @@ export const listByCategory = publicQuery({
           .eq("organizationId", args.organizationId)
           .eq("category", args.category),
       )
-      .collect();
+      .take(200);
 
     // Filter to active only and sort
     const active = designs
@@ -409,6 +415,7 @@ export const listByCategory = publicQuery({
 
 /**
  * Get unique categories for a salon's design catalog.
+ * Capped at 200 active designs (same as listByOrg).
  */
 export const getCategories = publicQuery({
   args: {
@@ -421,7 +428,7 @@ export const getCategories = publicQuery({
       .withIndex("by_org_status", (q) =>
         q.eq("organizationId", args.organizationId).eq("status", "active"),
       )
-      .collect();
+      .take(200);
 
     const categories = [...new Set(designs.map((d) => d.category))];
     return categories.sort();
