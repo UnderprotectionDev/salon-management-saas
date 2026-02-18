@@ -19,6 +19,7 @@ import {
 import { rateLimiter } from "./lib/rateLimits";
 import {
   aiAnalysisDocValidator,
+  aiAnalysisResultValidator,
   aiAnalysisStatusValidator,
   salonTypeValidator,
 } from "./lib/validators";
@@ -55,6 +56,32 @@ export const createAnalysis = authedMutation({
         code: ErrorCode.VALIDATION_ERROR,
         message: "Maximum 3 images allowed",
       });
+    }
+
+    // Validate each uploaded file: type and size
+    const ALLOWED_TYPES = new Set(["image/jpeg", "image/png", "image/webp"]);
+    const MAX_SIZE_BYTES = 5 * 1024 * 1024; // 5 MB
+
+    for (const storageId of imageStorageIds) {
+      const metadata = await ctx.storage.getMetadata(storageId);
+      if (!metadata) {
+        throw new ConvexError({
+          code: ErrorCode.VALIDATION_ERROR,
+          message: "Invalid image file",
+        });
+      }
+      if (!ALLOWED_TYPES.has(metadata.contentType ?? "")) {
+        throw new ConvexError({
+          code: ErrorCode.VALIDATION_ERROR,
+          message: "Only JPEG, PNG, and WebP images are allowed",
+        });
+      }
+      if (metadata.size > MAX_SIZE_BYTES) {
+        throw new ConvexError({
+          code: ErrorCode.VALIDATION_ERROR,
+          message: "Each image must be 5 MB or smaller",
+        });
+      }
     }
 
     // Rate limit by user
@@ -227,10 +254,11 @@ export const listByUser = authedQuery({
           message: "Cannot access another user's analyses without org context",
         });
       }
+      const orgId = args.organizationId;
       const membership = await ctx.db
         .query("member")
         .withIndex("organizationId_userId", (q) =>
-          q.eq("organizationId", args.organizationId!).eq("userId", callerId),
+          q.eq("organizationId", orgId).eq("userId", callerId),
         )
         .first();
       if (!membership) {
@@ -299,7 +327,7 @@ export const updateAnalysisStatus = internalMutation({
 export const completeAnalysis = internalMutation({
   args: {
     analysisId: v.id("aiAnalyses"),
-    result: v.any(),
+    result: aiAnalysisResultValidator,
     recommendedServiceIds: v.array(v.id("services")),
   },
   returns: v.null(),

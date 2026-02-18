@@ -44,7 +44,7 @@ interface AnalysisFeature {
 }
 
 interface RecommendedService {
-  serviceName: string;
+  serviceId?: string;
   reason: string;
 }
 
@@ -141,14 +141,11 @@ function AnalysisResultCard({ result }: { result: AnalysisResult }) {
           </CardHeader>
           <CardContent>
             <div className="space-y-2">
-              {result.recommendedServices.map((service) => (
+              {result.recommendedServices.map((service, idx) => (
                 <div
-                  key={service.serviceName}
+                  key={service.serviceId ?? idx}
                   className="flex items-start gap-2"
                 >
-                  <Badge variant="secondary" className="mt-0.5 shrink-0">
-                    {service.serviceName}
-                  </Badge>
                   <span className="text-muted-foreground text-sm">
                     {service.reason}
                   </span>

@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-Multi-tenant salon management platform with real-time booking, staff scheduling, client management, product inventory, billing, email notifications, and analytics reporting.
+Multi-tenant salon management platform with real-time booking, staff scheduling, client management, product inventory, billing, email notifications, analytics reporting, and AI-powered features (photo analysis, virtual try-on, care schedules, design catalog).
 
 ## Commands
 
@@ -26,8 +26,9 @@ Multi-tenant salon management platform with real-time booking, staff scheduling,
 - **Frontend:** Next.js 16, React 19, React Compiler, Tailwind CSS v4, shadcn/ui (New York)
 - **Backend:** Convex (database, functions, real-time), convex-helpers (triggers, custom functions)
 - **Auth:** Better Auth (@convex-dev/better-auth) with Convex adapter
-- **Payments:** Polar (@convex-dev/polar for subscriptions)
+- **Payments:** Polar (@convex-dev/polar for subscriptions + one-time AI credit purchases)
 - **Email:** Resend + React Email (transactional emails with JSX templates)
+- **AI:** `@convex-dev/agent` (LLM threads), Vercel AI SDK gateway (GPT-4o), `@ai-sdk/fal` (fal.ai image generation for virtual try-on)
 - **Charts:** recharts (via shadcn ChartContainer)
 - **Forms:** TanStack Form + Zod validation
 - **Tools:** Bun (package manager), Biome (linter/formatter)
@@ -52,52 +53,63 @@ convex/              # Backend functions and schema
 ├── _generated/      # Auto-generated types (don't edit)
 ├── betterAuth/      # Better Auth component (schema, auth config)
 ├── lib/
-│   ├── functions.ts # Custom query/mutation wrappers with auth + ErrorCode enum
-│   ├── triggers.ts  # Convex triggers (auto notifications/emails on appointment changes)
-│   ├── validators.ts # Shared return type validators (~910 lines)
-│   ├── rateLimits.ts # Rate limiting config
-│   ├── scheduleResolver.ts # Schedule resolution logic (163 lines)
-│   ├── confirmation.ts # Confirmation code generator (40 lines)
-│   ├── dateTime.ts  # Date/time utilities (94 lines)
-│   ├── ics.ts       # RFC 5545 ICS calendar file generator
-│   ├── phone.ts     # Turkish phone validation helper
+│   ├── functions.ts     # Custom query/mutation wrappers with auth + ErrorCode enum
+│   ├── triggers.ts      # Convex triggers (auto notifications/emails on appointment changes)
+│   ├── validators.ts    # Shared return type validators (~910 lines)
+│   ├── aiValidators.ts  # AI-specific validators (analyses, simulations, care schedules)
+│   ├── aiConstants.ts   # Credit costs, salon types, CREDIT_PACKAGES, quick questions
+│   ├── agents.ts        # @convex-dev/agent instances (photoAnalysisAgent, quickQuestionAgent, careScheduleAgent)
+│   ├── rateLimits.ts    # Rate limiting config
+│   ├── scheduleResolver.ts # Schedule resolution logic
+│   ├── confirmation.ts  # Confirmation code generator
+│   ├── dateTime.ts      # Date/time utilities
+│   ├── ics.ts           # RFC 5545 ICS calendar file generator
+│   ├── phone.ts         # Turkish phone validation helper
 │   └── relationships.ts # Database relationship helpers
-├── appointments.ts  # Appointment CRUD + booking + reschedule (~1400 lines)
-├── appointmentServices.ts # Appointment-service junction (54 lines)
-├── auth.ts          # Auth instance and options
-├── crons.ts         # 7 scheduled jobs (slot locks, notifications, reminders, billing, polar sync)
-├── email.tsx        # Email actions - "use node" with JSX rendering (~540 lines)
-├── email_helpers.ts # Internal query/mutation helpers for email actions
-├── http.ts          # HTTP router (auth routes + Polar webhooks)
-├── files.ts         # File storage mutations (253 lines)
-├── init.ts          # Initialization script (Polar product sync)
-├── slots.ts         # Slot availability algorithm (206 lines)
-├── slotLocks.ts     # Slot lock acquire/release/cleanup (145 lines)
-├── users.ts         # User queries (getCurrentUser)
-├── reports.ts       # Revenue, staff performance, customer analytics (~580 lines)
-├── admin.ts         # SuperAdmin functions (platform stats, org/user management)
-├── analytics.ts     # Dashboard stats (week-over-week, monthly revenue)
-├── notifications.ts # In-app notifications CRUD + triggers (~230 lines)
-├── subscriptions.ts # Subscription status, webhook handlers, grace periods
-├── polarActions.ts  # Polar checkout/portal URL generation (actions)
-├── polarSync.ts     # Product sync from Polar
-├── serviceCategories.ts # Service category CRUD (188 lines)
-├── services.ts      # Service CRUD + staff assignment (353 lines)
-├── customers.ts     # Customer CRUD + search + merge (~600 lines)
-├── scheduleOverrides.ts # Schedule override CRUD (178 lines)
-├── timeOffRequests.ts # Time-off workflow (335 lines)
-├── staffOvertime.ts # Overtime management (155 lines)
-├── productCategories.ts # Product category CRUD + reorder (175 lines)
-├── products.ts      # Product CRUD + adjustStock + countLowStock + listPublic (300 lines)
-├── inventoryTransactions.ts # Stock transaction audit log (120 lines)
-└── *.ts             # Domain functions (organizations, staff, members, invitations)
+├── appointments.ts      # Appointment CRUD + booking + reschedule (~1400 lines)
+├── appointmentServices.ts
+├── auth.ts              # Auth instance and options
+├── crons.ts             # 8 scheduled jobs (see Scheduled Jobs section)
+├── email.tsx            # Email actions - "use node" with JSX rendering (~540 lines)
+├── email_helpers.ts     # Internal query/mutation helpers for email actions
+├── http.ts              # HTTP router (auth routes + Polar webhooks)
+├── files.ts             # File storage mutations
+├── slots.ts             # Slot availability algorithm
+├── slotLocks.ts         # Slot lock acquire/release/cleanup
+├── users.ts             # User queries (getCurrentUser)
+├── reports.ts           # Revenue, staff performance, customer analytics
+├── admin.ts             # SuperAdmin platform management
+├── analytics.ts         # Dashboard stats (week-over-week, monthly revenue)
+├── notifications.ts     # In-app notifications CRUD + triggers
+├── subscriptions.ts     # Subscription status, webhook handlers, grace periods
+├── polarActions.ts      # Polar checkout/portal URL generation (actions)
+├── polarSync.ts         # Product sync from Polar
+├── serviceCategories.ts
+├── services.ts
+├── customers.ts         # Customer CRUD + search + merge
+├── scheduleOverrides.ts
+├── timeOffRequests.ts
+├── staffOvertime.ts
+├── productCategories.ts
+├── products.ts          # Product CRUD + adjustStock + countLowStock + listPublic
+├── inventoryTransactions.ts
+├── aiActions.tsx        # "use node" internalActions: photo analysis, quick questions, virtual try-on, care schedules
+├── aiAnalysis.ts        # Photo analysis CRUD (list, get, submit, getLatest)
+├── aiCareSchedules.ts   # Care schedule CRUD + weekly cron check
+├── aiCredits.ts         # Credit balance management (deduct, refund, addPurchased, getMyBalance)
+├── aiCreditActions.ts   # "use node" Polar one-time checkout for credit purchases
+├── aiSimulations.ts     # Virtual try-on simulation CRUD + gallery management
+├── aiMoodBoard.ts       # Mood board CRUD
+├── designCatalog.ts     # Org design catalog management
+└── *.ts                 # Domain functions (organizations, staff, members, invitations)
 
 src/
 ├── app/             # Next.js App Router pages
 │   ├── (auth)/      # Auth pages (sign-in) - no layout nesting
 │   ├── [slug]/      # Multi-tenant routes (org slug in URL)
 │   │   ├── (authenticated)/ # Protected routes (see sidebar nav below)
-│   │   └── (public)/        # Public routes (book, appointment/[code])
+│   │   │   └── ai/          # AI hub page (/{slug}/ai)
+│   │   └── (public)/        # Public routes (book, appointment/[code], catalog, designs, gallery)
 │   ├── onboarding/  # New user org creation
 │   └── dashboard/   # Redirect to active org
 ├── components/ui/   # shadcn/ui components (56+)
@@ -105,6 +117,12 @@ src/
 ├── hooks/           # Custom React hooks
 ├── lib/             # Utilities (cn(), auth helpers)
 └── modules/         # Feature modules (domain-driven)
+    ├── ai/          # AI features module
+    │   ├── components/         # CreditBalance, CreditPurchaseDialog
+    │   ├── customer/components/ # PhotoAnalysisView, VirtualTryOnView, CareScheduleView,
+    │   │                        # DesignBrowser, MoodBoardView, QuickQuestionsPanel, TryOnComparisonView
+    │   ├── staff/components/    # AppointmentPrepView
+    │   └── organization/components/ # DesignCatalogManager, GalleryModerationView, OrgAICreditManager
     ├── convex/      # ConvexClientProvider
     ├── auth/        # Auth components, layouts, views
     ├── billing/     # Subscription plans, grace period banner, suspended overlay
@@ -125,24 +143,25 @@ src/
 
 - `(auth)/` — Route group (no URL segment). Auth pages with minimal layout.
 - `[slug]/(authenticated)/` — Protected org routes. Requires auth + org membership.
-- `[slug]/(public)/` — Public org routes (book, appointment/[code], catalog). No auth required.
+- `[slug]/(public)/` — Public org routes (book, appointment/[code], catalog, designs, gallery). No auth required.
 - `onboarding/` — First-time user flow to create an organization.
 - `dashboard/` — Redirects to user's active organization dashboard.
 - `/` — Salon directory (public listing of organizations).
 
-**Sidebar Navigation:** Dashboard, Calendar, Staff, Appointments, Services, Customers, Products, Reports, Settings, Billing
+**Sidebar Navigation:** Dashboard, Calendar, Staff, Appointments, Services, Customers, Products, Reports, AI, Settings, Billing
 
-**Reports & Analytics (`/{slug}/reports`):** 
+**Reports & Analytics (`/{slug}/reports`):**
 - **Revenue Report:** Daily breakdowns, service/staff revenue, 2 charts (service popularity pie, peak hours bar), expanded CSV export (3 options)
 - **Staff Performance:** KPI cards, utilization chart (color-coded), comparison table with no-show highlights
 - **Customer Analytics:** Trend indicators (vs previous period), new vs returning chart, top customers table, retention rate
-- **Customer Dashboard (`/dashboard/stats`):** Personal statistics for end-users (total visits, spending trends, favorite services, visit history across all salons)
 - All reports use date range picker with presets (Today, 7d, 30d, This/Last month, Custom up to 1 year)
 - Access: Owner sees all data, staff sees filtered data (own appointments only)
 
+**AI Hub (`/{slug}/ai`):** Customer-facing AI tools gated by credit balance. Features: photo analysis (single/multi-image), quick follow-up questions, virtual try-on (fal.ai image generation), care schedule generation, design catalog browsing, mood board. Org owners manage design catalog and moderate gallery. Staff see appointment prep view.
+
 **Admin Panel (`/admin`):** Platform-level management for SuperAdmins (env-based via `SUPER_ADMIN_EMAILS`). Dashboard (platform stats), Organizations (suspend/delete), Users (ban/unban), Action Log (audit trail).
 
-**Products & Inventory (`/{slug}/products`):** Owner-only product catalog with categories, dual pricing (cost + selling price, margin auto-calc), stock tracking with full audit log, low-stock alerts. `products.countLowStock` available for dashboard badge.
+**Products & Inventory (`/{slug}/products`):** Owner-only product catalog with categories, dual pricing (cost + selling price, margin auto-calc), stock tracking with full audit log, low-stock alerts.
 **Public Catalog (`/{slug}/catalog`):** Customer-facing product listing via `products.listPublic` (excludes cost price, supplier info).
 
 **User Flow:** Sign in → No orgs? → `/onboarding` → Create org → `/{slug}/dashboard`
@@ -174,7 +193,7 @@ Use hooks from `@/modules/organization`:
 | `ownerQuery/Mutation`  | Required + owner       | Same as org + owner role check + `ctx.role`                 | Staff mgmt, settings, billing, reports |
 | `superAdminQuery/Mutation` | Required + env email | `ctx.user`, `ctx.isSuperAdmin`                            | Platform admin panel                  |
 
-**Role System:** 2-tier model (owner/staff). Originally implemented with 3-tier (owner/admin/member) but simplified in commit 1d49327 for clearer permission boundaries.
+**Role System:** 2-tier model (owner/staff). `ownerQuery`/`ownerMutation` enforce owner role. Originally implemented with 3-tier (owner/admin/member) but simplified in commit 1d49327.
 
 **Key behavior:**
 
@@ -191,7 +210,6 @@ export const list = orgQuery({
   args: { status: v.optional(staffStatusValidator) },
   returns: v.array(staffDocValidator),
   handler: async (ctx, args) => {
-    // ctx.organizationId is available, membership already verified
     return ctx.db
       .query("staff")
       .withIndex("organizationId", (q) =>
@@ -215,9 +233,9 @@ export const list = query({
 **All queries/mutations must have `returns:` validators.**
 
 - Shared validators live in `convex/lib/validators.ts`
+- AI-specific validators live in `convex/lib/aiValidators.ts`
 - Document validators include `_id` and `_creationTime` system fields
 - Use `v.optional(validator)` in args, bare validator in return types
-- Composite validators for enriched query results (e.g., `organizationWithRoleValidator`)
 
 **Example:**
 
@@ -246,20 +264,20 @@ export const create = ownerMutation({
     await rateLimiter.limit(ctx, "createInvitation", {
       key: ctx.organizationId,
     });
-    // Proceed with creation...
   },
 });
 ```
 
-**Available rate limits:** `createInvitation`, `resendInvitation`, `createOrganization`, `addMember`, `createService`, `createCustomer`, `createScheduleOverride`, `createTimeOffRequest`, `createOvertime`, `createBooking`, `cancelBooking`, `rescheduleBooking`, `cancelSubscription`, `suspendOrganization`, `deleteOrganization`, `banUser`
+**Available rate limits:** `createInvitation`, `resendInvitation`, `createOrganization`, `addMember`, `createService`, `createCustomer`, `createScheduleOverride`, `createTimeOffRequest`, `createOvertime`, `createBooking`, `cancelBooking`, `rescheduleBooking`, `cancelSubscription`, `suspendOrganization`, `deleteOrganization`, `banUser`, `aiPhotoAnalysis` (5/hr), `aiCareSchedule` (3/hr), `aiVirtualTryOn` (3/hr), `aiCreditPurchase` (5/hr), `aiClaimTestCredits` (3/day)
 
 ## Convex Components
 
 Registered in `convex/convex.config.ts`:
 
 - `@convex-dev/better-auth` (betterAuth) — Authentication
-- `@convex-dev/polar` (polar) — Subscription billing
+- `@convex-dev/polar` (polar) — Subscription billing + AI credit one-time purchases
 - `@convex-dev/rate-limiter` (rateLimiter) — Rate limiting
+- `@convex-dev/agent` (agent) — LLM thread management (photo analysis, quick questions, care schedules)
 
 ## Scheduled Jobs (Crons)
 
@@ -274,19 +292,46 @@ Defined in `convex/crons.ts`:
 | Every 1 hour | `subscriptions.checkTrialExpirations` | Handle expired trials |
 | Every 1 hour | `polarSync.syncProducts` | Sync products from Polar |
 | Every 1 hour | `invitations.expireOldInvitations` | Expire old pending invitations |
+| Every Monday 9 AM UTC | `aiCareSchedules.checkAndNotify` | Send care schedule reminder emails |
 
 ## Email System
 
 **Architecture:** Convex actions (`.tsx` with `"use node"`) render React Email templates and send via Resend.
 
-- `convex/email.tsx` — 3 internalAction functions (confirmation, cancellation, invitation)
+- `convex/email.tsx` — internalAction functions (booking confirmation, cancellation, invitation, care schedule reminder)
 - `convex/email_helpers.ts` — internalQuery/internalMutation helpers (actions can't access `ctx.db`)
 - `src/emails/` — React Email templates (BookingConfirmation, Cancellation, StaffInvitation)
 - **Trigger pattern:** Convex triggers in `convex/lib/triggers.ts` auto-fire notifications and emails on appointment changes
 - **Retry:** 3 attempts with exponential backoff (1s, 2s, 4s)
 - **Idempotency:** Check `confirmationSentAt` before sending
 - Convex actions (.tsx) can import from `../src/` — esbuild handles JSX
-- **Note:** Reminder emails were removed. Only event-driven emails (booking confirmation, cancellation) are sent.
+
+## AI Module
+
+### Credit System
+
+Credits are user-scoped (global across all salons, not per-org). Stored in `aiCredits` table with transaction log in `aiCreditTransactions`.
+
+- **Credit costs** (defined in `convex/lib/aiConstants.ts`): photo analysis single=5, multi=8, quick question=2, virtual try-on=10, care schedule=2
+- **Credit packages** (Polar one-time checkout): Starter 50cr/$1.99, Popular 200cr/$5.99, Pro 500cr/$11.99
+- **Idempotency:** `addPurchasedCredits` mutation checks `by_reference` index on `orderId` before crediting — safe for webhook retries
+- **Test credits:** `aiCredits.claimTestCredits` available when `ALLOW_TEST_CREDITS=true` env var is set (rate-limited 3/day)
+- Org owners can also allocate credits to an org pool via `aiCredits.addOrgCredits`
+
+### LLM Architecture
+
+- **Text/vision tasks** (photo analysis, quick questions, care schedules): `@convex-dev/agent` wrapping Vercel AI Gateway → GPT-4o
+- **Image generation** (virtual try-on): `fal.ai` via `@ai-sdk/fal` + `generateImage()` using `fal-ai/omnigen-v2`
+- Agent definitions live in `convex/lib/agents.ts`: `photoAnalysisAgent`, `quickQuestionAgent`, `careScheduleAgent`
+- All AI internalActions live in `convex/aiActions.tsx` (`"use node"` runtime)
+
+### Salon Types
+
+`SalonType = "hair" | "nail" | "makeup" | "barber" | "spa" | "multi"` — stored on `organizationSettings`. Controls which AI features are available (e.g., virtual try-on only for hair/nail/makeup/multi), photo angle labels, and analysis focus areas.
+
+### Schema Tables
+
+AI-related tables: `aiCredits`, `aiCreditTransactions`, `aiAnalyses`, `aiSimulations`, `aiCareSchedules`, `aiMoodBoard`, `designCatalog`
 
 ## Key Files
 
@@ -299,7 +344,9 @@ Defined in `convex/crons.ts`:
 | `convex/lib/validators.ts`  | Shared return type validators (~910 lines)                          |
 | `convex/lib/rateLimits.ts`  | Rate limiting configuration                                         |
 | `convex/lib/triggers.ts`    | Appointment triggers (auto notifications + emails on changes)        |
-| `convex/admin.ts`           | SuperAdmin platform management (~705 lines, 11 functions)            |
+| `convex/lib/aiConstants.ts` | AI credit costs, salon types, CREDIT_PACKAGES                       |
+| `convex/lib/agents.ts`      | Convex agent instances for LLM features                             |
+| `convex/admin.ts`           | SuperAdmin platform management                                      |
 
 **Frontend (key infrastructure):**
 
@@ -357,8 +404,16 @@ RESEND_FROM_EMAIL=...            # From address (domain verification required)
 POLAR_ORGANIZATION_TOKEN=...     # Polar API token
 POLAR_WEBHOOK_SECRET=...         # Webhook verification secret
 POLAR_SERVER=sandbox             # "sandbox" or "production"
-POLAR_PRODUCT_MONTHLY_ID=...     # Monthly plan product ID
-POLAR_PRODUCT_YEARLY_ID=...      # Yearly plan product ID
+POLAR_PRODUCT_MONTHLY_ID=...     # Monthly subscription plan product ID
+POLAR_PRODUCT_YEARLY_ID=...      # Yearly subscription plan product ID
+POLAR_CREDIT_PRODUCT_STARTER=... # One-time AI credit product (50 credits)
+POLAR_CREDIT_PRODUCT_POPULAR=... # One-time AI credit product (200 credits)
+POLAR_CREDIT_PRODUCT_PRO=...     # One-time AI credit product (500 credits)
+
+# AI Features
+AI_GATEWAY_API_KEY=...           # Vercel AI Gateway API key (routes GPT-4o calls)
+FAL_KEY=...                      # fal.ai API key (virtual try-on image generation)
+ALLOW_TEST_CREDITS=true          # Enable test credit claiming (dev only)
 
 # SuperAdmin (Platform Management)
 SUPER_ADMIN_EMAILS=dev@example.com  # Comma-separated list of superadmin emails (enables /admin access)
@@ -382,11 +437,11 @@ SUPER_ADMIN_EMAILS=dev@example.com  # Comma-separated list of superadmin emails 
 
 - Run `bunx convex dev` after schema changes (types won't update otherwise)
 - Use `ctx.db` in queries/mutations only, not in actions
-- Import from `"./_generated/server"` for `query()`, `mutation()`, `action()`
-- Actions are for external API calls only (email, payments, etc.)
+- Import from `"./_generated/server"` for `query()`, `mutation()`, `action()`; import `internalQuery` from `"./_generated/server"` directly (not from `./lib/functions`)
+- Actions are for external API calls only (email, payments, AI)
 - Actions can't access `ctx.db` — use `ctx.runQuery(internal.xxx)` / `ctx.runMutation(internal.xxx)` instead
 - Avoid N+1 queries: use index range queries (`.gte()/.lte()`) and pre-fetch lookups into Maps
-- **Roles:** Only `"owner"` and `"staff"` in member table. Owner has full access (1 per org), staff can only manage own schedule. `ownerQuery`/`ownerMutation` enforce owner role. Originally implemented with 3-tier (owner/admin/member) but simplified for clearer permissions.
+- **Roles:** Only `"owner"` and `"staff"` in member table. Owner has full access (1 per org), staff can only manage own schedule.
 - **SuperAdmin:** Separate from org roles. Environment-based access via `SUPER_ADMIN_EMAILS`. SuperAdmins bypass org membership via synthetic owner member. Used for platform management (/admin), not org operations.
 - **Triggers:** `convex/lib/triggers.ts` uses `convex-helpers/server/triggers` to auto-fire side effects (notifications, emails) on appointment inserts/updates. All mutations use `triggerMutation` base (handled by function wrappers).
 

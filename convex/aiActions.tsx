@@ -11,7 +11,7 @@
 
 import { fal } from "@ai-sdk/fal";
 import { generateImage } from "ai";
-import { v } from "convex/values";
+import { ConvexError, v } from "convex/values";
 import { z } from "zod";
 import { internal } from "./_generated/api";
 import type { Id } from "./_generated/dataModel";
@@ -22,6 +22,41 @@ import {
   quickQuestionAgent,
 } from "./lib/agents";
 import { ANALYSIS_FOCUS_BY_TYPE, CREDIT_COSTS } from "./lib/aiConstants";
+
+// =============================================================================
+// Retry Utility
+// =============================================================================
+
+/**
+ * Execute an async function with exponential backoff + jitter.
+ * Retries on any error, re-throws on final failure.
+ *
+ * @param fn       Async function to execute
+ * @param maxRetries  Max attempts (default 3)
+ * @param baseDelayMs Base delay in ms (default 1000, doubles each attempt)
+ */
+async function withRetry<T>(
+  fn: () => Promise<T>,
+  maxRetries = 3,
+  baseDelayMs = 1000,
+): Promise<T> {
+  let lastError: unknown;
+  for (let attempt = 0; attempt < maxRetries; attempt++) {
+    try {
+      return await fn();
+    } catch (error) {
+      // ConvexError (e.g. FORBIDDEN, VALIDATION_ERROR) are permanent — don't retry
+      if (error instanceof ConvexError) throw error;
+      lastError = error;
+      if (attempt < maxRetries - 1) {
+        // Exponential backoff + jitter
+        const delay = baseDelayMs * 2 ** attempt + Math.random() * 500;
+        await new Promise((resolve) => setTimeout(resolve, delay));
+      }
+    }
+  }
+  throw lastError;
+}
 
 // =============================================================================
 // Zod Schemas for Structured AI Output
@@ -43,13 +78,17 @@ const analysisResultSchema = z.object({
   recommendedServices: z
     .array(
       z.object({
-        serviceName: z
+        serviceId: z
           .string()
-          .describe("Name of recommended service from the catalog"),
+          .describe(
+            "The exact service ID from the catalog map provided in the prompt",
+          ),
         reason: z.string().describe("Why this service is recommended"),
       }),
     )
-    .describe("Services from the salon catalog that match the analysis"),
+    .describe(
+      "Services from the salon catalog that match the analysis. Only include services whose ID appears in the catalog map.",
+    ),
   careTips: z
     .array(
       z.object({
@@ -129,7 +168,12 @@ export const runPhotoAnalysis = internalAction({
             organizationId: analysis.organizationId,
           })
         : [];
-      const serviceNames = services.map((s) => s.name);
+
+      // Build ID→name catalog map for the AI to reference directly
+      const serviceCatalogMap = Object.fromEntries(
+        services.map((s) => [s._id, s.name]),
+      );
+      const hasCatalog = services.length > 0;
 
       // Build the prompt
       const focusAreas =
@@ -141,13 +185,15 @@ export const runPhotoAnalysis = internalAction({
         ? "\n\nMultiple images from different angles are provided. Analyze ALL provided angles for a comprehensive assessment. Note consistency and differences across views."
         : "";
 
+      const catalogSection = hasCatalog
+        ? `\nService catalog (use exact IDs in recommendedServices.serviceId):\n${JSON.stringify(serviceCatalogMap, null, 2)}`
+        : "\nNo service catalog — omit recommendedServices or leave it empty.";
+
       const prompt = `Analyze this customer's photo for a ${analysis.salonType} salon.
 
 Focus on these aspects: ${focusAreas.join(", ")}.${multiImageInstruction}
+${catalogSection}
 
-The salon offers these services: ${serviceNames.length > 0 ? serviceNames.join(", ") : "General salon services"}.
-
-Match your service recommendations to the salon's actual service catalog when possible.
 Provide practical care tips and general product suggestions.
 Be professional, encouraging, and specific — avoid generic advice.`;
 
@@ -157,35 +203,31 @@ Be professional, encouraging, and specific — avoid generic advice.`;
         image: new URL(url),
       }));
 
-      // Call GPT-4o vision via the agent
-      const result = await photoAnalysisAgent.generateObject(
-        ctx,
-        { userId: analysis.userId ?? undefined },
-        {
-          prompt,
-          messages: [
-            {
-              role: "user" as const,
-              content: [...imageContent],
-            },
-          ],
-          schema: analysisResultSchema,
-        },
+      // Call GPT-4o vision via the agent (with retry on transient failures)
+      const result = await withRetry(() =>
+        photoAnalysisAgent.generateObject(
+          ctx,
+          { userId: analysis.userId ?? undefined },
+          {
+            prompt,
+            messages: [
+              {
+                role: "user" as const,
+                content: [...imageContent],
+              },
+            ],
+            schema: analysisResultSchema,
+          },
+        ),
       );
 
-      // Match recommended services to actual service IDs
-      const matchedServiceIds: Id<"services">[] = [];
-      for (const rec of result.object.recommendedServices) {
-        const matched = services.find(
-          (s) =>
-            s.name.toLowerCase() === rec.serviceName.toLowerCase() ||
-            s.name.toLowerCase().includes(rec.serviceName.toLowerCase()) ||
-            rec.serviceName.toLowerCase().includes(s.name.toLowerCase()),
-        );
-        if (matched) {
-          matchedServiceIds.push(matched._id);
-        }
-      }
+      // AI returns serviceId values directly from the catalog map.
+      // Validate each ID exists in the fetched services set to guard against hallucinations.
+      const validServiceIdSet = new Set(services.map((s) => s._id));
+      const matchedServiceIds: Id<"services">[] =
+        result.object.recommendedServices
+          .map((rec) => rec.serviceId as Id<"services">)
+          .filter((id) => validServiceIdSet.has(id));
 
       // Update analysis with results
       await ctx.runMutation(internal.aiAnalysis.completeAnalysis, {
@@ -266,10 +308,12 @@ Answer this specific question: "${args.questionText}"
 
 Keep your answer to 2-4 sentences. Be specific to the customer's actual features from the analysis. Suggest specific styles, products, or techniques. Do NOT ask follow-up questions.`;
 
-      const result = await quickQuestionAgent.generateText(
-        ctx,
-        { userId: args.userId ?? undefined },
-        { prompt } as Parameters<typeof quickQuestionAgent.generateText>[2],
+      const result = await withRetry(() =>
+        quickQuestionAgent.generateText(
+          ctx,
+          { userId: args.userId ?? undefined },
+          { prompt } as Parameters<typeof quickQuestionAgent.generateText>[2],
+        ),
       );
 
       // Save answer to the analysis record
@@ -454,18 +498,24 @@ export const runVirtualTryOn = internalAction({
 
       // Call fal-ai/omnigen-v2 — designed for virtual try-on with reference images.
       // inputImageUrls maps to input_image_urls in the fal.ai request (camelCase → snake_case).
-      const { image } = await generateImage({
-        model: fal.image("fal-ai/omnigen-v2"),
-        prompt: tryOnPrompt,
-        providerOptions: {
-          fal: {
-            inputImageUrls,
-            guidanceScale: 2.5,
-            imgGuidanceScale: 1.6,
-            numInferenceSteps: 50,
-          },
-        },
-      });
+      // Use retry for transient network/model failures (max 2 retries, longer base delay for image gen)
+      const { image } = await withRetry(
+        () =>
+          generateImage({
+            model: fal.image("fal-ai/omnigen-v2"),
+            prompt: tryOnPrompt,
+            providerOptions: {
+              fal: {
+                inputImageUrls,
+                guidanceScale: 2.5,
+                imgGuidanceScale: 1.6,
+                numInferenceSteps: 50,
+              },
+            },
+          }),
+        2, // max 2 retries (image gen is expensive)
+        2000, // longer base delay
+      );
 
       // Store result in Convex file storage
       // Slice ensures we get a plain ArrayBuffer (not SharedArrayBuffer) for Blob
@@ -525,10 +575,12 @@ const careRecommendationSchema = z.object({
         recommendedDate: z
           .string()
           .describe("Recommended date in YYYY-MM-DD format"),
-        serviceName: z
+        serviceId: z
           .string()
           .optional()
-          .describe("Name of a matching service from the catalog, if any"),
+          .describe(
+            "The exact service ID from the catalog map provided in the prompt, if applicable",
+          ),
       }),
     )
     .describe("Personalized care recommendations"),
@@ -590,9 +642,15 @@ export const runCareScheduleGeneration = internalAction({
 
       // Build prompt
       const today = new Date().toISOString().slice(0, 10);
-      const serviceNames = services.map(
-        (s: { _id: string; name: string; duration: number }) => s.name,
+
+      // Build ID→name catalog map for AI to return IDs directly
+      const serviceCatalogMap = Object.fromEntries(
+        services.map((s: { _id: string; name: string; duration: number }) => [
+          s._id,
+          s.name,
+        ]),
       );
+      const hasCatalog = services.length > 0;
 
       const appointmentSummary =
         appointments.length > 0
@@ -609,6 +667,10 @@ export const runCareScheduleGeneration = internalAction({
         ? `Photo analysis result: ${JSON.stringify(latestAnalysis.result)}`
         : "No photo analysis available";
 
+      const catalogSection = hasCatalog
+        ? `\nService catalog (use exact IDs in recommendations.serviceId):\n${JSON.stringify(serviceCatalogMap, null, 2)}`
+        : "\nNo service catalog — omit serviceId in recommendations.";
+
       const prompt = `Generate a personalized care schedule for a ${salonType} salon customer.
 
 Today's date: ${today}
@@ -617,53 +679,45 @@ Customer visit history (most recent first):
 ${appointmentSummary}
 
 ${analysisSummary}
-
-Available services at this salon: ${serviceNames.length > 0 ? serviceNames.join(", ") : "General salon services"}
+${catalogSection}
 
 Based on the customer's visit frequency, service history, and analysis data:
 1. Recommend specific maintenance appointments with target dates
-2. Match recommendations to the salon's actual services when possible
+2. Match recommendations to the salon's actual services using serviceId from the catalog above
 3. Include home care steps between visits
 4. Set a nextCheckDate for when this schedule should be re-evaluated
 
 Be specific with dates (YYYY-MM-DD format). Space recommendations appropriately based on the service type and customer's historical visit frequency.`;
 
-      const result = await careScheduleAgent.generateObject(
-        ctx,
-        { userId: schedule.userId ?? undefined },
-        {
-          prompt,
-          schema: careRecommendationSchema,
-        },
+      const result = await withRetry(() =>
+        careScheduleAgent.generateObject(
+          ctx,
+          { userId: schedule.userId ?? undefined },
+          {
+            prompt,
+            schema: careRecommendationSchema,
+          },
+        ),
       );
 
-      // Match service names to IDs
+      // AI returns serviceId values directly from the catalog map.
+      // Validate each ID exists in the fetched services set to guard against hallucinations.
+      const validServiceIdSet = new Set(
+        services.map(
+          (s: { _id: string; name: string; duration: number }) => s._id,
+        ),
+      );
       const recommendations = result.object.recommendations.map((rec) => {
-        let matchedServiceId: string | undefined;
-
-        if (rec.serviceName) {
-          const matched = services.find(
-            (s: { _id: string; name: string; duration: number }) =>
-              s.name.toLowerCase() === rec.serviceName?.toLowerCase() ||
-              s.name
-                .toLowerCase()
-                .includes(rec.serviceName?.toLowerCase() ?? "") ||
-              (rec.serviceName?.toLowerCase() ?? "").includes(
-                s.name.toLowerCase(),
-              ),
-          );
-          if (matched) {
-            matchedServiceId = matched._id;
-          }
-        }
+        const validatedServiceId =
+          rec.serviceId && validServiceIdSet.has(rec.serviceId)
+            ? (rec.serviceId as Id<"services">)
+            : undefined;
 
         return {
           title: rec.title,
           description: rec.description,
           recommendedDate: rec.recommendedDate,
-          ...(matchedServiceId
-            ? { serviceId: matchedServiceId as Id<"services"> }
-            : {}),
+          ...(validatedServiceId ? { serviceId: validatedServiceId } : {}),
         };
       });
 
@@ -676,10 +730,25 @@ Be specific with dates (YYYY-MM-DD format). Space recommendations appropriately 
     } catch (error) {
       console.error(`[Care Schedule] Failed for ${args.scheduleId}:`, error);
 
-      // Fail and refund
+      // Mark schedule as expired
       await ctx.runMutation(internal.aiCareSchedules.failSchedule, {
         scheduleId: args.scheduleId,
       });
+
+      // Refund credits (same pattern as photo analysis and virtual try-on)
+      if (schedule.userId) {
+        await ctx.runMutation(internal.aiCredits.refundCredits, {
+          ...(schedule.organizationId
+            ? { organizationId: schedule.organizationId }
+            : {}),
+          userId: schedule.userId,
+          poolType: "customer",
+          amount: schedule.creditCost,
+          featureType: "careSchedule",
+          referenceId: args.scheduleId,
+          description: "Refund for failed care schedule generation",
+        });
+      }
     }
 
     return null;

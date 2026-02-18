@@ -321,6 +321,77 @@ export const sendCancellationEmail = internalAction({
 });
 
 /**
+ * Send care schedule reminder email to a user.
+ * Called by checkAndNotify cron when a care schedule's nextCheckDate is due.
+ */
+export const sendCareScheduleReminderEmail = internalAction({
+  args: {
+    userId: v.string(),
+    salonType: v.string(),
+    scheduleId: v.string(),
+  },
+  handler: async (ctx, args) => {
+    // Fetch user email from betterAuth
+    const user = await ctx.runQuery(internal.email_helpers.getUserEmailById, {
+      userId: args.userId,
+    });
+    if (!user?.email) {
+      console.log(
+        `[email] Skipping care reminder — user ${args.userId} has no email`,
+      );
+      return;
+    }
+
+    const siteUrl = getSiteUrl();
+    const salonTypeLabel =
+      args.salonType.charAt(0).toUpperCase() + args.salonType.slice(1);
+
+    // Plain text email (no React Email template needed for this reminder)
+    const html = `
+<!DOCTYPE html>
+<html>
+<head><meta charset="utf-8"></head>
+<body style="font-family: sans-serif; max-width: 600px; margin: 0 auto; padding: 24px; color: #333;">
+  <h2 style="color: #111;">Time to update your ${salonTypeLabel} care schedule</h2>
+  <p>Hi ${user.name},</p>
+  <p>Your personalized ${salonTypeLabel} care schedule is ready for a refresh! Based on your previous visit history and preferences, it's time to check in and generate a new schedule tailored to your current needs.</p>
+  <p style="margin: 32px 0;">
+    <a href="${siteUrl}/ai" style="background: #000; color: #fff; padding: 12px 24px; text-decoration: none; border-radius: 4px; font-weight: bold;">
+      Update My Care Schedule
+    </a>
+  </p>
+  <p style="color: #666; font-size: 14px;">
+    Regular care schedule updates help you stay on top of your beauty routine and get the most out of your salon visits.
+  </p>
+  <hr style="border: none; border-top: 1px solid #eee; margin: 32px 0;">
+  <p style="color: #999; font-size: 12px;">
+    You're receiving this because you have an active AI care schedule. 
+    <a href="${siteUrl}/settings" style="color: #999;">Manage preferences</a>
+  </p>
+</body>
+</html>`;
+
+    const resend = createResendClient();
+    const result = await sendEmailWithRetry(resend, {
+      from: `Salon AI <${getFromEmail()}>`,
+      to: [user.email],
+      subject: `Time to update your ${salonTypeLabel} care schedule`,
+      html,
+    });
+
+    if (!result.success) {
+      console.error(
+        `[email] Failed to send care schedule reminder for scheduleId=${args.scheduleId}: ${result.error}`,
+      );
+    } else {
+      console.log(
+        `[email] Care schedule reminder sent (scheduleId=${args.scheduleId})`,
+      );
+    }
+  },
+});
+
+/**
  * Send staff invitation email.
  * Called from invitations.create mutation.
  */

@@ -1,4 +1,5 @@
 import { v } from "convex/values";
+import { components } from "./_generated/api";
 import { internalMutation, internalQuery } from "./_generated/server";
 import {
   appointmentDocValidator,
@@ -91,6 +92,33 @@ export const getUserName = internalQuery({
       .withIndex("userId", (q) => q.eq("userId", args.userId))
       .first();
     return staff?.name ?? null;
+  },
+});
+
+/**
+ * Look up a user's email and name by userId via the betterAuth adapter.
+ * Used by care schedule reminder email to get the recipient's contact info.
+ */
+export const getUserEmailById = internalQuery({
+  args: { userId: v.string() },
+  returns: v.union(v.object({ email: v.string(), name: v.string() }), v.null()),
+  handler: async (ctx, args) => {
+    // Use ctx.runQuery to call through Convex's component boundary (not direct invocation)
+    const user = await ctx.runQuery(
+      // biome-ignore lint/suspicious/noExplicitAny: betterAuth adapter returns dynamic types
+      components.betterAuth.adapter.findOne as any,
+      {
+        input: {
+          model: "user",
+          where: [{ field: "_id", operator: "eq", value: args.userId }],
+        },
+      },
+    );
+    if (!user?.email) return null;
+    return {
+      email: user.email as string,
+      name: (user.name as string) ?? "User",
+    };
   },
 });
 

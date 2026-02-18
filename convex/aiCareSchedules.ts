@@ -11,6 +11,7 @@ import { internalQuery } from "./_generated/server";
 import { CREDIT_COSTS } from "./lib/aiConstants";
 import { authedMutation, authedQuery, internalMutation } from "./lib/functions";
 import { rateLimiter } from "./lib/rateLimits";
+
 import {
   aiCareScheduleDocValidator,
   salonTypeValidator,
@@ -48,13 +49,15 @@ export const generateSchedule = authedMutation({
       description: `Care schedule (${args.salonType})`,
     });
 
-    // Expire any active schedule for this user + salonType
+    // Expire any active schedule for this user + salonType (compound index, no filter)
     const existing = await ctx.db
       .query("aiCareSchedules")
-      .withIndex("by_user_status", (q) =>
-        q.eq("userId", userId).eq("status", "active"),
+      .withIndex("by_user_status_salonType", (q) =>
+        q
+          .eq("userId", userId)
+          .eq("status", "active")
+          .eq("salonType", args.salonType),
       )
-      .filter((q) => q.eq(q.field("salonType"), args.salonType))
       .first();
 
     if (existing) {
@@ -100,20 +103,28 @@ export const getMySchedule = authedQuery({
   },
   returns: v.union(aiCareScheduleDocValidator, v.null()),
   handler: async (ctx, args) => {
-    const query = ctx.db
-      .query("aiCareSchedules")
-      .withIndex("by_user_status", (q) =>
-        q.eq("userId", ctx.user._id).eq("status", "active"),
-      );
-
+    // When salonType is specified, use compound index (no filter needed)
     if (args.salonType) {
-      return await query
-        .filter((q) => q.eq(q.field("salonType"), args.salonType))
+      const salonType = args.salonType;
+      return await ctx.db
+        .query("aiCareSchedules")
+        .withIndex("by_user_status_salonType", (q) =>
+          q
+            .eq("userId", ctx.user._id)
+            .eq("status", "active")
+            .eq("salonType", salonType),
+        )
         .order("desc")
         .first();
     }
 
-    return await query.order("desc").first();
+    return await ctx.db
+      .query("aiCareSchedules")
+      .withIndex("by_user_status", (q) =>
+        q.eq("userId", ctx.user._id).eq("status", "active"),
+      )
+      .order("desc")
+      .first();
   },
 });
 
@@ -149,6 +160,8 @@ export const getScheduleInternal = internalQuery({
 
 /**
  * Get user's recent appointments across ALL orgs (for care schedule context).
+ *
+ * Optimized: avoids N+1 queries by batch-fetching orgs and appointment services.
  */
 export const getUserAppointments = internalQuery({
   args: {
@@ -166,7 +179,7 @@ export const getUserAppointments = internalQuery({
   handler: async (ctx, args) => {
     const limit = args.limit ?? 20;
 
-    // Find customer records for this user across all orgs
+    // 1. Find customer records for this user across all orgs
     const customers = await ctx.db
       .query("customers")
       .withIndex("by_user", (q) => q.eq("userId", args.userId))
@@ -174,35 +187,59 @@ export const getUserAppointments = internalQuery({
 
     if (customers.length === 0) return [];
 
-    const result = [];
+    // 2. Batch fetch all orgs (one query per unique org, instead of one per appointment)
+    const uniqueOrgIds = [...new Set(customers.map((c) => c.organizationId))];
+    const orgDocs = await Promise.all(uniqueOrgIds.map((id) => ctx.db.get(id)));
+    const orgMap = new Map(
+      orgDocs
+        .filter((o): o is NonNullable<typeof o> => o !== null)
+        .map((o) => [o._id, o]),
+    );
 
-    for (const customer of customers) {
-      const appointments = await ctx.db
-        .query("appointments")
-        .withIndex("by_customer", (q) => q.eq("customerId", customer._id))
-        .order("desc")
-        .take(limit);
+    // 3. Fetch appointments for all customers in parallel.
+    // Cap per-customer to avoid one customer dominating the total limit.
+    const perCustomerLimit = Math.min(
+      limit,
+      Math.ceil(limit / customers.length) + 5,
+    );
+    const appointmentsByCustomer = await Promise.all(
+      customers.map((customer) =>
+        ctx.db
+          .query("appointments")
+          .withIndex("by_customer", (q) => q.eq("customerId", customer._id))
+          .order("desc")
+          .take(perCustomerLimit),
+      ),
+    );
 
-      const org = await ctx.db.get(customer.organizationId);
+    // Flatten and collect all appointments with their customer context
+    const allAppointments = appointmentsByCustomer.flatMap((appts, idx) =>
+      appts.map((appt) => ({
+        appt,
+        orgId: customers[idx].organizationId,
+      })),
+    );
 
-      for (const appt of appointments) {
-        const services = await ctx.db
+    // Sort by date descending and take limit before fetching services
+    allAppointments.sort((a, b) => b.appt.date.localeCompare(a.appt.date));
+    const topAppointments = allAppointments.slice(0, limit);
+
+    // 4. Batch fetch appointment services for all top appointments in parallel
+    const servicesByAppt = await Promise.all(
+      topAppointments.map(({ appt }) =>
+        ctx.db
           .query("appointmentServices")
           .withIndex("by_appointment", (q) => q.eq("appointmentId", appt._id))
-          .collect();
+          .collect(),
+      ),
+    );
 
-        result.push({
-          date: appt.date,
-          status: appt.status,
-          services: services.map((s) => s.serviceName),
-          orgName: org?.name,
-        });
-      }
-    }
-
-    // Sort by date descending and take limit
-    result.sort((a, b) => b.date.localeCompare(a.date));
-    return result.slice(0, limit);
+    return topAppointments.map(({ appt, orgId }, idx) => ({
+      date: appt.date,
+      status: appt.status,
+      services: servicesByAppt[idx].map((s) => s.serviceName),
+      orgName: orgMap.get(orgId)?.name,
+    }));
   },
 });
 
@@ -222,12 +259,14 @@ export const getLatestUserAnalysis = internalQuery({
     v.null(),
   ),
   handler: async (ctx, args) => {
-    const query = ctx.db
+    // Use by_user_status compound index to avoid full scan + filter
+    const analysis = await ctx.db
       .query("aiAnalyses")
-      .withIndex("by_user", (q) => q.eq("userId", args.userId))
-      .filter((q) => q.eq(q.field("status"), "completed"));
-
-    const analysis = await query.order("desc").first();
+      .withIndex("by_user_status", (q) =>
+        q.eq("userId", args.userId).eq("status", "completed"),
+      )
+      .order("desc")
+      .first();
 
     if (!analysis) return null;
     return {
@@ -265,35 +304,6 @@ export const getActiveServices = internalQuery({
   },
 });
 
-// Keep legacy query for backward compat (getLatestAnalysis used in aiActions)
-export const getLatestAnalysis = internalQuery({
-  args: {
-    organizationId: v.optional(v.id("organization")),
-    customerId: v.optional(v.id("customers")),
-    userId: v.optional(v.string()),
-  },
-  returns: v.union(
-    v.object({
-      salonType: salonTypeValidator,
-      result: v.optional(v.any()),
-    }),
-    v.null(),
-  ),
-  handler: async (ctx, args) => {
-    if (args.userId) {
-      const analysis = await ctx.db
-        .query("aiAnalyses")
-        .withIndex("by_user", (q) => q.eq("userId", args.userId ?? ""))
-        .filter((q) => q.eq(q.field("status"), "completed"))
-        .order("desc")
-        .first();
-      if (!analysis) return null;
-      return { salonType: analysis.salonType, result: analysis.result };
-    }
-    return null;
-  },
-});
-
 export const completeSchedule = internalMutation({
   args: {
     scheduleId: v.id("aiCareSchedules"),
@@ -325,32 +335,19 @@ export const failSchedule = internalMutation({
   },
   returns: v.null(),
   handler: async (ctx, args) => {
-    const schedule = await ctx.db.get(args.scheduleId);
-    if (!schedule) return null;
-
     await ctx.db.patch(args.scheduleId, {
       status: "expired",
       updatedAt: Date.now(),
     });
-
-    // Refund credits to user pool
-    if (schedule.userId) {
-      await ctx.runMutation(internal.aiCredits.refundCredits, {
-        userId: schedule.userId,
-        poolType: "customer",
-        amount: schedule.creditCost,
-        featureType: "careSchedule",
-        referenceId: args.scheduleId,
-        description: "Refund for failed care schedule generation",
-      });
-    }
-
     return null;
   },
 });
 
 /**
  * Weekly cron: check active care schedules with approaching check dates.
+ * For each due schedule:
+ *  1. Sends a care reminder email to the user
+ *  2. Bumps nextCheckDate by 7 days (so the cron doesn't fire again immediately)
  */
 export const checkAndNotify = internalMutation({
   args: {},
@@ -358,30 +355,46 @@ export const checkAndNotify = internalMutation({
   handler: async (ctx) => {
     const today = new Date().toISOString().slice(0, 10);
 
+    // Use compound index: status="active" + nextCheckDate range (no filter needed).
+    // "1900-01-01" lower bound excludes records with undefined nextCheckDate.
     const dueSchedules = await ctx.db
       .query("aiCareSchedules")
-      .withIndex("by_next_check")
-      .filter((q) =>
-        q.and(
-          q.eq(q.field("status"), "active"),
-          q.neq(q.field("nextCheckDate"), undefined),
-          q.lte(q.field("nextCheckDate"), today),
-        ),
+      .withIndex("by_status_nextCheck", (q) =>
+        q
+          .eq("status", "active")
+          .gte("nextCheckDate", "1900-01-01")
+          .lte("nextCheckDate", today),
       )
       .take(100);
 
-    for (const schedule of dueSchedules) {
-      console.log(
-        `[Care Schedule] Check due for user ${schedule.userId}, salonType: ${schedule.salonType ?? "unknown"}`,
-      );
+    const now = Date.now();
 
+    for (const schedule of dueSchedules) {
+      // Send care reminder email (fire-and-forget, async action)
+      if (schedule.userId) {
+        await ctx.scheduler.runAfter(
+          0,
+          internal.email.sendCareScheduleReminderEmail,
+          {
+            userId: schedule.userId,
+            salonType: schedule.salonType ?? "multi",
+            scheduleId: schedule._id,
+          },
+        );
+      } else {
+        console.warn(
+          `[checkAndNotify] Skipping email for schedule ${schedule._id}: no userId`,
+        );
+      }
+
+      // Bump nextCheckDate by 7 days so cron doesn't fire again next run
       const nextDate = new Date(schedule.nextCheckDate as string);
       nextDate.setDate(nextDate.getDate() + 7);
       const newNextCheck = nextDate.toISOString().slice(0, 10);
 
       await ctx.db.patch(schedule._id, {
         nextCheckDate: newNextCheck,
-        updatedAt: Date.now(),
+        updatedAt: now,
       });
     }
 

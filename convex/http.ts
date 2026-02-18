@@ -1,3 +1,7 @@
+import {
+  validateEvent,
+  WebhookVerificationError,
+} from "@polar-sh/sdk/webhooks.js";
 import { httpRouter } from "convex/server";
 import { internal } from "./_generated/api";
 import { httpAction } from "./_generated/server";
@@ -134,6 +138,83 @@ polar.registerRoutes(http, {
       currentPeriodEnd,
     });
   },
+});
+
+// =============================================================================
+// Polar: Order Webhook (AI Credit Purchases)
+// =============================================================================
+//
+// The @convex-dev/polar component handles subscription events but NOT order events.
+// This custom HTTP action handles order.paid → credit top-up.
+//
+// Polar Dashboard → Webhooks → Add endpoint:
+//   URL:    https://<your-convex-url>/polar/order-webhook
+//   Events: order.paid
+//   Secret: <copy and set as POLAR_WEBHOOK_ORDER_SECRET env var>
+//
+// Note: The existing polar.registerRoutes handles subscription events at /polar/events.
+// Use a different secret for this endpoint (POLAR_WEBHOOK_ORDER_SECRET).
+//
+http.route({
+  path: "/polar/order-webhook",
+  method: "POST",
+  handler: httpAction(async (ctx, request) => {
+    const webhookSecret = process.env.POLAR_WEBHOOK_ORDER_SECRET;
+    if (!webhookSecret) {
+      console.error("[Order Webhook] POLAR_WEBHOOK_ORDER_SECRET is not set");
+      return new Response("Webhook secret not configured", { status: 500 });
+    }
+
+    const body = await request.text();
+    const headers = Object.fromEntries(request.headers.entries());
+
+    let event: ReturnType<typeof validateEvent>;
+    try {
+      event = validateEvent(body, headers, webhookSecret);
+    } catch (err) {
+      if (err instanceof WebhookVerificationError) {
+        console.error("[Order Webhook] Invalid signature:", err.message);
+        return new Response("Invalid signature", { status: 403 });
+      }
+      console.error("[Order Webhook] Unexpected error:", err);
+      return new Response("Webhook error", { status: 400 });
+    }
+
+    // Only handle order.paid (not order.created — that fires before payment)
+    if (event.type !== "order.paid") {
+      return new Response("OK (ignored)", { status: 200 });
+    }
+
+    // event.data is an Order object
+    // productId: order.data.productId (string | null)
+    // userId: stored in customer.metadata.userId when we created the Polar customer
+    const order = event.data;
+    const userId = (
+      order.customer?.metadata as Record<string, string> | undefined
+    )?.userId;
+
+    if (!userId) {
+      console.error(
+        "[Order Webhook] No userId in customer metadata — cannot add credits",
+      );
+      return new Response("OK (no userId)", { status: 200 });
+    }
+
+    const productId = order.productId;
+    if (!productId) {
+      console.error("[Order Webhook] No productId in order event");
+      return new Response("OK (no productId)", { status: 200 });
+    }
+
+    // Schedule credit addition (async, non-blocking)
+    await ctx.runAction(internal.aiCreditActions.addCreditsForOrder, {
+      userId,
+      productId,
+      orderId: order.id,
+    });
+
+    return new Response("OK", { status: 200 });
+  }),
 });
 
 // =============================================================================

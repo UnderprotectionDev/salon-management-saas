@@ -11,13 +11,14 @@
 import { ConvexError, v } from "convex/values";
 import type { Id } from "./_generated/dataModel";
 import type { MutationCtx } from "./_generated/server";
+import { internalQuery } from "./_generated/server";
 import {
   authedMutation,
   authedQuery,
   ErrorCode,
   internalMutation,
-  orgMutation,
   orgQuery,
+  ownerMutation,
 } from "./lib/functions";
 import { rateLimiter } from "./lib/rateLimits";
 import {
@@ -45,12 +46,13 @@ async function getOrCreateCreditRecord(
 ) {
   const { organizationId, userId, poolType } = args;
 
-  // User pool — looked up by userId, org-independent
+  // User pool — looked up by userId + poolType (compound index, no filter needed)
   if (poolType === "customer" && userId) {
     const existing = await ctx.db
       .query("aiCredits")
-      .withIndex("by_user", (q) => q.eq("userId", userId))
-      .filter((q) => q.eq(q.field("poolType"), "customer"))
+      .withIndex("by_user_pool", (q) =>
+        q.eq("userId", userId).eq("poolType", "customer"),
+      )
       .first();
 
     if (existing) return existing;
@@ -217,6 +219,8 @@ export const addPurchasedCredits = internalMutation({
     poolType: aiCreditPoolTypeValidator,
     amount: v.number(),
     description: v.optional(v.string()),
+    // Idempotency key — Polar orderId for purchases, prevents double-credit on webhook retry
+    referenceId: v.optional(v.string()),
   },
   returns: v.id("aiCreditTransactions"),
   handler: async (ctx, args) => {
@@ -225,6 +229,20 @@ export const addPurchasedCredits = internalMutation({
         code: ErrorCode.VALIDATION_ERROR,
         message: "Amount must be positive",
       });
+    }
+
+    // Idempotency guard: if a transaction with this referenceId already exists, skip
+    if (args.referenceId) {
+      const existing = await ctx.db
+        .query("aiCreditTransactions")
+        .withIndex("by_reference", (q) => q.eq("referenceId", args.referenceId))
+        .first();
+      if (existing) {
+        console.log(
+          `[AI Credits] Duplicate purchase detected, skipping (referenceId=${args.referenceId})`,
+        );
+        return existing._id;
+      }
     }
 
     const record = await getOrCreateCreditRecord(ctx, {
@@ -245,11 +263,28 @@ export const addPurchasedCredits = internalMutation({
       creditId: record._id,
       type: "purchase",
       amount: args.amount,
+      referenceId: args.referenceId,
       description: args.description ?? `Purchased ${args.amount} credits`,
       createdAt: Date.now(),
     });
 
     return transactionId;
+  },
+});
+
+/**
+ * Check if a purchase order has already been credited (idempotency guard).
+ * Used by addCreditsForOrder action before calling addPurchasedCredits mutation.
+ */
+export const isOrderProcessed = internalQuery({
+  args: { orderId: v.string() },
+  returns: v.boolean(),
+  handler: async (ctx, args) => {
+    const existing = await ctx.db
+      .query("aiCreditTransactions")
+      .withIndex("by_reference", (q) => q.eq("referenceId", args.orderId))
+      .first();
+    return existing !== null;
   },
 });
 
@@ -266,8 +301,9 @@ export const getMyBalance = authedQuery({
   handler: async (ctx) => {
     const record = await ctx.db
       .query("aiCredits")
-      .withIndex("by_user", (q) => q.eq("userId", ctx.user._id))
-      .filter((q) => q.eq(q.field("poolType"), "customer"))
+      .withIndex("by_user_pool", (q) =>
+        q.eq("userId", ctx.user._id).eq("poolType", "customer"),
+      )
       .first();
 
     if (!record) return { balance: 0, poolType: "customer" as const };
@@ -288,8 +324,9 @@ export const getMyTransactionHistory = authedQuery({
 
     const creditRecord = await ctx.db
       .query("aiCredits")
-      .withIndex("by_user", (q) => q.eq("userId", ctx.user._id))
-      .filter((q) => q.eq(q.field("poolType"), "customer"))
+      .withIndex("by_user_pool", (q) =>
+        q.eq("userId", ctx.user._id).eq("poolType", "customer"),
+      )
       .first();
 
     if (!creditRecord) return [];
@@ -348,34 +385,7 @@ export const claimTestCredits = authedMutation({
   },
 });
 
-/**
- * Initiate a credit purchase via Polar one-time checkout.
- * Returns a checkout URL.
- */
-export const initiatePurchase = authedMutation({
-  args: {
-    packageId: v.union(
-      v.literal("starter"),
-      v.literal("popular"),
-      v.literal("pro"),
-    ),
-  },
-  returns: v.null(),
-  handler: async (ctx, args) => {
-    // Rate limit
-    await rateLimiter.limit(ctx, "aiCreditPurchase", {
-      key: ctx.user._id,
-      throws: true,
-    });
-
-    // TODO: Integrate with Polar one-time checkout
-    console.log(
-      `[AI Credits] Purchase initiated: package=${args.packageId} user=${ctx.user._id}`,
-    );
-
-    return null;
-  },
-});
+// initiatePurchase is defined in aiCreditActions.ts (requires "use node" for Polar SDK)
 
 // =============================================================================
 // Org-scoped Queries (for org credit management by owners)
@@ -420,9 +430,9 @@ export const getOrgTransactionHistory = orgQuery({
 });
 
 /**
- * Add credits to org pool (owner action, e.g. manual top-up).
+ * Add credits to org pool (owner only — staff cannot add credits).
  */
-export const addOrgCredits = orgMutation({
+export const addOrgCredits = ownerMutation({
   args: {
     amount: v.number(),
     description: v.optional(v.string()),
@@ -456,86 +466,5 @@ export const addOrgCredits = orgMutation({
     });
 
     return null;
-  },
-});
-
-// =============================================================================
-// Public Queries (for legacy / public booking flow compatibility)
-// =============================================================================
-
-/**
- * Check credit balance by userId — authenticated, self-access only.
- */
-export const getBalanceByUser = authedQuery({
-  args: {
-    organizationId: v.optional(v.id("organization")),
-    userId: v.string(),
-  },
-  returns: aiCreditBalanceValidator,
-  handler: async (ctx, args) => {
-    if (args.userId !== ctx.user._id) {
-      throw new ConvexError({
-        code: ErrorCode.FORBIDDEN,
-        message: "Access denied",
-      });
-    }
-
-    const record = await ctx.db
-      .query("aiCredits")
-      .withIndex("by_user", (q) => q.eq("userId", args.userId))
-      .filter((q) => q.eq(q.field("poolType"), "customer"))
-      .first();
-
-    if (!record) return { balance: 0, poolType: "customer" as const };
-    return { balance: record.balance, poolType: record.poolType };
-  },
-});
-
-// Legacy org-scoped queries (kept for org credit manager UI)
-export const getBalance = orgQuery({
-  args: {},
-  returns: aiCreditBalanceValidator,
-  handler: async (ctx) => {
-    const record = await ctx.db
-      .query("aiCredits")
-      .withIndex("by_user", (q) => q.eq("userId", ctx.user._id))
-      .filter((q) => q.eq(q.field("poolType"), "customer"))
-      .first();
-
-    if (!record) return { balance: 0, poolType: "customer" as const };
-    return { balance: record.balance, poolType: record.poolType };
-  },
-});
-
-export const getTransactionHistory = orgQuery({
-  args: {
-    limit: v.optional(v.number()),
-    filterType: v.optional(
-      v.union(v.literal("purchase"), v.literal("usage"), v.literal("refund")),
-    ),
-  },
-  returns: v.array(aiCreditTransactionDocValidator),
-  handler: async (ctx, args) => {
-    const limit = args.limit ?? 50;
-
-    const creditRecord = await ctx.db
-      .query("aiCredits")
-      .withIndex("by_user", (q) => q.eq("userId", ctx.user._id))
-      .filter((q) => q.eq(q.field("poolType"), "customer"))
-      .first();
-
-    if (!creditRecord) return [];
-
-    const transactions = await ctx.db
-      .query("aiCreditTransactions")
-      .withIndex("by_credit", (q) => q.eq("creditId", creditRecord._id))
-      .order("desc")
-      .take(limit);
-
-    if (args.filterType) {
-      return transactions.filter((t) => t.type === args.filterType);
-    }
-
-    return transactions;
   },
 });
