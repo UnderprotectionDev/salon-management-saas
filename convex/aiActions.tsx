@@ -174,7 +174,7 @@ Be professional, encouraging, and specific — avoid generic advice.`;
       );
 
       // Match recommended services to actual service IDs
-      const matchedServiceIds: string[] = [];
+      const matchedServiceIds: Id<"services">[] = [];
       for (const rec of result.object.recommendedServices) {
         const matched = services.find(
           (s) =>

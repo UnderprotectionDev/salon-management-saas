@@ -284,7 +284,7 @@ export const listByUser = authedQuery({
       const membership = await ctx.db
         .query("member")
         .withIndex("organizationId_userId", (q) =>
-          q.eq("organizationId", args.organizationId).eq("userId", callerId),
+          q.eq("organizationId", args.organizationId!).eq("userId", callerId),
         )
         .first();
       if (!membership) {
