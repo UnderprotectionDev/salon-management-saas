@@ -7,13 +7,8 @@ import { useState } from "react";
 import { toast } from "sonner";
 import { z } from "zod";
 import { Button } from "@/components/ui/button";
-import {
-  Field,
-  FieldError,
-  FieldGroup,
-  FieldLabel,
-} from "@/components/ui/field";
-import { Input } from "@/components/ui/input";
+import { SearchableSelect } from "@/components/ui/searchable-select";
+import { CITY_NAMES, getDistricts } from "@/lib/data/turkey-cities";
 import { api } from "../../../../convex/_generated/api";
 import type { Doc, Id } from "../../../../convex/_generated/dataModel";
 
@@ -175,16 +170,19 @@ export function AddressForm({
                 field.state.meta.errors.length > 0;
               return (
                 <Field data-invalid={hasError || undefined}>
-                  <FieldLabel htmlFor={field.name}>City</FieldLabel>
-                  <Input
-                    id={field.name}
-                    name={field.name}
+                  <FieldLabel>City</FieldLabel>
+                  <SearchableSelect
+                    items={CITY_NAMES}
                     value={field.state.value}
-                    onBlur={field.handleBlur}
-                    onChange={(e) => field.handleChange(e.target.value)}
+                    onValueChange={(val) => {
+                      field.handleChange(val);
+                      form.setFieldValue("state", "");
+                    }}
+                    placeholder="Select province"
+                    searchPlaceholder="Search province..."
+                    emptyMessage="No province found."
                     disabled={form.state.isSubmitting}
-                    placeholder="Istanbul"
-                    aria-invalid={hasError}
+                    onBlur={field.handleBlur}
                   />
                   {hasError && <FieldError errors={field.state.meta.errors} />}
                 </Field>
@@ -192,36 +190,42 @@ export function AddressForm({
             }}
           </form.Field>
 
-          <form.Field
-            name="state"
-            validators={{
-              onBlur: stringSchema,
-            }}
-          >
-            {(field) => {
-              const hasError =
-                field.state.meta.isTouched &&
-                field.state.meta.errors.length > 0;
-              return (
-                <Field data-invalid={hasError || undefined}>
-                  <FieldLabel htmlFor={field.name}>
-                    State / Province / District
-                  </FieldLabel>
-                  <Input
-                    id={field.name}
-                    name={field.name}
-                    value={field.state.value}
-                    onBlur={field.handleBlur}
-                    onChange={(e) => field.handleChange(e.target.value)}
-                    disabled={form.state.isSubmitting}
-                    placeholder="Kadikoy"
-                    aria-invalid={hasError}
-                  />
-                  {hasError && <FieldError errors={field.state.meta.errors} />}
-                </Field>
-              );
-            }}
-          </form.Field>
+          <form.Subscribe selector={(s) => s.values.city}>
+            {(city) => (
+              <form.Field
+                name="state"
+                validators={{
+                  onBlur: stringSchema,
+                }}
+              >
+                {(field) => {
+                  const hasError =
+                    field.state.meta.isTouched &&
+                    field.state.meta.errors.length > 0;
+                  return (
+                    <Field data-invalid={hasError || undefined}>
+                      <FieldLabel>District</FieldLabel>
+                      <SearchableSelect
+                        items={getDistricts(city)}
+                        value={field.state.value}
+                        onValueChange={field.handleChange}
+                        placeholder={
+                          city ? "Select district" : "Select province first"
+                        }
+                        searchPlaceholder="Search district..."
+                        emptyMessage="No district found."
+                        disabled={!city || form.state.isSubmitting}
+                        onBlur={field.handleBlur}
+                      />
+                      {hasError && (
+                        <FieldError errors={field.state.meta.errors} />
+                      )}
+                    </Field>
+                  );
+                }}
+              </form.Field>
+            )}
+          </form.Subscribe>
         </div>
 
         {/* Postal Code & Country */}
@@ -255,33 +259,19 @@ export function AddressForm({
             }}
           </form.Field>
 
-          <form.Field
-            name="country"
-            validators={{
-              onBlur: stringSchema,
-            }}
-          >
-            {(field) => {
-              const hasError =
-                field.state.meta.isTouched &&
-                field.state.meta.errors.length > 0;
-              return (
-                <Field data-invalid={hasError || undefined}>
-                  <FieldLabel htmlFor={field.name}>Country</FieldLabel>
-                  <Input
-                    id={field.name}
-                    name={field.name}
-                    value={field.state.value}
-                    onBlur={field.handleBlur}
-                    onChange={(e) => field.handleChange(e.target.value)}
-                    disabled={form.state.isSubmitting}
-                    placeholder="Turkey"
-                    aria-invalid={hasError}
-                  />
-                  {hasError && <FieldError errors={field.state.meta.errors} />}
-                </Field>
-              );
-            }}
+          <form.Field name="country">
+            {(field) => (
+              <Field>
+                <FieldLabel htmlFor={field.name}>Country</FieldLabel>
+                <Input
+                  id={field.name}
+                  name={field.name}
+                  value={field.state.value}
+                  readOnly
+                  className="bg-muted text-muted-foreground cursor-not-allowed"
+                />
+              </Field>
+            )}
           </form.Field>
         </div>
 

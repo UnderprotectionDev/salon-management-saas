@@ -6,15 +6,16 @@ import { Loader2 } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
 import { z } from "zod";
+import { PhoneInput } from "@/components/reui/phone-input";
 import { Button } from "@/components/ui/button";
 import {
   Field,
-  FieldDescription,
   FieldError,
   FieldGroup,
   FieldLabel,
 } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
+import { formatPhoneInput } from "@/modules/customers/lib/phone";
 import { api } from "../../../../convex/_generated/api";
 import type { Doc, Id } from "../../../../convex/_generated/dataModel";
 
@@ -35,11 +36,6 @@ interface ContactInfoFormProps {
 const emailSchema = z
   .string()
   .email("Please enter a valid email")
-  .or(z.literal(""));
-
-const phoneSchema = z
-  .string()
-  .regex(/^(\+90|0)?[0-9\s-]{10,15}$/, "Please enter a valid phone number")
   .or(z.literal(""));
 
 const websiteSchema = z
@@ -70,7 +66,7 @@ export function ContactInfoForm({
         await updateSettings({
           organizationId,
           email: value.email || undefined,
-          phone: value.phone || undefined,
+          phone: value.phone ? formatPhoneInput(value.phone) : undefined,
           website: value.website || undefined,
         });
         setIsEditing(false);
@@ -183,35 +179,22 @@ export function ContactInfoForm({
         </form.Field>
 
         {/* Phone */}
-        <form.Field
-          name="phone"
-          validators={{
-            onBlur: phoneSchema,
-            onSubmit: phoneSchema,
-          }}
-        >
-          {(field) => {
-            const hasError =
-              field.state.meta.isTouched && field.state.meta.errors.length > 0;
-            return (
-              <Field data-invalid={hasError || undefined}>
-                <FieldLabel htmlFor={field.name}>Business Phone</FieldLabel>
-                <Input
-                  id={field.name}
-                  name={field.name}
-                  type="tel"
-                  value={field.state.value}
-                  onBlur={field.handleBlur}
-                  onChange={(e) => field.handleChange(e.target.value)}
-                  disabled={form.state.isSubmitting}
-                  placeholder="+90 555 123 4567"
-                  aria-invalid={hasError}
-                />
-                <FieldDescription>Turkish phone number format</FieldDescription>
-                {hasError && <FieldError errors={field.state.meta.errors} />}
-              </Field>
-            );
-          }}
+        <form.Field name="phone">
+          {(field) => (
+            <Field>
+              <FieldLabel htmlFor={field.name}>Business Phone</FieldLabel>
+              <PhoneInput
+                id={field.name}
+                defaultCountry="TR"
+                maxInputLength={10}
+                placeholder="506 123 12 12"
+                value={field.state.value}
+                onBlur={field.handleBlur}
+                onChange={(value) => field.handleChange(value ?? "")}
+                disabled={form.state.isSubmitting}
+              />
+            </Field>
+          )}
         </form.Field>
 
         {/* Website */}

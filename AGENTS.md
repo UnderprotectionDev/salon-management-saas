@@ -53,10 +53,12 @@ bun run sync-products                # Sync Polar products (once after billing s
 - **React Compiler is active** — do NOT use `useMemo`, `useCallback`, or `React.memo`. The compiler handles memoization; manual memoization will conflict.
 - Prefer function declarations for components. Add `"use client"` only for hooks or browser APIs.
 - **TanStack Form:** `form.state.values` is NOT reactive — use `form.Subscribe`. Never call `form.reset()` during render; use `key={id}` instead.
+- Use `cn()` from `@/lib/utils` for conditional classnames: `cn("base", condition && "extra")`.
 
 ### Tailwind CSS v4
 - No `tailwind.config.js` — all config in `src/app/globals.css` (`@theme`, CSS variables).
-- Colors: **oklch** color space. Border radius: `0.2rem` (brutalist). Prefer utility classes over `@apply`.
+- Colors: **oklch** color space. Border radius: `0.2rem` (brutalist). Font: JetBrains Mono.
+- Prefer utility classes over `@apply`. Dark mode via `.dark` class selector.
 
 ### Naming Conventions
 - **Files:** kebab-case for utilities, PascalCase for components.
@@ -69,7 +71,7 @@ bun run sync-products                # Sync Polar products (once after billing s
 ```
 convex/                      # Backend
   schema.ts                  # Database schema (source of truth)
-  convex.config.ts           # Components: betterAuth, polar, rateLimiter
+  convex.config.ts           # Components: betterAuth, polar, rateLimiter, agent
   lib/functions.ts           # Auth wrappers + ErrorCode enum + internalMutation re-export
   lib/validators.ts          # All return-type validators (derived from schema)
   lib/triggers.ts            # Notification/email triggers on appointment changes
@@ -83,7 +85,7 @@ src/
     (auth)/                  # Sign-in pages
   components/ui/             # shadcn/ui primitives
   modules/                   # Feature modules — each has index.ts public API
-  lib/                       # Utilities (cn(), auth helpers, formatPrice())
+  lib/                       # Utilities: cn(), auth helpers, formatPrice(), getErrorMessage()
   emails/                    # React Email JSX templates
 ```
 
@@ -109,9 +111,11 @@ export const get = orgQuery({ args: { organizationId: v.id("organization") }, ..
 // CORRECT — organizationId is in ctx, not args
 export const get = orgQuery({
   args: {},
+  returns: v.array(serviceValidator),
   handler: async (ctx) => { const orgId = ctx.organizationId; },
 });
 // Frontend call: useQuery(api.foo.get, { organizationId: org._id });
+// Use "skip" to conditionally skip: useQuery(api.foo.get, ready ? { organizationId } : "skip");
 ```
 
 Every query/mutation **must** have a `returns:` validator. Use `convex/lib/validators.ts`:
@@ -139,7 +143,7 @@ import { rateLimiter } from "./lib/rateLimits";
 await rateLimiter.limit(ctx, "createBooking", { key: userId, throws: true });
 ```
 
-Available limits: `createBooking`, `createInvitation`, `resendInvitation`, `createService`, `createCustomer`, `createOrganization`, `createScheduleOverride`, `createTimeOffRequest`, `createOvertime`, `acquireSlotLock`, `cancelBooking`, `rescheduleBooking`, `addMember`, `cancelSubscription`, `banUser`, `suspendOrganization`, `deleteOrganization`, `deleteAccount`, `toggleFavoriteSalon`, `updateCustomerProfile`, `linkCustomerToUser`, `confirmationCodeLookup`, `aiPhotoAnalysis`, `aiCareSchedule`, `aiVirtualTryOn`, `aiCreditPurchase`, `aiClaimTestCredits`
+See `convex/lib/rateLimits.ts` for the full list of named rate limits (covers all user-initiated mutations such as `createBooking`, `createService`, `createCustomer`, `cancelBooking`, AI operations, etc.).
 
 ## Error Handling
 
@@ -150,13 +154,14 @@ throw new ConvexError({ code: ErrorCode.NOT_FOUND, message: "Staff not found" })
 ```
 Codes: `UNAUTHENTICATED`, `FORBIDDEN`, `OWNER_REQUIRED`, `SUPER_ADMIN_REQUIRED`, `NOT_FOUND`, `ALREADY_EXISTS`, `VALIDATION_ERROR`, `INVALID_INPUT`, `RATE_LIMITED`, `INTERNAL_ERROR`
 
-**Frontend** — catch from mutations:
+**Frontend** — use `getErrorMessage` from `@/lib/errors`:
 ```typescript
+import { getErrorMessage } from "@/lib/errors";
 try {
   await mutation({ organizationId, ...args });
   toast.success("Done");
 } catch (error) {
-  toast.error(error instanceof ConvexError ? (error.data.message ?? "Error") : "Unexpected error");
+  toast.error(getErrorMessage(error, "Unexpected error"));
 }
 ```
 
@@ -166,7 +171,7 @@ try {
 - **Phone numbers:** Turkish format (`+90 5XX XXX XX XX`). Validated via `convex/lib/phone.ts`.
 - **Confirmation codes:** 6-char alphanumeric (excludes 0/O/I/1). See `convex/lib/confirmation.ts`.
 - **Timestamps:** `createdAt`/`updatedAt` stored as epoch ms integers (`Date.now()`). Dates as `"YYYY-MM-DD"` strings.
-- **Time:** `startTime`/`endTime` stored as minutes-from-midnight (540 = 09:00).
+- **Time:** `startTime`/`endTime` stored as minutes-from-midnight (540 = 09:00). Timezone: `"Europe/Istanbul"` (UTC+3).
 - **Soft delete:** Services use `status: "inactive"`. Customers use hard delete.
 - **Roles:** Only `"owner"` and `"staff"` — no admin/member distinction beyond these two.
 - **Multi-tenancy:** Every table has `organizationId`. Wrappers enforce tenant isolation automatically.
@@ -182,6 +187,7 @@ try {
 - `getAuthUser` checks `bannedUsers` table before returning; super admins bypass the ban check.
 - `ConvexError` is a permanent failure — do not retry it (unlike transient network/timeout errors).
 - AI actions: service recommendations pass `{ id: name }` maps to the LLM for ID-based matching (not fuzzy strings).
+- Always validate org ownership: check `doc.organizationId === ctx.organizationId` before returning sensitive data.
 
 ## Adding a Feature
 

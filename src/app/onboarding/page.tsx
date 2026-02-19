@@ -20,6 +20,7 @@ import {
   BusinessHoursEditor,
   getDefaultBusinessHours,
 } from "@/components/business-hours/BusinessHoursEditor";
+import { PhoneInput } from "@/components/reui/phone-input";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -37,8 +38,10 @@ import {
 } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 import { Progress } from "@/components/ui/progress";
+import { SearchableSelect } from "@/components/ui/searchable-select";
 import { Textarea } from "@/components/ui/textarea";
 import { Toggle } from "@/components/ui/toggle";
+import { CITY_NAMES, getDistricts } from "@/lib/data/turkey-cities";
 import { useOrganizations } from "@/modules/organization";
 import { api } from "../../../convex/_generated/api";
 
@@ -88,6 +91,15 @@ const slugSchema = z
     /^[a-z0-9-]+$/,
     "URL slug can only contain lowercase letters, numbers, and hyphens",
   );
+
+const descriptionSchema = z
+  .string()
+  .min(1, "Description is required")
+  .max(500, "Description cannot exceed 500 characters");
+
+const salonTypeSchema = z
+  .array(z.enum(["hair", "nail", "makeup", "barber", "spa"]))
+  .min(1, "Please select at least one salon type");
 
 const emailSchema = z
   .string()
@@ -162,7 +174,13 @@ export default function OnboardingPage() {
     if (currentStep === 1) {
       const nameValid = nameSchema.safeParse(values.name).success;
       const slugValid = slugSchema.safeParse(values.slug).success;
-      return nameValid && slugValid;
+      const descriptionValid = descriptionSchema.safeParse(
+        values.description,
+      ).success;
+      const salonTypeValid = salonTypeSchema.safeParse(
+        values.salonType,
+      ).success;
+      return nameValid && slugValid && descriptionValid && salonTypeValid;
     }
 
     if (currentStep === 2) {
@@ -235,6 +253,24 @@ export default function OnboardingPage() {
       const slugResult = slugSchema.safeParse(values.slug);
       if (!slugResult.success) {
         toast.error(slugResult.error.issues[0]?.message || "Invalid URL slug");
+        return;
+      }
+
+      const descriptionResult = descriptionSchema.safeParse(values.description);
+      if (!descriptionResult.success) {
+        toast.error(
+          descriptionResult.error.issues[0]?.message ||
+            "Description is required",
+        );
+        return;
+      }
+
+      const salonTypeResult = salonTypeSchema.safeParse(values.salonType);
+      if (!salonTypeResult.success) {
+        toast.error(
+          salonTypeResult.error.issues[0]?.message ||
+            "Please select a salon type",
+        );
         return;
       }
     }
@@ -407,61 +443,84 @@ export default function OnboardingPage() {
                   }}
                 </form.Field>
 
-                <form.Field name="description">
-                  {(field) => (
-                    <Field>
-                      <FieldLabel htmlFor={field.name}>
-                        Description (optional)
-                      </FieldLabel>
-                      <Textarea
-                        id={field.name}
-                        name={field.name}
-                        placeholder="Tell customers about your salon..."
-                        value={field.state.value}
-                        onBlur={field.handleBlur}
-                        onChange={(e) => field.handleChange(e.target.value)}
-                        rows={3}
-                      />
-                    </Field>
-                  )}
+                <form.Field
+                  name="description"
+                  validators={{ onBlur: descriptionSchema }}
+                >
+                  {(field) => {
+                    const hasError =
+                      field.state.meta.isTouched &&
+                      field.state.meta.errors.length > 0;
+                    return (
+                      <Field data-invalid={hasError || undefined}>
+                        <FieldLabel htmlFor={field.name}>
+                          Description
+                        </FieldLabel>
+                        <Textarea
+                          id={field.name}
+                          name={field.name}
+                          placeholder="Tell customers about your salon..."
+                          value={field.state.value}
+                          onBlur={field.handleBlur}
+                          onChange={(e) => field.handleChange(e.target.value)}
+                          rows={3}
+                          aria-invalid={hasError}
+                        />
+                        {hasError && (
+                          <FieldError errors={field.state.meta.errors} />
+                        )}
+                      </Field>
+                    );
+                  }}
                 </form.Field>
 
-                <form.Field name="salonType">
-                  {(field) => (
-                    <Field>
-                      <FieldLabel>Salon Type (optional)</FieldLabel>
-                      <div className="flex flex-wrap gap-2">
-                        {SALON_TYPE_OPTIONS.map((opt) => (
-                          <Toggle
-                            key={opt.value}
-                            variant="outline"
-                            pressed={field.state.value.includes(opt.value)}
-                            onPressedChange={(pressed) => {
-                              if (pressed) {
-                                field.handleChange([
-                                  ...field.state.value,
-                                  opt.value,
-                                ]);
-                              } else {
-                                field.handleChange(
-                                  field.state.value.filter(
-                                    (t) => t !== opt.value,
-                                  ),
-                                );
-                              }
-                            }}
-                            className="px-4"
-                          >
-                            {opt.label}
-                          </Toggle>
-                        ))}
-                      </div>
-                      <FieldDescription>
-                        Select all types that apply. Enables AI-powered features
-                        like photo analysis and virtual try-on.
-                      </FieldDescription>
-                    </Field>
-                  )}
+                <form.Field
+                  name="salonType"
+                  validators={{ onChange: salonTypeSchema }}
+                >
+                  {(field) => {
+                    const hasError =
+                      field.state.meta.isTouched &&
+                      field.state.meta.errors.length > 0;
+                    return (
+                      <Field data-invalid={hasError || undefined}>
+                        <FieldLabel>Salon Type</FieldLabel>
+                        <div className="flex flex-wrap gap-2">
+                          {SALON_TYPE_OPTIONS.map((opt) => (
+                            <Toggle
+                              key={opt.value}
+                              variant="outline"
+                              pressed={field.state.value.includes(opt.value)}
+                              onPressedChange={(pressed) => {
+                                if (pressed) {
+                                  field.handleChange([
+                                    ...field.state.value,
+                                    opt.value,
+                                  ]);
+                                } else {
+                                  field.handleChange(
+                                    field.state.value.filter(
+                                      (t) => t !== opt.value,
+                                    ),
+                                  );
+                                }
+                              }}
+                              className="px-4"
+                            >
+                              {opt.label}
+                            </Toggle>
+                          ))}
+                        </div>
+                        <FieldDescription>
+                          Select all types that apply. Enables AI-powered
+                          features like photo analysis and virtual try-on.
+                        </FieldDescription>
+                        {hasError && (
+                          <FieldError errors={field.state.meta.errors} />
+                        )}
+                      </Field>
+                    );
+                  }}
                 </form.Field>
               </FieldGroup>
             )}
@@ -509,14 +568,14 @@ export default function OnboardingPage() {
                         <FieldLabel htmlFor={field.name}>
                           Business Phone
                         </FieldLabel>
-                        <Input
+                        <PhoneInput
                           id={field.name}
-                          name={field.name}
-                          type="tel"
-                          placeholder="+90 555 123 4567"
+                          defaultCountry="TR"
+                          maxInputLength={10}
+                          placeholder="506 123 12 12"
                           value={field.state.value}
                           onBlur={field.handleBlur}
-                          onChange={(e) => field.handleChange(e.target.value)}
+                          onChange={(value) => field.handleChange(value ?? "")}
                         />
                       </Field>
                     )}
@@ -545,34 +604,48 @@ export default function OnboardingPage() {
                   <form.Field name="city">
                     {(field) => (
                       <Field>
-                        <FieldLabel htmlFor={field.name}>City</FieldLabel>
-                        <Input
-                          id={field.name}
-                          name={field.name}
-                          placeholder="Istanbul"
+                        <FieldLabel>City</FieldLabel>
+                        <SearchableSelect
+                          items={CITY_NAMES}
                           value={field.state.value}
+                          onValueChange={(val) => {
+                            field.handleChange(val);
+                            form.setFieldValue("state", "");
+                          }}
+                          placeholder="Select province"
+                          searchPlaceholder="Search province..."
+                          emptyMessage="No province found."
                           onBlur={field.handleBlur}
-                          onChange={(e) => field.handleChange(e.target.value)}
                         />
                       </Field>
                     )}
                   </form.Field>
 
-                  <form.Field name="state">
-                    {(field) => (
-                      <Field>
-                        <FieldLabel htmlFor={field.name}>District</FieldLabel>
-                        <Input
-                          id={field.name}
-                          name={field.name}
-                          placeholder="Kadikoy"
-                          value={field.state.value}
-                          onBlur={field.handleBlur}
-                          onChange={(e) => field.handleChange(e.target.value)}
-                        />
-                      </Field>
+                  <form.Subscribe selector={(s) => s.values.city}>
+                    {(city) => (
+                      <form.Field name="state">
+                        {(field) => (
+                          <Field>
+                            <FieldLabel>District</FieldLabel>
+                            <SearchableSelect
+                              items={getDistricts(city)}
+                              value={field.state.value}
+                              onValueChange={field.handleChange}
+                              placeholder={
+                                city
+                                  ? "Select district"
+                                  : "Select province first"
+                              }
+                              searchPlaceholder="Search district..."
+                              emptyMessage="No district found."
+                              disabled={!city}
+                              onBlur={field.handleBlur}
+                            />
+                          </Field>
+                        )}
+                      </form.Field>
                     )}
-                  </form.Field>
+                  </form.Subscribe>
                 </div>
 
                 <div className="grid gap-4 sm:grid-cols-2">
@@ -601,10 +674,9 @@ export default function OnboardingPage() {
                         <Input
                           id={field.name}
                           name={field.name}
-                          placeholder="Turkey"
                           value={field.state.value}
-                          onBlur={field.handleBlur}
-                          onChange={(e) => field.handleChange(e.target.value)}
+                          readOnly
+                          className="bg-muted text-muted-foreground cursor-not-allowed"
                         />
                       </Field>
                     )}
