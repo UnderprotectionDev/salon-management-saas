@@ -256,18 +256,19 @@ Be professional, encouraging, and specific — avoid generic advice.`;
         errorMessage,
       });
 
-      // Refund credits (organizationId is optional)
-      await ctx.runMutation(internal.aiCredits.refundCredits, {
-        ...(analysis.organizationId
-          ? { organizationId: analysis.organizationId }
-          : {}),
-        userId: analysis.userId ?? undefined,
-        poolType: "customer",
-        amount: analysis.creditCost,
-        featureType: "photoAnalysis",
-        referenceId: args.analysisId,
-        description: "Refund for failed photo analysis",
-      });
+      // Refund credits if userId is available
+      if (analysis.userId) {
+        await ctx.runMutation(internal.aiCredits.refundCredits, {
+          ...(analysis.organizationId
+            ? { organizationId: analysis.organizationId }
+            : {}),
+          userId: analysis.userId,
+          amount: analysis.creditCost,
+          featureType: "photoAnalysis",
+          referenceId: args.analysisId,
+          description: "Refund for failed photo analysis",
+        });
+      }
     }
 
     return null;
@@ -341,16 +342,19 @@ Keep your answer to 2-4 sentences. Be specific to the customer's actual features
         answer: "__error__",
       });
 
-      // Refund credits (organizationId is optional)
-      await ctx.runMutation(internal.aiCredits.refundCredits, {
-        ...(args.organizationId ? { organizationId: args.organizationId } : {}),
-        userId: args.userId,
-        poolType: "customer",
-        amount: CREDIT_COSTS.quickQuestion,
-        featureType: "quickQuestion",
-        referenceId: args.analysisId,
-        description: "Refund for failed quick question",
-      });
+      // Refund credits if userId is available
+      if (args.userId) {
+        await ctx.runMutation(internal.aiCredits.refundCredits, {
+          ...(args.organizationId
+            ? { organizationId: args.organizationId }
+            : {}),
+          userId: args.userId,
+          amount: CREDIT_COSTS.quickQuestion,
+          featureType: "quickQuestion",
+          referenceId: args.analysisId,
+          description: "Refund for failed quick question",
+        });
+      }
     }
 
     return null;
@@ -562,18 +566,19 @@ export const runVirtualTryOn = internalAction({
         errorMessage,
       });
 
-      // Refund credits (organizationId is optional)
-      await ctx.runMutation(internal.aiCredits.refundCredits, {
-        ...(simulation.organizationId
-          ? { organizationId: simulation.organizationId }
-          : {}),
-        userId: simulation.userId ?? undefined,
-        poolType: "customer",
-        amount: simulation.creditCost,
-        featureType: "virtualTryOn",
-        referenceId: args.simulationId,
-        description: "Refund for failed virtual try-on",
-      });
+      // Refund credits if userId is available
+      if (simulation.userId) {
+        await ctx.runMutation(internal.aiCredits.refundCredits, {
+          ...(simulation.organizationId
+            ? { organizationId: simulation.organizationId }
+            : {}),
+          userId: simulation.userId,
+          amount: simulation.creditCost,
+          featureType: "virtualTryOn",
+          referenceId: args.simulationId,
+          description: "Refund for failed virtual try-on",
+        });
+      }
     }
 
     return null;
@@ -755,14 +760,13 @@ Be specific with dates (YYYY-MM-DD format). Space recommendations appropriately 
         scheduleId: args.scheduleId,
       });
 
-      // Refund credits (same pattern as photo analysis and virtual try-on)
+      // Refund credits if userId is available
       if (schedule.userId) {
         await ctx.runMutation(internal.aiCredits.refundCredits, {
           ...(schedule.organizationId
             ? { organizationId: schedule.organizationId }
             : {}),
           userId: schedule.userId,
-          poolType: "customer",
           amount: schedule.creditCost,
           featureType: "careSchedule",
           referenceId: args.scheduleId,

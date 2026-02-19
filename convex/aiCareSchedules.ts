@@ -43,7 +43,6 @@ export const generateSchedule = authedMutation({
     // Deduct credits from user's global pool
     await ctx.runMutation(internal.aiCredits.deductCredits, {
       userId,
-      poolType: "customer",
       amount: CREDIT_COSTS.careSchedule,
       featureType: "careSchedule",
       description: `Care schedule (${args.salonType})`,

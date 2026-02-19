@@ -4,7 +4,6 @@ import { useMutation, useQuery } from "convex/react";
 import { ConvexError } from "convex/values";
 import {
   AlertCircle,
-  Camera,
   ChevronDown,
   ChevronUp,
   Lightbulb,
@@ -20,6 +19,7 @@ import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Separator } from "@/components/ui/separator";
 import { Skeleton } from "@/components/ui/skeleton";
 import { authClient } from "@/lib/auth-client";
 import { api } from "../../../../../convex/_generated/api";
@@ -29,13 +29,8 @@ import {
   MAX_PHOTOS_BY_TYPE,
   PHOTO_ANGLE_LABELS,
 } from "../../../../../convex/lib/aiConstants";
+import { type SalonType, TRYON_ENABLED_TYPES } from "../../constants";
 import { QuickQuestionsPanel } from "./QuickQuestionsPanel";
-
-// =============================================================================
-// Types
-// =============================================================================
-
-type SalonType = "hair" | "nail" | "makeup" | "barber" | "spa" | "multi";
 
 interface AnalysisFeature {
   name: string;
@@ -276,11 +271,14 @@ interface PhotoAnalysisViewProps {
   salonType: SalonType;
   /** Optional: when provided, enables service matching from this salon's catalog */
   organizationId?: Id<"organization">;
+  /** Navigate to virtual try-on section */
+  onNavigateToTryOn?: () => void;
 }
 
 export function PhotoAnalysisView({
   salonType,
   organizationId,
+  onNavigateToTryOn,
 }: PhotoAnalysisViewProps) {
   // State
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
@@ -433,21 +431,6 @@ export function PhotoAnalysisView({
 
   return (
     <div className="space-y-6">
-      {/* Credit Balance */}
-      {creditBalance !== undefined && (
-        <div className="flex items-center justify-between rounded-md border bg-muted/30 px-4 py-2">
-          <span className="text-muted-foreground text-sm">
-            Your credits:{" "}
-            <span className="font-medium text-foreground">
-              {creditBalance.balance}
-            </span>
-          </span>
-          <span className="text-muted-foreground text-xs">
-            Analysis costs {creditCost} credits
-          </span>
-        </div>
-      )}
-
       {/* Active Analysis Result or Upload Area */}
       {activeAnalysis &&
       activeAnalysis.status !== "completed" &&
@@ -480,6 +463,26 @@ export function PhotoAnalysisView({
             organizationId={organizationId}
             creditBalance={creditBalance?.balance ?? 0}
           />
+
+          {/* Cross-nav to Try-On */}
+          {onNavigateToTryOn && TRYON_ENABLED_TYPES.has(salonType) && (
+            <Card>
+              <CardContent className="flex items-center justify-between p-4">
+                <div>
+                  <p className="font-medium text-sm">
+                    Want to see how it looks?
+                  </p>
+                  <p className="text-muted-foreground text-xs">
+                    Try on styles based on your analysis
+                  </p>
+                </div>
+                <Button size="sm" onClick={onNavigateToTryOn}>
+                  <Sparkles className="mr-1.5 h-3.5 w-3.5" />
+                  Try this look
+                </Button>
+              </CardContent>
+            </Card>
+          )}
         </div>
       ) : activeAnalysis && activeAnalysis.status === "failed" ? (
         <Card>
@@ -501,94 +504,97 @@ export function PhotoAnalysisView({
         </Card>
       ) : (
         /* Upload Area */
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2 text-base">
-              <Camera className="h-5 w-5" />
+        <div className="space-y-4">
+          <div>
+            <h3 className="font-semibold text-sm">
               Upload Photo{maxPhotos > 1 ? "s" : ""}
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            {/* Photo previews */}
-            {previewUrls.length > 0 && (
-              <div className="grid grid-cols-3 gap-3">
-                {previewUrls.map((url, index) => (
-                  <div key={url} className="group relative">
-                    {/* biome-ignore lint/performance/noImgElement: dynamic blob/storage URL */}
-                    <img
-                      src={url}
-                      alt={angleLabels[index] ?? `Photo ${index + 1}`}
-                      className="h-32 w-full rounded-md border object-cover"
-                    />
-                    <button
-                      type="button"
-                      className="absolute top-1 right-1 rounded-full bg-black/60 p-1 text-white opacity-0 transition-opacity group-hover:opacity-100"
-                      onClick={() => removePhoto(index)}
-                    >
-                      <X className="h-3 w-3" />
-                    </button>
-                    <div className="mt-1 text-center text-muted-foreground text-xs">
-                      {angleLabels[index] ?? `Photo ${index + 1}`}
-                    </div>
+            </h3>
+            <p className="text-muted-foreground text-xs">
+              Add up to {maxPhotos} angle{maxPhotos > 1 ? "s" : ""} for better
+              results
+            </p>
+          </div>
+
+          {/* Photo previews */}
+          {previewUrls.length > 0 && (
+            <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+              {previewUrls.map((url, index) => (
+                <div key={url} className="group relative">
+                  {/* biome-ignore lint/performance/noImgElement: dynamic blob/storage URL */}
+                  <img
+                    src={url}
+                    alt={angleLabels[index] ?? `Photo ${index + 1}`}
+                    className="aspect-square w-full rounded-md border object-cover"
+                  />
+                  <button
+                    type="button"
+                    className="absolute top-1 right-1 rounded-full bg-black/60 p-1 text-white opacity-0 transition-opacity group-hover:opacity-100"
+                    onClick={() => removePhoto(index)}
+                  >
+                    <X className="h-3 w-3" />
+                  </button>
+                  <div className="mt-1 text-center text-muted-foreground text-xs">
+                    {angleLabels[index] ?? `Photo ${index + 1}`}
                   </div>
-                ))}
-              </div>
-            )}
+                </div>
+              ))}
+            </div>
+          )}
 
-            {/* Upload button / drop area */}
-            {selectedFiles.length < maxPhotos && (
-              <button
-                type="button"
-                className="flex w-full flex-col items-center justify-center gap-2 rounded-md border-2 border-dashed py-8 text-muted-foreground transition-colors hover:border-primary/50 hover:text-primary"
-                onClick={() => fileInputRef.current?.click()}
-              >
-                <Upload className="h-8 w-8" />
-                <span className="text-sm">
-                  {selectedFiles.length === 0
-                    ? "Click to upload a photo"
-                    : `Add another angle (${selectedFiles.length}/${maxPhotos})`}
-                </span>
-                <span className="text-xs">JPEG, PNG, or WebP up to 5MB</span>
-              </button>
-            )}
+          {/* Upload button / drop area */}
+          {selectedFiles.length < maxPhotos && (
+            <button
+              type="button"
+              className="flex w-full flex-col items-center justify-center gap-1.5 rounded-md border-2 border-dashed py-5 text-muted-foreground transition-colors hover:border-primary/50 hover:text-primary"
+              onClick={() => fileInputRef.current?.click()}
+            >
+              <Upload className="h-6 w-6" />
+              <span className="text-sm">
+                {selectedFiles.length === 0
+                  ? "Click to upload a photo"
+                  : `Add another angle (${selectedFiles.length}/${maxPhotos})`}
+              </span>
+              <span className="text-xs">JPEG, PNG, or WebP up to 5MB</span>
+            </button>
+          )}
 
-            <input
-              ref={fileInputRef}
-              type="file"
-              accept="image/jpeg,image/png,image/webp"
-              className="hidden"
-              onChange={handleFileSelect}
-            />
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept="image/jpeg,image/png,image/webp"
+            className="hidden"
+            onChange={handleFileSelect}
+          />
 
-            {/* Analyze button */}
-            {selectedFiles.length > 0 && (
-              <Button
-                className="w-full"
-                disabled={isUploading || hasInsufficientCredits}
-                onClick={handleAnalyze}
-              >
-                {isUploading ? (
-                  <>
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    Uploading...
-                  </>
-                ) : hasInsufficientCredits ? (
-                  "Insufficient credits"
-                ) : (
-                  <>
-                    <Sparkles className="mr-2 h-4 w-4" />
-                    Analyze ({creditCost} credits)
-                  </>
-                )}
-              </Button>
-            )}
-          </CardContent>
-        </Card>
+          {/* Analyze button */}
+          {selectedFiles.length > 0 && (
+            <Button
+              className="w-full"
+              disabled={isUploading || hasInsufficientCredits}
+              onClick={handleAnalyze}
+            >
+              {isUploading ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Uploading...
+                </>
+              ) : hasInsufficientCredits ? (
+                "Insufficient credits"
+              ) : (
+                <>
+                  <Sparkles className="mr-2 h-4 w-4" />
+                  Analyze ({creditCost} credits)
+                </>
+              )}
+            </Button>
+          )}
+        </div>
       )}
 
       {/* Analysis History */}
       {analysisHistory && analysisHistory.length > 0 && (
         <div>
+          <Separator className="mb-3" />
           <button
             type="button"
             className="flex w-full items-center justify-between py-2 text-sm"

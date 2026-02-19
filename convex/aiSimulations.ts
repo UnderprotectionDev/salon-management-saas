@@ -1,8 +1,7 @@
 /**
- * AI Simulations — virtual try-on creation, retrieval, and gallery management
+ * AI Simulations — virtual try-on creation and retrieval
  *
  * User-scoped: simulations belong to the user, not an org.
- * organizationId is optional — needed when submitting to a salon gallery.
  * Credits are deducted from the user's global pool.
  */
 
@@ -15,9 +14,6 @@ import {
   authedQuery,
   ErrorCode,
   internalMutation,
-  ownerMutation,
-  ownerQuery,
-  publicQuery,
 } from "./lib/functions";
 import { rateLimiter } from "./lib/rateLimits";
 import {
@@ -110,7 +106,6 @@ export const createSimulation = authedMutation({
     // Deduct credits from user's global pool
     await ctx.runMutation(internal.aiCredits.deductCredits, {
       userId,
-      poolType: "customer",
       amount: CREDIT_COSTS.virtualTryOn,
       featureType: "virtualTryOn",
       description: `Virtual try-on (${simulationType})`,
@@ -136,108 +131,6 @@ export const createSimulation = authedMutation({
     });
 
     return simulationId;
-  },
-});
-
-/**
- * Submit a completed try-on to a salon's public gallery (user consent).
- * organizationId must be provided for gallery submission.
- */
-export const submitToGallery = authedMutation({
-  args: {
-    simulationId: v.id("aiSimulations"),
-    organizationId: v.id("organization"),
-  },
-  returns: v.null(),
-  handler: async (ctx, args) => {
-    const simulation = await ctx.db.get(args.simulationId);
-    if (!simulation) {
-      throw new ConvexError({
-        code: ErrorCode.NOT_FOUND,
-        message: "Simulation not found",
-      });
-    }
-
-    // Security: only the owner can submit their simulation
-    if (simulation.userId !== ctx.user._id) {
-      throw new ConvexError({
-        code: ErrorCode.FORBIDDEN,
-        message: "Access denied",
-      });
-    }
-
-    if (simulation.status !== "completed") {
-      throw new ConvexError({
-        code: ErrorCode.VALIDATION_ERROR,
-        message: "Only completed simulations can be submitted to gallery",
-      });
-    }
-
-    await ctx.db.patch(args.simulationId, {
-      organizationId: args.organizationId,
-      publicConsent: true,
-      galleryApprovedByOrg: false,
-      updatedAt: Date.now(),
-    });
-    return null;
-  },
-});
-
-/**
- * Approve a gallery submission (owner only).
- */
-export const approveGalleryItem = ownerMutation({
-  args: {
-    simulationId: v.id("aiSimulations"),
-  },
-  returns: v.null(),
-  handler: async (ctx, args) => {
-    const simulation = await ctx.db.get(args.simulationId);
-    if (!simulation || simulation.organizationId !== ctx.organizationId) {
-      throw new ConvexError({
-        code: ErrorCode.NOT_FOUND,
-        message: "Simulation not found",
-      });
-    }
-
-    if (!simulation.publicConsent) {
-      throw new ConvexError({
-        code: ErrorCode.VALIDATION_ERROR,
-        message: "Simulation was not submitted to gallery",
-      });
-    }
-
-    await ctx.db.patch(args.simulationId, {
-      galleryApprovedByOrg: true,
-      updatedAt: Date.now(),
-    });
-    return null;
-  },
-});
-
-/**
- * Reject a gallery submission (owner only).
- */
-export const rejectGalleryItem = ownerMutation({
-  args: {
-    simulationId: v.id("aiSimulations"),
-  },
-  returns: v.null(),
-  handler: async (ctx, args) => {
-    const simulation = await ctx.db.get(args.simulationId);
-    if (!simulation || simulation.organizationId !== ctx.organizationId) {
-      throw new ConvexError({
-        code: ErrorCode.NOT_FOUND,
-        message: "Simulation not found",
-      });
-    }
-
-    await ctx.db.patch(args.simulationId, {
-      publicConsent: false,
-      galleryApprovedByOrg: false,
-      updatedAt: Date.now(),
-    });
-    return null;
   },
 });
 
@@ -324,117 +217,6 @@ export const listByUser = authedQuery({
       .withIndex("by_user", (q) => q.eq("userId", args.userId))
       .order("desc")
       .take(limit);
-  },
-});
-
-/**
- * List gallery submissions pending moderation (owner only).
- */
-export const listGalleryPending = ownerQuery({
-  args: {
-    limit: v.optional(v.number()),
-  },
-  returns: v.array(aiSimulationDocValidator),
-  handler: async (ctx, args) => {
-    const limit = args.limit ?? 50;
-    return await ctx.db
-      .query("aiSimulations")
-      .withIndex("by_org_gallery", (q) =>
-        q
-          .eq("organizationId", ctx.organizationId)
-          .eq("publicConsent", true)
-          .eq("galleryApprovedByOrg", false),
-      )
-      .order("desc")
-      .take(limit);
-  },
-});
-
-/**
- * List approved gallery items for public display.
- * Includes design attribution (design name, staff name) when available.
- */
-export const listGalleryApproved = publicQuery({
-  args: {
-    organizationId: v.id("organization"),
-    limit: v.optional(v.number()),
-  },
-  returns: v.array(
-    v.object({
-      _id: v.id("aiSimulations"),
-      simulationType: aiSimulationTypeValidator,
-      resultImageUrl: v.union(v.string(), v.null()),
-      designCatalogId: v.optional(v.id("designCatalog")),
-      designName: v.optional(v.string()),
-      staffName: v.optional(v.string()),
-    }),
-  ),
-  handler: async (ctx, args) => {
-    const limit = args.limit ?? 50;
-
-    const items = await ctx.db
-      .query("aiSimulations")
-      .withIndex("by_org_gallery", (q) =>
-        q
-          .eq("organizationId", args.organizationId)
-          .eq("publicConsent", true)
-          .eq("galleryApprovedByOrg", true),
-      )
-      .order("desc")
-      .take(limit);
-
-    // Pre-fetch unique design catalog IDs to avoid N+1
-    const designIds = [
-      ...new Set(
-        items
-          .map((i) => i.designCatalogId)
-          .filter((id): id is NonNullable<typeof id> => id !== undefined),
-      ),
-    ];
-    const designDocs = await Promise.all(designIds.map((id) => ctx.db.get(id)));
-    const designMap = new Map(
-      designDocs
-        .filter((d): d is NonNullable<typeof d> => d !== null)
-        .map((d) => [d._id, d]),
-    );
-
-    // Pre-fetch unique staff IDs
-    const staffIds = [
-      ...new Set(
-        designDocs
-          .filter((d): d is NonNullable<typeof d> => d !== null)
-          .map((d) => d.createdByStaffId)
-          .filter((id): id is NonNullable<typeof id> => id !== undefined),
-      ),
-    ];
-    const staffDocs = await Promise.all(staffIds.map((id) => ctx.db.get(id)));
-    const staffMap = new Map(
-      staffDocs
-        .filter((s): s is NonNullable<typeof s> => s !== null)
-        .map((s) => [s._id, s]),
-    );
-
-    return await Promise.all(
-      items.map(async (item) => {
-        const design = item.designCatalogId
-          ? designMap.get(item.designCatalogId)
-          : undefined;
-        const staff = design?.createdByStaffId
-          ? staffMap.get(design.createdByStaffId)
-          : undefined;
-
-        return {
-          _id: item._id,
-          simulationType: item.simulationType,
-          resultImageUrl: item.resultImageStorageId
-            ? await ctx.storage.getUrl(item.resultImageStorageId)
-            : null,
-          designCatalogId: item.designCatalogId,
-          designName: design?.name,
-          staffName: staff?.name,
-        };
-      }),
-    );
   },
 });
 

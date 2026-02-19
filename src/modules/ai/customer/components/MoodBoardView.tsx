@@ -2,7 +2,15 @@
 
 import { useMutation, useQuery } from "convex/react";
 import { ConvexError } from "convex/values";
-import { Check, Heart, ImageOff, Pencil, Trash2, X } from "lucide-react";
+import {
+  Check,
+  Heart,
+  ImageOff,
+  Pencil,
+  RefreshCw,
+  Trash2,
+  X,
+} from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import {
@@ -33,7 +41,10 @@ import type { Doc, Id } from "../../../../../convex/_generated/dataModel";
 // Types
 // =============================================================================
 
-type MoodBoardViewProps = Record<string, never>;
+interface MoodBoardViewProps {
+  /** Navigate to virtual try-on section */
+  onNavigateToTryOn?: () => void;
+}
 
 // =============================================================================
 // Subcomponents
@@ -44,11 +55,13 @@ function MoodBoardCard({
   imageUrl,
   onUpdateNote,
   onDelete,
+  onTryAgain,
 }: {
   item: Doc<"aiMoodBoard">;
   imageUrl: string | undefined;
   onUpdateNote: (itemId: Id<"aiMoodBoard">, note: string) => void;
   onDelete: (itemId: Id<"aiMoodBoard">) => void;
+  onTryAgain?: () => void;
 }) {
   const [isEditing, setIsEditing] = useState(false);
   const [editNote, setEditNote] = useState(item.note ?? "");
@@ -94,19 +107,39 @@ function MoodBoardCard({
           )}
 
           {/* Source badge */}
-          <Badge variant="secondary" className="absolute top-2 left-2 text-xs">
+          <Badge
+            variant="secondary"
+            className={`absolute top-2 left-2 text-xs ${
+              item.source === "tryon"
+                ? "bg-amber-100 text-amber-700 dark:bg-amber-950 dark:text-amber-400"
+                : "bg-violet-100 text-violet-700 dark:bg-violet-950 dark:text-violet-400"
+            }`}
+          >
             {sourceLabel}
           </Badge>
 
-          {/* Delete button */}
-          <Button
-            variant="destructive"
-            size="icon"
-            className="absolute top-2 right-2 h-7 w-7 opacity-0 transition-opacity group-hover:opacity-100"
-            onClick={() => setDeleteDialogOpen(true)}
-          >
-            <Trash2 className="h-3.5 w-3.5" />
-          </Button>
+          {/* Action buttons */}
+          <div className="absolute top-2 right-2 flex gap-1 opacity-0 transition-opacity group-hover:opacity-100">
+            {onTryAgain && item.source === "tryon" && (
+              <Button
+                variant="secondary"
+                size="icon"
+                className="h-7 w-7"
+                onClick={onTryAgain}
+                title="Try again"
+              >
+                <RefreshCw className="h-3.5 w-3.5" />
+              </Button>
+            )}
+            <Button
+              variant="destructive"
+              size="icon"
+              className="h-7 w-7"
+              onClick={() => setDeleteDialogOpen(true)}
+            >
+              <Trash2 className="h-3.5 w-3.5" />
+            </Button>
+          </div>
         </div>
 
         {/* Note */}
@@ -192,7 +225,7 @@ function MoodBoardCard({
 // Main Component
 // =============================================================================
 
-export function MoodBoardView(_props: MoodBoardViewProps) {
+export function MoodBoardView({ onNavigateToTryOn }: MoodBoardViewProps) {
   const [imageUrls, setImageUrls] = useState<Record<string, string>>({});
   // Track attempted IDs to prevent infinite re-render loop when some URLs fail
   const attemptedIds = useRef<Set<string>>(new Set());
@@ -335,6 +368,7 @@ export function MoodBoardView(_props: MoodBoardViewProps) {
             imageUrl={imageUrls[item.imageStorageId as string]}
             onUpdateNote={handleUpdateNote}
             onDelete={handleDelete}
+            onTryAgain={onNavigateToTryOn}
           />
         ))}
       </div>

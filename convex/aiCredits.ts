@@ -4,12 +4,10 @@
  * Credits are user-scoped (not org-scoped). Each user has a single global
  * credit pool shared across all salons.
  *
- * Org pool still exists for credits purchased/allocated by salon owners.
  * Atomic deduction: balance check + deduct + transaction log in a single mutation.
  */
 
 import { ConvexError, v } from "convex/values";
-import type { Id } from "./_generated/dataModel";
 import type { MutationCtx } from "./_generated/server";
 import { internalQuery } from "./_generated/server";
 import {
@@ -17,13 +15,10 @@ import {
   authedQuery,
   ErrorCode,
   internalMutation,
-  orgQuery,
-  ownerMutation,
 } from "./lib/functions";
 import { rateLimiter } from "./lib/rateLimits";
 import {
   aiCreditBalanceValidator,
-  aiCreditPoolTypeValidator,
   aiCreditTransactionDocValidator,
   aiFeatureTypeValidator,
 } from "./lib/validators";
@@ -33,60 +28,13 @@ import {
 // =============================================================================
 
 /**
- * Get or create a credit record for a user (global pool, no org).
- * For org pool: requires organizationId.
+ * Get or create a credit record for a user (global customer pool).
  */
-async function getOrCreateCreditRecord(
-  ctx: MutationCtx,
-  args: {
-    organizationId?: Id<"organization">;
-    userId?: string;
-    poolType: "customer" | "org";
-  },
-) {
-  const { organizationId, userId, poolType } = args;
-
-  // User pool — looked up by userId + poolType (compound index, no filter needed)
-  if (poolType === "customer" && userId) {
-    const existing = await ctx.db
-      .query("aiCredits")
-      .withIndex("by_user_pool", (q) =>
-        q.eq("userId", userId).eq("poolType", "customer"),
-      )
-      .first();
-
-    if (existing) return existing;
-
-    const now = Date.now();
-    const id = await ctx.db.insert("aiCredits", {
-      userId,
-      poolType: "customer",
-      balance: 0,
-      createdAt: now,
-      updatedAt: now,
-    });
-    const doc = await ctx.db.get(id);
-    if (!doc) {
-      throw new ConvexError({
-        code: ErrorCode.INTERNAL_ERROR,
-        message: "Failed to create credit record",
-      });
-    }
-    return doc;
-  }
-
-  // Org pool — requires organizationId
-  if (!organizationId) {
-    throw new ConvexError({
-      code: ErrorCode.VALIDATION_ERROR,
-      message: "organizationId required for org pool",
-    });
-  }
-
+async function getOrCreateCreditRecord(ctx: MutationCtx, userId: string) {
   const existing = await ctx.db
     .query("aiCredits")
-    .withIndex("by_org_pool", (q) =>
-      q.eq("organizationId", organizationId).eq("poolType", "org"),
+    .withIndex("by_user_pool", (q) =>
+      q.eq("userId", userId).eq("poolType", "customer"),
     )
     .first();
 
@@ -94,8 +42,8 @@ async function getOrCreateCreditRecord(
 
   const now = Date.now();
   const id = await ctx.db.insert("aiCredits", {
-    organizationId,
-    poolType: "org",
+    userId,
+    poolType: "customer",
     balance: 0,
     createdAt: now,
     updatedAt: now,
@@ -121,8 +69,7 @@ async function getOrCreateCreditRecord(
 export const deductCredits = internalMutation({
   args: {
     organizationId: v.optional(v.id("organization")),
-    userId: v.optional(v.string()),
-    poolType: aiCreditPoolTypeValidator,
+    userId: v.string(),
     amount: v.number(),
     featureType: aiFeatureTypeValidator,
     referenceId: v.optional(v.string()),
@@ -137,11 +84,7 @@ export const deductCredits = internalMutation({
       });
     }
 
-    const record = await getOrCreateCreditRecord(ctx, {
-      organizationId: args.organizationId,
-      userId: args.userId,
-      poolType: args.poolType,
-    });
+    const record = await getOrCreateCreditRecord(ctx, args.userId);
 
     if (record.balance < args.amount) {
       throw new ConvexError({
@@ -173,13 +116,12 @@ export const deductCredits = internalMutation({
 });
 
 /**
- * Refund credits back to a pool after a failed AI operation.
+ * Refund credits back to a user pool after a failed AI operation.
  */
 export const refundCredits = internalMutation({
   args: {
     organizationId: v.optional(v.id("organization")),
-    userId: v.optional(v.string()),
-    poolType: aiCreditPoolTypeValidator,
+    userId: v.string(),
     amount: v.number(),
     featureType: aiFeatureTypeValidator,
     referenceId: v.optional(v.string()),
@@ -194,11 +136,7 @@ export const refundCredits = internalMutation({
       });
     }
 
-    const record = await getOrCreateCreditRecord(ctx, {
-      organizationId: args.organizationId,
-      userId: args.userId,
-      poolType: args.poolType,
-    });
+    const record = await getOrCreateCreditRecord(ctx, args.userId);
 
     // Restore balance
     await ctx.db.patch(record._id, {
@@ -223,13 +161,11 @@ export const refundCredits = internalMutation({
 });
 
 /**
- * Add purchased credits to a pool (called from webhook handler).
+ * Add purchased credits to a user pool (called from webhook handler).
  */
 export const addPurchasedCredits = internalMutation({
   args: {
-    organizationId: v.optional(v.id("organization")),
-    userId: v.optional(v.string()),
-    poolType: aiCreditPoolTypeValidator,
+    userId: v.string(),
     amount: v.number(),
     description: v.optional(v.string()),
     // Idempotency key — Polar orderId for purchases, prevents double-credit on webhook retry
@@ -258,11 +194,7 @@ export const addPurchasedCredits = internalMutation({
       }
     }
 
-    const record = await getOrCreateCreditRecord(ctx, {
-      organizationId: args.organizationId,
-      userId: args.userId,
-      poolType: args.poolType,
-    });
+    const record = await getOrCreateCreditRecord(ctx, args.userId);
 
     // Add credits
     await ctx.db.patch(record._id, {
@@ -272,7 +204,6 @@ export const addPurchasedCredits = internalMutation({
 
     // Log purchase transaction
     const transactionId = await ctx.db.insert("aiCreditTransactions", {
-      organizationId: args.organizationId,
       creditId: record._id,
       type: "purchase",
       amount: args.amount,
@@ -302,7 +233,7 @@ export const isOrderProcessed = internalQuery({
 });
 
 // =============================================================================
-// Authenticated Queries (user's own credits, no org needed)
+// Authenticated Queries (user's own credits)
 // =============================================================================
 
 /**
@@ -373,10 +304,7 @@ export const claimTestCredits = authedMutation({
       throws: true,
     });
 
-    const record = await getOrCreateCreditRecord(ctx, {
-      userId: ctx.user._id,
-      poolType: "customer",
-    });
+    const record = await getOrCreateCreditRecord(ctx, ctx.user._id);
 
     const amount = 100;
     const newBalance = record.balance + amount;
@@ -399,85 +327,3 @@ export const claimTestCredits = authedMutation({
 });
 
 // initiatePurchase is defined in aiCreditActions.ts (requires "use node" for Polar SDK)
-
-// =============================================================================
-// Org-scoped Queries (for org credit management by owners)
-// =============================================================================
-
-/**
- * Get org credit balance (for owner dashboard).
- */
-export const getOrgBalance = orgQuery({
-  args: {},
-  returns: aiCreditBalanceValidator,
-  handler: async (ctx) => {
-    const record = await ctx.db
-      .query("aiCredits")
-      .withIndex("by_org_pool", (q) =>
-        q.eq("organizationId", ctx.organizationId).eq("poolType", "org"),
-      )
-      .first();
-
-    if (!record) return { balance: 0, poolType: "org" as const };
-    return { balance: record.balance, poolType: record.poolType };
-  },
-});
-
-/**
- * Get org transaction history (for owner).
- */
-export const getOrgTransactionHistory = orgQuery({
-  args: {
-    limit: v.optional(v.number()),
-  },
-  returns: v.array(aiCreditTransactionDocValidator),
-  handler: async (ctx, args) => {
-    const limit = args.limit ?? 50;
-
-    return await ctx.db
-      .query("aiCreditTransactions")
-      .withIndex("by_org", (q) => q.eq("organizationId", ctx.organizationId))
-      .order("desc")
-      .take(limit);
-  },
-});
-
-/**
- * Add credits to org pool (owner only — staff cannot add credits).
- */
-export const addOrgCredits = ownerMutation({
-  args: {
-    amount: v.number(),
-    description: v.optional(v.string()),
-  },
-  returns: v.null(),
-  handler: async (ctx, args) => {
-    if (args.amount <= 0) {
-      throw new ConvexError({
-        code: ErrorCode.VALIDATION_ERROR,
-        message: "Amount must be positive",
-      });
-    }
-
-    const record = await getOrCreateCreditRecord(ctx, {
-      organizationId: ctx.organizationId,
-      poolType: "org",
-    });
-
-    await ctx.db.patch(record._id, {
-      balance: record.balance + args.amount,
-      updatedAt: Date.now(),
-    });
-
-    await ctx.db.insert("aiCreditTransactions", {
-      organizationId: ctx.organizationId,
-      creditId: record._id,
-      type: "purchase",
-      amount: args.amount,
-      description: args.description ?? `Added ${args.amount} org credits`,
-      createdAt: Date.now(),
-    });
-
-    return null;
-  },
-});

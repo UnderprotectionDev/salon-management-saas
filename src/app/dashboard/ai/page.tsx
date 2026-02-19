@@ -1,6 +1,13 @@
 "use client";
 
-import { ArrowLeft, Sparkles } from "lucide-react";
+import { useQuery } from "convex/react";
+import {
+  ArrowLeft,
+  CalendarCheck,
+  Camera,
+  Heart,
+  Sparkles,
+} from "lucide-react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { useState } from "react";
@@ -12,20 +19,24 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { authClient } from "@/lib/auth-client";
 import { CreditBalance } from "@/modules/ai/components/CreditBalance";
+import { type SalonType, TRYON_ENABLED_TYPES } from "@/modules/ai/constants";
+import { AIFeatureCard } from "@/modules/ai/customer/components/AIFeatureCard";
+import { AIHubSummaryCards } from "@/modules/ai/customer/components/AIHubSummaryCards";
+import { AIRecentActivity } from "@/modules/ai/customer/components/AIRecentActivity";
 import { CareScheduleView } from "@/modules/ai/customer/components/CareScheduleView";
 import { MoodBoardView } from "@/modules/ai/customer/components/MoodBoardView";
 import { PhotoAnalysisView } from "@/modules/ai/customer/components/PhotoAnalysisView";
 import { VirtualTryOnView } from "@/modules/ai/customer/components/VirtualTryOnView";
+import { api } from "../../../../convex/_generated/api";
 import type { Id } from "../../../../convex/_generated/dataModel";
 
 // =============================================================================
 // Types
 // =============================================================================
 
-type SalonType = "hair" | "nail" | "makeup" | "barber" | "spa" | "multi";
-type TryOnSalonType = "hair" | "nail" | "makeup" | "multi";
+type Section = "analysis" | "tryon" | "styles" | "schedule" | null;
 
 const SALON_TYPE_LABELS: Record<SalonType, string> = {
   hair: "Hair Salon",
@@ -35,13 +46,6 @@ const SALON_TYPE_LABELS: Record<SalonType, string> = {
   spa: "Spa & Wellness",
   multi: "Multi-Service",
 };
-
-const TRYON_ENABLED_TYPES = new Set<SalonType>([
-  "hair",
-  "nail",
-  "makeup",
-  "multi",
-]);
 
 // =============================================================================
 // Main Page
@@ -55,7 +59,7 @@ export default function DashboardAIPage() {
     "designId",
   ) as Id<"designCatalog"> | null;
   const queryOrgId = searchParams.get("orgId") as Id<"organization"> | null;
-  const queryTab = searchParams.get("tab") ?? "analysis";
+  const queryTab = searchParams.get("tab");
   const querySalonType = searchParams.get("salonType") as SalonType | null;
 
   const [salonType, setSalonType] = useState<SalonType>(
@@ -63,100 +67,179 @@ export default function DashboardAIPage() {
       ? querySalonType
       : "hair",
   );
-  const [activeTab, setActiveTab] = useState<string>(
-    queryTab === "tryon" && TRYON_ENABLED_TYPES.has(querySalonType ?? ("hair" as SalonType))
-      ? "tryon"
-      : "analysis",
-  );
+
+  // Resolve initial section from query params
+  const initialSection = (() => {
+    if (!queryTab) return null;
+    if (
+      queryTab === "tryon" &&
+      TRYON_ENABLED_TYPES.has(querySalonType ?? "hair")
+    )
+      return "tryon" as Section;
+    if (queryTab === "analysis") return "analysis" as Section;
+    if (queryTab === "styles") return "styles" as Section;
+    if (queryTab === "schedule") return "schedule" as Section;
+    return null;
+  })();
+
+  const [activeSection, setActiveSection] = useState<Section>(initialSection);
 
   const showTryOn = TRYON_ENABLED_TYPES.has(salonType);
+
+  const { data: session } = authClient.useSession();
+  const isAuthenticated = !!session?.user;
+
+  const creditBalance = useQuery(
+    api.aiCredits.getMyBalance,
+    isAuthenticated ? {} : "skip",
+  );
 
   function handleSalonTypeChange(v: string) {
     const newType = v as SalonType;
     setSalonType(newType);
-    // If tryon tab is active but new type doesn't support it, fall back to analysis
-    if (activeTab === "tryon" && !TRYON_ENABLED_TYPES.has(newType)) {
-      setActiveTab("analysis");
+    if (activeSection === "tryon" && !TRYON_ENABLED_TYPES.has(newType)) {
+      setActiveSection("analysis");
     }
+  }
+
+  function handleSelectSection(section: Section) {
+    if (section === "tryon" && !showTryOn) return;
+    setActiveSection((prev) => (prev === section ? null : section));
+  }
+
+  function handleRecentActivitySelect(type: "analysis" | "tryon", _id: string) {
+    if (type === "tryon" && !showTryOn) {
+      setActiveSection("analysis");
+      return;
+    }
+    setActiveSection(type === "analysis" ? "analysis" : "tryon");
   }
 
   return (
     <div className="min-h-screen bg-muted/30">
       <div className="container mx-auto space-y-6 p-4 lg:p-6">
         {/* Header */}
-        <div className="flex items-center gap-3">
-          <Button variant="ghost" size="icon" asChild>
-            <Link href="/dashboard">
-              <ArrowLeft className="size-4" />
-            </Link>
-          </Button>
-          <Sparkles className="size-6" />
-          <div>
-            <h1 className="font-semibold text-2xl">AI Features</h1>
-            <p className="text-muted-foreground text-sm">
-              Photo analysis, virtual try-on, care schedule and more
-            </p>
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div className="flex items-center gap-3">
+            <Button variant="ghost" size="icon" asChild>
+              <Link href="/dashboard">
+                <ArrowLeft className="size-4" />
+              </Link>
+            </Button>
+            <Sparkles className="size-6" />
+            <div>
+              <h1 className="font-semibold text-2xl">AI Features</h1>
+              <p className="text-muted-foreground text-sm">
+                Photo analysis, virtual try-on, care schedule and more
+              </p>
+            </div>
+          </div>
+
+          {/* Right side: salon type + credit balance */}
+          <div className="flex items-center gap-3">
+            <Select value={salonType} onValueChange={handleSalonTypeChange}>
+              <SelectTrigger className="w-44">
+                <SelectValue placeholder="Select type" />
+              </SelectTrigger>
+              <SelectContent>
+                {(Object.keys(SALON_TYPE_LABELS) as SalonType[]).map((type) => (
+                  <SelectItem key={type} value={type}>
+                    {SALON_TYPE_LABELS[type]}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+
+            {creditBalance !== undefined && (
+              <div className="flex items-center gap-2 rounded-md border bg-background px-3 py-1.5">
+                <span className="text-muted-foreground text-sm">Credits:</span>
+                <span className="font-semibold text-sm tabular-nums">
+                  {creditBalance.balance}
+                </span>
+              </div>
+            )}
           </div>
         </div>
 
-        {/* Salon type selector */}
-        <div className="flex items-center gap-3">
-          <span className="whitespace-nowrap font-medium text-muted-foreground text-sm">
-            Salon type:
-          </span>
-          <Select
-            value={salonType}
-            onValueChange={handleSalonTypeChange}
-          >
-            <SelectTrigger className="w-48">
-              <SelectValue placeholder="Select type" />
-            </SelectTrigger>
-            <SelectContent>
-              {(Object.keys(SALON_TYPE_LABELS) as SalonType[]).map((type) => (
-                <SelectItem key={type} value={type}>
-                  {SALON_TYPE_LABELS[type]}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+        {/* Summary Cards */}
+        <AIHubSummaryCards
+          salonType={salonType}
+          onSelectSection={handleSelectSection}
+        />
+
+        {/* Recent Activity */}
+        <AIRecentActivity onSelectItem={handleRecentActivitySelect} />
+
+        {/* Feature Card Grid */}
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+          <AIFeatureCard
+            icon={Camera}
+            title="Photo Analysis"
+            description="Analyze your look with AI"
+            active={activeSection === "analysis"}
+            accentColor="violet"
+            onClick={() => handleSelectSection("analysis")}
+          />
+          <AIFeatureCard
+            icon={Sparkles}
+            title="Virtual Try-On"
+            description="Try new styles virtually"
+            active={activeSection === "tryon"}
+            disabled={!showTryOn}
+            accentColor="amber"
+            onClick={() => handleSelectSection("tryon")}
+          />
+          <AIFeatureCard
+            icon={Heart}
+            title="My Styles"
+            description="Your saved mood board"
+            active={activeSection === "styles"}
+            accentColor="rose"
+            onClick={() => handleSelectSection("styles")}
+          />
+          <AIFeatureCard
+            icon={CalendarCheck}
+            title="Care Schedule"
+            description="Personalized care plan"
+            active={activeSection === "schedule"}
+            accentColor="emerald"
+            onClick={() => handleSelectSection("schedule")}
+          />
         </div>
 
-        {/* AI Tabs */}
-        <Tabs value={activeTab} onValueChange={setActiveTab}>
-          <TabsList className="flex-wrap">
-            <TabsTrigger value="analysis">Photo Analysis</TabsTrigger>
-            {showTryOn && <TabsTrigger value="tryon">Try On</TabsTrigger>}
-            <TabsTrigger value="styles">My Styles</TabsTrigger>
-            <TabsTrigger value="schedule">Care Schedule</TabsTrigger>
-            <TabsTrigger value="credits">Credits</TabsTrigger>
-          </TabsList>
+        {/* Expanded Feature Panel */}
+        {activeSection === "analysis" && (
+          <PhotoAnalysisView
+            salonType={salonType}
+            onNavigateToTryOn={
+              showTryOn ? () => setActiveSection("tryon") : undefined
+            }
+          />
+        )}
 
-          <TabsContent value="analysis" className="mt-4">
-            <PhotoAnalysisView salonType={salonType} />
-          </TabsContent>
+        {activeSection === "tryon" && showTryOn && (
+          <VirtualTryOnView
+            salonType={salonType as "hair" | "nail" | "makeup" | "multi"}
+            initialDesignId={queryDesignId}
+            initialOrganizationId={queryOrgId}
+            onNavigateToMoodBoard={() => setActiveSection("styles")}
+          />
+        )}
 
-          {showTryOn && (
-            <TabsContent value="tryon" className="mt-4">
-              <VirtualTryOnView
-                salonType={salonType as TryOnSalonType}
-                initialDesignId={queryDesignId}
-                initialOrganizationId={queryOrgId}
-              />
-            </TabsContent>
-          )}
+        {activeSection === "styles" && (
+          <MoodBoardView
+            onNavigateToTryOn={
+              showTryOn ? () => setActiveSection("tryon") : undefined
+            }
+          />
+        )}
 
-          <TabsContent value="styles" className="mt-4">
-            <MoodBoardView />
-          </TabsContent>
+        {activeSection === "schedule" && (
+          <CareScheduleView salonType={salonType} />
+        )}
 
-          <TabsContent value="schedule" className="mt-4">
-            <CareScheduleView salonType={salonType} />
-          </TabsContent>
-
-          <TabsContent value="credits" className="mt-4">
-            <CreditBalance />
-          </TabsContent>
-        </Tabs>
+        {/* Full Credit Management (when no section active, show at bottom) */}
+        {activeSection === null && <CreditBalance />}
       </div>
     </div>
   );

@@ -98,7 +98,6 @@ export const createAnalysis = authedMutation({
     // Deduct credits from user's global pool
     await ctx.runMutation(internal.aiCredits.deductCredits, {
       userId,
-      poolType: "customer",
       amount: creditCost,
       featureType: "photoAnalysis",
       description: `Photo analysis (${imageStorageIds.length} image${imageStorageIds.length > 1 ? "s" : ""})`,
@@ -166,7 +165,6 @@ export const askQuickQuestion = authedMutation({
     // Deduct credits from user's global pool
     await ctx.runMutation(internal.aiCredits.deductCredits, {
       userId,
-      poolType: "customer",
       amount: CREDIT_COSTS.quickQuestion,
       featureType: "quickQuestion",
       referenceId: args.analysisId,

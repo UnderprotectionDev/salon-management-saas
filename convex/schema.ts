@@ -718,18 +718,15 @@ export default defineSchema({
   // AI Features (M10)
   // =========================================================================
 
-  // AI Credits — balance per customer or organization pool
-  // AI Credits — user-level credit pool (org pool kept for org-purchased credits)
+  // AI Credits — user-level credit pool (global across all salons)
   aiCredits: defineTable({
-    organizationId: v.optional(v.id("organization")), // null = global user pool
-    userId: v.optional(v.string()), // Better Auth user ID
-    poolType: v.union(v.literal("customer"), v.literal("org")),
+    organizationId: v.optional(v.id("organization")), // reserved for future use
+    userId: v.optional(v.string()), // Better Auth user ID — all new records have this set
+    poolType: v.literal("customer"),
     balance: v.number(),
     createdAt: v.number(),
     updatedAt: v.number(),
   })
-    .index("by_org", ["organizationId"])
-    .index("by_org_pool", ["organizationId", "poolType"])
     .index("by_user", ["userId"])
     // Compound index: eliminates .filter(poolType) anti-pattern
     .index("by_user_pool", ["userId", "poolType"]),
@@ -790,7 +787,7 @@ export default defineSchema({
     .index("by_user", ["userId"])
     .index("by_user_status", ["userId", "status"]),
 
-  // AI Simulations — virtual try-on records (user-scoped, org optional for catalog/gallery)
+  // AI Simulations — virtual try-on records (user-scoped, org optional for catalog)
   aiSimulations: defineTable({
     organizationId: v.optional(v.id("organization")),
     userId: v.optional(v.string()), // Better Auth user ID
@@ -805,19 +802,11 @@ export default defineSchema({
       v.literal("completed"),
       v.literal("failed"),
     ),
-    publicConsent: v.optional(v.boolean()),
-    galleryApprovedByOrg: v.optional(v.boolean()),
     errorMessage: v.optional(v.string()),
     creditCost: v.number(), // 10
     createdAt: v.number(),
     updatedAt: v.number(),
-  })
-    .index("by_user", ["userId"])
-    .index("by_org_gallery", [
-      "organizationId",
-      "publicConsent",
-      "galleryApprovedByOrg",
-    ]),
+  }).index("by_user", ["userId"]),
 
   // AI Care Schedules — personalized care calendar (user-scoped)
   aiCareSchedules: defineTable({
