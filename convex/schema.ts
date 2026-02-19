@@ -780,6 +780,7 @@ export default defineSchema({
     recommendedServiceIds: v.optional(v.array(v.id("services"))),
     quickAnswers: v.optional(aiQuickAnswersValidator), // Map<questionKey, answer>
     errorMessage: v.optional(v.string()),
+    agentThreadId: v.optional(v.string()), // @convex-dev/agent thread ID for conversation history
     creditCost: v.number(), // 5 for single, 8 for multi
     createdAt: v.number(),
     updatedAt: v.number(),
@@ -804,6 +805,8 @@ export default defineSchema({
     ),
     errorMessage: v.optional(v.string()),
     creditCost: v.number(), // 10
+    galleryApprovedByOrg: v.optional(v.boolean()),
+    publicConsent: v.optional(v.boolean()),
     createdAt: v.number(),
     updatedAt: v.number(),
   }).index("by_user", ["userId"]),
@@ -836,6 +839,7 @@ export default defineSchema({
       v.literal("completed"),
       v.literal("expired"),
     ),
+    agentThreadId: v.optional(v.string()), // @convex-dev/agent thread ID for conversation history
     creditCost: v.number(), // 2
     createdAt: v.number(),
     updatedAt: v.number(),

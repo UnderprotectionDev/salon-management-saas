@@ -47,6 +47,7 @@ import type * as lib_triggers from "../lib/triggers.js";
 import type * as lib_validation from "../lib/validation.js";
 import type * as lib_validators from "../lib/validators.js";
 import type * as members from "../members.js";
+import type * as migrations_clearAllData from "../migrations/clearAllData.js";
 import type * as migrations_roleCleanup from "../migrations/roleCleanup.js";
 import type * as migrations_salonTypeMigration from "../migrations/salonTypeMigration.js";
 import type * as notifications from "../notifications.js";
@@ -116,6 +117,7 @@ declare const fullApi: ApiFromModules<{
   "lib/validation": typeof lib_validation;
   "lib/validators": typeof lib_validators;
   members: typeof members;
+  "migrations/clearAllData": typeof migrations_clearAllData;
   "migrations/roleCleanup": typeof migrations_roleCleanup;
   "migrations/salonTypeMigration": typeof migrations_salonTypeMigration;
   notifications: typeof notifications;

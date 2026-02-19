@@ -207,11 +207,21 @@ Be professional, encouraging, and specific — avoid generic advice.`;
         image: new URL(url),
       }));
 
+      // Create a persistent thread for this analysis so conversation history is stored
+      const { threadId } = await photoAnalysisAgent.createThread(ctx, {
+        userId: analysis.userId ?? undefined,
+        title: `Photo Analysis – ${analysis.salonType}`,
+      });
+      await ctx.runMutation(internal.aiAnalysis.setAnalysisThreadId, {
+        analysisId: args.analysisId,
+        agentThreadId: threadId,
+      });
+
       // Call GPT-4o vision via the agent (with retry on transient failures)
       const result = await withRetry(() =>
         photoAnalysisAgent.generateObject(
           ctx,
-          { userId: analysis.userId ?? undefined },
+          { threadId, userId: analysis.userId ?? undefined },
           {
             prompt,
             messages: [
@@ -318,10 +328,25 @@ Answer this specific question: "${args.questionText}"
 
 Keep your answer to 2-4 sentences. Be specific to the customer's actual features from the analysis. Suggest specific styles, products, or techniques. Do NOT ask follow-up questions.`;
 
+      // Reuse the analysis thread so follow-up questions share conversation history
+      // If no thread exists yet (legacy records), create one on the fly
+      let threadId = analysis.agentThreadId;
+      if (!threadId) {
+        const created = await quickQuestionAgent.createThread(ctx, {
+          userId: args.userId ?? undefined,
+          title: `Photo Analysis – follow-up`,
+        });
+        threadId = created.threadId;
+        await ctx.runMutation(internal.aiAnalysis.setAnalysisThreadId, {
+          analysisId: args.analysisId,
+          agentThreadId: threadId,
+        });
+      }
+
       const result = await withRetry(() =>
         quickQuestionAgent.generateText(
           ctx,
-          { userId: args.userId ?? undefined },
+          { threadId, userId: args.userId ?? undefined },
           { prompt } as Parameters<typeof quickQuestionAgent.generateText>[2],
         ),
       );
@@ -714,10 +739,20 @@ Based on the customer's visit frequency, service history, and analysis data:
 
 Be specific with dates (YYYY-MM-DD format). Space recommendations appropriately based on the service type and customer's historical visit frequency.`;
 
+      // Create a persistent thread for this schedule generation
+      const { threadId } = await careScheduleAgent.createThread(ctx, {
+        userId: schedule.userId ?? undefined,
+        title: `Care Schedule – ${salonType}`,
+      });
+      await ctx.runMutation(internal.aiCareSchedules.setScheduleThreadId, {
+        scheduleId: args.scheduleId,
+        agentThreadId: threadId,
+      });
+
       const result = await withRetry(() =>
         careScheduleAgent.generateObject(
           ctx,
-          { userId: schedule.userId ?? undefined },
+          { threadId, userId: schedule.userId ?? undefined },
           {
             prompt,
             schema: careRecommendationSchema,

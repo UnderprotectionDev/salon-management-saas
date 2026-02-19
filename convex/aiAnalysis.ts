@@ -356,6 +356,18 @@ export const failAnalysis = internalMutation({
   },
 });
 
+export const setAnalysisThreadId = internalMutation({
+  args: {
+    analysisId: v.id("aiAnalyses"),
+    agentThreadId: v.string(),
+  },
+  returns: v.null(),
+  handler: async (ctx, args) => {
+    await ctx.db.patch(args.analysisId, { agentThreadId: args.agentThreadId });
+    return null;
+  },
+});
+
 export const saveQuickAnswer = internalMutation({
   args: {
     analysisId: v.id("aiAnalyses"),

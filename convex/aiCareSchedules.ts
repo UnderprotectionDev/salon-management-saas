@@ -303,6 +303,18 @@ export const getActiveServices = internalQuery({
   },
 });
 
+export const setScheduleThreadId = internalMutation({
+  args: {
+    scheduleId: v.id("aiCareSchedules"),
+    agentThreadId: v.string(),
+  },
+  returns: v.null(),
+  handler: async (ctx, args) => {
+    await ctx.db.patch(args.scheduleId, { agentThreadId: args.agentThreadId });
+    return null;
+  },
+});
+
 export const completeSchedule = internalMutation({
   args: {
     scheduleId: v.id("aiCareSchedules"),
