@@ -40,6 +40,7 @@ import type * as lib_dateTime from "../lib/dateTime.js";
 import type * as lib_defaults from "../lib/defaults.js";
 import type * as lib_functions from "../lib/functions.js";
 import type * as lib_phone from "../lib/phone.js";
+import type * as lib_polarHelpers from "../lib/polarHelpers.js";
 import type * as lib_rateLimits from "../lib/rateLimits.js";
 import type * as lib_scheduleResolver from "../lib/scheduleResolver.js";
 import type * as lib_triggers from "../lib/triggers.js";
@@ -108,6 +109,7 @@ declare const fullApi: ApiFromModules<{
   "lib/defaults": typeof lib_defaults;
   "lib/functions": typeof lib_functions;
   "lib/phone": typeof lib_phone;
+  "lib/polarHelpers": typeof lib_polarHelpers;
   "lib/rateLimits": typeof lib_rateLimits;
   "lib/scheduleResolver": typeof lib_scheduleResolver;
   "lib/triggers": typeof lib_triggers;

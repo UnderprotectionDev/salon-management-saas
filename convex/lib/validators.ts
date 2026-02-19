@@ -785,8 +785,8 @@ export const orgSalonTypeItemValidator = literals(
 /** Org salon types: array of selected types (multi-select) */
 export const orgSalonTypesValidator = v.array(orgSalonTypeItemValidator);
 
-/** AI credit pool type: customer | org */
-export const aiCreditPoolTypeValidator = literals("customer", "org");
+/** AI credit pool type: customer (user-level global pool) */
+export const aiCreditPoolTypeValidator = v.literal("customer");
 
 /** AI credit transaction type: purchase | usage | refund */
 export const aiCreditTransactionTypeValidator = literals(

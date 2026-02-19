@@ -40,6 +40,7 @@ export const create = orgMutation({
       v.literal("makeup"),
       v.literal("multi"),
     ),
+    status: v.optional(v.union(v.literal("active"), v.literal("inactive"))),
   },
   returns: v.id("designCatalog"),
   handler: async (ctx, args) => {
@@ -62,7 +63,7 @@ export const create = orgMutation({
       description: args.description,
       tags: args.tags,
       salonType: args.salonType,
-      status: "active",
+      status: args.status ?? "active",
       sortOrder,
       createdByStaffId: ctx.staff?._id ?? undefined,
       createdAt: now,

@@ -19,8 +19,8 @@ import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Checkbox } from "@/components/ui/checkbox";
+import { Card, CardContent } from "@/components/ui/card";
+import { Separator } from "@/components/ui/separator";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Switch } from "@/components/ui/switch";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -51,6 +51,8 @@ interface VirtualTryOnViewProps {
   initialDesignId?: Id<"designCatalog"> | null;
   /** The org that owns initialDesignId. */
   initialOrganizationId?: Id<"organization"> | null;
+  /** Navigate to Mood Board section after saving */
+  onNavigateToMoodBoard?: () => void;
 }
 
 // =============================================================================
@@ -159,6 +161,7 @@ export function VirtualTryOnView({
   organizationId,
   initialDesignId,
   initialOrganizationId,
+  onNavigateToMoodBoard,
 }: VirtualTryOnViewProps) {
   // State — inputs
   const [selectedDesign, setSelectedDesign] = useState<SelectedDesign | null>(
@@ -173,7 +176,7 @@ export function VirtualTryOnView({
       : null,
   );
   const selectedDesignId = selectedDesign?.id ?? null;
-  // The org to use for simulation + gallery submission:
+  // The org to use for simulation:
   // prefer the design's own org, then the prop org (salon context).
   const effectiveOrgId =
     selectedDesign?.organizationId ?? organizationId ?? null;
@@ -190,8 +193,8 @@ export function VirtualTryOnView({
     useState<Id<"aiSimulations"> | null>(null);
   const [showHistory, setShowHistory] = useState(false);
 
-  // State — gallery
-  const [galleryConsent, setGalleryConsent] = useState(false);
+  // State — mood board
+  const [savedToMoodBoard, setSavedToMoodBoard] = useState(false);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
   // Ref to track the latest previewUrl for unmount cleanup
@@ -245,8 +248,8 @@ export function VirtualTryOnView({
 
   const createSimulation = useMutation(api.aiSimulations.createSimulation);
   const generateUploadUrl = useMutation(api.files.generateUploadUrl);
-  const submitToGalleryMut = useMutation(api.aiSimulations.submitToGallery);
   const getFileUrl = useMutation(api.files.getFileUrl);
+  const addToMoodBoard = useMutation(api.aiMoodBoard.addToMoodBoard);
 
   // ---------------------------------------------------------------------------
   // Image URL resolution for before/after slider
@@ -395,8 +398,6 @@ export function VirtualTryOnView({
       }
       setSelectedFile(null);
       setPreviewUrl(null);
-      setGalleryConsent(false);
-
       toast.success("Try-on started! Results will appear shortly.");
     } catch (error) {
       if (error instanceof ConvexError) {
@@ -415,55 +416,39 @@ export function VirtualTryOnView({
     setActiveSimulationId(null);
     setSelectedDesign(null);
     setPromptText("");
-    setGalleryConsent(false);
+    setSavedToMoodBoard(false);
   }
 
-  async function handleSubmitToGallery() {
-    if (!activeSimulationId || !galleryConsent || !effectiveOrgId) return;
-
+  async function handleSaveToMoodBoard() {
+    if (!activeSimulation?.resultImageStorageId || savedToMoodBoard) return;
     try {
-      await submitToGalleryMut({
-        simulationId: activeSimulationId,
-        organizationId: effectiveOrgId,
+      await addToMoodBoard({
+        imageStorageId: activeSimulation.resultImageStorageId,
+        source: "tryon",
+        simulationId: activeSimulation._id,
+        designCatalogId: activeSimulation.designCatalogId,
+        organizationId: activeSimulation.organizationId,
+        note: activeSimulation.promptText ?? undefined,
       });
-      toast.success("Submitted to gallery! Pending salon approval.");
-    } catch (error) {
-      if (error instanceof ConvexError) {
-        const message =
-          (error.data as { message?: string })?.message ?? "Submission failed";
-        toast.error(message);
-      } else {
-        toast.error("Failed to submit to gallery");
-      }
+      setSavedToMoodBoard(true);
+      toast.success("Saved to mood board!");
+    } catch {
+      toast.error("Failed to save to mood board");
     }
-  }
-
-  function handleSaveToMoodBoard() {
-    // Stubbed for future implementation
-    toast.info("Save to mood board coming soon!");
   }
 
   // ---------------------------------------------------------------------------
   // Render
   // ---------------------------------------------------------------------------
 
-  return (
-    <div className="mx-auto max-w-2xl space-y-5">
-      {/* Credit Balance */}
-      {creditBalance !== undefined && (
-        <div className="flex items-center justify-between rounded-md border bg-muted/30 px-4 py-2">
-          <span className="text-muted-foreground text-sm">
-            Credits:{" "}
-            <span className="font-semibold text-foreground">
-              {creditBalance.balance}
-            </span>
-          </span>
-          <span className="text-muted-foreground text-xs">
-            {creditCost} credits per try-on
-          </span>
-        </div>
-      )}
+  // Step indicator state
+  const stepOneComplete = isFreePromptMode
+    ? promptText.trim().length > 0
+    : selectedDesignId !== null;
+  const stepTwoComplete = selectedFile !== null;
 
+  return (
+    <div className="space-y-5">
       {/* ================================================================= */}
       {/* Processing State */}
       {/* ================================================================= */}
@@ -478,10 +463,33 @@ export function VirtualTryOnView({
           <div className="flex items-center justify-between">
             <h3 className="font-semibold">Try-On Result</h3>
             <div className="flex items-center gap-2">
-              <Button variant="ghost" size="sm" onClick={handleSaveToMoodBoard}>
-                <Save className="mr-1.5 h-3.5 w-3.5" />
-                Save
-              </Button>
+              {savedToMoodBoard ? (
+                <>
+                  <span className="flex items-center gap-1 text-muted-foreground text-sm">
+                    <Check className="h-3.5 w-3.5 text-primary" />
+                    Saved
+                  </span>
+                  {onNavigateToMoodBoard && (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={onNavigateToMoodBoard}
+                    >
+                      View Mood Board
+                    </Button>
+                  )}
+                </>
+              ) : (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={handleSaveToMoodBoard}
+                  disabled={!activeSimulation?.resultImageStorageId}
+                >
+                  <Save className="mr-1.5 h-3.5 w-3.5" />
+                  Save
+                </Button>
+              )}
               <Button variant="outline" size="sm" onClick={handleStartNew}>
                 New Try-On
               </Button>
@@ -528,43 +536,6 @@ export function VirtualTryOnView({
               </div>
             </div>
           </div>
-
-          {/* Gallery consent — inline compact */}
-          {effectiveOrgId && (
-            <div className="flex flex-wrap items-center gap-3 rounded-md border px-3 py-2.5">
-              {activeSimulation?.publicConsent ? (
-                <div className="flex items-center gap-1.5 text-muted-foreground text-sm">
-                  <Check className="h-4 w-4 text-primary" />
-                  <span>Submitted to gallery</span>
-                </div>
-              ) : (
-                <>
-                  <Checkbox
-                    id="gallery-consent"
-                    checked={galleryConsent}
-                    onCheckedChange={(checked) =>
-                      setGalleryConsent(checked === true)
-                    }
-                  />
-                  <label
-                    htmlFor="gallery-consent"
-                    className="flex-1 cursor-pointer text-sm"
-                  >
-                    Share this result to the salon gallery
-                  </label>
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    disabled={!galleryConsent}
-                    onClick={handleSubmitToGallery}
-                  >
-                    <ImageIcon className="mr-1.5 h-3.5 w-3.5" />
-                    Add to Gallery
-                  </Button>
-                </>
-              )}
-            </div>
-          )}
         </div>
       )}
 
@@ -592,6 +563,50 @@ export function VirtualTryOnView({
       {/* ================================================================= */}
       {!isProcessing && !isCompleted && !isFailed && (
         <>
+          {/* Step Indicators */}
+          <div className="flex items-center justify-center gap-0">
+            <div className="flex items-center gap-1.5">
+              <div
+                className={`flex size-5 items-center justify-center rounded-full border text-xs font-medium ${
+                  stepOneComplete
+                    ? "border-primary bg-primary text-primary-foreground"
+                    : "border-muted-foreground/40 text-muted-foreground"
+                }`}
+              >
+                1
+              </div>
+              <span
+                className={`text-xs ${stepOneComplete ? "text-foreground" : "text-muted-foreground"}`}
+              >
+                Pick a style
+              </span>
+            </div>
+            <div className="mx-2 h-px w-8 bg-border" />
+            <div className="flex items-center gap-1.5">
+              <div
+                className={`flex size-5 items-center justify-center rounded-full border text-xs font-medium ${
+                  stepTwoComplete
+                    ? "border-primary bg-primary text-primary-foreground"
+                    : "border-muted-foreground/40 text-muted-foreground"
+                }`}
+              >
+                2
+              </div>
+              <span
+                className={`text-xs ${stepTwoComplete ? "text-foreground" : "text-muted-foreground"}`}
+              >
+                Upload photo
+              </span>
+            </div>
+            <div className="mx-2 h-px w-8 bg-border" />
+            <div className="flex items-center gap-1.5">
+              <div className="flex size-5 items-center justify-center rounded-full border border-muted-foreground/40 text-xs font-medium text-muted-foreground">
+                3
+              </div>
+              <span className="text-xs text-muted-foreground">Try on</span>
+            </div>
+          </div>
+
           {/* Mode Toggle */}
           <div className="flex items-center justify-between rounded-md border px-4 py-3">
             <div>
@@ -622,168 +637,154 @@ export function VirtualTryOnView({
             </div>
           </div>
 
-          {/* Catalog Browse */}
-          {!isFreePromptMode && (
-            <Card>
-              <CardHeader className="pb-3">
-                <CardTitle className="flex items-center gap-2 text-base">
-                  <Sparkles className="h-4 w-4" />
-                  Design Catalog
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                {/* ── Single-org mode (organizationId prop provided) ── */}
-                {organizationId ? (
-                  <>
-                    {/* Category Filter Tabs */}
-                    {categories && categories.length > 0 && (
-                      <Tabs
-                        value={categoryFilter}
-                        onValueChange={setCategoryFilter}
-                      >
-                        <TabsList className="flex-wrap">
-                          <TabsTrigger value="all">All</TabsTrigger>
-                          {categories.map((cat) => (
-                            <TabsTrigger key={cat} value={cat}>
-                              {cat}
-                            </TabsTrigger>
-                          ))}
-                        </TabsList>
-                      </Tabs>
-                    )}
+          {/* 2-Column Layout: Style/Prompt (left) + Photo Upload (right) */}
+          <div className="grid grid-cols-1 gap-5 lg:grid-cols-5">
+            {/* Left Column — Design Catalog or Prompt */}
+            <div className="space-y-4 lg:col-span-3">
+              {!isFreePromptMode ? (
+                <div className="space-y-4">
+                  <h3 className="font-semibold text-sm">Design Catalog</h3>
 
-                    {/* Thumbnail Grid */}
-                    {designs === undefined ? (
-                      <div className="grid grid-cols-3 gap-3 sm:grid-cols-4">
-                        {["a", "b", "c", "d", "e", "f", "g", "h"].map((key) => (
-                          <Skeleton
-                            key={`design-skeleton-${key}`}
-                            className="aspect-square rounded-md"
-                          />
-                        ))}
-                      </div>
-                    ) : filteredDesigns.length === 0 ? (
-                      <div className="flex flex-col items-center gap-2 py-8 text-muted-foreground">
-                        <ImageIcon className="h-8 w-8" />
-                        <p className="text-sm">No designs available</p>
-                      </div>
-                    ) : (
-                      <div className="grid grid-cols-3 gap-3 sm:grid-cols-4">
-                        {filteredDesigns.map((design) => (
-                          <button
-                            key={design._id}
-                            type="button"
-                            className={`group relative overflow-hidden rounded-md border-2 transition-all ${
-                              selectedDesignId === design._id
-                                ? "border-primary ring-2 ring-primary/30"
-                                : "border-transparent hover:border-muted-foreground/30"
-                            }`}
-                            onClick={() =>
-                              setSelectedDesign({
-                                id: design._id,
-                                organizationId: design.organizationId,
-                                name: design.name,
-                                category: design.category,
-                                salonType: design.salonType,
-                              })
-                            }
-                          >
-                            {design.thumbnailUrl || design.imageUrl ? (
-                              // biome-ignore lint/performance/noImgElement: dynamic storage URL
-                              <img
-                                src={design.thumbnailUrl ?? design.imageUrl}
-                                alt={design.name}
-                                className="aspect-square w-full object-cover"
+                  {/* ── Single-org mode (organizationId prop provided) ── */}
+                  {organizationId ? (
+                    <>
+                      {/* Category Filter Tabs */}
+                      {categories && categories.length > 0 && (
+                        <Tabs
+                          value={categoryFilter}
+                          onValueChange={setCategoryFilter}
+                        >
+                          <TabsList className="flex-wrap">
+                            <TabsTrigger value="all">All</TabsTrigger>
+                            {categories.map((cat) => (
+                              <TabsTrigger key={cat} value={cat}>
+                                {cat}
+                              </TabsTrigger>
+                            ))}
+                          </TabsList>
+                        </Tabs>
+                      )}
+
+                      {/* Thumbnail Grid */}
+                      {designs === undefined ? (
+                        <div className="grid grid-cols-3 gap-3 sm:grid-cols-4">
+                          {["a", "b", "c", "d", "e", "f", "g", "h"].map(
+                            (key) => (
+                              <Skeleton
+                                key={`design-skeleton-${key}`}
+                                className="aspect-square rounded-md"
                               />
-                            ) : (
-                              <div className="flex aspect-square items-center justify-center bg-muted">
-                                <ImageIcon className="h-6 w-6 text-muted-foreground/50" />
+                            ),
+                          )}
+                        </div>
+                      ) : filteredDesigns.length === 0 ? (
+                        <div className="flex flex-col items-center gap-2 py-8 text-muted-foreground">
+                          <ImageIcon className="h-8 w-8" />
+                          <p className="text-sm">No designs available</p>
+                        </div>
+                      ) : (
+                        <div className="grid grid-cols-3 gap-3 sm:grid-cols-4">
+                          {filteredDesigns.map((design) => (
+                            <button
+                              key={design._id}
+                              type="button"
+                              className={`group relative overflow-hidden rounded-md border-2 transition-all ${
+                                selectedDesignId === design._id
+                                  ? "border-primary ring-2 ring-primary/30"
+                                  : "border-transparent hover:border-muted-foreground/30"
+                              }`}
+                              onClick={() =>
+                                setSelectedDesign({
+                                  id: design._id,
+                                  organizationId: design.organizationId,
+                                  name: design.name,
+                                  category: design.category,
+                                  salonType: design.salonType,
+                                })
+                              }
+                            >
+                              {design.thumbnailUrl || design.imageUrl ? (
+                                // biome-ignore lint/performance/noImgElement: dynamic storage URL
+                                <img
+                                  src={design.thumbnailUrl ?? design.imageUrl}
+                                  alt={design.name}
+                                  className="aspect-square w-full object-cover"
+                                />
+                              ) : (
+                                <div className="flex aspect-square items-center justify-center bg-muted">
+                                  <ImageIcon className="h-6 w-6 text-muted-foreground/50" />
+                                </div>
+                              )}
+
+                              {selectedDesignId === design._id && (
+                                <div className="absolute top-1 right-1 flex h-5 w-5 items-center justify-center rounded-full bg-primary text-primary-foreground">
+                                  <Check className="h-3 w-3" />
+                                </div>
+                              )}
+
+                              <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/70 to-transparent px-1.5 pb-1.5 pt-4">
+                                <span className="truncate text-white text-xs">
+                                  {design.name}
+                                </span>
                               </div>
-                            )}
+                            </button>
+                          ))}
+                        </div>
+                      )}
 
-                            {selectedDesignId === design._id && (
-                              <div className="absolute top-1 right-1 flex h-5 w-5 items-center justify-center rounded-full bg-primary text-primary-foreground">
-                                <Check className="h-3 w-3" />
-                              </div>
-                            )}
-
-                            <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/70 to-transparent px-1.5 pb-1.5 pt-4">
-                              <span className="truncate text-white text-xs">
-                                {design.name}
-                              </span>
-                            </div>
-                          </button>
-                        ))}
-                      </div>
-                    )}
-
-                    {/* Selected design badge */}
-                    {selectedDesign && (
-                      <SelectedDesignBadge
-                        name={selectedDesign.name}
-                        category={selectedDesign.category}
-                        onClear={() => setSelectedDesign(null)}
-                      />
-                    )}
-                  </>
-                ) : (
-                  /* ── Multi-org mode (no organizationId prop) ── */
-                  <DesignBrowser
-                    selectedDesignId={selectedDesignId}
-                    onSelectDesign={(d) => {
-                      if (!d.id) {
-                        setSelectedDesign(null);
-                      } else {
-                        setSelectedDesign(d);
-                      }
-                    }}
+                      {/* Selected design badge */}
+                      {selectedDesign && (
+                        <SelectedDesignBadge
+                          name={selectedDesign.name}
+                          category={selectedDesign.category}
+                          onClear={() => setSelectedDesign(null)}
+                        />
+                      )}
+                    </>
+                  ) : (
+                    /* ── Multi-org mode (no organizationId prop) ── */
+                    <DesignBrowser
+                      selectedDesignId={selectedDesignId}
+                      onSelectDesign={(d) => {
+                        if (!d.id) {
+                          setSelectedDesign(null);
+                        } else {
+                          setSelectedDesign(d);
+                        }
+                      }}
+                    />
+                  )}
+                </div>
+              ) : (
+                /* Free Prompt Input */
+                <div className="space-y-3">
+                  <h3 className="font-semibold text-sm">Describe Your Look</h3>
+                  <Textarea
+                    value={promptText}
+                    onChange={(e) => setPromptText(e.target.value)}
+                    placeholder={getPromptPlaceholder(salonType)}
+                    rows={3}
+                    className="resize-none"
                   />
-                )}
-              </CardContent>
-            </Card>
-          )}
+                  <p className="text-muted-foreground text-xs">
+                    Be specific about colors, styles, and techniques for best
+                    results.
+                  </p>
+                </div>
+              )}
+            </div>
 
-          {/* Free Prompt Input */}
-          {isFreePromptMode && (
-            <Card>
-              <CardHeader className="pb-3">
-                <CardTitle className="flex items-center gap-2 text-base">
-                  <Sparkles className="h-4 w-4" />
-                  Describe Your Look
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <Textarea
-                  value={promptText}
-                  onChange={(e) => setPromptText(e.target.value)}
-                  placeholder={getPromptPlaceholder(salonType)}
-                  rows={3}
-                  className="resize-none"
-                />
-                <p className="mt-2 text-muted-foreground text-xs">
-                  Be specific about colors, styles, and techniques for best
-                  results.
-                </p>
-              </CardContent>
-            </Card>
-          )}
+            {/* Right Column — Photo Upload + Try On Button */}
+            <div className="space-y-4 lg:col-span-2">
+              <h3 className="font-semibold text-sm">Your Photo</h3>
 
-          {/* Photo Upload */}
-          <Card>
-            <CardHeader className="pb-3">
-              <CardTitle className="flex items-center gap-2 text-base">
-                <Upload className="h-4 w-4" />
-                Your Photo
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
               {previewUrl ? (
                 <div className="group relative">
                   {/* biome-ignore lint/performance/noImgElement: dynamic blob URL */}
                   <img
                     src={previewUrl}
                     alt="Your upload preview"
-                    className="aspect-square w-full rounded-md border object-cover"
+                    className="aspect-[3/4] w-full rounded-md border object-cover"
                   />
                   <button
                     type="button"
@@ -796,7 +797,7 @@ export function VirtualTryOnView({
               ) : (
                 <button
                   type="button"
-                  className="flex w-full flex-col items-center justify-center gap-2 rounded-md border-2 border-dashed py-10 text-muted-foreground transition-colors hover:border-primary/50 hover:text-primary"
+                  className="flex w-full flex-col items-center justify-center gap-2 rounded-md border-2 border-dashed py-8 text-muted-foreground transition-colors hover:border-primary/50 hover:text-primary"
                   onClick={() => fileInputRef.current?.click()}
                 >
                   <Upload className="h-8 w-8" />
@@ -820,30 +821,29 @@ export function VirtualTryOnView({
                   {tryOnMode}
                 </Badge>
               </p>
-            </CardContent>
-          </Card>
 
-          {/* Try On Button */}
-          <Button
-            className="w-full"
-            size="lg"
-            disabled={!canSubmit}
-            onClick={handleTryOn}
-          >
-            {isUploading ? (
-              <>
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                Uploading...
-              </>
-            ) : hasInsufficientCredits ? (
-              "Insufficient credits"
-            ) : (
-              <>
-                <Sparkles className="mr-2 h-4 w-4" />
-                Try On ({creditCost} credits)
-              </>
-            )}
-          </Button>
+              {/* Try On Button */}
+              <Button
+                className="w-full"
+                disabled={!canSubmit}
+                onClick={handleTryOn}
+              >
+                {isUploading ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Uploading...
+                  </>
+                ) : hasInsufficientCredits ? (
+                  "Insufficient credits"
+                ) : (
+                  <>
+                    <Sparkles className="mr-2 h-4 w-4" />
+                    Try On ({creditCost} credits)
+                  </>
+                )}
+              </Button>
+            </div>
+          </div>
         </>
       )}
 
@@ -852,6 +852,7 @@ export function VirtualTryOnView({
       {/* ================================================================= */}
       {simulationHistory && simulationHistory.length > 0 && (
         <div>
+          <Separator className="mb-3" />
           <button
             type="button"
             className="flex w-full items-center justify-between py-2 text-sm"

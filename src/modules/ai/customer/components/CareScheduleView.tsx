@@ -53,8 +53,8 @@ export function CareScheduleView({ salonType }: CareScheduleViewProps) {
   // Not authenticated → schedule query is skipped permanently, avoid infinite loading
   if (!isAuthenticated) {
     return (
-      <div className="flex flex-col items-center justify-center gap-4 rounded-md border border-dashed py-20">
-        <CalendarDays className="h-12 w-12 text-muted-foreground" />
+      <div className="flex flex-col items-center justify-center gap-4 rounded-md border border-dashed py-12">
+        <CalendarDays className="h-10 w-10 text-muted-foreground" />
         <h3 className="font-medium text-lg">Sign In Required</h3>
         <p className="max-w-sm text-center text-muted-foreground text-sm">
           Sign in to view and generate your personalized care schedule.
@@ -97,8 +97,8 @@ export function CareScheduleView({ salonType }: CareScheduleViewProps) {
   // Empty state — no schedule yet
   if (!schedule || schedule.recommendations.length === 0) {
     return (
-      <div className="flex flex-col items-center justify-center gap-4 rounded-md border border-dashed py-20">
-        <CalendarDays className="h-12 w-12 text-muted-foreground" />
+      <div className="flex flex-col items-center justify-center gap-4 rounded-md border border-dashed py-12">
+        <CalendarDays className="h-10 w-10 text-muted-foreground" />
         <h3 className="font-medium text-lg">My Care Schedule</h3>
         <p className="max-w-sm text-center text-muted-foreground text-sm">
           Get a personalized care calendar based on your visit history and photo
@@ -181,7 +181,11 @@ export function CareScheduleView({ salonType }: CareScheduleViewProps) {
               <Card
                 // biome-ignore lint/suspicious/noArrayIndexKey: recommendations are ordered
                 key={index}
-                className={pastDue ? "border-orange-300 bg-orange-50/50" : ""}
+                className={
+                  pastDue
+                    ? "border-l-4 border-l-orange-400 border-orange-300 bg-orange-50/50"
+                    : "border-l-4 border-l-primary/20"
+                }
               >
                 <CardHeader className="pb-2">
                   <div className="flex items-start justify-between">

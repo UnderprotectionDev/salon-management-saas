@@ -316,7 +316,7 @@ Credits are user-scoped (global across all salons, not per-org). Stored in `aiCr
 - **Credit packages** (Polar one-time checkout): Starter 50cr/$1.99, Popular 200cr/$5.99, Pro 500cr/$11.99
 - **Idempotency:** `addPurchasedCredits` mutation checks `by_reference` index on `orderId` before crediting — safe for webhook retries
 - **Test credits:** `aiCredits.claimTestCredits` available when `ALLOW_TEST_CREDITS=true` env var is set (rate-limited 3/day)
-- Org owners can also allocate credits to an org pool via `aiCredits.addOrgCredits`
+- Credits are user-scoped only — no org-level pool
 
 ### LLM Architecture
 

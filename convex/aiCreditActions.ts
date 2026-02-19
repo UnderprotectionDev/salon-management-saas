@@ -234,7 +234,6 @@ export const addCreditsForOrder = action({
 
     await ctx.runMutation(internal.aiCredits.addPurchasedCredits, {
       userId: args.userId,
-      poolType: "customer" as const,
       amount: creditAmount,
       referenceId: args.orderId,
       description: `Purchased ${creditAmount} AI credits (order ${args.orderId})`,
