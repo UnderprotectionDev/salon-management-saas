@@ -7,6 +7,7 @@ import { useState } from "react";
 import { toast } from "sonner";
 import { z } from "zod";
 import { LogoUpload } from "@/components/logo-upload";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
   Field,
@@ -15,14 +16,8 @@ import {
   FieldLabel,
 } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
+import { Toggle } from "@/components/ui/toggle";
 import { api } from "../../../../convex/_generated/api";
 import type { Id } from "../../../../convex/_generated/dataModel";
 
@@ -30,7 +25,7 @@ import type { Id } from "../../../../convex/_generated/dataModel";
 // Types
 // =============================================================================
 
-type SalonType = "hair" | "nail" | "makeup" | "barber" | "spa" | "multi";
+type OrgSalonType = "hair" | "nail" | "makeup" | "barber" | "spa";
 
 // Minimal organization fields required by this component
 type OrganizationData = {
@@ -39,7 +34,7 @@ type OrganizationData = {
   slug: string;
   description?: string | null;
   logo?: string | null;
-  salonType?: SalonType | null;
+  salonType?: OrgSalonType[] | null;
 };
 
 interface GeneralInfoFormProps {
@@ -51,13 +46,12 @@ interface GeneralInfoFormProps {
 // Constants
 // =============================================================================
 
-const SALON_TYPE_OPTIONS: { value: SalonType; label: string }[] = [
+const SALON_TYPE_OPTIONS: { value: OrgSalonType; label: string }[] = [
   { value: "hair", label: "Hair Salon" },
   { value: "nail", label: "Nail Salon" },
   { value: "makeup", label: "Makeup Studio" },
   { value: "barber", label: "Barber Shop" },
   { value: "spa", label: "Spa" },
-  { value: "multi", label: "Multi-Service" },
 ];
 
 // =============================================================================
@@ -90,7 +84,7 @@ export function GeneralInfoForm({
     defaultValues: {
       name: organization.name,
       description: organization.description ?? "",
-      salonType: organization.salonType ?? "",
+      salonType: organization.salonType ?? ([] as OrgSalonType[]),
     },
     onSubmit: async ({ value }) => {
       try {
@@ -100,10 +94,10 @@ export function GeneralInfoForm({
           description: value.description || undefined,
         });
 
-        if (value.salonType && value.salonType !== organization.salonType) {
+        if (value.salonType.length > 0) {
           await updateSalonType({
             organizationId: organization._id,
-            salonType: value.salonType as SalonType,
+            salonType: value.salonType,
           });
         }
 
@@ -121,9 +115,10 @@ export function GeneralInfoForm({
     setIsEditing(false);
   };
 
-  const currentSalonTypeLabel =
-    SALON_TYPE_OPTIONS.find((o) => o.value === organization.salonType)?.label ??
-    null;
+  const currentLabels =
+    organization.salonType
+      ?.map((t) => SALON_TYPE_OPTIONS.find((o) => o.value === t)?.label)
+      .filter(Boolean) ?? [];
 
   if (!isEditing) {
     return (
@@ -166,13 +161,21 @@ export function GeneralInfoForm({
           <div className="text-sm font-medium text-muted-foreground">
             Salon Type
           </div>
-          <p className="mt-1 text-sm">
-            {currentSalonTypeLabel ?? (
-              <span className="text-muted-foreground italic">
+          <div className="mt-1">
+            {currentLabels.length > 0 ? (
+              <div className="flex flex-wrap gap-1">
+                {currentLabels.map((label) => (
+                  <Badge key={label} variant="secondary">
+                    {label}
+                  </Badge>
+                ))}
+              </div>
+            ) : (
+              <span className="text-sm text-muted-foreground italic">
                 Not set — required for AI features
               </span>
             )}
-          </p>
+          </div>
         </div>
 
         {/* URL Slug (read-only) */}
@@ -270,27 +273,36 @@ export function GeneralInfoForm({
           }}
         </form.Field>
 
-        {/* Salon Type */}
+        {/* Salon Type — multi-select */}
         <form.Field name="salonType">
           {(field) => (
             <Field>
-              <FieldLabel htmlFor={field.name}>Salon Type</FieldLabel>
-              <Select
-                value={field.state.value}
-                onValueChange={(v) => field.handleChange(v)}
-                disabled={form.state.isSubmitting}
-              >
-                <SelectTrigger id={field.name}>
-                  <SelectValue placeholder="Select salon type..." />
-                </SelectTrigger>
-                <SelectContent>
-                  {SALON_TYPE_OPTIONS.map((opt) => (
-                    <SelectItem key={opt.value} value={opt.value}>
-                      {opt.label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <FieldLabel>Salon Type</FieldLabel>
+              <div className="flex flex-wrap gap-2">
+                {SALON_TYPE_OPTIONS.map((opt) => (
+                  <Toggle
+                    key={opt.value}
+                    variant="outline"
+                    pressed={field.state.value.includes(opt.value)}
+                    onPressedChange={(pressed) => {
+                      if (pressed) {
+                        field.handleChange([...field.state.value, opt.value]);
+                      } else {
+                        field.handleChange(
+                          field.state.value.filter((t) => t !== opt.value),
+                        );
+                      }
+                    }}
+                    disabled={form.state.isSubmitting}
+                    className="px-4"
+                  >
+                    {opt.label}
+                  </Toggle>
+                ))}
+              </div>
+              <p className="text-xs text-muted-foreground">
+                Select all types that apply. Required for AI features.
+              </p>
             </Field>
           )}
         </form.Field>

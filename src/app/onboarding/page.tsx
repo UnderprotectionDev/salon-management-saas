@@ -37,14 +37,8 @@ import {
 } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 import { Progress } from "@/components/ui/progress";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
+import { Toggle } from "@/components/ui/toggle";
 import { useOrganizations } from "@/modules/organization";
 import { api } from "../../../convex/_generated/api";
 
@@ -52,15 +46,14 @@ import { api } from "../../../convex/_generated/api";
 // Constants
 // =============================================================================
 
-type SalonType = "hair" | "nail" | "makeup" | "barber" | "spa" | "multi";
+type OrgSalonType = "hair" | "nail" | "makeup" | "barber" | "spa";
 
-const SALON_TYPE_OPTIONS: { value: SalonType; label: string }[] = [
+const SALON_TYPE_OPTIONS: { value: OrgSalonType; label: string }[] = [
   { value: "hair", label: "Hair Salon" },
   { value: "nail", label: "Nail Salon" },
   { value: "makeup", label: "Makeup Studio" },
   { value: "barber", label: "Barber Shop" },
   { value: "spa", label: "Spa" },
-  { value: "multi", label: "Multi-Service" },
 ];
 
 const STEPS = [
@@ -110,7 +103,7 @@ interface OnboardingFormData {
   name: string;
   slug: string;
   description: string;
-  salonType: string;
+  salonType: OrgSalonType[];
   // Step 2: Location
   email: string;
   phone: string;
@@ -152,7 +145,7 @@ export default function OnboardingPage() {
       name: "",
       slug: "",
       description: "",
-      salonType: "",
+      salonType: [] as OrgSalonType[],
       email: "",
       phone: "",
       street: "",
@@ -209,10 +202,10 @@ export default function OnboardingPage() {
         businessHours,
       });
 
-      if (value.salonType) {
+      if (value.salonType.length > 0) {
         await updateSalonType({
           organizationId: result.organizationId,
-          salonType: value.salonType as SalonType,
+          salonType: value.salonType,
         });
       }
 
@@ -436,27 +429,36 @@ export default function OnboardingPage() {
                 <form.Field name="salonType">
                   {(field) => (
                     <Field>
-                      <FieldLabel htmlFor={field.name}>
-                        Salon Type (optional)
-                      </FieldLabel>
-                      <Select
-                        value={field.state.value}
-                        onValueChange={(v) => field.handleChange(v)}
-                      >
-                        <SelectTrigger id={field.name}>
-                          <SelectValue placeholder="Select your salon type..." />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {SALON_TYPE_OPTIONS.map((opt) => (
-                            <SelectItem key={opt.value} value={opt.value}>
-                              {opt.label}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
+                      <FieldLabel>Salon Type (optional)</FieldLabel>
+                      <div className="flex flex-wrap gap-2">
+                        {SALON_TYPE_OPTIONS.map((opt) => (
+                          <Toggle
+                            key={opt.value}
+                            variant="outline"
+                            pressed={field.state.value.includes(opt.value)}
+                            onPressedChange={(pressed) => {
+                              if (pressed) {
+                                field.handleChange([
+                                  ...field.state.value,
+                                  opt.value,
+                                ]);
+                              } else {
+                                field.handleChange(
+                                  field.state.value.filter(
+                                    (t) => t !== opt.value,
+                                  ),
+                                );
+                              }
+                            }}
+                            className="px-4"
+                          >
+                            {opt.label}
+                          </Toggle>
+                        ))}
+                      </div>
                       <FieldDescription>
-                        Enables AI-powered features like photo analysis and
-                        virtual try-on
+                        Select all types that apply. Enables AI-powered features
+                        like photo analysis and virtual try-on.
                       </FieldDescription>
                     </Field>
                   )}

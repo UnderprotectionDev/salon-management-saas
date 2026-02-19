@@ -68,6 +68,15 @@ export default function GalleryPage() {
     );
   }
 
+  // Derive effective salonType for try-on URL from multi-select array
+  const salonTypeArr = organization.salonType;
+  const effectiveSalonType =
+    salonTypeArr && salonTypeArr.length > 0
+      ? salonTypeArr.length > 1
+        ? "multi"
+        : salonTypeArr[0]
+      : "hair";
+
   return (
     <div className="container mx-auto px-4 py-8">
       <div className="mb-8">
@@ -116,7 +125,7 @@ export default function GalleryPage() {
                 {/* Try this look link */}
                 {item.designCatalogId && organization && (
                   <Link
-                    href={`/dashboard/ai?tab=tryon&designId=${item.designCatalogId}&orgId=${organization._id}&salonType=${organization.salonType ?? "hair"}`}
+                    href={`/dashboard/ai?tab=tryon&designId=${item.designCatalogId}&orgId=${organization._id}&salonType=${effectiveSalonType}`}
                     className="mt-1 flex items-center gap-1 text-primary text-xs hover:underline"
                   >
                     <Sparkles className="h-3 w-3" />

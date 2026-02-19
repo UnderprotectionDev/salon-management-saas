@@ -9,7 +9,25 @@
 // Salon Type Definitions
 // =========================================================================
 
+/** Internal AI salon type — includes "multi" for derived multi-service salons */
 export type SalonType = "hair" | "nail" | "makeup" | "barber" | "spa" | "multi";
+
+/** Individual org salon type (stored in DB — no "multi" option) */
+export type OrgSalonType = "hair" | "nail" | "makeup" | "barber" | "spa";
+
+/**
+ * Derives the effective SalonType for AI features from the org's multi-select array.
+ * - 0 or undefined → null
+ * - 1 item → that item
+ * - 2+ items → "multi"
+ */
+export function deriveEffectiveSalonType(
+  types: OrgSalonType[] | undefined | null,
+): SalonType | null {
+  if (!types || types.length === 0) return null;
+  if (types.length === 1) return types[0];
+  return "multi";
+}
 
 /**
  * Salon types that support virtual try-on.

@@ -133,7 +133,8 @@ export function AppointmentDetailModal({
     api.organizations.getSalonType,
     organizationId ? { organizationId } : "skip",
   );
-  const showAiTab = salonType !== null && salonType !== undefined;
+  const showAiTab =
+    salonType !== null && salonType !== undefined && salonType.length > 0;
 
   // Reset cancel reason when cancel dialog closes
   const handleCancelOpenChange = (v: boolean) => {

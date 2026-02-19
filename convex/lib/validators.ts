@@ -763,7 +763,7 @@ export const productPublicValidator = v.object({
 // AI Feature Validators (M10)
 // =============================================================================
 
-/** Salon type: hair | nail | makeup | barber | spa | multi */
+/** Salon type: hair | nail | makeup | barber | spa | multi (used by AI features internally) */
 export const salonTypeValidator = literals(
   "hair",
   "nail",
@@ -772,6 +772,18 @@ export const salonTypeValidator = literals(
   "spa",
   "multi",
 );
+
+/** Individual org salon type item (no "multi" — multi is derived when multiple selected) */
+export const orgSalonTypeItemValidator = literals(
+  "hair",
+  "nail",
+  "makeup",
+  "barber",
+  "spa",
+);
+
+/** Org salon types: array of selected types (multi-select) */
+export const orgSalonTypesValidator = v.array(orgSalonTypeItemValidator);
 
 /** AI credit pool type: customer | org */
 export const aiCreditPoolTypeValidator = literals("customer", "org");

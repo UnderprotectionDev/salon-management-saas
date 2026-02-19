@@ -47,6 +47,7 @@ import type * as lib_validation from "../lib/validation.js";
 import type * as lib_validators from "../lib/validators.js";
 import type * as members from "../members.js";
 import type * as migrations_roleCleanup from "../migrations/roleCleanup.js";
+import type * as migrations_salonTypeMigration from "../migrations/salonTypeMigration.js";
 import type * as notifications from "../notifications.js";
 import type * as organizations from "../organizations.js";
 import type * as polar from "../polar.js";
@@ -114,6 +115,7 @@ declare const fullApi: ApiFromModules<{
   "lib/validators": typeof lib_validators;
   members: typeof members;
   "migrations/roleCleanup": typeof migrations_roleCleanup;
+  "migrations/salonTypeMigration": typeof migrations_salonTypeMigration;
   notifications: typeof notifications;
   organizations: typeof organizations;
   polar: typeof polar;

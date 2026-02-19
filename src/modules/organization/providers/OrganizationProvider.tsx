@@ -18,7 +18,7 @@ type Organization = {
   slug: string;
   logo?: string | null;
   description?: string | null;
-  salonType?: "hair" | "nail" | "makeup" | "barber" | "spa" | "multi" | null;
+  salonType?: Array<"hair" | "nail" | "makeup" | "barber" | "spa"> | null;
   role: "owner" | "staff";
   memberId: Id<"member">;
 };
@@ -113,7 +113,21 @@ export function OrganizationProvider({ children }: { children: ReactNode }) {
       slug: org.slug,
       logo: org.logo,
       description: org.description,
-      salonType: org.salonType,
+      // Normalize from legacy string or new array format (migration period)
+      salonType: (() => {
+        const raw = org.salonType as
+          | string
+          | Array<"hair" | "nail" | "makeup" | "barber" | "spa">
+          | null
+          | undefined;
+        if (!raw) return null;
+        if (Array.isArray(raw)) return raw;
+        if (raw === "multi")
+          return ["hair", "nail", "makeup"] as Array<
+            "hair" | "nail" | "makeup" | "barber" | "spa"
+          >;
+        return [raw] as Array<"hair" | "nail" | "makeup" | "barber" | "spa">;
+      })(),
       role: org.role,
       memberId: org.memberId,
     }),

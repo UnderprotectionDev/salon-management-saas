@@ -370,10 +370,14 @@ const DEFAULT_FORM: DesignFormState = {
 export function DesignCatalogManager() {
   const { activeOrganization, currentRole, currentStaff } = useOrganization();
   const isOwner = currentRole === "owner";
-  const orgSalonType = activeOrganization?.salonType as
-    | OrgSalonType
-    | null
-    | undefined;
+  // Derive effective salonType from the multi-select array
+  const salonTypes = activeOrganization?.salonType ?? null;
+  const orgSalonType: OrgSalonType | null =
+    salonTypes && salonTypes.length > 0
+      ? salonTypes.length > 1
+        ? "multi"
+        : (salonTypes[0] as OrgSalonType)
+      : null;
   const isMulti = orgSalonType === "multi";
 
   const designs = useQuery(

@@ -85,7 +85,14 @@ export default function DesignPortfolioPage() {
   }
 
   const orgId = organization._id;
-  const salonType = organization.salonType ?? "hair";
+  // Derive effective salonType for try-on URL from multi-select array
+  const salonTypeArr = organization.salonType;
+  const salonType =
+    salonTypeArr && salonTypeArr.length > 0
+      ? salonTypeArr.length > 1
+        ? "multi"
+        : salonTypeArr[0]
+      : "hair";
 
   // ---------------------------------------------------------------------------
   // Render

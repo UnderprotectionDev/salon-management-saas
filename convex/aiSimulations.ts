@@ -9,7 +9,7 @@
 import { ConvexError, v } from "convex/values";
 import { internal } from "./_generated/api";
 import { internalQuery } from "./_generated/server";
-import { CREDIT_COSTS } from "./lib/aiConstants";
+import { CREDIT_COSTS, deriveEffectiveSalonType } from "./lib/aiConstants";
 import {
   authedMutation,
   authedQuery,
@@ -461,7 +461,18 @@ export const getOrgInternal = internalQuery({
   handler: async (ctx, args) => {
     const org = await ctx.db.get(args.organizationId);
     if (!org) return null;
-    return { salonType: org.salonType };
+    // Normalize from legacy string or new array format, then derive effective AI type
+    const rawType = org.salonType as string | string[] | undefined | null;
+    const typesArr: Parameters<typeof deriveEffectiveSalonType>[0] =
+      Array.isArray(rawType)
+        ? (rawType as Parameters<typeof deriveEffectiveSalonType>[0])
+        : rawType === "multi"
+          ? ["hair", "nail", "makeup"]
+          : rawType
+            ? ([rawType] as Parameters<typeof deriveEffectiveSalonType>[0])
+            : null;
+    const effectiveType = deriveEffectiveSalonType(typesArr) ?? undefined;
+    return { salonType: effectiveType };
   },
 });
 

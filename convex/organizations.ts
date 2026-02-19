@@ -21,7 +21,23 @@ import {
   validateString,
   validateUrl,
 } from "./lib/validation";
-import { salonTypeValidator } from "./lib/validators";
+import { orgSalonTypesValidator } from "./lib/validators";
+
+type OrgSalonTypeItem = "hair" | "nail" | "makeup" | "barber" | "spa";
+
+/**
+ * Normalize salonType from legacy string format to new array format.
+ * Handles migration period where DB may contain either format.
+ */
+function normalizeSalonType(raw: unknown): OrgSalonTypeItem[] | null {
+  if (!raw) return null;
+  if (Array.isArray(raw)) return raw as OrgSalonTypeItem[];
+  if (typeof raw === "string") {
+    if (raw === "multi") return ["hair", "nail", "makeup"];
+    return [raw as OrgSalonTypeItem];
+  }
+  return null;
+}
 
 const RESERVED_SLUGS = new Set([
   "dashboard",
@@ -444,7 +460,7 @@ export const updateSettings = ownerMutation({
  */
 export const updateSalonType = ownerMutation({
   args: {
-    salonType: salonTypeValidator,
+    salonType: orgSalonTypesValidator,
   },
   returns: v.null(),
   handler: async (ctx, args) => {
@@ -457,26 +473,26 @@ export const updateSalonType = ownerMutation({
 });
 
 /**
- * Get the current salon type for an organization.
+ * Get the current salon types for an organization.
  */
 export const getSalonType = orgQuery({
   args: {},
-  returns: v.union(salonTypeValidator, v.null()),
+  returns: v.union(orgSalonTypesValidator, v.null()),
   handler: async (ctx) => {
     const org = await ctx.db.get(ctx.organizationId);
-    return org?.salonType ?? null;
+    return normalizeSalonType(org?.salonType);
   },
 });
 
 /**
- * Get salon type by organizationId — accessible to any authenticated user
+ * Get salon types by organizationId — accessible to any authenticated user
  * (e.g. customers viewing /dashboard/ai who are not org members).
  */
 export const getSalonTypePublic = authedQuery({
   args: { organizationId: v.id("organization") },
-  returns: v.union(salonTypeValidator, v.null()),
+  returns: v.union(orgSalonTypesValidator, v.null()),
   handler: async (ctx, args) => {
     const org = await ctx.db.get(args.organizationId);
-    return org?.salonType ?? null;
+    return normalizeSalonType(org?.salonType);
   },
 });

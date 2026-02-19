@@ -15,8 +15,19 @@ export default defineSchema({
     slug: v.string(),
     description: v.optional(v.string()),
     logo: v.optional(v.string()),
+    // MIGRATION: accepts both old string format and new array format
+    // After running migrations/salonTypeMigration:migrateSalonTypes, revert to array-only
     salonType: v.optional(
       v.union(
+        v.array(
+          v.union(
+            v.literal("hair"),
+            v.literal("nail"),
+            v.literal("makeup"),
+            v.literal("barber"),
+            v.literal("spa"),
+          ),
+        ),
         v.literal("hair"),
         v.literal("nail"),
         v.literal("makeup"),
