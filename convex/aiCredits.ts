@@ -66,13 +66,21 @@ async function getOrCreateCreditRecord(
       updatedAt: now,
     });
     const doc = await ctx.db.get(id);
-    if (!doc) throw new Error("Failed to create credit record");
+    if (!doc) {
+      throw new ConvexError({
+        code: ErrorCode.INTERNAL_ERROR,
+        message: "Failed to create credit record",
+      });
+    }
     return doc;
   }
 
   // Org pool — requires organizationId
   if (!organizationId) {
-    throw new Error("organizationId required for org pool");
+    throw new ConvexError({
+      code: ErrorCode.VALIDATION_ERROR,
+      message: "organizationId required for org pool",
+    });
   }
 
   const existing = await ctx.db
@@ -93,7 +101,12 @@ async function getOrCreateCreditRecord(
     updatedAt: now,
   });
   const doc = await ctx.db.get(id);
-  if (!doc) throw new Error("Failed to create credit record");
+  if (!doc) {
+    throw new ConvexError({
+      code: ErrorCode.INTERNAL_ERROR,
+      message: "Failed to create credit record",
+    });
+  }
   return doc;
 }
 

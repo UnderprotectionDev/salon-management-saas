@@ -11,18 +11,14 @@ import { Buffer as BufferPolyfill } from "node:buffer";
 
 globalThis.Buffer = BufferPolyfill;
 
-import { PolarCore } from "@polar-sh/sdk/core.js";
 import { checkoutsCreate } from "@polar-sh/sdk/funcs/checkoutsCreate.js";
-import { customersCreate } from "@polar-sh/sdk/funcs/customersCreate.js";
-import { customersGet } from "@polar-sh/sdk/funcs/customersGet.js";
-import { customersList } from "@polar-sh/sdk/funcs/customersList.js";
 import { productsGet } from "@polar-sh/sdk/funcs/productsGet.js";
 import { ConvexError, v } from "convex/values";
-import { api, components, internal } from "./_generated/api";
+import { api, internal } from "./_generated/api";
 import { action } from "./_generated/server";
 import { ErrorCode } from "./lib/functions";
+import { createPolarClient, resolveCustomerId } from "./lib/polarHelpers";
 import { rateLimiter } from "./lib/rateLimits";
-import { polar } from "./polar";
 
 // =============================================================================
 // Credit Package → Polar Product ID mapping
@@ -43,86 +39,6 @@ const PACKAGE_PRODUCT_IDS: Record<string, string> = {
   popular: stripPolarPrefix(process.env.POLAR_CREDIT_PRODUCT_POPULAR ?? ""),
   pro: stripPolarPrefix(process.env.POLAR_CREDIT_PRODUCT_PRO ?? ""),
 };
-
-function createPolarClient() {
-  const accessToken = process.env.POLAR_ORGANIZATION_TOKEN;
-  if (!accessToken) {
-    throw new Error("POLAR_ORGANIZATION_TOKEN is not set");
-  }
-  const serverEnv = process.env.POLAR_SERVER;
-  const server: "sandbox" | "production" =
-    serverEnv === "sandbox" ? "sandbox" : "production";
-  return new PolarCore({ accessToken, server });
-}
-
-// biome-ignore lint/suspicious/noExplicitAny: Convex action ctx type
-async function resolveCustomerId(ctx: any, client: PolarCore) {
-  const user = await ctx.runQuery(api.users.getCurrentUser);
-  if (!user) throw new Error("User not authenticated");
-
-  const userId = user._id as string;
-  if (!user.email) {
-    throw new Error("User email is required");
-  }
-  const email = user.email;
-
-  // Look up existing Polar customer in DB (same helper as polarActions.ts)
-  const dbCustomer = await polar.getCustomerByUserId(ctx, userId);
-  let customerId = dbCustomer?.id;
-
-  // Verify customer still exists in Polar (may have been deleted)
-  if (customerId) {
-    const verifyResult = await customersGet(client, { id: customerId });
-    if (!verifyResult.ok) {
-      console.warn(
-        "[AI Credits] Polar customer no longer valid, recreating:",
-        customerId,
-      );
-      customerId = undefined;
-    }
-  }
-
-  if (!customerId) {
-    const createResult = await customersCreate(client, {
-      email,
-      metadata: { userId },
-    });
-
-    if (createResult.ok) {
-      customerId = createResult.value.id;
-    } else {
-      // Email already exists — look up the existing customer
-      const listResult = await customersList(client, { email });
-      if (listResult.ok && listResult.value.result.items.length > 0) {
-        const sorted = [...listResult.value.result.items].sort((a, b) =>
-          a.id.localeCompare(b.id),
-        );
-        customerId = sorted[0].id;
-      } else {
-        throw new Error(
-          `Failed to resolve Polar customer: ${JSON.stringify(createResult.error)}`,
-        );
-      }
-    }
-
-    // Persist to DB — best-effort, customerId is already known so failures are non-fatal
-    try {
-      await ctx.runMutation(components.polar.lib.upsertCustomer, {
-        id: customerId,
-        userId,
-      });
-    } catch (error: unknown) {
-      // upsertCustomer may fail on duplicate inserts (race condition / retry).
-      // Since customerId is already established above, we log and continue.
-      console.warn(
-        `[AI Credits] upsertCustomer non-fatal error for userId=${userId}:`,
-        error,
-      );
-    }
-  }
-
-  return customerId;
-}
 
 // =============================================================================
 // getCreditPackages — fetch live product data from Polar
@@ -210,16 +126,6 @@ export const getCreditPackages = action({
 /**
  * Initiate a credit purchase via Polar one-time checkout.
  * Returns the Polar hosted checkout URL to redirect the user to.
- *
- * Required env vars:
- *   POLAR_CREDIT_PRODUCT_STARTER — Polar product ID for the Starter pack (50 credits)
- *   POLAR_CREDIT_PRODUCT_POPULAR — Polar product ID for the Popular pack (200 credits)
- *   POLAR_CREDIT_PRODUCT_PRO     — Polar product ID for the Pro pack (500 credits)
- *   POLAR_ORGANIZATION_TOKEN     — Polar org API token (already used for subscriptions)
- *   POLAR_SERVER                 — "sandbox" or "production"
- *
- * Credits are added to the user's balance via the `order.created` webhook
- * (handled in convex/http.ts via polar component).
  */
 export const initiatePurchase = action({
   args: {
@@ -287,8 +193,6 @@ export const initiatePurchase = action({
 /**
  * Called from the Polar webhook handler when a one-time order for AI credits completes.
  * Adds the purchased credits to the user's balance.
- *
- * The mapping from productId → creditAmount is done here using the same env vars.
  */
 export const addCreditsForOrder = action({
   args: {

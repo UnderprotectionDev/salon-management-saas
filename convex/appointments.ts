@@ -32,6 +32,10 @@ import {
   userAppointmentValidator,
 } from "./lib/validators";
 
+const DELETED_CUSTOMER = "Deleted Customer";
+const DELETED_STAFF = "Deleted Staff";
+const UNKNOWN_ORG = "Unknown";
+
 // =============================================================================
 // Helper: Enrich appointment with customer, staff, services
 // =============================================================================
@@ -52,10 +56,10 @@ async function enrichAppointment(
 
   return {
     ...appointment,
-    customerName: customer?.name ?? "Silinen Musteri",
+    customerName: customer?.name ?? DELETED_CUSTOMER,
     customerPhone: customer?.phone ?? "",
     customerEmail: customer?.email,
-    staffName: staff?.name ?? "Silinen Personel",
+    staffName: staff?.name ?? DELETED_STAFF,
     staffImageUrl: staff?.imageUrl,
     services: apptServices.map((s) => ({
       serviceId: s.serviceId,
@@ -123,10 +127,10 @@ async function batchEnrichAppointments(
 
     return {
       ...appt,
-      customerName: customer?.name ?? "Silinen Musteri",
+      customerName: customer?.name ?? DELETED_CUSTOMER,
       customerPhone: customer?.phone ?? "",
       customerEmail: customer?.email,
-      staffName: staff?.name ?? "Silinen Personel",
+      staffName: staff?.name ?? DELETED_STAFF,
       staffImageUrl: staff?.imageUrl,
       services: apptServices.map((s) => ({
         serviceId: s.serviceId,
@@ -716,10 +720,10 @@ export const listForCurrentUser = authedQuery({
         endTime: appt.endTime,
         status: appt.status,
         confirmationCode: appt.confirmationCode,
-        staffName: staff?.name ?? "Silinen Personel",
+        staffName: staff?.name ?? DELETED_STAFF,
         staffImageUrl: staff?.imageUrl,
         total: appt.total,
-        organizationName: org?.name ?? "Bilinmeyen",
+        organizationName: org?.name ?? UNKNOWN_ORG,
         organizationSlug: org?.slug ?? "",
         organizationLogo: org?.logo,
         services: apptServices.map((s) => ({
@@ -1275,8 +1279,8 @@ export const getByCustomer = orgQuery({
           endTime: apt.endTime,
           status: apt.status,
           staffName: apt.staffId
-            ? (staffMap.get(apt.staffId) ?? "Silinen Personel")
-            : "Silinen Personel",
+            ? (staffMap.get(apt.staffId) ?? DELETED_STAFF)
+            : DELETED_STAFF,
           total: apt.total,
           paymentStatus: apt.paymentStatus,
           services: apptServices.map((s) => ({
@@ -1643,12 +1647,12 @@ export const getForUser = authedQuery({
       endTime: appointment.endTime,
       status: appointment.status,
       confirmationCode: appointment.confirmationCode,
-      staffName: staff?.name ?? "Silinen Personel",
+      staffName: staff?.name ?? DELETED_STAFF,
       staffImageUrl: staff?.imageUrl,
       staffId: appointment.staffId,
       total: appointment.total,
       organizationId: appointment.organizationId,
-      organizationName: org?.name ?? "Bilinmeyen",
+      organizationName: org?.name ?? UNKNOWN_ORG,
       organizationSlug: org?.slug ?? "",
       organizationLogo: org?.logo,
       customerNotes: appointment.customerNotes,

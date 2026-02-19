@@ -1,13 +1,14 @@
 "use node";
 
 import { render } from "@react-email/components";
-import { v } from "convex/values";
+import { ConvexError, v } from "convex/values";
 import { Resend } from "resend";
 import BookingConfirmation from "../src/emails/BookingConfirmation";
 import Cancellation from "../src/emails/Cancellation";
 import StaffInvitation from "../src/emails/StaffInvitation";
 import { internal } from "./_generated/api";
 import { internalAction } from "./_generated/server";
+import { ErrorCode } from "./lib/functions";
 
 // =============================================================================
 // Helpers
@@ -16,7 +17,10 @@ import { internalAction } from "./_generated/server";
 function createResendClient(): Resend {
   const apiKey = process.env.RESEND_API_KEY;
   if (!apiKey) {
-    throw new Error("RESEND_API_KEY is not set");
+    throw new ConvexError({
+      code: ErrorCode.INTERNAL_ERROR,
+      message: "RESEND_API_KEY is not set",
+    });
   }
   return new Resend(apiKey);
 }

@@ -1,20 +1,7 @@
 import { v } from "convex/values";
 import type { Id } from "./_generated/dataModel";
+import { formatDateStr, parseDateUTC } from "./lib/dateTime";
 import { authedQuery } from "./lib/functions";
-
-/** Parse "YYYY-MM-DD" manually to avoid timezone ambiguity. */
-function parseDateUTC(dateStr: string): Date {
-  const [y, m, d] = dateStr.split("-").map(Number);
-  return new Date(Date.UTC(y, m - 1, d));
-}
-
-/** Format a UTC Date to "YYYY-MM-DD". */
-function formatDateStr(date: Date): string {
-  const y = date.getUTCFullYear();
-  const m = String(date.getUTCMonth() + 1).padStart(2, "0");
-  const d = String(date.getUTCDate()).padStart(2, "0");
-  return `${y}-${m}-${d}`;
-}
 
 /** Get month string in YYYY-MM format for a given timestamp. */
 function getMonthStr(timestamp: number): string {

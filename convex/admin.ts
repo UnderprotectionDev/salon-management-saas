@@ -2,8 +2,8 @@ import { ConvexError, v } from "convex/values";
 import type { Id } from "./_generated/dataModel";
 import { authComponent } from "./auth";
 import {
-  ErrorCode,
   authedQuery,
+  ErrorCode,
   isSuperAdminEmail,
   superAdminMutation,
   superAdminQuery,
@@ -336,7 +336,8 @@ export const deleteOrganization = superAdminMutation({
     }
 
     // Helper to delete all docs matching organizationId filter
-    async function deleteByOrgId<T extends { _id: any }>(docs: T[]) {
+    // biome-ignore lint/suspicious/noExplicitAny: Generic helper accepts docs from any table
+    async function deleteByOrgId<T extends { _id: Id<any> }>(docs: T[]) {
       for (const doc of docs) {
         await ctx.db.delete(doc._id);
       }

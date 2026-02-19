@@ -4,18 +4,14 @@ import { Buffer as BufferPolyfill } from "node:buffer";
 
 globalThis.Buffer = BufferPolyfill;
 
-import { PolarCore } from "@polar-sh/sdk/core.js";
 import { checkoutsCreate } from "@polar-sh/sdk/funcs/checkoutsCreate.js";
 import { customerPortalOrdersList } from "@polar-sh/sdk/funcs/customerPortalOrdersList.js";
 import { customerSessionsCreate } from "@polar-sh/sdk/funcs/customerSessionsCreate.js";
-import { customersCreate } from "@polar-sh/sdk/funcs/customersCreate.js";
-import { customersGet } from "@polar-sh/sdk/funcs/customersGet.js";
-import { customersList } from "@polar-sh/sdk/funcs/customersList.js";
 import { subscriptionsUpdate } from "@polar-sh/sdk/funcs/subscriptionsUpdate.js";
-import { v } from "convex/values";
-import { api, components } from "./_generated/api";
+import { ConvexError, v } from "convex/values";
 import { action, internalAction } from "./_generated/server";
-import { polar } from "./polar";
+import { ErrorCode } from "./lib/functions";
+import { createPolarClient, resolveCustomerId } from "./lib/polarHelpers";
 
 const VALID_CANCELLATION_REASONS = [
   "too_expensive",
@@ -34,93 +30,6 @@ function isValidCancellationReason(
   reason: string,
 ): reason is CancellationReason {
   return (VALID_CANCELLATION_REASONS as readonly string[]).includes(reason);
-}
-
-function createPolarClient() {
-  const accessToken = process.env.POLAR_ORGANIZATION_TOKEN;
-  if (!accessToken) {
-    throw new Error("POLAR_ORGANIZATION_TOKEN is not set");
-  }
-  const serverEnv = process.env.POLAR_SERVER;
-  const server: "sandbox" | "production" =
-    serverEnv === "sandbox" ? "sandbox" : "production";
-  return new PolarCore({ accessToken, server });
-}
-
-// biome-ignore lint/suspicious/noExplicitAny: Convex action ctx type
-async function resolveCustomerId(ctx: any, client: PolarCore) {
-  const user = await ctx.runQuery(api.users.getCurrentUser);
-  if (!user) throw new Error("User not authenticated");
-
-  const userId = user._id as string;
-  if (!user.email) {
-    throw new Error("User email is required");
-  }
-  const email = user.email;
-
-  // Look up existing Polar customer in DB
-  const dbCustomer = await polar.getCustomerByUserId(ctx, userId);
-  let customerId = dbCustomer?.id;
-
-  // Verify customer still exists in Polar (may have been deleted after cancel)
-  if (customerId) {
-    const verifyResult = await customersGet(client, { id: customerId });
-    if (!verifyResult.ok) {
-      console.warn(
-        "Polar customer in DB is no longer valid, will recreate:",
-        customerId,
-      );
-      customerId = undefined;
-    }
-  }
-
-  if (!customerId) {
-    // Try to create customer in Polar
-    const createResult = await customersCreate(client, {
-      email,
-      metadata: { userId },
-    });
-
-    if (createResult.ok) {
-      customerId = createResult.value.id;
-    } else {
-      // Creation failed — email probably already exists. Look up existing.
-      console.error(
-        "Polar customer creation failed, searching for existing:",
-        createResult.error,
-      );
-      const listResult = await customersList(client, { email });
-      if (listResult.ok && listResult.value.result.items.length > 0) {
-        // Sort by id (deterministic) to avoid non-deterministic selection
-        const sorted = [...listResult.value.result.items].sort((a, b) =>
-          a.id.localeCompare(b.id),
-        );
-        customerId = sorted[0].id;
-      } else {
-        throw new Error(
-          `Failed to create Polar customer and no existing customer found: ${JSON.stringify(createResult.error)}`,
-        );
-      }
-    }
-
-    // Save to DB — ignore if already exists
-    try {
-      await ctx.runMutation(components.polar.lib.upsertCustomer, {
-        id: customerId,
-        userId,
-      });
-    } catch (error: unknown) {
-      const message = error instanceof Error ? error.message : String(error);
-      if (message.includes("already exists") || message.includes("duplicate")) {
-        // Customer already registered in DB — continue
-      } else {
-        console.error("Failed to upsert Polar customer:", error);
-        throw error;
-      }
-    }
-  }
-
-  return customerId;
 }
 
 // Custom generateCheckoutLink action — fixes "Customer not created" error.
@@ -148,9 +57,10 @@ export const generateCheckoutLink = action({
 
     if (!checkout.ok) {
       console.error("Checkout creation failed:", checkout.error);
-      throw new Error(
-        `Failed to create checkout: ${JSON.stringify(checkout.error)}`,
-      );
+      throw new ConvexError({
+        code: ErrorCode.INTERNAL_ERROR,
+        message: `Failed to create checkout: ${JSON.stringify(checkout.error)}`,
+      });
     }
 
     return { url: checkout.value.url };
@@ -170,9 +80,10 @@ export const generateCustomerPortalUrl = action({
 
     if (!session.ok) {
       console.error("Customer session creation failed:", session.error);
-      throw new Error(
-        `Failed to create customer portal session: ${JSON.stringify(session.error)}`,
-      );
+      throw new ConvexError({
+        code: ErrorCode.INTERNAL_ERROR,
+        message: `Failed to create customer portal session: ${JSON.stringify(session.error)}`,
+      });
     }
 
     return { url: session.value.customerPortalUrl };
@@ -212,9 +123,10 @@ export const cancelInPolar = internalAction({
         args.polarSubscriptionId,
         result.error,
       );
-      throw new Error(
-        `Failed to cancel subscription in Polar: ${JSON.stringify(result.error)}`,
-      );
+      throw new ConvexError({
+        code: ErrorCode.INTERNAL_ERROR,
+        message: `Failed to cancel subscription in Polar: ${JSON.stringify(result.error)}`,
+      });
     }
 
     return null;
@@ -247,9 +159,10 @@ export const reactivateInPolar = internalAction({
         args.polarSubscriptionId,
         result.error,
       );
-      throw new Error(
-        `Failed to reactivate subscription in Polar: ${JSON.stringify(result.error)}`,
-      );
+      throw new ConvexError({
+        code: ErrorCode.INTERNAL_ERROR,
+        message: `Failed to reactivate subscription in Polar: ${JSON.stringify(result.error)}`,
+      });
     }
 
     return null;
@@ -287,9 +200,10 @@ export const getBillingHistory = action({
         "[BillingHistory] Failed to create customer session:",
         JSON.stringify(session.error),
       );
-      throw new Error(
-        `Failed to create customer session: ${JSON.stringify(session.error)}`,
-      );
+      throw new ConvexError({
+        code: ErrorCode.INTERNAL_ERROR,
+        message: `Failed to create customer session: ${JSON.stringify(session.error)}`,
+      });
     }
 
     const customerToken = session.value.token;
@@ -306,9 +220,10 @@ export const getBillingHistory = action({
         "[BillingHistory] customerPortalOrdersList failed:",
         JSON.stringify(result.error),
       );
-      throw new Error(
-        `Failed to fetch billing history: ${JSON.stringify(result.error)}`,
-      );
+      throw new ConvexError({
+        code: ErrorCode.INTERNAL_ERROR,
+        message: `Failed to fetch billing history: ${JSON.stringify(result.error)}`,
+      });
     }
 
     return result.value.result.items.map((order) => ({

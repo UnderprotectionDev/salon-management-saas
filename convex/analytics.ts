@@ -1,6 +1,7 @@
 import { v } from "convex/values";
 import type { Id } from "./_generated/dataModel";
 import type { DatabaseReader } from "./_generated/server";
+import { addDays } from "./lib/dateTime";
 import { orgQuery } from "./lib/functions";
 import { dashboardStatsValidator } from "./lib/validators";
 
@@ -118,12 +119,6 @@ export const getDashboardStats = orgQuery({
 // =============================================================================
 // Helpers
 // =============================================================================
-
-function addDays(dateStr: string, days: number): string {
-  const date = new Date(`${dateStr}T00:00:00`);
-  date.setDate(date.getDate() + days);
-  return date.toISOString().split("T")[0];
-}
 
 function getMonthEnd(dateStr: string): string {
   const [year, month] = dateStr.split("-").map(Number);

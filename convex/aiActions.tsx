@@ -22,6 +22,7 @@ import {
   quickQuestionAgent,
 } from "./lib/agents";
 import { ANALYSIS_FOCUS_BY_TYPE, CREDIT_COSTS } from "./lib/aiConstants";
+import { ErrorCode } from "./lib/functions";
 
 // =============================================================================
 // Retry Utility
@@ -159,7 +160,10 @@ export const runPhotoAnalysis = internalAction({
       }
 
       if (imageUrls.length === 0) {
-        throw new Error("No valid image URLs found");
+        throw new ConvexError({
+          code: ErrorCode.VALIDATION_ERROR,
+          message: "No valid image URLs found",
+        });
       }
 
       // Get salon's active services for matching (only if organizationId is available)
@@ -239,7 +243,12 @@ Be professional, encouraging, and specific — avoid generic advice.`;
       console.error(`[AI Analysis] Failed for ${args.analysisId}:`, error);
 
       const errorMessage =
-        error instanceof Error ? error.message : "Unknown error occurred";
+        error instanceof ConvexError
+          ? ((error.data as { message?: string })?.message ??
+            "Validation error")
+          : error instanceof Error
+            ? error.message
+            : "Unknown error occurred";
 
       // Update status to failed
       await ctx.runMutation(internal.aiAnalysis.failAnalysis, {
@@ -398,7 +407,10 @@ export const runVirtualTryOn = internalAction({
       // Get source photo URL
       const sourceUrl = await ctx.storage.getUrl(simulation.imageStorageId);
       if (!sourceUrl) {
-        throw new Error("Source image URL not found");
+        throw new ConvexError({
+          code: ErrorCode.NOT_FOUND,
+          message: "Source image URL not found",
+        });
       }
 
       // Get the organization to determine salonType (if org is available)
@@ -430,7 +442,10 @@ export const runVirtualTryOn = internalAction({
           { designId: simulation.designCatalogId },
         );
         if (!design) {
-          throw new Error("Design catalog entry not found");
+          throw new ConvexError({
+            code: ErrorCode.NOT_FOUND,
+            message: "Design catalog entry not found",
+          });
         }
         const refUrl = await ctx.storage.getUrl(design.imageStorageId);
         if (refUrl) {
@@ -534,7 +549,12 @@ export const runVirtualTryOn = internalAction({
       console.error(`[Virtual Try-On] Failed for ${args.simulationId}:`, error);
 
       const errorMessage =
-        error instanceof Error ? error.message : "Unknown error occurred";
+        error instanceof ConvexError
+          ? ((error.data as { message?: string })?.message ??
+            "Validation error")
+          : error instanceof Error
+            ? error.message
+            : "Unknown error occurred";
 
       // Fail simulation
       await ctx.runMutation(internal.aiSimulations.failSimulation, {

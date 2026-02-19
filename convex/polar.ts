@@ -1,16 +1,24 @@
 import { Polar } from "@convex-dev/polar";
+import { ConvexError } from "convex/values";
 import { api, components } from "./_generated/api";
 import type { DataModel } from "./_generated/dataModel";
+import { ErrorCode } from "./lib/functions";
 
 export const polar: Polar<DataModel, { monthly: string; yearly: string }> =
   new Polar(components.polar, {
     getUserInfo: async (ctx): Promise<{ userId: string; email: string }> => {
       const user = await ctx.runQuery(api.users.getCurrentUser);
       if (!user) {
-        throw new Error("User not authenticated");
+        throw new ConvexError({
+          code: ErrorCode.UNAUTHENTICATED,
+          message: "User not authenticated",
+        });
       }
       if (!user.email) {
-        throw new Error("User email is required for Polar integration");
+        throw new ConvexError({
+          code: ErrorCode.VALIDATION_ERROR,
+          message: "User email is required for Polar integration",
+        });
       }
       return {
         userId: user._id as string,

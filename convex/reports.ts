@@ -1,6 +1,11 @@
 import { ConvexError, v } from "convex/values";
 import type { Id } from "./_generated/dataModel";
 import type { DatabaseReader } from "./_generated/server";
+import {
+  formatDateStr,
+  parseDateUTC,
+  timeStringToMinutes,
+} from "./lib/dateTime";
 import { ErrorCode, orgQuery } from "./lib/functions";
 import { getDatesBetween, resolveSchedule } from "./lib/scheduleResolver";
 import {
@@ -12,25 +17,6 @@ import {
 // =============================================================================
 // Helpers
 // =============================================================================
-
-function timeStringToMinutes(time: string): number {
-  const [h, m] = time.split(":").map(Number);
-  return h * 60 + m;
-}
-
-/** Parse "YYYY-MM-DD" manually to avoid timezone ambiguity with new Date(). */
-function parseDateUTC(dateStr: string): Date {
-  const [y, m, d] = dateStr.split("-").map(Number);
-  return new Date(Date.UTC(y, m - 1, d));
-}
-
-/** Format a UTC Date to "YYYY-MM-DD". */
-function formatDateStr(date: Date): string {
-  const y = date.getUTCFullYear();
-  const m = String(date.getUTCMonth() + 1).padStart(2, "0");
-  const d = String(date.getUTCDate()).padStart(2, "0");
-  return `${y}-${m}-${d}`;
-}
 
 async function getAppointmentsForDateRange(
   db: DatabaseReader,

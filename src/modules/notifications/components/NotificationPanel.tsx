@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { useOrganization } from "@/modules/organization";
 import { api } from "../../../../convex/_generated/api";
+import type { Id } from "../../../../convex/_generated/dataModel";
 import { NotificationItem } from "./NotificationItem";
 
 export function NotificationPanel() {
@@ -33,11 +34,11 @@ export function NotificationPanel() {
     toast.success("All notifications deleted");
   }
 
-  async function handleItemClick(notificationId: string) {
+  async function handleItemClick(notificationId: Id<"notifications">) {
     if (!orgId) return;
     await markAsRead({
       organizationId: orgId,
-      notificationId: notificationId as any,
+      notificationId,
     });
   }
 

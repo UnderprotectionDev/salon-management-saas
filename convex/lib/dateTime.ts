@@ -219,3 +219,22 @@ export function addDays(dateStr: string, days: number): string {
   const day = String(date.getUTCDate()).padStart(2, "0");
   return `${year}-${month}-${day}`;
 }
+
+/**
+ * Parse "YYYY-MM-DD" manually to avoid timezone ambiguity with new Date().
+ * Returns a Date at midnight UTC.
+ */
+export function parseDateUTC(dateStr: string): Date {
+  const [y, m, d] = dateStr.split("-").map(Number);
+  return new Date(Date.UTC(y, m - 1, d));
+}
+
+/**
+ * Format a UTC Date to "YYYY-MM-DD" string.
+ */
+export function formatDateStr(date: Date): string {
+  const y = date.getUTCFullYear();
+  const m = String(date.getUTCMonth() + 1).padStart(2, "0");
+  const d = String(date.getUTCDate()).padStart(2, "0");
+  return `${y}-${m}-${d}`;
+}
