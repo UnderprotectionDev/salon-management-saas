@@ -1,6 +1,7 @@
 "use client";
 
 import { useQuery } from "convex/react";
+import { Suspense } from "react";
 import {
   Card,
   CardContent,
@@ -12,7 +13,9 @@ import {
   DashboardStats,
   QuickActions,
   RevenueChart,
+  SetupChecklist,
   TodaysAppointments,
+  WelcomeModal,
 } from "@/modules/dashboard";
 import { useOrganization } from "@/modules/organization";
 import { api } from "../../../../../convex/_generated/api";
@@ -33,6 +36,8 @@ export default function DashboardPage() {
           Welcome to {activeOrganization?.name ?? "your salon"}
         </p>
       </div>
+
+      <SetupChecklist />
 
       <DashboardStats />
 
@@ -77,6 +82,12 @@ export default function DashboardPage() {
           </CardContent>
         </Card>
       </div>
+
+      {activeOrganization && (
+        <Suspense>
+          <WelcomeModal slug={activeOrganization.slug} />
+        </Suspense>
+      )}
     </div>
   );
 }

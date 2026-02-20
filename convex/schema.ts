@@ -189,6 +189,12 @@ export default defineSchema({
     cancelledAt: v.optional(v.number()),
     cancellationReason: v.optional(v.string()),
     cancellationComment: v.optional(v.string()),
+    // Setup checklist (onboarding progress)
+    setupChecklist: v.optional(
+      v.object({
+        dismissedAt: v.optional(v.number()),
+      }),
+    ),
     // Timestamps
     createdAt: v.number(),
     updatedAt: v.number(),

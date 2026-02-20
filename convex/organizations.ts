@@ -70,6 +70,7 @@ import {
   organizationDocValidator,
   organizationSettingsDocValidator,
   organizationWithRoleValidator,
+  setupProgressValidator,
 } from "./lib/validators";
 
 export const getBySlug = publicQuery({
@@ -494,5 +495,150 @@ export const getSalonTypePublic = authedQuery({
   handler: async (ctx, args) => {
     const org = await ctx.db.get(args.organizationId);
     return normalizeSalonType(org?.salonType);
+  },
+});
+
+// =============================================================================
+// Slug Availability Check
+// =============================================================================
+
+export const checkSlugAvailability = publicQuery({
+  args: { slug: v.string() },
+  returns: v.object({ available: v.boolean() }),
+  handler: async (ctx, args) => {
+    const trimmed = args.slug.toLowerCase().trim();
+
+    if (trimmed.length < 2) {
+      return { available: false };
+    }
+
+    if (RESERVED_SLUGS.has(trimmed)) {
+      return { available: false };
+    }
+
+    const existing = await ctx.db
+      .query("organization")
+      .withIndex("slug", (q) => q.eq("slug", trimmed))
+      .first();
+
+    return { available: !existing };
+  },
+});
+
+// =============================================================================
+// Setup Progress (Onboarding Checklist)
+// =============================================================================
+
+export const getSetupProgress = orgQuery({
+  args: {},
+  returns: setupProgressValidator,
+  handler: async (ctx) => {
+    const [settings, services, members] = await Promise.all([
+      ctx.db
+        .query("organizationSettings")
+        .withIndex("organizationId", (q) =>
+          q.eq("organizationId", ctx.organizationId),
+        )
+        .first(),
+      ctx.db
+        .query("services")
+        .withIndex("by_org_status", (q) =>
+          q.eq("organizationId", ctx.organizationId).eq("status", "active"),
+        )
+        .first(),
+      ctx.db
+        .query("member")
+        .withIndex("organizationId", (q) =>
+          q.eq("organizationId", ctx.organizationId),
+        )
+        .collect(),
+    ]);
+
+    const org = await ctx.db.get(ctx.organizationId);
+    const slug = org?.slug ?? "";
+
+    // Check if business hours differ from default
+    const hasCustomHours = settings?.businessHours
+      ? JSON.stringify(settings.businessHours) !==
+        JSON.stringify(DEFAULT_BUSINESS_HOURS)
+      : false;
+
+    // Check if profile is filled (address or phone)
+    const hasProfile = !!(
+      settings?.address?.street ||
+      settings?.address?.city ||
+      settings?.phone
+    );
+
+    // Check if there are non-owner members
+    const hasTeamMember = members.length > 1;
+
+    const items = [
+      {
+        id: "add-service",
+        label: "Add your first service",
+        completed: !!services,
+        href: `/${slug}/services`,
+      },
+      {
+        id: "set-hours",
+        label: "Set your business hours",
+        completed: hasCustomHours,
+        href: `/${slug}/settings`,
+      },
+      {
+        id: "complete-profile",
+        label: "Complete your salon profile",
+        completed: hasProfile,
+        href: `/${slug}/settings`,
+      },
+      {
+        id: "invite-team",
+        label: "Invite a team member",
+        completed: hasTeamMember,
+        href: `/${slug}/settings`,
+      },
+      {
+        id: "share-booking",
+        label: "Share your booking page",
+        completed: false,
+        href: `/${slug}/book`,
+      },
+    ];
+
+    return {
+      items,
+      dismissed: !!settings?.setupChecklist?.dismissedAt,
+    };
+  },
+});
+
+export const dismissSetupChecklist = ownerMutation({
+  args: {},
+  returns: v.null(),
+  handler: async (ctx) => {
+    const settings = await ctx.db
+      .query("organizationSettings")
+      .withIndex("organizationId", (q) =>
+        q.eq("organizationId", ctx.organizationId),
+      )
+      .first();
+
+    if (!settings) {
+      throw new ConvexError({
+        code: ErrorCode.NOT_FOUND,
+        message: "Organization settings not found",
+      });
+    }
+
+    await ctx.db.patch(settings._id, {
+      setupChecklist: {
+        ...settings.setupChecklist,
+        dismissedAt: Date.now(),
+      },
+      updatedAt: Date.now(),
+    });
+
+    return null;
   },
 });
