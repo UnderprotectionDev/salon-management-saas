@@ -786,7 +786,11 @@ function ProfileCard({ profile }: { profile: CustomerProfile }) {
 // =============================================================================
 
 function ProfilesSection() {
-  const profiles = useQuery(api.customers.getMyProfiles);
+  const { isAuthenticated } = useConvexAuth();
+  const profiles = useQuery(
+    api.customers.getMyProfiles,
+    isAuthenticated ? {} : "skip",
+  );
 
   if (profiles === undefined) {
     return (
@@ -828,7 +832,11 @@ function ProfilesSection() {
 // =============================================================================
 
 function FavoriteSalonsSection() {
-  const favorites = useQuery(api.favoriteSalons.list);
+  const { isAuthenticated } = useConvexAuth();
+  const favorites = useQuery(
+    api.favoriteSalons.list,
+    isAuthenticated ? {} : "skip",
+  );
   const toggleFavorite = useMutation(api.favoriteSalons.toggle);
 
   if (favorites === undefined) {
@@ -1014,7 +1022,20 @@ export default function DashboardPage() {
                 src={user.image ?? undefined}
                 alt={user.name ?? "User"}
               />
-              <AvatarFallback className="text-lg">{userInitial}</AvatarFallback>
+              <AvatarFallback>
+                <img
+                  src={`https://api.dicebear.com/9.x/lorelei/svg?seed=${encodeURIComponent(user._id)}`}
+                  alt={user.name ?? "User"}
+                  className="size-full"
+                  onError={(e) => {
+                    e.currentTarget.style.display = "none";
+                    e.currentTarget.nextElementSibling?.removeAttribute("hidden");
+                  }}
+                />
+                <span hidden className="text-lg">
+                  {userInitial}
+                </span>
+              </AvatarFallback>
             </Avatar>
             <div className="flex-1 space-y-1">
               <CardTitle className="text-xl">

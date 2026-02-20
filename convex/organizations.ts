@@ -1,5 +1,6 @@
 import { ConvexError, v } from "convex/values";
 import type { Doc } from "./_generated/dataModel";
+import { generateAvatarUrl } from "./lib/avatar";
 import {
   DEFAULT_BOOKING_SETTINGS,
   DEFAULT_BUSINESS_HOURS,
@@ -340,6 +341,7 @@ export const create = authedMutation({
       memberId,
       name: ctx.user.name || "Unknown",
       email: ctx.user.email,
+      imageUrl: generateAvatarUrl(ctx.user._id),
       status: "active",
       serviceIds: [],
       defaultSchedule: { ...DEFAULT_STAFF_SCHEDULE },
