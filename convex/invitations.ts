@@ -1,6 +1,7 @@
 import { ConvexError, v } from "convex/values";
 import { internal } from "./_generated/api";
 import { internalMutation } from "./_generated/server";
+import { generateAvatarUrl } from "./lib/avatar";
 import { DEFAULT_STAFF_SCHEDULE } from "./lib/defaults";
 import {
   authedMutation,
@@ -259,6 +260,7 @@ export const accept = authedMutation({
       name: invitation.name,
       email: invitation.email,
       phone: invitation.phone,
+      imageUrl: generateAvatarUrl(ctx.user._id),
       status: "active",
       serviceIds: [],
       defaultSchedule: { ...DEFAULT_STAFF_SCHEDULE },

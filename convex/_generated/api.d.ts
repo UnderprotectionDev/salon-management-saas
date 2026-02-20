@@ -35,6 +35,7 @@ import type * as invitations from "../invitations.js";
 import type * as lib_agents from "../lib/agents.js";
 import type * as lib_aiConstants from "../lib/aiConstants.js";
 import type * as lib_aiValidators from "../lib/aiValidators.js";
+import type * as lib_avatar from "../lib/avatar.js";
 import type * as lib_confirmation from "../lib/confirmation.js";
 import type * as lib_dateTime from "../lib/dateTime.js";
 import type * as lib_defaults from "../lib/defaults.js";
@@ -105,6 +106,7 @@ declare const fullApi: ApiFromModules<{
   "lib/agents": typeof lib_agents;
   "lib/aiConstants": typeof lib_aiConstants;
   "lib/aiValidators": typeof lib_aiValidators;
+  "lib/avatar": typeof lib_avatar;
   "lib/confirmation": typeof lib_confirmation;
   "lib/dateTime": typeof lib_dateTime;
   "lib/defaults": typeof lib_defaults;

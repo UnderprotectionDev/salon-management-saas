@@ -85,7 +85,16 @@ export function StaffSelector({
                     : ""
                 }
               >
-                {staff.name[0]?.toUpperCase() ?? "S"}
+                <img
+                  src={`https://api.dicebear.com/9.x/lorelei/svg?seed=${encodeURIComponent(staff._id)}`}
+                  alt={staff.name}
+                  className="size-full"
+                  onError={(e) => {
+                    e.currentTarget.style.display = "none";
+                    e.currentTarget.nextElementSibling?.removeAttribute("hidden");
+                  }}
+                />
+                <span hidden>{staff.name[0]?.toUpperCase() ?? "S"}</span>
               </AvatarFallback>
             </Avatar>
             <span className="text-xs font-medium text-center leading-tight">

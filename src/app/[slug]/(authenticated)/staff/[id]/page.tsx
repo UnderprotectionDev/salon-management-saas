@@ -228,8 +228,17 @@ export default function StaffDetailPage() {
           <div className="flex items-start gap-6">
             <Avatar className="size-20">
               <AvatarImage src={staff.imageUrl ?? undefined} />
-              <AvatarFallback className="text-xl">
-                {getInitials(staff.name)}
+              <AvatarFallback>
+                <img
+                  src={`https://api.dicebear.com/9.x/lorelei/svg?seed=${encodeURIComponent(staff._id)}`}
+                  alt={staff.name}
+                  className="size-full"
+                  onError={(e) => {
+                    e.currentTarget.style.display = "none";
+                    e.currentTarget.nextElementSibling?.removeAttribute("hidden");
+                  }}
+                />
+                <span hidden className="text-xl">{getInitials(staff.name)}</span>
               </AvatarFallback>
             </Avatar>
             <div className="flex-1 min-w-0">
