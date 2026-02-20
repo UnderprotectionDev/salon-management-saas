@@ -196,3 +196,39 @@ body {
     @apply bg-background text-foreground;
   }
 }
+
+@keyframes scale-in {
+  from {
+    transform: scale(0);
+    opacity: 0;
+  }
+  to {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+@keyframes draw-check {
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+
+/* Onboarding sidebar — hollow/outline text for future steps */
+.onboarding-stroke-text {
+  color: transparent;
+  -webkit-text-stroke: 1.5px oklch(0.9911 0 0 / 0.5);
+}
+
+.onboarding-stroke-text-dim {
+  color: transparent;
+  -webkit-text-stroke: 1px oklch(0.9911 0 0 / 0.35);
+}
+
+.dark .onboarding-stroke-text {
+  -webkit-text-stroke: 1.5px oklch(0 0 0 / 0.5);
+}
+
+.dark .onboarding-stroke-text-dim {
+  -webkit-text-stroke: 1px oklch(0 0 0 / 0.35);
+}

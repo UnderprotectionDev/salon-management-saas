@@ -884,3 +884,19 @@ export const designCatalogPublicValidator = v.object(
     thumbnailUrl: v.optional(v.string()),
   }),
 );
+
+// =============================================================================
+// Setup Progress (Onboarding Checklist)
+// =============================================================================
+
+export const setupProgressItemValidator = v.object({
+  id: v.string(),
+  label: v.string(),
+  completed: v.boolean(),
+  href: v.string(),
+});
+
+export const setupProgressValidator = v.object({
+  items: v.array(setupProgressItemValidator),
+  dismissed: v.boolean(),
+});
