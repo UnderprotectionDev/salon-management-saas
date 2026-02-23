@@ -1,13 +1,7 @@
 "use client";
 
 import { useMutation, useQuery } from "convex/react";
-import {
-  CheckCircle2,
-  Circle,
-  Copy,
-  ExternalLink,
-  X,
-} from "lucide-react";
+import { CheckCircle2, Circle, Copy, ExternalLink, X } from "lucide-react";
 import Link from "next/link";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -90,9 +84,7 @@ export function SetupChecklist() {
                   )}
                   <span
                     className={
-                      item.completed
-                        ? "text-muted-foreground line-through"
-                        : ""
+                      item.completed ? "text-muted-foreground line-through" : ""
                     }
                   >
                     {item.label}
@@ -111,9 +103,7 @@ export function SetupChecklist() {
                   )}
                   <span
                     className={
-                      item.completed
-                        ? "text-muted-foreground line-through"
-                        : ""
+                      item.completed ? "text-muted-foreground line-through" : ""
                     }
                   >
                     {item.label}

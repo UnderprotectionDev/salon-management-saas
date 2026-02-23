@@ -1,10 +1,6 @@
 "use client";
 
-import {
-  CalendarPlus,
-  Clock,
-  UserPlus,
-} from "lucide-react";
+import { CalendarPlus, Clock, UserPlus } from "lucide-react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useState } from "react";

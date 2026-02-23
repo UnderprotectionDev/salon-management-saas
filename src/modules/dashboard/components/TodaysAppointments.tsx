@@ -30,7 +30,6 @@ function formatTime(minutes: number): string {
   return `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}`;
 }
 
-
 export function TodaysAppointments() {
   const { activeOrganization } = useOrganization();
   const today = getToday();
@@ -87,9 +86,15 @@ export function TodaysAppointments() {
                 </div>
                 <Badge
                   variant="secondary"
-                  className={APPOINTMENT_STATUS_BADGE_CLASSES[appt.status as AppointmentStatus] ?? ""}
+                  className={
+                    APPOINTMENT_STATUS_BADGE_CLASSES[
+                      appt.status as AppointmentStatus
+                    ] ?? ""
+                  }
                 >
-                  {APPOINTMENT_STATUS_LABELS[appt.status as AppointmentStatus] ?? appt.status.replaceAll("_", " ")}
+                  {APPOINTMENT_STATUS_LABELS[
+                    appt.status as AppointmentStatus
+                  ] ?? appt.status.replaceAll("_", " ")}
                 </Badge>
               </div>
             ))}

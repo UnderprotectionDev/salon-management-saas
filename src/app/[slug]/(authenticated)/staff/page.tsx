@@ -112,7 +112,9 @@ export default function StaffPage() {
                           className="size-full"
                           onError={(e) => {
                             e.currentTarget.style.display = "none";
-                            e.currentTarget.nextElementSibling?.removeAttribute("hidden");
+                            e.currentTarget.nextElementSibling?.removeAttribute(
+                              "hidden",
+                            );
                           }}
                         />
                         <span hidden>{getInitials(staff.name)}</span>

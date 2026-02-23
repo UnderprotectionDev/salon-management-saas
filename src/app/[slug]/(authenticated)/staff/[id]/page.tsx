@@ -235,10 +235,14 @@ export default function StaffDetailPage() {
                   className="size-full"
                   onError={(e) => {
                     e.currentTarget.style.display = "none";
-                    e.currentTarget.nextElementSibling?.removeAttribute("hidden");
+                    e.currentTarget.nextElementSibling?.removeAttribute(
+                      "hidden",
+                    );
                   }}
                 />
-                <span hidden className="text-xl">{getInitials(staff.name)}</span>
+                <span hidden className="text-xl">
+                  {getInitials(staff.name)}
+                </span>
               </AvatarFallback>
             </Avatar>
             <div className="flex-1 min-w-0">

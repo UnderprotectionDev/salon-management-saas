@@ -6,10 +6,22 @@ import { Card, CardContent } from "@/components/ui/card";
 type AccentColor = "violet" | "amber" | "rose" | "emerald";
 
 const ACCENT_STYLES: Record<AccentColor, { bg: string; text: string }> = {
-  violet: { bg: "bg-violet-100 dark:bg-violet-950", text: "text-violet-600 dark:text-violet-400" },
-  amber: { bg: "bg-amber-100 dark:bg-amber-950", text: "text-amber-600 dark:text-amber-400" },
-  rose: { bg: "bg-rose-100 dark:bg-rose-950", text: "text-rose-600 dark:text-rose-400" },
-  emerald: { bg: "bg-emerald-100 dark:bg-emerald-950", text: "text-emerald-600 dark:text-emerald-400" },
+  violet: {
+    bg: "bg-violet-100 dark:bg-violet-950",
+    text: "text-violet-600 dark:text-violet-400",
+  },
+  amber: {
+    bg: "bg-amber-100 dark:bg-amber-950",
+    text: "text-amber-600 dark:text-amber-400",
+  },
+  rose: {
+    bg: "bg-rose-100 dark:bg-rose-950",
+    text: "text-rose-600 dark:text-rose-400",
+  },
+  emerald: {
+    bg: "bg-emerald-100 dark:bg-emerald-950",
+    text: "text-emerald-600 dark:text-emerald-400",
+  },
 };
 
 interface AIFeatureCardProps {
