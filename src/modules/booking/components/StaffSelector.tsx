@@ -1,6 +1,7 @@
 "use client";
 
 import { Users } from "lucide-react";
+import NiceAvatar, { genConfig } from "react-nice-avatar";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import type { Id } from "../../../../convex/_generated/dataModel";
 
@@ -78,25 +79,12 @@ export function StaffSelector({
           >
             <Avatar className="size-12">
               {staff.imageUrl && <AvatarImage src={staff.imageUrl} />}
-              <AvatarFallback
-                className={
-                  isSelected
-                    ? "bg-primary-foreground/20 text-primary-foreground"
-                    : ""
-                }
-              >
-                <img
-                  src={`https://api.dicebear.com/9.x/lorelei/svg?seed=${encodeURIComponent(staff._id)}`}
-                  alt={staff.name}
-                  className="size-full"
-                  onError={(e) => {
-                    e.currentTarget.style.display = "none";
-                    e.currentTarget.nextElementSibling?.removeAttribute(
-                      "hidden",
-                    );
-                  }}
+              <AvatarFallback>
+                <NiceAvatar
+                  style={{ width: "100%", height: "100%" }}
+                  shape="circle"
+                  {...genConfig(staff._id)}
                 />
-                <span hidden>{staff.name[0]?.toUpperCase() ?? "S"}</span>
               </AvatarFallback>
             </Avatar>
             <span className="text-xs font-medium text-center leading-tight">

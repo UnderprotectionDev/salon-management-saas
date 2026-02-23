@@ -40,6 +40,7 @@ erDiagram
 
 | Table | Status | Milestone |
 |-------|--------|-----------|
+| userProfile | ✅ | M1 (extended in user-onboarding) |
 | organization, organizationSettings, member, invitation, staff | ✅ | M1 |
 | serviceCategories, services | ✅ | M2A |
 | scheduleOverrides, timeOffRequests, staffOvertime | ✅ | M2B |
@@ -52,6 +53,31 @@ erDiagram
 | aiCredits, aiCreditTransactions | 📋 | M10A |
 | aiAnalyses, aiSimulations, aiChatThreads, aiChatMessages, aiMoodBoard | 📋 | M10B |
 | aiForecasts, aiCareSchedules | 📋 | M10C |
+
+## User Profile Table
+
+### `userProfile`
+Cross-organization profile for registered users. Created during user onboarding (`/welcome`). One document per user (not per org).
+
+- `userId: string` — Better Auth user ID (unique, index `by_user`)
+- `avatarConfig?: any` — Full `AvatarConfig` JSON from **react-nice-avatar**. Stored as-is; rendered client-side via `<NiceAvatar {...avatarConfig} />`. Never stored as URL or seed — the full config object is persisted so the exact avatar is reproduced deterministically.
+- `gender?: "male" | "female" | "unspecified"`
+- `dateOfBirth?: string` — ISO date `"YYYY-MM-DD"` (min age 13)
+- `phone?: string` — Turkish format `+90 5XX XXX XX XX`
+- `hairType?: "straight" | "wavy" | "curly" | "very_curly"`
+- `hairLength?: "short" | "medium" | "long" | "very_long"`
+- `allergies?: string[]` — free-text allergy tags (e.g. `["ppd", "ammonia"]`)
+- `allergyNotes?: string`
+- `emailReminders: boolean`, `marketingEmails: boolean`, `marketingConsent: boolean`, `marketingConsentAt?: number`
+- `dataProcessingConsent: boolean`, `dataProcessingConsentAt?: number`, `consentWithdrawnAt?: number`
+- `onboardingCompleted: boolean`, `onboardingCompletedAt?: number`, `onboardingDismissedAt?: number`
+- `avatarUrl?: string` — **Legacy field only.** Old Dicebear URL stored before avatar system migration. No longer written; kept in schema for backward compat with existing documents.
+- Indexes: `by_user`
+
+**Avatar generation** (`src/modules/user-onboarding/lib/avatar.ts`):
+- `generateAvatarConfig(gender?)` — generates a single `AvatarConfig` with explicit variety across all dimensions: skin tone (8 options), hair color (13), background (16), eye/nose/mouth style (3 each), shirt, ear size, optional glasses. Gender-specific: male gets normal/thick/mohawk hair + occasional hat; female gets womanLong/womanShort + optional earings + always `hatStyle: "none"` to show hair.
+- `generateAvatarSet(gender?, count = 6)` — generates `count` distinct configs for the avatar picker grid.
+- Fallback for staff/users without `avatarConfig`: `genConfig(id)` (deterministic from ID).
 
 ## Core Tables
 
@@ -289,6 +315,7 @@ The role enum was consolidated from `owner|admin|member` to `owner|staff` (compl
 
 | Query Pattern | Index |
 |---------------|-------|
+| User profile by userId | `userProfile.by_user` |
 | Org by slug | `organization.slug` |
 | Members in org | `member.organizationId` |
 | User's membership | `member.organizationId_userId` |

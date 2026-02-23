@@ -1,5 +1,4 @@
 import { ConvexError, v } from "convex/values";
-import { generateAvatarUrl } from "./lib/avatar";
 import {
   authedQuery,
   ErrorCode,
@@ -220,7 +219,7 @@ export const createProfile = orgMutation({
       name: args.name,
       email: args.email,
       phone: args.phone,
-      imageUrl: args.imageUrl ?? generateAvatarUrl(args.userId),
+      imageUrl: args.imageUrl,
       bio: args.bio,
       status: args.status ?? "active",
       serviceIds: args.serviceIds ?? [],

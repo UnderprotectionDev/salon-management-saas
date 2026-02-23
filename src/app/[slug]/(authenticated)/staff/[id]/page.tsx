@@ -15,6 +15,7 @@ import {
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useState } from "react";
+import NiceAvatar, { genConfig } from "react-nice-avatar";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
@@ -229,20 +230,11 @@ export default function StaffDetailPage() {
             <Avatar className="size-20">
               <AvatarImage src={staff.imageUrl ?? undefined} />
               <AvatarFallback>
-                <img
-                  src={`https://api.dicebear.com/9.x/lorelei/svg?seed=${encodeURIComponent(staff._id)}`}
-                  alt={staff.name}
-                  className="size-full"
-                  onError={(e) => {
-                    e.currentTarget.style.display = "none";
-                    e.currentTarget.nextElementSibling?.removeAttribute(
-                      "hidden",
-                    );
-                  }}
+                <NiceAvatar
+                  style={{ width: "100%", height: "100%" }}
+                  shape="circle"
+                  {...genConfig(staff._id)}
                 />
-                <span hidden className="text-xl">
-                  {getInitials(staff.name)}
-                </span>
               </AvatarFallback>
             </Avatar>
             <div className="flex-1 min-w-0">

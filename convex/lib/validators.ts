@@ -276,6 +276,48 @@ export const appointmentServiceDocValidator = vv.doc("appointmentServices");
 /** Slot lock document validator */
 export const slotLockDocValidator = vv.doc("slotLocks");
 
+/** react-nice-avatar AvatarConfig validator (all fields optional) */
+export const avatarConfigValidator = v.object({
+  sex: v.optional(v.union(v.literal("man"), v.literal("woman"))),
+  faceColor: v.optional(v.string()),
+  earSize: v.optional(v.union(v.literal("small"), v.literal("big"))),
+  hairColor: v.optional(v.string()),
+  hairStyle: v.optional(
+    v.union(
+      v.literal("normal"),
+      v.literal("thick"),
+      v.literal("mohawk"),
+      v.literal("womanLong"),
+      v.literal("womanShort"),
+    ),
+  ),
+  hairColorRandom: v.optional(v.boolean()),
+  hatColor: v.optional(v.string()),
+  hatStyle: v.optional(
+    v.union(v.literal("none"), v.literal("beanie"), v.literal("turban")),
+  ),
+  eyeStyle: v.optional(
+    v.union(v.literal("circle"), v.literal("oval"), v.literal("smile")),
+  ),
+  glassesStyle: v.optional(
+    v.union(v.literal("none"), v.literal("round"), v.literal("square")),
+  ),
+  noseStyle: v.optional(
+    v.union(v.literal("short"), v.literal("long"), v.literal("round")),
+  ),
+  mouthStyle: v.optional(
+    v.union(v.literal("laugh"), v.literal("smile"), v.literal("peace")),
+  ),
+  shirtStyle: v.optional(
+    v.union(v.literal("hoody"), v.literal("short"), v.literal("polo")),
+  ),
+  shirtColor: v.optional(v.string()),
+  bgColor: v.optional(v.string()),
+  isGradient: v.optional(v.boolean()),
+  eyeBrowStyle: v.optional(v.union(v.literal("up"), v.literal("upWoman"))),
+  accessoriesStyle: v.optional(v.union(v.literal("none"), v.literal("earings"))),
+});
+
 /** User profile document validator */
 export const userProfileDocValidator = vv.doc("userProfile");
 
@@ -590,6 +632,7 @@ export const userAppointmentDetailValidator = v.object({
 export const userOnboardingProfileValidator = v.object({
   _id: v.id("userProfile"),
   phone: v.optional(v.string()),
+  avatarConfig: v.optional(avatarConfigValidator),
   gender: v.optional(genderValidator),
   dateOfBirth: v.optional(v.string()),
   hairType: v.optional(hairTypeValidator),

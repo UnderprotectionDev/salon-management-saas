@@ -42,7 +42,7 @@ flowchart TB
 
 | Layer | Technologies |
 |-------|-------------|
-| Frontend | Next.js 16, React 19 + Compiler, TypeScript 5.x, Tailwind CSS v4, shadcn/ui, TanStack Form + Zod |
+| Frontend | Next.js 16, React 19 + Compiler, TypeScript 5.x, Tailwind CSS v4, shadcn/ui, TanStack Form + Zod, react-nice-avatar (avatar generation) |
 | Backend | Convex (DB, functions, real-time, file storage, crons, search indexes), convex-helpers (RLS, triggers, validators) |
 | Auth | Better Auth + @convex-dev/better-auth, Google OAuth |
 | AI | `ai` (v6+), `@ai-sdk/react`, `@fal-ai/client`, Vercel AI Gateway (multi-provider: GPT-4o vision, Claude chat, Gemini Flash forecast) |

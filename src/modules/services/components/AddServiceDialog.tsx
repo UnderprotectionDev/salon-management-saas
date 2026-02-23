@@ -5,6 +5,7 @@ import { useMutation, useQuery } from "convex/react";
 import { Loader2, Plus } from "lucide-react";
 import { useState } from "react";
 import { z } from "zod";
+import NiceAvatar, { genConfig } from "react-nice-avatar";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -399,20 +400,11 @@ export function AddServiceDialog({
                       <Avatar className="size-7">
                         <AvatarImage src={staff.imageUrl ?? undefined} />
                         <AvatarFallback>
-                          <img
-                            src={`https://api.dicebear.com/9.x/lorelei/svg?seed=${encodeURIComponent(staff._id)}`}
-                            alt={staff.name}
-                            className="size-full"
-                            onError={(e) => {
-                              e.currentTarget.style.display = "none";
-                              e.currentTarget.nextElementSibling?.removeAttribute(
-                                "hidden",
-                              );
-                            }}
+                          <NiceAvatar
+                            style={{ width: "100%", height: "100%" }}
+                            shape="circle"
+                            {...genConfig(staff._id)}
                           />
-                          <span hidden className="text-xs">
-                            {staff.name[0]?.toUpperCase()}
-                          </span>
                         </AvatarFallback>
                       </Avatar>
                       <span className="text-sm truncate">{staff.name}</span>
