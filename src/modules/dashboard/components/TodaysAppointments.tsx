@@ -11,6 +11,11 @@ import {
 } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
+import {
+  APPOINTMENT_STATUS_BADGE_CLASSES,
+  APPOINTMENT_STATUS_LABELS,
+  type AppointmentStatus,
+} from "@/lib/status-colors";
 import { useOrganization } from "@/modules/organization";
 import { api } from "../../../../convex/_generated/api";
 
@@ -25,15 +30,6 @@ function formatTime(minutes: number): string {
   return `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}`;
 }
 
-const statusColors: Record<string, string> = {
-  pending: "bg-yellow-100 text-yellow-800",
-  confirmed: "bg-blue-100 text-blue-800",
-  checked_in: "bg-indigo-100 text-indigo-800",
-  in_progress: "bg-purple-100 text-purple-800",
-  completed: "bg-green-100 text-green-800",
-  cancelled: "bg-gray-100 text-gray-800",
-  no_show: "bg-red-100 text-red-800",
-};
 
 export function TodaysAppointments() {
   const { activeOrganization } = useOrganization();
@@ -91,9 +87,9 @@ export function TodaysAppointments() {
                 </div>
                 <Badge
                   variant="secondary"
-                  className={statusColors[appt.status] ?? ""}
+                  className={APPOINTMENT_STATUS_BADGE_CLASSES[appt.status as AppointmentStatus] ?? ""}
                 >
-                  {appt.status.replaceAll("_", " ")}
+                  {APPOINTMENT_STATUS_LABELS[appt.status as AppointmentStatus] ?? appt.status.replaceAll("_", " ")}
                 </Badge>
               </div>
             ))}

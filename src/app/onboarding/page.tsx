@@ -85,7 +85,7 @@ const STEPS = [
 ] as const;
 
 const ONBOARDING_INPUT =
-  "border-0 border-b border-border rounded-none bg-transparent shadow-none px-0 h-12 text-base focus-visible:ring-0 focus-visible:border-blue-600";
+  "border-0 border-b border-border rounded-none bg-transparent shadow-none px-0 h-12 text-base focus-visible:ring-0 focus-visible:border-brand";
 
 type WizardFormData = {
   name: string;
@@ -185,14 +185,14 @@ function LeftPanel({
               disabled={isFuture}
               className={`flex items-center w-full px-8 py-5 border-b border-background/10 transition-all duration-200 ${
                 isActive
-                  ? "bg-blue-600 text-white"
+                  ? "bg-brand text-brand-foreground"
                   : isCompleted
                     ? "text-background/60 hover:text-background/80 hover:bg-background/5 cursor-pointer"
                     : "cursor-not-allowed"
               }`}
             >
               <span className="flex items-center gap-3 flex-1">
-                {isCompleted && <Check className="size-4 text-blue-400" />}
+                {isCompleted && <Check className="size-4 text-brand/70" />}
                 <span
                   className={`text-xl font-bold uppercase tracking-wide ${
                     isCompleted ? "line-through" : ""
@@ -281,7 +281,7 @@ function StepHeading({ currentStep }: { currentStep: number }) {
           <div
             key={i}
             className={`h-0.5 flex-1 transition-colors duration-300 ${
-              i <= currentStep ? "bg-blue-600" : "bg-border"
+              i <= currentStep ? "bg-brand" : "bg-border"
             }`}
           />
         ))}
@@ -311,7 +311,7 @@ function SectionDivider({
         <span
           className={`text-[9px] font-bold tracking-[0.15em] uppercase shrink-0 px-2 py-0.5 ${
             badge === "REQUIRED"
-              ? "bg-blue-600 text-white"
+              ? "bg-brand text-brand-foreground"
               : "text-muted-foreground"
           }`}
         >
@@ -400,7 +400,7 @@ function StepBasics({
       {/* URL Slug — underline style */}
       <Field data-invalid={slugError ? true : undefined}>
         <FieldLabel htmlFor="slug">Booking URL</FieldLabel>
-        <div className="flex items-center border-0 border-b border-border h-12 focus-within:border-blue-600 transition-colors">
+        <div className="flex items-center border-0 border-b border-border h-12 focus-within:border-brand transition-colors">
           <span className="text-sm text-muted-foreground whitespace-nowrap select-none">
             yoursite.com/
           </span>
@@ -463,7 +463,7 @@ function StepBasics({
                 }}
                 className={`flex items-center gap-4 w-full py-4 border-b transition-all cursor-pointer ${
                   isSelected
-                    ? "bg-blue-600 text-white border-blue-600 px-4 -mx-4"
+                    ? "bg-brand text-brand-foreground border-brand px-4 -mx-4"
                     : "border-border text-foreground hover:bg-muted/50"
                 }`}
               >
@@ -500,7 +500,7 @@ function StepBasics({
             </button>
           </div>
         ) : (
-          <label className="size-[128px] shrink-0 border-2 border-dashed border-border rounded-lg flex flex-col items-center justify-center gap-2 cursor-pointer hover:border-blue-600 hover:bg-muted/30 transition-colors">
+          <label className="size-[128px] shrink-0 border-2 border-dashed border-border rounded-lg flex flex-col items-center justify-center gap-2 cursor-pointer hover:border-brand hover:bg-muted/30 transition-colors">
             <ImagePlus className="size-6 text-muted-foreground" />
             <span className="text-[10px] font-bold tracking-wider text-muted-foreground uppercase">
               Upload
@@ -540,7 +540,7 @@ function StepBasics({
           value={data.description}
           onChange={(e) => onChange({ description: e.target.value.slice(0, 500) })}
           rows={3}
-          className="border-0 border-b border-border rounded-none bg-transparent shadow-none px-0 text-base focus-visible:ring-0 focus-visible:border-blue-600 resize-none"
+          className="border-0 border-b border-border rounded-none bg-transparent shadow-none px-0 text-base focus-visible:ring-0 focus-visible:border-brand resize-none"
         />
         <div className="text-[11px] text-muted-foreground text-right tabular-nums mt-1">
           {data.description.length}/500
@@ -904,7 +904,7 @@ export default function OnboardingPage() {
               onClick={handleNext}
               disabled={step === 0 && !isStep1Valid()}
               size="lg"
-              className="px-8 text-[11px] font-bold tracking-[0.15em] uppercase gap-2 bg-blue-600 hover:bg-blue-700 text-white"
+              className="px-8 text-[11px] font-bold tracking-[0.15em] uppercase gap-2 bg-brand hover:bg-brand/90 text-brand-foreground"
             >
               CONTINUE
               <ArrowRight className="size-3.5" />
@@ -914,7 +914,7 @@ export default function OnboardingPage() {
               onClick={handleCreateSalon}
               disabled={isCreating}
               size="lg"
-              className="px-8 text-[11px] font-bold tracking-[0.15em] uppercase gap-2 bg-blue-600 hover:bg-blue-700 text-white"
+              className="px-8 text-[11px] font-bold tracking-[0.15em] uppercase gap-2 bg-brand hover:bg-brand/90 text-brand-foreground"
             >
               {isCreating ? (
                 <>

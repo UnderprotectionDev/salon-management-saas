@@ -6,6 +6,7 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
+import { APPOINTMENT_STATUS_BAR_COLORS } from "@/lib/status-colors";
 
 type StatusBreakdown = {
   pending: number;
@@ -19,14 +20,14 @@ type StatusBreakdown = {
 const segments: {
   key: keyof StatusBreakdown;
   label: string;
-  color: string;
+  statusKey: keyof typeof APPOINTMENT_STATUS_BAR_COLORS;
 }[] = [
-  { key: "pending", label: "Pending", color: "bg-amber-400" },
-  { key: "confirmed", label: "Confirmed", color: "bg-blue-500" },
-  { key: "inProgress", label: "In Progress", color: "bg-indigo-500" },
-  { key: "completed", label: "Completed", color: "bg-green-500" },
-  { key: "cancelled", label: "Cancelled", color: "bg-gray-400" },
-  { key: "noShow", label: "No-show", color: "bg-red-500" },
+  { key: "pending", label: "Pending", statusKey: "pending" },
+  { key: "confirmed", label: "Confirmed", statusKey: "confirmed" },
+  { key: "inProgress", label: "In Progress", statusKey: "in_progress" },
+  { key: "completed", label: "Completed", statusKey: "completed" },
+  { key: "cancelled", label: "Cancelled", statusKey: "cancelled" },
+  { key: "noShow", label: "No-show", statusKey: "no_show" },
 ];
 
 export function StatusBar({ data }: { data: StatusBreakdown }) {
@@ -41,7 +42,9 @@ export function StatusBar({ data }: { data: StatusBreakdown }) {
           (seg) =>
             data[seg.key] > 0 && (
               <div key={seg.key} className="flex items-center gap-1.5">
-                <div className={`size-2.5 rounded-full ${seg.color}`} />
+                <div
+                  className={`size-2.5 rounded-full ${APPOINTMENT_STATUS_BAR_COLORS[seg.statusKey]}`}
+                />
                 <span>
                   {seg.label}: {data[seg.key]}
                 </span>
@@ -59,7 +62,7 @@ export function StatusBar({ data }: { data: StatusBreakdown }) {
               <Tooltip key={seg.key}>
                 <TooltipTrigger asChild>
                   <div
-                    className={`${seg.color} transition-all`}
+                    className={`${APPOINTMENT_STATUS_BAR_COLORS[seg.statusKey]} transition-all`}
                     style={{ width: `${pct}%` }}
                     tabIndex={0}
                     role="meter"

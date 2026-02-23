@@ -27,6 +27,11 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { CustomerStats, MergeCustomerDialog } from "@/modules/customers";
 import { EditCustomerDialog } from "@/modules/customers/components/EditCustomerDialog";
 import {
+  APPOINTMENT_STATUS_BADGE_CLASSES,
+  APPOINTMENT_STATUS_LABELS,
+  type AppointmentStatus,
+} from "@/lib/status-colors";
+import {
   ACCOUNT_STATUS_LABELS,
   SOURCE_LABELS,
 } from "@/modules/customers/lib/constants";
@@ -83,25 +88,6 @@ function getInitials(name: string): string {
     .slice(0, 2);
 }
 
-const STATUS_COLORS: Record<string, string> = {
-  pending: "bg-yellow-100 text-yellow-800",
-  confirmed: "bg-blue-100 text-blue-800",
-  checked_in: "bg-indigo-100 text-indigo-800",
-  in_progress: "bg-purple-100 text-purple-800",
-  completed: "bg-green-100 text-green-800",
-  cancelled: "bg-red-100 text-red-800",
-  no_show: "bg-gray-100 text-gray-800",
-};
-
-const STATUS_LABELS: Record<string, string> = {
-  pending: "Pending",
-  confirmed: "Confirmed",
-  checked_in: "Checked In",
-  in_progress: "In Progress",
-  completed: "Completed",
-  cancelled: "Cancelled",
-  no_show: "No Show",
-};
 
 function formatTime(minutes: number): string {
   const hours = Math.floor(minutes / 60);
@@ -183,9 +169,9 @@ function CustomerActivityTab({
               <div className="flex flex-col items-end gap-1">
                 <Badge
                   variant="secondary"
-                  className={STATUS_COLORS[apt.status] ?? ""}
+                  className={APPOINTMENT_STATUS_BADGE_CLASSES[apt.status as AppointmentStatus] ?? ""}
                 >
-                  {STATUS_LABELS[apt.status] ?? apt.status}
+                  {APPOINTMENT_STATUS_LABELS[apt.status as AppointmentStatus] ?? apt.status}
                 </Badge>
                 <span className="text-sm font-medium">
                   {formatPrice(apt.total)}

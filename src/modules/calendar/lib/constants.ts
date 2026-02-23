@@ -32,49 +32,7 @@ export function getServiceColor(serviceName: string): string {
   return SERVICE_BORDER_COLORS[Math.abs(hash) % SERVICE_BORDER_COLORS.length];
 }
 
-export const STATUS_LABELS: Record<string, string> = {
-  pending: "Pending",
-  confirmed: "Confirmed",
-  checked_in: "Checked In",
-  in_progress: "In Progress",
-  completed: "Completed",
-  cancelled: "Cancelled",
-  no_show: "No Show",
-};
-
-export const STATUS_COLORS: Record<
-  string,
-  { bg: string; border: string; text: string }
-> = {
-  pending: {
-    bg: "bg-yellow-50",
-    border: "border-yellow-300",
-    text: "text-yellow-800",
-  },
-  confirmed: {
-    bg: "bg-blue-50",
-    border: "border-blue-300",
-    text: "text-blue-800",
-  },
-  checked_in: {
-    bg: "bg-indigo-50",
-    border: "border-indigo-300",
-    text: "text-indigo-800",
-  },
-  in_progress: {
-    bg: "bg-purple-50",
-    border: "border-purple-300",
-    text: "text-purple-800",
-  },
-  completed: {
-    bg: "bg-green-50",
-    border: "border-green-300",
-    text: "text-green-800",
-  },
-  cancelled: {
-    bg: "bg-gray-50",
-    border: "border-gray-300",
-    text: "text-gray-500",
-  },
-  no_show: { bg: "bg-red-50", border: "border-red-300", text: "text-red-800" },
-};
+export {
+  APPOINTMENT_STATUS_LABELS as STATUS_LABELS,
+  APPOINTMENT_STATUS_COLORS as STATUS_COLORS,
+} from "@/lib/status-colors";

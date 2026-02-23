@@ -6,24 +6,64 @@
 
 | Color | CSS Variable | Use Case |
 |-------|-------------|----------|
-| Primary | `--primary` (blue) | CTAs, links, focus states |
-| Secondary | `--secondary` | Secondary actions |
+| Primary | `--primary` (black / white in dark) | Default buttons, high-contrast text |
+| Brand | `--brand` (blue-600 / blue-500 dark) | CTAs, active states, focus rings, links |
+| Secondary | `--secondary` | Secondary actions, subtle backgrounds |
+| Accent | `--accent` | Hover/focus backgrounds (shadcn internal) |
 | Destructive | `--destructive` (red) | Delete, errors |
-| Success | `--success` (green) | Confirmations |
-| Warning | `--warning` (amber) | Alerts, cautions |
 | Muted | `--muted` | Disabled, placeholders |
 
-**Appointment Status Colors:**
+### Brand Color Usage
 
-| Status | Classes |
-|--------|---------|
-| pending | `bg-yellow-100 text-yellow-800` |
-| confirmed | `bg-blue-100 text-blue-800` |
-| checked_in | `bg-green-100 text-green-800` |
-| in_progress | `bg-purple-100 text-purple-800` |
-| completed | `bg-gray-100 text-gray-800` |
-| cancelled | `bg-red-100 text-red-800 line-through` |
-| no_show | `bg-red-100 text-red-800` |
+Use `--brand` (`bg-brand`, `text-brand`, `border-brand`) for:
+
+- Call-to-action buttons (onboarding, booking)
+- Active/selected states (step indicators, type selections)
+- Focus rings on custom inputs
+- Unread indicators (notification dot, unread background)
+- "Today" highlights in calendar views
+
+Use `--primary` (black/white) for:
+
+- Default shadcn buttons (`<Button>`)
+- High-contrast text, headings
+- Default focus rings on shadcn components
+
+Do **not** change `--accent` — it is used by 15+ shadcn components for hover/focus backgrounds.
+
+### Appointment Status Colors
+
+Centralized in `src/lib/status-colors.ts`. CSS variables defined in `globals.css` (`--status-*-bg`, `--status-*-text`).
+
+| Status | Token | Light Appearance |
+|--------|-------|-----------------|
+| pending | `status-pending` | Yellow |
+| confirmed | `status-confirmed` | Blue |
+| checked_in | `status-checked-in` | Indigo |
+| in_progress | `status-in-progress` | Purple |
+| completed | `status-completed` | Green |
+| cancelled | `status-cancelled` | Gray |
+| no_show | `status-no-show` | Red |
+
+**Usage:**
+
+```tsx
+import {
+  APPOINTMENT_STATUS_BADGE_CLASSES,
+  APPOINTMENT_STATUS_LABELS,
+  APPOINTMENT_STATUS_COLORS,
+  type AppointmentStatus,
+} from "@/lib/status-colors";
+
+// Badge
+<Badge className={APPOINTMENT_STATUS_BADGE_CLASSES[status]}>
+  {APPOINTMENT_STATUS_LABELS[status]}
+</Badge>
+
+// Calendar block
+const { bg, text, border } = APPOINTMENT_STATUS_COLORS[status];
+<div className={`${bg} ${text} ${border}`}>...</div>
+```
 
 **AI Status Colors:**
 
@@ -36,7 +76,8 @@
 
 ## Typography
 
-- **Font:** Inter (sans), JetBrains Mono (mono)
+- **Sans font:** JetBrains Mono (monospace — configured as `--font-sans`)
+- **Mono font:** IBM Plex Mono (configured as `--font-mono`)
 - **Scale:** text-xs (12px) → text-3xl (30px)
 - **Headings:** h1=text-2xl/semibold, h2=text-xl/semibold, h3=text-lg/medium
 

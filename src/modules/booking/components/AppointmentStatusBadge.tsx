@@ -1,39 +1,22 @@
 import { Badge } from "@/components/ui/badge";
-
-const STATUS_MAP: Record<
-  string,
-  {
-    label: string;
-    variant: "default" | "secondary" | "destructive" | "outline";
-    className?: string;
-  }
-> = {
-  pending: { label: "Pending", variant: "outline" },
-  confirmed: {
-    label: "Confirmed",
-    variant: "default",
-    className: "bg-blue-500 hover:bg-blue-600",
-  },
-  checked_in: { label: "Checked In", variant: "secondary" },
-  in_progress: { label: "In Progress", variant: "secondary" },
-  completed: {
-    label: "Completed",
-    variant: "default",
-    className: "bg-green-600 hover:bg-green-700",
-  },
-  cancelled: { label: "Cancelled", variant: "destructive" },
-  no_show: { label: "No Show", variant: "destructive" },
-};
+import {
+  APPOINTMENT_STATUS_BADGE_CLASSES,
+  APPOINTMENT_STATUS_LABELS,
+  type AppointmentStatus,
+} from "@/lib/status-colors";
 
 export function AppointmentStatusBadge({ status }: { status: string }) {
-  const config = STATUS_MAP[status] ?? {
-    label: status,
-    variant: "outline" as const,
-  };
+  const s = status as AppointmentStatus;
+  const label = APPOINTMENT_STATUS_LABELS[s] ?? status;
+  const classes = APPOINTMENT_STATUS_BADGE_CLASSES[s];
+
+  if (!classes) {
+    return <Badge variant="outline">{label}</Badge>;
+  }
 
   return (
-    <Badge variant={config.variant} className={config.className}>
-      {config.label}
+    <Badge variant="secondary" className={classes}>
+      {label}
     </Badge>
   );
 }
