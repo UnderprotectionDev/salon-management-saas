@@ -60,7 +60,7 @@ As a developer, I want to set up the database tables, constants, and package dep
 **Acceptance Criteria:**
 
 - [ ] 7 new tables added to `convex/schema.ts`: `aiCredits`, `aiCreditTransactions`, `aiAnalyses`, `aiSimulations`, `aiCareSchedules`, `aiMoodBoard`, `designCatalog`
-- [ ] `salonType` field added to `organization` table: `v.optional(v.union(v.literal("hair"), v.literal("nail"), v.literal("makeup"), v.literal("barber"), v.literal("spa"), v.literal("multi")))`
+- [ ] `salonType` field added to `organization` table as multi-select array of 34 types (hair_women, hair_men, children, nail, makeup, spa, etc.)
 - [ ] `designCatalog` table includes all fields: `organizationId`, `name`, `category`, `imageStorageId`, `thumbnailStorageId`, `description`, `tags[]`, `salonType`, `status`, `sortOrder`, `createdAt`, `updatedAt`
 - [ ] `designCatalog` indexes defined: `by_org` and `by_org_category`
 - [ ] `aiSimulations` table includes `simulationType` (`"catalog" | "prompt"`), `designCatalogId` (nullable), `publicConsent`, `galleryApprovedByOrg` fields
@@ -155,7 +155,7 @@ As a salon owner, I want to manage my design catalog through a visual interface,
 - [ ] Activate/deactivate toggle on each card
 - [ ] Edit and delete buttons on each card
 - [ ] Delete shows confirmation dialog
-- [ ] UI entirely hidden if `salonType` doesn't support try-on (`barber`, `spa`)
+- [ ] UI entirely hidden if `salonType` doesn't support try-on (types not in `TRYON_ENABLED_TYPES`)
 - [ ] Empty state: "Add your first design" message with upload button
 - [ ] Accessible as "Design Catalog" tab within AI Insights page
 
@@ -268,8 +268,8 @@ As a customer, I want to browse the salon's design catalog, select a design, and
 **Acceptance Criteria:**
 
 - [ ] `src/modules/ai/customer/components/VirtualTryOnView.tsx` created
-- [ ] "Try On" tab visible on `/{slug}/ai` page (only if salonType supports try-on: hair, nail, makeup, multi)
-- [ ] Tab entirely hidden for barber and spa salon types
+- [ ] "Try On" tab visible on `/{slug}/ai` page (only if salonType is in TRYON_ENABLED_TYPES: hair_women, hair_men, nail, makeup, multi)
+- [ ] Tab entirely hidden for salon types not in TRYON_ENABLED_TYPES
 - [ ] Catalog browse: category filter tabs + thumbnail grid
 - [ ] Design selection: tapping a card highlights it as selected
 - [ ] "Free prompt" mode: toggle switches to free text input
@@ -443,7 +443,7 @@ As a salon owner, I want to see my org's AI credit balance, purchase credits, an
 
 - **Salon Type Routing:**
   - `salonType` on `organization` drives which AI features are shown/enabled
-  - `convex/lib/aiConstants.ts` exports `TRYON_ENABLED_TYPES = ["hair", "nail", "makeup", "multi"]`
+  - `convex/lib/aiConstants.ts` exports `TRYON_ENABLED_TYPES = Set(["hair_women", "hair_men", "nail", "makeup", "multi"])`
   - Try-on hidden entirely for `barber` and `spa`
   - Photo analysis prompt varies by salonType (different focus areas)
   - Quick question definitions are also keyed by salonType in `aiConstants.ts`
@@ -502,7 +502,7 @@ As a salon owner, I want to see my org's AI credit balance, purchase credits, an
 - FR-2: Credit deduction is atomic — balance check + deduct + transaction log in a single mutation
 - FR-3: Failed AI actions automatically refund credits and set record status to `"failed"`
 - FR-4: `salonType` field determines which AI features are visible/active
-- FR-5: Virtual try-on is only available for `hair`, `nail`, `makeup`, `multi` salon types
+- FR-5: Virtual try-on is only available for salon types in `TRYON_ENABLED_TYPES` (hair_women, hair_men, nail, makeup, multi)
 - FR-6: fal.ai segmentation is fully automatic — no mask drawing or cropping required from customers
 - FR-7: All external AI API calls run inside Convex actions (`"use node"`)
 - FR-8: Photo analysis and virtual try-on status changes update in real-time on the customer UI (Convex reactivity)

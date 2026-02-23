@@ -39,11 +39,40 @@ import type { Id } from "../../../../convex/_generated/dataModel";
 type Section = "analysis" | "tryon" | "styles" | "schedule" | null;
 
 const SALON_TYPE_LABELS: Record<SalonType, string> = {
-  hair: "Hair Salon",
+  hair_women: "Women's Salon",
+  hair_men: "Men's Salon",
+  children: "Children's Salon",
+  braiding: "Braiding / Protective Styles",
+  blowout_bar: "Blow Dry Bar",
+  hair_extensions: "Extensions / Wig Studio",
   nail: "Nail Salon",
   makeup: "Makeup / Beauty",
-  barber: "Barber",
+  skincare: "Skincare",
+  lash_brow: "Lash & Brow",
+  permanent_makeup: "Permanent Makeup",
+  threading: "Threading / Brow Bar",
+  head_spa: "Head Spa",
   spa: "Spa & Wellness",
+  massage: "Massage",
+  hammam: "Hammam",
+  sauna: "Sauna / Bath House",
+  ayurveda: "Ayurvedic Center",
+  float_therapy: "Float Therapy",
+  waxing: "Waxing",
+  tanning: "Tanning",
+  laser: "Laser / IPL",
+  electrolysis: "Electrolysis",
+  medspa: "Med Spa",
+  aesthetic_clinic: "Aesthetic Clinic",
+  cryotherapy: "Cryotherapy",
+  iv_therapy: "IV Therapy",
+  body_contouring: "Body Contouring",
+  hair_loss: "Hair Loss / Trichology",
+  tattoo: "Tattoo",
+  piercing: "Piercing",
+  henna: "Henna / Mehndi",
+  pet_grooming: "Pet Grooming",
+  beauty_center: "Beauty Center",
   multi: "Multi-Service",
 };
 
@@ -65,7 +94,7 @@ export default function DashboardAIPage() {
   const [salonType, setSalonType] = useState<SalonType>(
     querySalonType && SALON_TYPE_LABELS[querySalonType]
       ? querySalonType
-      : "hair",
+      : "hair_women",
   );
 
   // Resolve initial section from query params
@@ -73,7 +102,7 @@ export default function DashboardAIPage() {
     if (!queryTab) return null;
     if (
       queryTab === "tryon" &&
-      TRYON_ENABLED_TYPES.has(querySalonType ?? "hair")
+      TRYON_ENABLED_TYPES.has(querySalonType ?? "hair_women")
     )
       return "tryon" as Section;
     if (queryTab === "analysis") return "analysis" as Section;

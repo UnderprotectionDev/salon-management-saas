@@ -14,7 +14,7 @@ import { Textarea } from "@/components/ui/textarea";
 import type { WizardFormData } from "../hooks/useOnboardingForm";
 import {
   ONBOARDING_INPUT,
-  SALON_TYPE_OPTIONS,
+  SALON_TYPE_CATEGORIES,
   type OrgSalonType,
 } from "../lib/constants";
 import { slugify } from "../lib/utils";
@@ -165,59 +165,68 @@ export function StepBasics({
         )}
       </Field>
 
-      {/* Salon Type — 2x3 grid */}
+      {/* Salon Type — categorized grid */}
       <Field data-invalid={typeError ? true : undefined}>
         <FieldLabel>Salon Type</FieldLabel>
         <div
-          className="grid grid-cols-2 sm:grid-cols-3 gap-2 mt-2"
+          className="space-y-4 mt-2"
           role="group"
           aria-label="Salon type selection"
         >
-          {SALON_TYPE_OPTIONS.map((opt) => {
-            const Icon = opt.icon;
-            const isSelected = data.salonType.includes(opt.value);
-            return (
-              <button
-                type="button"
-                key={opt.value}
-                role="checkbox"
-                aria-checked={isSelected}
-                onClick={() => {
-                  setTypeTouched(true);
-                  if (isSelected) {
-                    onChange({
-                      salonType: data.salonType.filter(
-                        (t: OrgSalonType) => t !== opt.value,
-                      ),
-                    });
-                  } else {
-                    onChange({
-                      salonType: [...data.salonType, opt.value],
-                    });
-                  }
-                }}
-                className={`flex flex-col items-center gap-2 py-4 px-3 rounded-lg border transition-all cursor-pointer ${
-                  isSelected
-                    ? "border-brand bg-brand/5 ring-1 ring-brand"
-                    : "border-border hover:border-brand/40 hover:bg-muted/30"
-                }`}
-              >
-                <Icon
-                  className={`size-5 ${isSelected ? "text-brand" : "text-muted-foreground"}`}
-                />
-                <span
-                  className={`text-xs font-semibold tracking-wide uppercase ${
-                    isSelected ? "text-brand" : "text-foreground"
-                  }`}
-                >
-                  {opt.label}
-                </span>
-                {isSelected && (
-                  <Check className="size-3 text-brand animate-[scale-in_0.2s_ease-out]" />
-                )}
-              </button>
-            );
-          })}
+          {SALON_TYPE_CATEGORIES.map((category) => (
+            <div key={category.key}>
+              <div className="text-[10px] font-bold tracking-wider uppercase text-muted-foreground mb-2">
+                {category.label}
+              </div>
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                {category.types.map((opt) => {
+                  const Icon = opt.icon;
+                  const isSelected = data.salonType.includes(opt.value);
+                  return (
+                    <button
+                      type="button"
+                      key={opt.value}
+                      role="checkbox"
+                      aria-checked={isSelected}
+                      onClick={() => {
+                        setTypeTouched(true);
+                        if (isSelected) {
+                          onChange({
+                            salonType: data.salonType.filter(
+                              (t: OrgSalonType) => t !== opt.value,
+                            ),
+                          });
+                        } else {
+                          onChange({
+                            salonType: [...data.salonType, opt.value],
+                          });
+                        }
+                      }}
+                      className={`flex flex-col items-center gap-2 py-4 px-3 rounded-lg border transition-all cursor-pointer ${
+                        isSelected
+                          ? "border-brand bg-brand/5 ring-1 ring-brand"
+                          : "border-border hover:border-brand/40 hover:bg-muted/30"
+                      }`}
+                    >
+                      <Icon
+                        className={`size-5 ${isSelected ? "text-brand" : "text-muted-foreground"}`}
+                      />
+                      <span
+                        className={`text-xs font-semibold tracking-wide uppercase ${
+                          isSelected ? "text-brand" : "text-foreground"
+                        }`}
+                      >
+                        {opt.label}
+                      </span>
+                      {isSelected && (
+                        <Check className="size-3 text-brand animate-[scale-in_0.2s_ease-out]" />
+                      )}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          ))}
         </div>
         <FieldDescription>Select all that apply</FieldDescription>
         {typeError && <FieldError errors={[{ message: typeError }]} />}

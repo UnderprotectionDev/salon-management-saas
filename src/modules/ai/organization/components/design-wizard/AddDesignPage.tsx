@@ -154,7 +154,9 @@ export function AddDesignPage({ editMode }: AddDesignPageProps) {
     }
     return {
       ...INITIAL_STATE,
-      serviceArea: isMulti ? "hair" : toDesignSalonType(orgSalonType),
+      serviceArea: isMulti
+        ? ("hair" as DesignSalonType)
+        : toDesignSalonType(orgSalonType),
     };
   });
 

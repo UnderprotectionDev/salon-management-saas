@@ -25,7 +25,41 @@ import type { Id } from "../../../../convex/_generated/dataModel";
 // Types
 // =============================================================================
 
-type OrgSalonType = "hair" | "nail" | "makeup" | "barber" | "spa";
+type OrgSalonType =
+  | "hair_women"
+  | "hair_men"
+  | "children"
+  | "braiding"
+  | "blowout_bar"
+  | "hair_extensions"
+  | "nail"
+  | "makeup"
+  | "skincare"
+  | "lash_brow"
+  | "permanent_makeup"
+  | "threading"
+  | "head_spa"
+  | "spa"
+  | "massage"
+  | "hammam"
+  | "sauna"
+  | "ayurveda"
+  | "float_therapy"
+  | "waxing"
+  | "tanning"
+  | "laser"
+  | "electrolysis"
+  | "medspa"
+  | "aesthetic_clinic"
+  | "cryotherapy"
+  | "iv_therapy"
+  | "body_contouring"
+  | "hair_loss"
+  | "tattoo"
+  | "piercing"
+  | "henna"
+  | "pet_grooming"
+  | "beauty_center";
 
 // Minimal organization fields required by this component
 type OrganizationData = {
@@ -47,11 +81,40 @@ interface GeneralInfoFormProps {
 // =============================================================================
 
 const SALON_TYPE_OPTIONS: { value: OrgSalonType; label: string }[] = [
-  { value: "hair", label: "Hair Salon" },
+  { value: "hair_women", label: "Women's Salon" },
   { value: "nail", label: "Nail Salon" },
   { value: "makeup", label: "Makeup Studio" },
-  { value: "barber", label: "Barber Shop" },
+  { value: "hair_men", label: "Men's Salon" },
   { value: "spa", label: "Spa" },
+  { value: "children", label: "Children's Salon" },
+  { value: "skincare", label: "Skincare" },
+  { value: "lash_brow", label: "Lash & Brow" },
+  { value: "medspa", label: "Med Spa" },
+  { value: "massage", label: "Massage" },
+  { value: "waxing", label: "Waxing" },
+  { value: "tanning", label: "Tanning" },
+  { value: "tattoo", label: "Tattoo" },
+  { value: "piercing", label: "Piercing" },
+  { value: "pet_grooming", label: "Pet Grooming" },
+  { value: "laser", label: "Laser / IPL" },
+  { value: "permanent_makeup", label: "Permanent Makeup" },
+  { value: "beauty_center", label: "Beauty Center" },
+  { value: "hammam", label: "Hammam" },
+  { value: "braiding", label: "Braiding / Protective Styles" },
+  { value: "blowout_bar", label: "Blow Dry Bar" },
+  { value: "hair_extensions", label: "Extensions / Wig Studio" },
+  { value: "threading", label: "Threading / Brow Bar" },
+  { value: "head_spa", label: "Head Spa" },
+  { value: "sauna", label: "Sauna / Bath House" },
+  { value: "ayurveda", label: "Ayurvedic Center" },
+  { value: "float_therapy", label: "Float Therapy" },
+  { value: "electrolysis", label: "Electrolysis" },
+  { value: "aesthetic_clinic", label: "Aesthetic Clinic" },
+  { value: "cryotherapy", label: "Cryotherapy" },
+  { value: "iv_therapy", label: "IV Therapy" },
+  { value: "body_contouring", label: "Body Contouring" },
+  { value: "hair_loss", label: "Hair Loss / Trichology" },
+  { value: "henna", label: "Henna / Mehndi" },
 ];
 
 // =============================================================================

@@ -315,7 +315,9 @@ export const avatarConfigValidator = v.object({
   bgColor: v.optional(v.string()),
   isGradient: v.optional(v.boolean()),
   eyeBrowStyle: v.optional(v.union(v.literal("up"), v.literal("upWoman"))),
-  accessoriesStyle: v.optional(v.union(v.literal("none"), v.literal("earings"))),
+  accessoriesStyle: v.optional(
+    v.union(v.literal("none"), v.literal("earings")),
+  ),
 });
 
 /** User profile document validator */
@@ -806,23 +808,81 @@ export const productPublicValidator = v.object({
 // AI Feature Validators (M10)
 // =============================================================================
 
-/** Salon type: hair | nail | makeup | barber | spa | multi (used by AI features internally) */
+/** Salon type: all salon types + "multi" (used by AI features internally) */
 export const salonTypeValidator = literals(
-  "hair",
+  "hair_women",
+  "hair_men",
+  "children",
+  "braiding",
+  "blowout_bar",
+  "hair_extensions",
   "nail",
   "makeup",
-  "barber",
+  "skincare",
+  "lash_brow",
+  "permanent_makeup",
+  "threading",
+  "head_spa",
   "spa",
+  "massage",
+  "hammam",
+  "sauna",
+  "ayurveda",
+  "float_therapy",
+  "waxing",
+  "tanning",
+  "laser",
+  "electrolysis",
+  "medspa",
+  "aesthetic_clinic",
+  "cryotherapy",
+  "iv_therapy",
+  "body_contouring",
+  "hair_loss",
+  "tattoo",
+  "piercing",
+  "henna",
+  "pet_grooming",
+  "beauty_center",
   "multi",
 );
 
 /** Individual org salon type item (no "multi" — multi is derived when multiple selected) */
 export const orgSalonTypeItemValidator = literals(
-  "hair",
+  "hair_women",
+  "hair_men",
+  "children",
+  "braiding",
+  "blowout_bar",
+  "hair_extensions",
   "nail",
   "makeup",
-  "barber",
+  "skincare",
+  "lash_brow",
+  "permanent_makeup",
+  "threading",
+  "head_spa",
   "spa",
+  "massage",
+  "hammam",
+  "sauna",
+  "ayurveda",
+  "float_therapy",
+  "waxing",
+  "tanning",
+  "laser",
+  "electrolysis",
+  "medspa",
+  "aesthetic_clinic",
+  "cryotherapy",
+  "iv_therapy",
+  "body_contouring",
+  "hair_loss",
+  "tattoo",
+  "piercing",
+  "henna",
+  "pet_grooming",
+  "beauty_center",
 );
 
 /** Org salon types: array of selected types (multi-select) */

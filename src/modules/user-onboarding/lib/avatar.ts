@@ -69,13 +69,7 @@ const GLASSES_STYLES = [
 
 const MALE_HAIR_STYLES = ["normal", "thick", "mohawk"] as const;
 // Weighted: mostly no hat so hair is visible
-const MALE_HAT_STYLES = [
-  "none",
-  "none",
-  "none",
-  "beanie",
-  "turban",
-] as const;
+const MALE_HAT_STYLES = ["none", "none", "none", "beanie", "turban"] as const;
 
 const FEMALE_HAIR_STYLES = ["womanLong", "womanShort"] as const;
 // Weighted: earings appear occasionally

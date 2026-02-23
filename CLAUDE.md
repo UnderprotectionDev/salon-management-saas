@@ -333,7 +333,22 @@ Credits are user-scoped (global across all salons, not per-org). Stored in `aiCr
 
 ### Salon Types
 
-`SalonType = "hair" | "nail" | "makeup" | "barber" | "spa" | "multi"` — stored on `organizationSettings`. Controls which AI features are available (e.g., virtual try-on only for hair/nail/makeup/multi), photo angle labels, and analysis focus areas.
+Organization salon types are stored as a multi-select array on `organization.salonType`. There are 34 individual types grouped into 8 categories:
+
+- **Hair & Styling:** `hair_women`, `hair_men`, `children`, `braiding`, `blowout_bar`, `hair_extensions`
+- **Nails & Makeup:** `nail`, `makeup`
+- **Skin & Face:** `skincare`, `lash_brow`, `permanent_makeup`, `threading`, `head_spa`
+- **Spa & Wellness:** `spa`, `massage`, `hammam`, `sauna`, `ayurveda`, `float_therapy`
+- **Body Treatments:** `waxing`, `tanning`, `laser`, `electrolysis`
+- **Medical & Aesthetic:** `medspa`, `aesthetic_clinic`, `cryotherapy`, `iv_therapy`, `body_contouring`, `hair_loss`
+- **Art & Expression:** `tattoo`, `piercing`, `henna`
+- **Specialty:** `pet_grooming`, `beauty_center`
+
+**Effective type derivation:** `deriveEffectiveSalonType()` in `convex/lib/aiConstants.ts` maps the array to a single AI type: 0 items → null, 1 item → that item, 2+ items → `"multi"`. Controls which AI features are available (e.g., virtual try-on only for hair_women/hair_men/nail/makeup/multi).
+
+**Design body area vs salon type:** Design catalog uses `DesignSalonType = "hair" | "nail" | "makeup" | "multi"` — this represents what body area a design targets (for virtual try-on), NOT the business type. `toDesignSalonType()` in `category-presets.ts` maps salon types to design body areas.
+
+**Category definitions:** `src/modules/org-onboarding/lib/constants.ts` defines `SALON_TYPE_CATEGORIES` with icons for the onboarding grid. `src/modules/settings/components/GeneralInfoForm.tsx` has `SALON_TYPE_OPTIONS` for the settings toggle list.
 
 ### Schema Tables
 

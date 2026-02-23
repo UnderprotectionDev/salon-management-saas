@@ -37,11 +37,40 @@ import {
 // =============================================================================
 
 export type OrgSalonType =
-  | "hair"
+  | "hair_women"
+  | "hair_men"
+  | "children"
+  | "braiding"
+  | "blowout_bar"
+  | "hair_extensions"
   | "nail"
   | "makeup"
-  | "barber"
+  | "skincare"
+  | "lash_brow"
+  | "permanent_makeup"
+  | "threading"
+  | "head_spa"
   | "spa"
+  | "massage"
+  | "hammam"
+  | "sauna"
+  | "ayurveda"
+  | "float_therapy"
+  | "waxing"
+  | "tanning"
+  | "laser"
+  | "electrolysis"
+  | "medspa"
+  | "aesthetic_clinic"
+  | "cryotherapy"
+  | "iv_therapy"
+  | "body_contouring"
+  | "hair_loss"
+  | "tattoo"
+  | "piercing"
+  | "henna"
+  | "pet_grooming"
+  | "beauty_center"
   | "multi";
 export type DesignSalonType = "hair" | "nail" | "makeup" | "multi";
 
@@ -73,7 +102,7 @@ export const MULTI_SERVICE_AREAS: {
 // =============================================================================
 
 export const CATEGORY_PRESETS: Record<OrgSalonType, string[]> = {
-  hair: [
+  hair_women: [
     "Balayage",
     "Ombre",
     "Highlights",
@@ -106,7 +135,7 @@ export const CATEGORY_PRESETS: Record<OrgSalonType, string[]> = {
     "No-Makeup Look",
     "Special FX",
   ],
-  barber: [
+  hair_men: [
     "Fade",
     "Undercut",
     "Buzz Cut",
@@ -116,7 +145,194 @@ export const CATEGORY_PRESETS: Record<OrgSalonType, string[]> = {
     "Taper",
     "Textured Crop",
   ],
+  children: ["Kids Cut", "First Haircut", "Fun Styles", "School Cut", "Trim"],
+  braiding: [
+    "Box Braids",
+    "Cornrows",
+    "Twists",
+    "Locs",
+    "Protective Style",
+    "Feed-In Braids",
+  ],
+  blowout_bar: [
+    "Bouncy Blowout",
+    "Sleek Straight",
+    "Voluminous Curl",
+    "Beach Waves",
+    "Silk Press",
+  ],
+  hair_extensions: [
+    "Tape-In",
+    "Clip-In",
+    "Sew-In",
+    "Micro-Link",
+    "Wig Styling",
+    "Keratin Bond",
+  ],
+  skincare: [
+    "Facial",
+    "Chemical Peel",
+    "Microdermabrasion",
+    "LED Therapy",
+    "Hydrafacial",
+  ],
+  lash_brow: [
+    "Lash Extensions",
+    "Lash Lift",
+    "Brow Lamination",
+    "Brow Tint",
+    "Microblading",
+  ],
+  permanent_makeup: [
+    "Lip Blush",
+    "Eyeliner",
+    "Brow Tattoo",
+    "Areola",
+    "Scar Camouflage",
+  ],
+  threading: [
+    "Brow Threading",
+    "Full Face",
+    "Upper Lip",
+    "Chin",
+    "Brow Shaping",
+  ],
+  head_spa: [
+    "Scalp Treatment",
+    "Deep Cleanse",
+    "Scalp Massage",
+    "Hair Mask",
+    "Detox",
+  ],
   spa: ["Facial", "Body Treatment", "Anti-Aging", "Deep Cleanse", "Relaxation"],
+  massage: [
+    "Swedish",
+    "Deep Tissue",
+    "Hot Stone",
+    "Sports",
+    "Aromatherapy",
+    "Reflexology",
+  ],
+  hammam: [
+    "Traditional Hammam",
+    "Body Scrub",
+    "Foam Massage",
+    "Steam Room",
+    "Relaxation Package",
+  ],
+  sauna: [
+    "Finnish Sauna",
+    "Infrared",
+    "Steam Room",
+    "Cold Plunge",
+    "Aufguss Ritual",
+  ],
+  ayurveda: [
+    "Abhyanga",
+    "Shirodhara",
+    "Panchakarma",
+    "Herbal Steam",
+    "Marma Therapy",
+  ],
+  float_therapy: [
+    "60-Min Float",
+    "90-Min Float",
+    "First Float",
+    "Couples Float",
+    "Float Package",
+  ],
+  waxing: ["Brazilian", "Full Leg", "Bikini", "Arm", "Full Body", "Face Wax"],
+  tanning: [
+    "Spray Tan",
+    "UV Bed",
+    "Airbrush",
+    "Self-Tan Application",
+    "Express Tan",
+  ],
+  laser: [
+    "Laser Hair Removal",
+    "IPL Facial",
+    "Skin Rejuvenation",
+    "Pigmentation",
+    "Vein Treatment",
+  ],
+  electrolysis: ["Permanent Removal", "Face", "Body", "Bikini", "Consultation"],
+  medspa: [
+    "Botox",
+    "Filler",
+    "PRP",
+    "Microneedling",
+    "Chemical Peel",
+    "Thread Lift",
+  ],
+  aesthetic_clinic: [
+    "Consultation",
+    "Laser Treatment",
+    "Injectable",
+    "Skin Tightening",
+    "Body Sculpting",
+  ],
+  cryotherapy: [
+    "Whole Body Cryo",
+    "Local Cryo",
+    "Cryo Facial",
+    "Recovery Session",
+    "Fat Freeze",
+  ],
+  iv_therapy: [
+    "Hydration",
+    "Immunity Boost",
+    "Energy",
+    "Beauty Drip",
+    "Recovery",
+    "NAD+",
+  ],
+  body_contouring: [
+    "CoolSculpting",
+    "Cavitation",
+    "RF Treatment",
+    "Lymphatic Drainage",
+    "Wrap",
+  ],
+  hair_loss: [
+    "PRP Hair",
+    "Scalp Analysis",
+    "Mesotherapy",
+    "Low-Level Laser",
+    "Consultation",
+  ],
+  tattoo: [
+    "Traditional",
+    "Realism",
+    "Watercolor",
+    "Minimalist",
+    "Cover-Up",
+    "Custom Design",
+  ],
+  piercing: ["Ear", "Nose", "Septum", "Belly", "Cartilage", "Dermal"],
+  henna: [
+    "Bridal Mehndi",
+    "Arabic Design",
+    "Indo-Arabic",
+    "Moroccan",
+    "Simple Design",
+    "Festival",
+  ],
+  pet_grooming: [
+    "Full Groom",
+    "Bath & Brush",
+    "Nail Trim",
+    "Puppy Cut",
+    "De-Shedding",
+    "Breed Cut",
+  ],
+  beauty_center: [
+    "Facial",
+    "Manicure",
+    "Hair Styling",
+    "Makeup",
+    "Full Package",
+  ],
   multi: [
     "Balayage",
     "Ombre",
@@ -263,21 +479,33 @@ export function toDesignSalonType(
   serviceArea?: DesignSalonType,
 ): DesignSalonType {
   if (orgType === "multi") return serviceArea ?? "hair";
-  if (orgType === "barber" || orgType === "spa") return "hair";
+  if (orgType === "hair_women" || orgType === "hair_men" || orgType === "spa")
+    return "hair";
   return (orgType as DesignSalonType | undefined) ?? "hair";
 }
 
 /**
  * Get category list based on org type and optional service area.
  */
+/** Map DesignSalonType (body area) → OrgSalonType key for CATEGORY_PRESETS lookup */
+function designAreaToPresetKey(area: DesignSalonType): OrgSalonType {
+  if (area === "hair") return "hair_women";
+  return area as OrgSalonType;
+}
+
 export function getCategories(
   orgType: OrgSalonType | null | undefined,
   serviceArea?: DesignSalonType,
 ): string[] {
   if (orgType === "multi" && serviceArea) {
-    return CATEGORY_PRESETS[serviceArea] ?? CATEGORY_PRESETS.hair;
+    return (
+      CATEGORY_PRESETS[designAreaToPresetKey(serviceArea)] ??
+      CATEGORY_PRESETS.hair_women
+    );
   }
-  return CATEGORY_PRESETS[orgType ?? "hair"] ?? CATEGORY_PRESETS.hair;
+  return (
+    CATEGORY_PRESETS[orgType ?? "hair_women"] ?? CATEGORY_PRESETS.hair_women
+  );
 }
 
 /**
