@@ -5,6 +5,7 @@ import {
   CompletionOverlay,
   LeftPanel,
   MobileStepIndicator,
+  PricingBanner,
   StepBasics,
   StepContact,
   StepHeading,
@@ -40,6 +41,7 @@ export default function OnboardingPage() {
         {/* Form Content */}
         <div className="flex-1 px-6 sm:px-10 lg:px-14 xl:px-20 py-10 flex justify-center">
           <div className="w-full max-w-[600px]">
+            <PricingBanner />
             <StepHeading
               currentStep={form.step}
               subtitle={
