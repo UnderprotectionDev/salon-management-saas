@@ -9,6 +9,7 @@ export { TopNav } from "./components/TopNav";
 export { BottomNav } from "./components/BottomNav";
 export { MobileStepIndicator } from "./components/MobileStepIndicator";
 export { CompletionOverlay } from "./components/CompletionOverlay";
+export { PricingBanner } from "./components/PricingBanner";
 export { useOnboardingForm } from "./hooks/useOnboardingForm";
 export { useSlugAvailability } from "./hooks/useSlugAvailability";
 export { useLogoUpload } from "./hooks/useLogoUpload";
