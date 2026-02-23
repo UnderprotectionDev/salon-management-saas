@@ -78,13 +78,13 @@ export function WeekView({
               return (
                 <div
                   key={day}
-                  className={`min-w-[140px] flex-1 border-r last:border-r-0 p-2 text-center ${isToday ? "bg-blue-50" : "bg-background"}`}
+                  className={`min-w-[140px] flex-1 border-r last:border-r-0 p-2 text-center ${isToday ? "bg-brand/5" : "bg-background"}`}
                 >
                   <div className="text-xs text-muted-foreground">
                     {format(dayDate, "EEE")}
                   </div>
                   <div
-                    className={`text-sm font-medium ${isToday ? "text-blue-600" : ""}`}
+                    className={`text-sm font-medium ${isToday ? "text-brand" : ""}`}
                   >
                     {format(dayDate, "d")}
                   </div>
@@ -122,7 +122,7 @@ export function WeekView({
               return (
                 <div
                   key={day}
-                  className={`min-w-[140px] flex-1 border-r last:border-r-0 ${isToday ? "bg-blue-50/30" : ""}`}
+                  className={`min-w-[140px] flex-1 border-r last:border-r-0 ${isToday ? "bg-brand/3" : ""}`}
                 >
                   <div className="relative">
                     {hours.map((hour) => (

@@ -19,7 +19,7 @@ type NotificationItemProps = {
 const typeIcons: Record<string, React.ReactNode> = {
   new_booking: <CalendarCheck className="size-4 text-green-600" />,
   cancellation: <CalendarMinus className="size-4 text-red-600" />,
-  reschedule: <CalendarSync className="size-4 text-blue-600" />,
+  reschedule: <CalendarSync className="size-4 text-brand" />,
   reminder_30min: <Clock className="size-4 text-orange-600" />,
   no_show: <UserX className="size-4 text-red-600" />,
   status_change: <Bell className="size-4 text-gray-600" />,
@@ -35,7 +35,7 @@ export function NotificationItem({
   return (
     <button
       type="button"
-      className={`flex w-full items-start gap-3 rounded-md p-3 text-left transition-colors hover:bg-muted ${isUnread ? "bg-blue-50/50" : ""}`}
+      className={`flex w-full items-start gap-3 rounded-md p-3 text-left transition-colors hover:bg-muted ${isUnread ? "bg-brand/5" : ""}`}
       onClick={onClick}
     >
       <div className="mt-0.5 shrink-0">{icon}</div>
@@ -47,7 +47,7 @@ export function NotificationItem({
             {notification.title}
           </span>
           {isUnread && (
-            <div className="size-2 shrink-0 rounded-full bg-blue-500" />
+            <div className="size-2 shrink-0 rounded-full bg-brand" />
           )}
         </div>
         <p className="text-xs text-muted-foreground truncate">
