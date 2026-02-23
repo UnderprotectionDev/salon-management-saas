@@ -11,7 +11,7 @@ export function StepHeading({
   subtitle?: string;
   steps?: readonly StepDef[];
 }) {
-  const resolvedSteps = (steps && steps.length > 0) ? steps : STEPS;
+  const resolvedSteps = steps && steps.length > 0 ? steps : STEPS;
   const totalSteps = resolvedSteps.length;
   const safeStep = Math.max(0, Math.min(currentStep, totalSteps - 1));
   const meta = resolvedSteps[safeStep];

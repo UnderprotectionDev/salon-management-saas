@@ -92,7 +92,7 @@ export default function DesignPortfolioPage() {
       ? salonTypeArr.length > 1
         ? "multi"
         : salonTypeArr[0]
-      : "hair";
+      : "hair_women";
 
   // ---------------------------------------------------------------------------
   // Render

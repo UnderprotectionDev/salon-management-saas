@@ -6,13 +6,13 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { authClient } from "@/lib/auth-client";
+import type { SalonType } from "@/modules/ai/constants";
 import { api } from "../../../../../convex/_generated/api";
 
 // =============================================================================
 // Types
 // =============================================================================
 
-type SalonType = "hair" | "nail" | "makeup" | "barber" | "spa" | "multi";
 type Section = "analysis" | "tryon" | "styles" | "schedule";
 
 interface AIHubSummaryCardsProps {

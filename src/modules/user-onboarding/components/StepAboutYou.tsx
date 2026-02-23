@@ -1,6 +1,13 @@
 "use client";
 
-import { Calendar, Check, RefreshCw, User, UserRound, Users } from "lucide-react";
+import {
+  Calendar,
+  Check,
+  RefreshCw,
+  User,
+  UserRound,
+  Users,
+} from "lucide-react";
 import { useId, useState } from "react";
 import NiceAvatar from "react-nice-avatar";
 import { Input } from "@/components/ui/input";
@@ -149,7 +156,10 @@ export function StepAboutYou({
                   </div>
                   {selectedIndex === i && (
                     <span className="absolute -bottom-0.5 -right-0.5 flex size-4 items-center justify-center rounded-full bg-brand text-white shadow-sm">
-                      <Check className="size-2.5 stroke-[3]" aria-hidden="true" />
+                      <Check
+                        className="size-2.5 stroke-[3]"
+                        aria-hidden="true"
+                      />
                     </span>
                   )}
                 </button>

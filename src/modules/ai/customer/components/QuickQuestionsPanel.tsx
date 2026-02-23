@@ -9,16 +9,11 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { api } from "../../../../../convex/_generated/api";
 import type { Id } from "../../../../../convex/_generated/dataModel";
+import type { SalonType } from "@/modules/ai/constants";
 import {
   CREDIT_COSTS,
   QUICK_QUESTIONS_BY_TYPE,
 } from "../../../../../convex/lib/aiConstants";
-
-// =============================================================================
-// Types
-// =============================================================================
-
-type SalonType = "hair" | "nail" | "makeup" | "barber" | "spa" | "multi";
 
 interface QuickQuestionsPanelProps {
   analysisId: Id<"aiAnalyses">;

@@ -487,7 +487,7 @@ export const runVirtualTryOn = internalAction({
               "Match the colors, patterns, shapes, and decorations as closely as possible. " +
               "Keep the hand, fingers, skin tone, and background exactly the same. " +
               "Only change the nail color and nail art design.";
-          } else if (salonType === "hair") {
+          } else if (salonType === "hair_women" || salonType === "hair_men") {
             tryOnPrompt =
               "The first image <img><|image_1|></img> shows a person. " +
               "The second image <img><|image_2|></img> shows a hairstyle reference. " +
@@ -520,7 +520,7 @@ export const runVirtualTryOn = internalAction({
           tryOnPrompt =
             `The image <img><|image_1|></img> shows a hand with nails. ${userPrompt}. ` +
             "Keep the hand, fingers, skin tone, and background exactly the same. Only change the nail color and design.";
-        } else if (salonType === "hair") {
+        } else if (salonType === "hair_women" || salonType === "hair_men") {
           tryOnPrompt =
             `The image <img><|image_1|></img> shows a person. ${userPrompt}. ` +
             "Keep the person's face, body, and background exactly the same. Only change the hair.";

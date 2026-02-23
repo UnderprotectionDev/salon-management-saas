@@ -23,19 +23,46 @@ import {
 } from "./lib/validation";
 import { orgSalonTypesValidator } from "./lib/validators";
 
-type OrgSalonTypeItem = "hair" | "nail" | "makeup" | "barber" | "spa";
+type OrgSalonTypeItem =
+  | "hair_women"
+  | "hair_men"
+  | "children"
+  | "braiding"
+  | "blowout_bar"
+  | "hair_extensions"
+  | "nail"
+  | "makeup"
+  | "skincare"
+  | "lash_brow"
+  | "permanent_makeup"
+  | "threading"
+  | "head_spa"
+  | "spa"
+  | "massage"
+  | "hammam"
+  | "sauna"
+  | "ayurveda"
+  | "float_therapy"
+  | "waxing"
+  | "tanning"
+  | "laser"
+  | "electrolysis"
+  | "medspa"
+  | "aesthetic_clinic"
+  | "cryotherapy"
+  | "iv_therapy"
+  | "body_contouring"
+  | "hair_loss"
+  | "tattoo"
+  | "piercing"
+  | "henna"
+  | "pet_grooming"
+  | "beauty_center";
 
-/**
- * Normalize salonType from legacy string format to new array format.
- * Handles migration period where DB may contain either format.
- */
+/** Parse salonType from DB (always array format) */
 function normalizeSalonType(raw: unknown): OrgSalonTypeItem[] | null {
   if (!raw) return null;
   if (Array.isArray(raw)) return raw as OrgSalonTypeItem[];
-  if (typeof raw === "string") {
-    if (raw === "multi") return ["hair", "nail", "makeup"];
-    return [raw as OrgSalonTypeItem];
-  }
   return null;
 }
 

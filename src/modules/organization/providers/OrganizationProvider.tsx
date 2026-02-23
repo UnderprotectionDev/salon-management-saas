@@ -18,7 +18,42 @@ type Organization = {
   slug: string;
   logo?: string | null;
   description?: string | null;
-  salonType?: Array<"hair" | "nail" | "makeup" | "barber" | "spa"> | null;
+  salonType?: Array<
+    | "hair_women"
+    | "hair_men"
+    | "children"
+    | "braiding"
+    | "blowout_bar"
+    | "hair_extensions"
+    | "nail"
+    | "makeup"
+    | "skincare"
+    | "lash_brow"
+    | "permanent_makeup"
+    | "threading"
+    | "head_spa"
+    | "spa"
+    | "massage"
+    | "hammam"
+    | "sauna"
+    | "ayurveda"
+    | "float_therapy"
+    | "waxing"
+    | "tanning"
+    | "laser"
+    | "electrolysis"
+    | "medspa"
+    | "aesthetic_clinic"
+    | "cryotherapy"
+    | "iv_therapy"
+    | "body_contouring"
+    | "hair_loss"
+    | "tattoo"
+    | "piercing"
+    | "henna"
+    | "pet_grooming"
+    | "beauty_center"
+  > | null;
   role: "owner" | "staff";
   memberId: Id<"member">;
 };
@@ -113,21 +148,9 @@ export function OrganizationProvider({ children }: { children: ReactNode }) {
       slug: org.slug,
       logo: org.logo,
       description: org.description,
-      // Normalize from legacy string or new array format (migration period)
-      salonType: (() => {
-        const raw = org.salonType as
-          | string
-          | Array<"hair" | "nail" | "makeup" | "barber" | "spa">
-          | null
-          | undefined;
-        if (!raw) return null;
-        if (Array.isArray(raw)) return raw;
-        if (raw === "multi")
-          return ["hair", "nail", "makeup"] as Array<
-            "hair" | "nail" | "makeup" | "barber" | "spa"
-          >;
-        return [raw] as Array<"hair" | "nail" | "makeup" | "barber" | "spa">;
-      })(),
+      salonType: org.salonType
+        ? (org.salonType as Organization["salonType"])
+        : null,
       role: org.role,
       memberId: org.memberId,
     }),

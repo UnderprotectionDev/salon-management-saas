@@ -10,10 +10,79 @@
 // =========================================================================
 
 /** Internal AI salon type — includes "multi" for derived multi-service salons */
-export type SalonType = "hair" | "nail" | "makeup" | "barber" | "spa" | "multi";
+export type SalonType =
+  | "hair_women"
+  | "hair_men"
+  | "children"
+  | "braiding"
+  | "blowout_bar"
+  | "hair_extensions"
+  | "nail"
+  | "makeup"
+  | "skincare"
+  | "lash_brow"
+  | "permanent_makeup"
+  | "threading"
+  | "head_spa"
+  | "spa"
+  | "massage"
+  | "hammam"
+  | "sauna"
+  | "ayurveda"
+  | "float_therapy"
+  | "waxing"
+  | "tanning"
+  | "laser"
+  | "electrolysis"
+  | "medspa"
+  | "aesthetic_clinic"
+  | "cryotherapy"
+  | "iv_therapy"
+  | "body_contouring"
+  | "hair_loss"
+  | "tattoo"
+  | "piercing"
+  | "henna"
+  | "pet_grooming"
+  | "beauty_center"
+  | "multi";
 
 /** Individual org salon type (stored in DB — no "multi" option) */
-export type OrgSalonType = "hair" | "nail" | "makeup" | "barber" | "spa";
+export type OrgSalonType =
+  | "hair_women"
+  | "hair_men"
+  | "children"
+  | "braiding"
+  | "blowout_bar"
+  | "hair_extensions"
+  | "nail"
+  | "makeup"
+  | "skincare"
+  | "lash_brow"
+  | "permanent_makeup"
+  | "threading"
+  | "head_spa"
+  | "spa"
+  | "massage"
+  | "hammam"
+  | "sauna"
+  | "ayurveda"
+  | "float_therapy"
+  | "waxing"
+  | "tanning"
+  | "laser"
+  | "electrolysis"
+  | "medspa"
+  | "aesthetic_clinic"
+  | "cryotherapy"
+  | "iv_therapy"
+  | "body_contouring"
+  | "hair_loss"
+  | "tattoo"
+  | "piercing"
+  | "henna"
+  | "pet_grooming"
+  | "beauty_center";
 
 /**
  * Derives the effective SalonType for AI features from the org's multi-select array.
@@ -34,7 +103,8 @@ export function deriveEffectiveSalonType(
  * Barber and spa do not have try-on capability.
  */
 export const TRYON_ENABLED_TYPES: SalonType[] = [
-  "hair",
+  "hair_women",
+  "hair_men",
   "nail",
   "makeup",
   "multi",
@@ -47,7 +117,8 @@ export const SALON_TYPE_TRYON_MODE_MAP: Record<
   string,
   "hair" | "fingertip" | "face"
 > = {
-  hair: "hair",
+  hair_women: "hair",
+  hair_men: "hair",
   nail: "fingertip",
   makeup: "face",
   multi: "face", // Default to face for multi-service salons
@@ -57,10 +128,10 @@ export const SALON_TYPE_TRYON_MODE_MAP: Record<
  * Maximum number of photos allowed per salon type for multi-image analysis.
  */
 export const MAX_PHOTOS_BY_TYPE: Record<string, number> = {
-  hair: 3, // front + side + back
+  hair_women: 3, // front + side + back
   nail: 2, // both hands
   makeup: 2, // front + profile
-  barber: 2,
+  hair_men: 2, // front + side
   spa: 1,
   multi: 3,
 };
@@ -69,10 +140,10 @@ export const MAX_PHOTOS_BY_TYPE: Record<string, number> = {
  * Angle labels for multi-image analysis by salon type.
  */
 export const PHOTO_ANGLE_LABELS: Record<string, string[]> = {
-  hair: ["Front", "Side", "Back"],
+  hair_women: ["Front", "Side", "Back"],
   nail: ["Left Hand", "Right Hand"],
   makeup: ["Front", "Profile"],
-  barber: ["Front", "Side"],
+  hair_men: ["Front", "Side"],
   spa: ["Front"],
   multi: ["Front", "Side", "Back"],
 };
@@ -132,7 +203,7 @@ export const QUICK_QUESTIONS_BY_TYPE: Record<
   string,
   { key: string; label: string }[]
 > = {
-  hair: [
+  hair_women: [
     { key: "best_cut", label: "Best cut for my face shape?" },
     { key: "color_recs", label: "Color recommendations?" },
     { key: "home_care", label: "Home care routine?" },
@@ -147,7 +218,7 @@ export const QUICK_QUESTIONS_BY_TYPE: Record<
     { key: "eye_looks", label: "Eye shape-based looks?" },
     { key: "skincare", label: "Skincare suggestions?" },
   ],
-  barber: [
+  hair_men: [
     { key: "best_cut", label: "Best cut for my face shape?" },
     { key: "beard_style", label: "Beard style recommendations?" },
     { key: "grooming", label: "Grooming routine?" },
@@ -169,7 +240,7 @@ export const QUICK_QUESTIONS_BY_TYPE: Record<
 // =========================================================================
 
 export const ANALYSIS_FOCUS_BY_TYPE: Record<string, string[]> = {
-  hair: [
+  hair_women: [
     "face shape",
     "facial symmetry",
     "hair type",
@@ -186,7 +257,7 @@ export const ANALYSIS_FOCUS_BY_TYPE: Record<string, string[]> = {
     "eye shape",
     "lip shape",
   ],
-  barber: [
+  hair_men: [
     "face shape",
     "facial symmetry",
     "hair type",

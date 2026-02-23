@@ -15,7 +15,44 @@ export const slugSchema = z
   );
 
 export const salonTypeSchema = z
-  .array(z.enum(["hair", "nail", "makeup", "barber", "spa"]))
+  .array(
+    z.enum([
+      "hair_women",
+      "hair_men",
+      "children",
+      "braiding",
+      "blowout_bar",
+      "hair_extensions",
+      "nail",
+      "makeup",
+      "skincare",
+      "lash_brow",
+      "permanent_makeup",
+      "threading",
+      "head_spa",
+      "spa",
+      "massage",
+      "hammam",
+      "sauna",
+      "ayurveda",
+      "float_therapy",
+      "waxing",
+      "tanning",
+      "laser",
+      "electrolysis",
+      "medspa",
+      "aesthetic_clinic",
+      "cryotherapy",
+      "iv_therapy",
+      "body_contouring",
+      "hair_loss",
+      "tattoo",
+      "piercing",
+      "henna",
+      "pet_grooming",
+      "beauty_center",
+    ]),
+  )
   .min(1, "Please select at least one salon type");
 
 export const emailSchema = z
