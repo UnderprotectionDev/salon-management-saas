@@ -102,7 +102,8 @@ export function QuickQuestionsPanel({
           const isError = answer === "__error__";
           const isAnswered = answer !== undefined && !isLoading && !isError;
           const isPending = pendingKeys.has(q.key);
-          const isDisabled = isAnswered || isLoading || isPending || hasInsufficientCredits;
+          const isDisabled =
+            isAnswered || isLoading || isPending || hasInsufficientCredits;
 
           return (
             <div key={q.key} className="space-y-1.5">

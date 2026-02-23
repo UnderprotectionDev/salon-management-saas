@@ -88,7 +88,6 @@ function getInitials(name: string): string {
     .slice(0, 2);
 }
 
-
 function formatTime(minutes: number): string {
   const hours = Math.floor(minutes / 60);
   const mins = minutes % 60;
@@ -169,9 +168,14 @@ function CustomerActivityTab({
               <div className="flex flex-col items-end gap-1">
                 <Badge
                   variant="secondary"
-                  className={APPOINTMENT_STATUS_BADGE_CLASSES[apt.status as AppointmentStatus] ?? ""}
+                  className={
+                    APPOINTMENT_STATUS_BADGE_CLASSES[
+                      apt.status as AppointmentStatus
+                    ] ?? ""
+                  }
                 >
-                  {APPOINTMENT_STATUS_LABELS[apt.status as AppointmentStatus] ?? apt.status}
+                  {APPOINTMENT_STATUS_LABELS[apt.status as AppointmentStatus] ??
+                    apt.status}
                 </Badge>
                 <span className="text-sm font-medium">
                   {formatPrice(apt.total)}

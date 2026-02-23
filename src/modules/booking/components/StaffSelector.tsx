@@ -91,7 +91,9 @@ export function StaffSelector({
                   className="size-full"
                   onError={(e) => {
                     e.currentTarget.style.display = "none";
-                    e.currentTarget.nextElementSibling?.removeAttribute("hidden");
+                    e.currentTarget.nextElementSibling?.removeAttribute(
+                      "hidden",
+                    );
                   }}
                 />
                 <span hidden>{staff.name[0]?.toUpperCase() ?? "S"}</span>
