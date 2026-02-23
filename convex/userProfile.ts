@@ -1,6 +1,8 @@
 import { ConvexError, v } from "convex/values";
 import { authedMutation, authedQuery, ErrorCode } from "./lib/functions";
+import { isValidTurkishPhone } from "./lib/phone";
 import {
+  avatarConfigValidator,
   genderValidator,
   hairLengthValidator,
   hairTypeValidator,
@@ -26,6 +28,7 @@ export const get = authedQuery({
     return {
       _id: profile._id,
       phone: profile.phone,
+      avatarConfig: profile.avatarConfig,
       gender: profile.gender,
       dateOfBirth: profile.dateOfBirth,
       hairType: profile.hairType,
@@ -104,11 +107,16 @@ export const acceptConsent = authedMutation({
 export const updateProfile = authedMutation({
   args: {
     gender: v.optional(genderValidator),
+    avatarConfig: v.optional(avatarConfigValidator),
     dateOfBirth: v.optional(v.string()),
     hairType: v.optional(hairTypeValidator),
     hairLength: v.optional(hairLengthValidator),
     allergies: v.optional(v.array(v.string())),
     allergyNotes: v.optional(v.string()),
+    phone: v.optional(v.string()),
+    emailReminders: v.optional(v.boolean()),
+    marketingEmails: v.optional(v.boolean()),
+    marketingConsent: v.optional(v.boolean()),
   },
   returns: v.null(),
   handler: async (ctx, args) => {
@@ -127,13 +135,44 @@ export const updateProfile = authedMutation({
 
     const updates: Record<string, unknown> = { updatedAt: Date.now() };
 
-    if (args.gender !== undefined) updates.gender = args.gender;
+    if (args.gender !== undefined) {
+      updates.gender = args.gender;
+    }
+    if (args.avatarConfig !== undefined) {
+      updates.avatarConfig = args.avatarConfig;
+    }
     if (args.dateOfBirth !== undefined) updates.dateOfBirth = args.dateOfBirth;
     if (args.hairType !== undefined) updates.hairType = args.hairType;
     if (args.hairLength !== undefined) updates.hairLength = args.hairLength;
     if (args.allergies !== undefined) updates.allergies = args.allergies;
     if (args.allergyNotes !== undefined)
       updates.allergyNotes = args.allergyNotes;
+
+    if (args.phone !== undefined) {
+      if (args.phone !== "" && !isValidTurkishPhone(args.phone)) {
+        throw new ConvexError({
+          code: ErrorCode.VALIDATION_ERROR,
+          message: "Invalid phone number format. Expected: +90 5XX XXX XX XX",
+        });
+      }
+      updates.phone = args.phone || undefined;
+    }
+
+    if (args.emailReminders !== undefined)
+      updates.emailReminders = args.emailReminders;
+    if (args.marketingEmails !== undefined)
+      updates.marketingEmails = args.marketingEmails;
+
+    if (args.marketingConsent !== undefined) {
+      updates.marketingConsent = args.marketingConsent;
+      if (args.marketingConsent) {
+        updates.marketingConsentAt = Date.now();
+        updates.consentWithdrawnAt = undefined;
+      } else {
+        updates.marketingConsentAt = undefined;
+        updates.consentWithdrawnAt = Date.now();
+      }
+    }
 
     await ctx.db.patch(profile._id, updates);
     return null;
@@ -205,6 +244,12 @@ export const savePhoneFromBooking = authedMutation({
 
     // Only save if profile exists and phone is not already set
     if (profile && !profile.phone) {
+      if (!isValidTurkishPhone(args.phone)) {
+        throw new ConvexError({
+          code: ErrorCode.VALIDATION_ERROR,
+          message: "Invalid phone number format. Expected: +90 5XX XXX XX XX",
+        });
+      }
       await ctx.db.patch(profile._id, {
         phone: args.phone,
         updatedAt: Date.now(),

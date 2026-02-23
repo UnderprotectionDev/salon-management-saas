@@ -1,15 +1,20 @@
 import { STEPS } from "../lib/constants";
 
+type StepDef = { number: string; title: string; description: string };
+
 export function StepHeading({
   currentStep,
   subtitle,
+  steps,
 }: {
   currentStep: number;
   subtitle?: string;
+  steps?: readonly StepDef[];
 }) {
-  const totalSteps = STEPS.length;
+  const resolvedSteps = (steps && steps.length > 0) ? steps : STEPS;
+  const totalSteps = resolvedSteps.length;
   const safeStep = Math.max(0, Math.min(currentStep, totalSteps - 1));
-  const meta = STEPS[safeStep];
+  const meta = resolvedSteps[safeStep];
   const progressPercent = ((safeStep + 1) / totalSteps) * 100;
 
   return (

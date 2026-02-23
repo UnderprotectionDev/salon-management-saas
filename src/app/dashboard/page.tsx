@@ -24,6 +24,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
+import NiceAvatar, { genConfig } from "react-nice-avatar";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -970,6 +971,19 @@ export default function DashboardPage() {
     }
   }, [userProfile, user, acceptConsent]);
 
+  // Redirect to /welcome if onboarding not completed
+  // Covers both: freshly created profile (from acceptConsent above)
+  // and existing profile that hasn't completed onboarding
+  useEffect(() => {
+    if (
+      userProfile &&
+      !userProfile.onboardingCompleted &&
+      !userProfile.onboardingDismissedAt
+    ) {
+      router.replace("/welcome");
+    }
+  }, [userProfile, router]);
+
   const handleSignOut = async () => {
     setIsSigningOut(true);
     try {
@@ -999,7 +1013,22 @@ export default function DashboardPage() {
     }
   }, [user, router]);
 
-  if (user === undefined || organizations === undefined) {
+  // Show loading while:
+  // - user query is loading (undefined)
+  // - organizations query is loading (undefined)
+  // - userProfile is loading (undefined) or being created (null → acceptConsent in progress)
+  //   This prevents dashboard flash before /welcome redirect for new users
+  if (
+    user === undefined ||
+    organizations === undefined ||
+    userProfile === undefined ||
+    userProfile === null
+  ) {
+    return <DashboardSkeleton />;
+  }
+
+  // If onboarding not complete, don't render dashboard (redirect effect handles it)
+  if (!userProfile.onboardingCompleted && !userProfile.onboardingDismissedAt) {
     return <DashboardSkeleton />;
   }
 
@@ -1017,28 +1046,13 @@ export default function DashboardPage() {
         {/* Welcome Header + Profile Card */}
         <Card>
           <CardHeader className="flex flex-col sm:flex-row sm:items-center gap-4">
-            <Avatar className="size-12">
-              <AvatarImage
-                src={user.image ?? undefined}
-                alt={user.name ?? "User"}
+            <div className="size-12 rounded-full overflow-hidden shrink-0">
+              <NiceAvatar
+                style={{ width: "100%", height: "100%" }}
+                shape="circle"
+                {...(userProfile.avatarConfig ?? genConfig(user._id))}
               />
-              <AvatarFallback>
-                <img
-                  src={`https://api.dicebear.com/9.x/lorelei/svg?seed=${encodeURIComponent(user._id)}`}
-                  alt={user.name ?? "User"}
-                  className="size-full"
-                  onError={(e) => {
-                    e.currentTarget.style.display = "none";
-                    e.currentTarget.nextElementSibling?.removeAttribute(
-                      "hidden",
-                    );
-                  }}
-                />
-                <span hidden className="text-lg">
-                  {userInitial}
-                </span>
-              </AvatarFallback>
-            </Avatar>
+            </div>
             <div className="flex-1 space-y-1">
               <CardTitle className="text-xl">
                 {greeting}, {user.name || "User"}!

@@ -4,6 +4,7 @@ import { useQuery } from "convex/react";
 import { Mail, Phone, Users } from "lucide-react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
+import NiceAvatar, { genConfig } from "react-nice-avatar";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
@@ -106,18 +107,11 @@ export default function StaffPage() {
                     <Avatar className="size-12">
                       <AvatarImage src={staff.imageUrl ?? undefined} />
                       <AvatarFallback>
-                        <img
-                          src={`https://api.dicebear.com/9.x/lorelei/svg?seed=${encodeURIComponent(staff._id)}`}
-                          alt={staff.name}
-                          className="size-full"
-                          onError={(e) => {
-                            e.currentTarget.style.display = "none";
-                            e.currentTarget.nextElementSibling?.removeAttribute(
-                              "hidden",
-                            );
-                          }}
+                        <NiceAvatar
+                          style={{ width: "100%", height: "100%" }}
+                          shape="circle"
+                          {...genConfig(staff._id)}
                         />
-                        <span hidden>{getInitials(staff.name)}</span>
                       </AvatarFallback>
                     </Avatar>
                     <div className="flex-1 min-w-0">

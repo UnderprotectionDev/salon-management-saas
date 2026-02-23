@@ -643,6 +643,9 @@ export default defineSchema({
     userId: v.string(), // Better Auth user ID (unique per user)
     // Profile info
     phone: v.optional(v.string()), // +90 5XX XXX XX XX (auto-saved from first booking)
+    avatarConfig: v.optional(v.any()), // react-nice-avatar AvatarConfig JSON
+    avatarUrl: v.optional(v.string()), // legacy Dicebear URL (kept for schema compat)
+    avatarSeed: v.optional(v.string()), // legacy Dicebear seed (kept for schema compat)
     gender: v.optional(
       v.union(v.literal("male"), v.literal("female"), v.literal("unspecified")),
     ),

@@ -1,7 +1,13 @@
-export function MobileStepIndicator({ currentStep }: { currentStep: number }) {
+export function MobileStepIndicator({
+  currentStep,
+  totalSteps = 3,
+}: {
+  currentStep: number;
+  totalSteps?: number;
+}) {
   return (
     <div className="flex lg:hidden items-center justify-center gap-2 py-3 border-b border-border">
-      {[0, 1, 2].map((i) => (
+      {Array.from({ length: totalSteps }, (_, i) => (
         <div
           key={i}
           className={`h-1.5 rounded-full transition-all duration-300 ${
