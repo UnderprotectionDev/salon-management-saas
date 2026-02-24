@@ -693,6 +693,204 @@ export default defineSchema({
     // Allergies & sensitivities
     allergies: v.optional(v.array(v.string())), // ["ppd", "ammonia", "latex", ...]
     allergyNotes: v.optional(v.string()),
+    // Salon category preferences (contextual profile fields)
+    salonPreferences: v.optional(
+      v.object({
+        selectedCategories: v.array(v.string()),
+        hair: v.optional(
+          v.object({
+            hairType: v.optional(
+              v.union(
+                v.literal("straight"),
+                v.literal("wavy"),
+                v.literal("curly"),
+                v.literal("very_curly"),
+              ),
+            ),
+            hairLength: v.optional(
+              v.union(
+                v.literal("short"),
+                v.literal("medium"),
+                v.literal("long"),
+                v.literal("very_long"),
+              ),
+            ),
+            naturalHairColor: v.optional(v.string()),
+            currentHairColor: v.optional(v.string()),
+            colorTreated: v.optional(v.boolean()),
+            scalpSensitivity: v.optional(
+              v.union(
+                v.literal("none"),
+                v.literal("mild"),
+                v.literal("moderate"),
+                v.literal("severe"),
+              ),
+            ),
+            photos: v.optional(v.array(v.id("_storage"))),
+            washFrequency: v.optional(
+              v.union(
+                v.literal("daily"),
+                v.literal("every_other_day"),
+                v.literal("twice_week"),
+                v.literal("weekly"),
+                v.literal("less"),
+              ),
+            ),
+            heatToolUsage: v.optional(
+              v.union(
+                v.literal("none"),
+                v.literal("occasional"),
+                v.literal("frequent"),
+                v.literal("daily"),
+              ),
+            ),
+            productsUsed: v.optional(v.string()),
+            lastChemicalTreatment: v.optional(v.string()),
+          }),
+        ),
+        nails: v.optional(
+          v.object({
+            nailType: v.optional(
+              v.union(
+                v.literal("natural"),
+                v.literal("gel"),
+                v.literal("acrylic"),
+                v.literal("none"),
+              ),
+            ),
+            skinTone: v.optional(
+              v.union(
+                v.literal("fair"),
+                v.literal("light"),
+                v.literal("medium"),
+                v.literal("olive"),
+                v.literal("tan"),
+                v.literal("dark"),
+              ),
+            ),
+            sensitiveSkin: v.optional(v.boolean()),
+          }),
+        ),
+        skin: v.optional(
+          v.object({
+            skinType: v.optional(
+              v.union(
+                v.literal("normal"),
+                v.literal("dry"),
+                v.literal("oily"),
+                v.literal("combination"),
+                v.literal("sensitive"),
+              ),
+            ),
+            skinConditions: v.optional(v.array(v.string())),
+            lashExtensionsHistory: v.optional(v.boolean()),
+            photos: v.optional(v.array(v.id("_storage"))),
+            dailyRoutine: v.optional(
+              v.union(
+                v.literal("none"),
+                v.literal("basic"),
+                v.literal("moderate"),
+                v.literal("extensive"),
+              ),
+            ),
+            sunscreenUsage: v.optional(
+              v.union(
+                v.literal("never"),
+                v.literal("sometimes"),
+                v.literal("daily"),
+              ),
+            ),
+            activeIngredients: v.optional(v.array(v.string())),
+            lastFacialDate: v.optional(v.string()),
+          }),
+        ),
+        spa: v.optional(
+          v.object({
+            pregnancy: v.optional(v.boolean()),
+            bloodPressureIssues: v.optional(v.boolean()),
+            chronicPainAreas: v.optional(v.array(v.string())),
+            pressurePreference: v.optional(
+              v.union(
+                v.literal("light"),
+                v.literal("medium"),
+                v.literal("firm"),
+                v.literal("deep"),
+              ),
+            ),
+            aromatherapyPreference: v.optional(v.array(v.string())),
+            focusAreas: v.optional(v.array(v.string())),
+          }),
+        ),
+        body: v.optional(
+          v.object({
+            skinSensitivityLevel: v.optional(
+              v.union(
+                v.literal("none"),
+                v.literal("mild"),
+                v.literal("moderate"),
+                v.literal("severe"),
+              ),
+            ),
+            previousLaserTreatments: v.optional(v.boolean()),
+            tanningHistory: v.optional(
+              v.union(
+                v.literal("none"),
+                v.literal("occasional"),
+                v.literal("regular"),
+              ),
+            ),
+            preferredMethod: v.optional(
+              v.union(
+                v.literal("waxing"),
+                v.literal("laser"),
+                v.literal("ipl"),
+                v.literal("sugaring"),
+                v.literal("threading"),
+                v.literal("shaving"),
+              ),
+            ),
+            painTolerance: v.optional(
+              v.union(
+                v.literal("low"),
+                v.literal("medium"),
+                v.literal("high"),
+              ),
+            ),
+            lastTreatmentDate: v.optional(v.string()),
+            treatmentAreas: v.optional(v.array(v.string())),
+          }),
+        ),
+        medical: v.optional(
+          v.object({
+            currentMedications: v.optional(v.string()),
+            previousProcedures: v.optional(v.string()),
+            physicianClearance: v.optional(v.boolean()),
+          }),
+        ),
+        art: v.optional(
+          v.object({
+            previousTattoos: v.optional(v.boolean()),
+            keloidTendency: v.optional(v.boolean()),
+            metalAllergies: v.optional(v.array(v.string())),
+            photos: v.optional(v.array(v.id("_storage"))),
+          }),
+        ),
+        specialty: v.optional(
+          v.object({
+            petType: v.optional(v.string()),
+            petBreed: v.optional(v.string()),
+            petSize: v.optional(
+              v.union(
+                v.literal("small"),
+                v.literal("medium"),
+                v.literal("large"),
+              ),
+            ),
+            photos: v.optional(v.array(v.id("_storage"))),
+          }),
+        ),
+      }),
+    ),
     // KVKK consents
     dataProcessingConsent: v.boolean(),
     dataProcessingConsentAt: v.number(),

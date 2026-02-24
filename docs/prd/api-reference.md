@@ -83,6 +83,26 @@
 | `appointments.reschedule` | orgMutation | `appointmentId, newDate, newStartTime, newEndTime, newStaffId?` | `{success}` |
 | `appointments.rescheduleByCustomer` | publicMutation | `organizationId, confirmationCode, phone, newDate, newStartTime, newEndTime, sessionId` | `{success}` |
 
+## User Profile & Preferences
+
+| Function | Wrapper | Args | Returns |
+|----------|---------|------|---------|
+| `userProfile.get` | authedQuery | `{}` | `userOnboardingProfile \| null` |
+| `userProfile.hasConsent` | authedQuery | `{}` | `boolean` |
+| `userProfile.acceptConsent` | authedMutation | `marketingConsent?` | `id("userProfile")` |
+| `userProfile.updateProfile` | authedMutation | `gender?, avatarConfig?, dateOfBirth?, hairType?, hairLength?, allergies?, allergyNotes?, phone?, emailReminders?, marketingEmails?, marketingConsent?` | `null` |
+| `userProfile.updateSelectedCategories` | authedMutation | `selectedCategories: string[]` | `null` |
+| `userProfile.updateCategoryPreferences` | authedMutation | `category: "hair"\|"nails"\|"skin"\|"spa"\|"body"\|"medical"\|"art"\|"specialty", data: {category-specific fields}` | `null` |
+| `userProfile.completeOnboarding` | authedMutation | `{}` | `null` |
+| `userProfile.updateNotificationPreferences` | authedMutation | `emailReminders?, marketingEmails?, marketingConsent?` | `null` |
+
+**Validation rules:**
+- Photos: max 3 per category (hair, skin, art, specialty support photos)
+- `productsUsed`: max 500 characters
+- `currentMedications`, `previousProcedures`: max 1000 characters each
+- `petType`, `petBreed`: max 100 characters each
+- Phone: Turkish format (+90 5XX XXX XX XX)
+
 ## Customer Management
 
 | Function | Wrapper | Args | Returns |
@@ -121,12 +141,16 @@
 
 | Function | Wrapper | Args | Returns |
 |----------|---------|------|---------|
-| `files.generateUploadUrl` | mutation | `{}` | `string` (upload URL) |
+| `files.generateUploadUrl` | authedMutation | `{}` | `string` (upload URL) |
+| `files.getFileUrls` | authedQuery | `storageIds: Id<"_storage">[]` | `(string \| null)[]` (batch URL resolution) |
+| `files.getFileUrl` | authedMutation | `storageId` | `string \| null` |
 | `files.saveOrganizationLogo` | ownerMutation | `storageId, fileName, fileType, fileSize` | `string` (CDN URL) |
 | `files.saveStaffImage` | authedMutation | `staffId, storageId, fileName, fileType, fileSize` | `string` (CDN URL) |
 | `files.saveServiceImage` | ownerMutation | `serviceId, storageId, fileName, fileType, fileSize` | `string` (CDN URL) |
 
 Upload flow: `generateUploadUrl()` → `fetch(url, {method: "POST", body: file})` → `save*({storageId, ...})`
+
+For photo thumbnails (settings preferences): `useQuery(api.files.getFileUrls, { storageIds })` resolves storage IDs to URLs in batch.
 
 ## SaaS Billing (Polar.sh)
 

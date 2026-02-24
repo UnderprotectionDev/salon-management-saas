@@ -9,6 +9,7 @@ import {
   Loader2,
   Save,
   ShieldCheck,
+  Sparkles,
   Trash2,
   User,
 } from "lucide-react";
@@ -16,6 +17,12 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
+import {
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+} from "@/components/ui/accordion";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -25,7 +32,6 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { Checkbox } from "@/components/ui/checkbox";
 import {
   Dialog,
   DialogContent,
@@ -40,15 +46,24 @@ import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Switch } from "@/components/ui/switch";
-import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
-import {
-  COMMON_ALLERGENS,
-  GENDER_OPTIONS,
-  HAIR_LENGTH_OPTIONS,
-  HAIR_TYPE_OPTIONS,
-} from "@/modules/onboarding";
+import { GENDER_OPTIONS } from "@/modules/onboarding";
+import { AllergiesSection } from "@/modules/settings/components/AllergiesSection";
+import { ArtPreferencesForm } from "@/modules/settings/components/preferences/ArtPreferencesForm";
+import { BodyPreferencesForm } from "@/modules/settings/components/preferences/BodyPreferencesForm";
+import { HairPreferencesForm } from "@/modules/settings/components/preferences/HairPreferencesForm";
+import { MedicalPreferencesForm } from "@/modules/settings/components/preferences/MedicalPreferencesForm";
+import { NailsPreferencesForm } from "@/modules/settings/components/preferences/NailsPreferencesForm";
+import { SkinPreferencesForm } from "@/modules/settings/components/preferences/SkinPreferencesForm";
+import { SpaPreferencesForm } from "@/modules/settings/components/preferences/SpaPreferencesForm";
+import { SpecialtyPreferencesForm } from "@/modules/settings/components/preferences/SpecialtyPreferencesForm";
+import { SalonCategorySelector } from "@/modules/settings/components/SalonCategorySelector";
+import { USER_SALON_CATEGORIES } from "@/modules/settings/lib/salon-preferences-constants";
 import { api } from "../../../convex/_generated/api";
+
+// Date of birth max: 13 years ago (local date)
+const now = new Date();
+const MAX_DOB = `${now.getFullYear() - 13}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
 
 export default function UserSettingsPage() {
   const router = useRouter();
@@ -114,8 +129,19 @@ export default function UserSettingsPage() {
           </CardContent>
         </Card>
 
-        {/* Profile Info (editable) */}
+        {/* Personal Info (editable) */}
         {profile && <ProfileSection profile={profile} />}
+
+        {/* Allergies */}
+        {profile && (
+          <AllergiesSection
+            allergies={profile.allergies ?? []}
+            allergyNotes={profile.allergyNotes ?? ""}
+          />
+        )}
+
+        {/* Salon Category Preferences */}
+        {profile && <SalonPreferencesSection profile={profile} />}
 
         {/* Notification Preferences */}
         {profile && <NotificationSection profile={profile} />}
@@ -131,7 +157,7 @@ export default function UserSettingsPage() {
 }
 
 // =============================================================================
-// Profile Section
+// Profile Section (basic personal info — no allergies)
 // =============================================================================
 
 type ProfileData = NonNullable<
@@ -143,16 +169,6 @@ function ProfileSection({ profile }: { profile: NonNullable<ProfileData> }) {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [gender, setGender] = useState(profile.gender ?? null);
   const [dateOfBirth, setDateOfBirth] = useState(profile.dateOfBirth ?? "");
-  const [hairType, setHairType] = useState(profile.hairType ?? null);
-  const [hairLength, setHairLength] = useState(profile.hairLength ?? null);
-  const [allergies, setAllergies] = useState<string[]>(profile.allergies ?? []);
-  const [allergyNotes, setAllergyNotes] = useState(profile.allergyNotes ?? "");
-
-  const toggleAllergen = (id: string) => {
-    setAllergies((prev) =>
-      prev.includes(id) ? prev.filter((a) => a !== id) : [...prev, id],
-    );
-  };
 
   const handleSave = async () => {
     setIsSubmitting(true);
@@ -160,14 +176,6 @@ function ProfileSection({ profile }: { profile: NonNullable<ProfileData> }) {
       await updateProfile({
         gender: (gender as "male" | "female" | "unspecified") ?? undefined,
         dateOfBirth: dateOfBirth || undefined,
-        hairType:
-          (hairType as "straight" | "wavy" | "curly" | "very_curly") ??
-          undefined,
-        hairLength:
-          (hairLength as "short" | "medium" | "long" | "very_long") ??
-          undefined,
-        allergies: allergies.length > 0 ? allergies : undefined,
-        allergyNotes: allergyNotes.trim() || undefined,
       });
       toast.success("Profile updated successfully");
     } catch {
@@ -205,6 +213,7 @@ function ProfileSection({ profile }: { profile: NonNullable<ProfileData> }) {
               <button
                 key={option.id}
                 type="button"
+                aria-pressed={gender === option.id}
                 onClick={() => setGender(option.id)}
                 className={cn(
                   "rounded-lg border px-3 py-1.5 text-sm transition-colors hover:bg-accent",
@@ -228,100 +237,13 @@ function ProfileSection({ profile }: { profile: NonNullable<ProfileData> }) {
             type="date"
             value={dateOfBirth}
             onChange={(e) => setDateOfBirth(e.target.value)}
-            max={
-              new Date(
-                new Date().getFullYear() - 13,
-                new Date().getMonth(),
-                new Date().getDate(),
-              )
-                .toISOString()
-                .split("T")[0]
-            }
+            max={MAX_DOB}
             min="1920-01-01"
             className="max-w-48"
           />
         </div>
 
-        <Separator />
-
-        {/* Hair Type */}
-        <div className="space-y-2">
-          <Label className="text-sm font-medium">Hair Type</Label>
-          <div className="flex gap-2 flex-wrap">
-            {HAIR_TYPE_OPTIONS.map((option) => (
-              <button
-                key={option.id}
-                type="button"
-                onClick={() => setHairType(option.id)}
-                className={cn(
-                  "rounded-lg border px-3 py-1.5 text-sm transition-colors hover:bg-accent",
-                  hairType === option.id &&
-                    "border-primary bg-primary/5 font-medium",
-                )}
-              >
-                {option.label}
-              </button>
-            ))}
-          </div>
-        </div>
-
-        {/* Hair Length */}
-        <div className="space-y-2">
-          <Label className="text-sm font-medium">Hair Length</Label>
-          <div className="flex gap-2 flex-wrap">
-            {HAIR_LENGTH_OPTIONS.map((option) => (
-              <button
-                key={option.id}
-                type="button"
-                onClick={() => setHairLength(option.id)}
-                className={cn(
-                  "rounded-lg border px-3 py-1.5 text-sm transition-colors hover:bg-accent",
-                  hairLength === option.id &&
-                    "border-primary bg-primary/5 font-medium",
-                )}
-              >
-                {option.label}
-              </button>
-            ))}
-          </div>
-        </div>
-
-        <Separator />
-
-        {/* Allergies */}
-        <div className="space-y-2">
-          <div className="flex items-center gap-2">
-            <AlertTriangle className="size-4 text-amber-500" />
-            <Label className="text-sm font-medium">
-              Allergies / Sensitivities
-            </Label>
-          </div>
-          <div className="grid grid-cols-2 gap-2">
-            {COMMON_ALLERGENS.map((allergen) => (
-              <div key={allergen.id} className="flex items-center gap-2">
-                <Checkbox
-                  id={`settings-allergen-${allergen.id}`}
-                  checked={allergies.includes(allergen.id)}
-                  onCheckedChange={() => toggleAllergen(allergen.id)}
-                />
-                <Label
-                  htmlFor={`settings-allergen-${allergen.id}`}
-                  className="text-sm cursor-pointer"
-                >
-                  {allergen.label}
-                </Label>
-              </div>
-            ))}
-          </div>
-          <Textarea
-            value={allergyNotes}
-            onChange={(e) => setAllergyNotes(e.target.value)}
-            placeholder="List any other sensitivities..."
-            rows={2}
-          />
-        </div>
-
-        <Button onClick={handleSave} disabled={isSubmitting}>
+        <Button onClick={handleSave} disabled={isSubmitting} type="button">
           {isSubmitting ? (
             <Loader2 className="mr-2 size-4 animate-spin" />
           ) : (
@@ -332,6 +254,142 @@ function ProfileSection({ profile }: { profile: NonNullable<ProfileData> }) {
       </CardContent>
     </Card>
   );
+}
+
+// =============================================================================
+// Salon Preferences Section (category selector + per-category forms)
+// =============================================================================
+
+function SalonPreferencesSection({
+  profile,
+}: {
+  profile: NonNullable<ProfileData>;
+}) {
+  const prefs = profile.salonPreferences;
+  const selectedCategories: string[] = prefs?.selectedCategories ?? [];
+
+  // Filter to only show categories the user selected
+  const activeCategories = USER_SALON_CATEGORIES.filter((cat) =>
+    selectedCategories.includes(cat.key),
+  );
+
+  return (
+    <>
+      {/* Category Selector */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base flex items-center gap-2">
+            <Sparkles className="size-4" />
+            Salon Categories
+          </CardTitle>
+          <CardDescription>
+            Select the services you&apos;re interested in to see relevant
+            preference options
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <SalonCategorySelector selectedCategories={selectedCategories} />
+        </CardContent>
+      </Card>
+
+      {/* Category-specific preference forms */}
+      {activeCategories.length > 0 && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base">Category Preferences</CardTitle>
+            <CardDescription>
+              Customize your preferences for each selected category
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="p-0">
+            <Accordion type="single" collapsible>
+              {activeCategories.map((cat) => {
+                const Icon = cat.icon;
+                return (
+                  <AccordionItem key={cat.key} value={cat.key}>
+                    <AccordionTrigger className="px-6">
+                      <span className="flex items-center gap-2 text-sm">
+                        <Icon className="size-4" />
+                        {cat.label}
+                      </span>
+                    </AccordionTrigger>
+                    <AccordionContent className="px-2">
+                      <CategoryForm
+                        category={cat.prefsKey}
+                        data={prefs?.[cat.prefsKey]}
+                      />
+                    </AccordionContent>
+                  </AccordionItem>
+                );
+              })}
+            </Accordion>
+          </CardContent>
+        </Card>
+      )}
+    </>
+  );
+}
+
+// Route to the correct form based on category key
+function CategoryForm({
+  category,
+  data,
+}: {
+  category: string;
+  data?: Record<string, unknown>;
+}) {
+  switch (category) {
+    case "hair":
+      return (
+        <HairPreferencesForm
+          data={data as Parameters<typeof HairPreferencesForm>[0]["data"]}
+        />
+      );
+    case "nails":
+      return (
+        <NailsPreferencesForm
+          data={data as Parameters<typeof NailsPreferencesForm>[0]["data"]}
+        />
+      );
+    case "skin":
+      return (
+        <SkinPreferencesForm
+          data={data as Parameters<typeof SkinPreferencesForm>[0]["data"]}
+        />
+      );
+    case "spa":
+      return (
+        <SpaPreferencesForm
+          data={data as Parameters<typeof SpaPreferencesForm>[0]["data"]}
+        />
+      );
+    case "body":
+      return (
+        <BodyPreferencesForm
+          data={data as Parameters<typeof BodyPreferencesForm>[0]["data"]}
+        />
+      );
+    case "medical":
+      return (
+        <MedicalPreferencesForm
+          data={data as Parameters<typeof MedicalPreferencesForm>[0]["data"]}
+        />
+      );
+    case "art":
+      return (
+        <ArtPreferencesForm
+          data={data as Parameters<typeof ArtPreferencesForm>[0]["data"]}
+        />
+      );
+    case "specialty":
+      return (
+        <SpecialtyPreferencesForm
+          data={data as Parameters<typeof SpecialtyPreferencesForm>[0]["data"]}
+        />
+      );
+    default:
+      return null;
+  }
 }
 
 // =============================================================================
@@ -399,9 +457,9 @@ function NotificationSection({
 
         <div className="flex items-center justify-between">
           <div className="space-y-0.5">
-            <Label className="text-sm font-medium">Pazarlama Emailleri</Label>
+            <Label className="text-sm font-medium">Marketing Emails</Label>
             <p className="text-xs text-muted-foreground">
-              İndirimler, kampanyalar ve yeni hizmet duyuruları
+              Discounts, campaigns, and new service announcements
             </p>
           </div>
           <Switch
@@ -415,6 +473,7 @@ function NotificationSection({
           size="sm"
           onClick={handleSave}
           disabled={isSubmitting}
+          type="button"
         >
           {isSubmitting ? (
             <Loader2 className="mr-2 size-4 animate-spin" />
@@ -478,13 +537,14 @@ function ConsentSection({ profile }: { profile: NonNullable<ProfileData> }) {
         <p className="text-xs text-muted-foreground pt-2">
           Your rights are reserved under data protection laws. For questions
           about your consents, please review our{" "}
-          <button
-            type="button"
+          <Link
+            href="/privacy"
+            target="_blank"
+            rel="noopener noreferrer"
             className="text-primary underline underline-offset-2"
-            onClick={() => window.open("/privacy", "_blank")}
           >
             Privacy Policy
-          </button>
+          </Link>
           .
         </p>
       </CardContent>

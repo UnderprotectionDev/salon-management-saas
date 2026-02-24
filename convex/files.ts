@@ -6,7 +6,12 @@
  */
 
 import { ConvexError, v } from "convex/values";
-import { authedMutation, ErrorCode, ownerMutation } from "./lib/functions";
+import {
+  authedMutation,
+  authedQuery,
+  ErrorCode,
+  ownerMutation,
+} from "./lib/functions";
 
 // =============================================================================
 // Constants
@@ -18,6 +23,17 @@ const ALLOWED_IMAGE_TYPES = ["image/jpeg", "image/png", "image/webp"];
 // =============================================================================
 // Queries
 // =============================================================================
+
+/**
+ * Get URLs for multiple storage files (for photo thumbnails)
+ */
+export const getFileUrls = authedQuery({
+  args: { storageIds: v.array(v.id("_storage")) },
+  returns: v.array(v.union(v.string(), v.null())),
+  handler: async (ctx, args) => {
+    return Promise.all(args.storageIds.map((id) => ctx.storage.getUrl(id)));
+  },
+});
 
 /**
  * Get a URL for a file from storage

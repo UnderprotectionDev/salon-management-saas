@@ -31,6 +31,16 @@ Dashboard metrics: today's appointments (total/completed/upcoming/no-shows/walk-
 
 **Settings pages:** Business info, working hours, booking settings (advance window, min notice, cancellation window, slot duration, staff selection toggle).
 
+**User Salon Preferences (Settings → Salon Preferences):** Users select relevant salon categories (Hair, Nails, Skin, Spa, Body, Medical, Art, Specialty) then fill category-specific preference forms. Each category form has dedicated fields:
+- **Hair:** Hair type/length/color, scalp sensitivity, wash frequency, heat tool usage, products used (textarea, 500 char), last chemical treatment (date), + up to 3 photos
+- **Skin:** Skin type, conditions, lash history, daily routine, sunscreen usage, active ingredients, last facial date, + up to 3 photos
+- **Spa:** Pregnancy/blood pressure flags, chronic pain areas, pressure preference, aromatherapy preference, focus areas
+- **Body:** Skin sensitivity, laser history, tanning history, preferred hair removal method, pain tolerance, last treatment date, treatment areas
+- **Art:** Tattoo/keloid/metal allergy info + up to 3 documentation photos
+- **Specialty:** Pet type/breed/size + up to 3 pet photos
+
+Photo uploads use Convex file storage (2MB max, JPEG/PNG/WebP). Photos are stored as `Id<"_storage">` arrays in the `salonPreferences` embedded object. Thumbnail preview via `files.getFileUrls` batch query.
+
 **Subscription widget:** Plan, status, next billing date. Warning banner on payment failure.
 
 ---

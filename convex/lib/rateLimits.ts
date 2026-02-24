@@ -331,6 +331,20 @@ export const rateLimiter = new RateLimiter(components.rateLimiter, {
     rate: 3,
     period: DAY,
   },
+
+  // ==========================================================================
+  // User Profile Limits
+  // ==========================================================================
+
+  /**
+   * User profile update limit (per user)
+   * 10 per minute — prevents excessive updates
+   */
+  updateUserProfile: {
+    kind: "token bucket",
+    rate: 10,
+    period: MINUTE,
+  },
 });
 
 // Re-export time constants for use elsewhere
