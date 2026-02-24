@@ -299,7 +299,9 @@ export const create = authedMutation({
       });
     }
 
-    if (args.phone) validatePhone(args.phone);
+    const normalizedPhone = args.phone
+      ? validatePhone(args.phone)
+      : undefined;
     if (args.email) validateEmail(args.email);
 
     const existingMembership = await ctx.db
@@ -349,7 +351,7 @@ export const create = authedMutation({
     await ctx.db.insert("organizationSettings", {
       organizationId,
       email: args.email,
-      phone: args.phone,
+      phone: normalizedPhone,
       timezone: "Europe/Istanbul",
       currency: "TRY",
       locale: "tr-TR",
@@ -450,8 +452,10 @@ export const updateSettings = ownerMutation({
       });
     }
 
-    if (args.phone !== undefined && args.phone !== "")
-      validatePhone(args.phone);
+    const normalizedPhone =
+      args.phone !== undefined && args.phone !== ""
+        ? validatePhone(args.phone)
+        : args.phone;
     if (args.email !== undefined && args.email !== "")
       validateEmail(args.email);
 
@@ -461,7 +465,7 @@ export const updateSettings = ownerMutation({
       updatedAt: Date.now(),
     };
     if (args.email !== undefined) updates.email = args.email;
-    if (args.phone !== undefined) updates.phone = args.phone;
+    if (args.phone !== undefined) updates.phone = normalizedPhone;
     if (args.website !== undefined) updates.website = args.website;
     if (args.address !== undefined) updates.address = args.address;
     if (args.timezone !== undefined) updates.timezone = args.timezone;

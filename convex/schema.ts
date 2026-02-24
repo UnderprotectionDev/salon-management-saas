@@ -114,6 +114,7 @@ export default defineSchema({
         street: v.optional(v.string()),
         city: v.optional(v.string()),
         state: v.optional(v.string()),
+        neighbourhood: v.optional(v.string()),
         postalCode: v.optional(v.string()),
         country: v.optional(v.string()),
       }),

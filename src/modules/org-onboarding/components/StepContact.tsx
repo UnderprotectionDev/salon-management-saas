@@ -6,6 +6,7 @@ import { Field, FieldLabel } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 import { SearchableSelect } from "@/components/ui/searchable-select";
 import { CITY_NAMES, getDistricts } from "@/lib/data/turkey-cities";
+import { loadNeighbourhoods } from "@/lib/data/neighbourhood-loader";
 import { authClient } from "@/lib/auth-client";
 import type { WizardFormData } from "../hooks/useOnboardingForm";
 import { ONBOARDING_INPUT } from "../lib/constants";
@@ -21,8 +22,11 @@ export function StepContact({
   onPrefillEmail: (email: string) => void;
 }) {
   const districts = data.city ? getDistricts(data.city) : [];
+  const [neighbourhoods, setNeighbourhoods] = useState<string[]>([]);
   const [districtHighlight, setDistrictHighlight] = useState(false);
+  const [neighbourhoodHighlight, setNeighbourhoodHighlight] = useState(false);
   const prevCityRef = useRef(data.city);
+  const prevDistrictRef = useRef(data.district);
 
   // Pre-fill email from auth session
   useEffect(() => {
@@ -52,11 +56,28 @@ export function StepContact({
     prevCityRef.current = data.city;
   }, [data.city]);
 
+  // Load neighbourhoods when district changes
+  useEffect(() => {
+    if (data.city && data.district) {
+      loadNeighbourhoods(data.city, data.district).then(setNeighbourhoods);
+      if (data.district !== prevDistrictRef.current) {
+        setNeighbourhoodHighlight(true);
+        const timer = setTimeout(() => setNeighbourhoodHighlight(false), 1000);
+        prevDistrictRef.current = data.district;
+        return () => clearTimeout(timer);
+      }
+    } else {
+      setNeighbourhoods([]);
+    }
+    prevDistrictRef.current = data.district;
+  }, [data.city, data.district]);
+
   // Contact fields completion
   const contactFields = [data.email, data.phone].filter(Boolean).length;
   const addressFields = [
     data.city,
     data.district,
+    data.neighbourhood,
     data.street,
     data.postalCode,
   ].filter(Boolean).length;
@@ -111,7 +132,9 @@ export function StepContact({
             <SearchableSelect
               items={CITY_NAMES}
               value={data.city}
-              onValueChange={(value) => onChange({ city: value, district: "" })}
+              onValueChange={(value) =>
+                onChange({ city: value, district: "", neighbourhood: "" })
+              }
               placeholder="Select city"
               searchPlaceholder="Search city..."
             />
@@ -127,7 +150,9 @@ export function StepContact({
               <SearchableSelect
                 items={districts}
                 value={data.district}
-                onValueChange={(value) => onChange({ district: value })}
+                onValueChange={(value) =>
+                  onChange({ district: value, neighbourhood: "" })
+                }
                 placeholder="Select district"
                 searchPlaceholder="Search district..."
                 disabled={!data.city}
@@ -135,6 +160,28 @@ export function StepContact({
             </div>
           </Field>
         </div>
+
+        <Field>
+          <FieldLabel>Neighbourhood</FieldLabel>
+          <div
+            className={`transition-all duration-300 rounded ${
+              neighbourhoodHighlight ? "ring-2 ring-brand/50" : ""
+            }`}
+          >
+            <SearchableSelect
+              items={neighbourhoods}
+              value={data.neighbourhood}
+              onValueChange={(value) => onChange({ neighbourhood: value })}
+              placeholder={
+                data.district
+                  ? "Select neighbourhood"
+                  : "Select district first"
+              }
+              searchPlaceholder="Search neighbourhood..."
+              disabled={!data.district}
+            />
+          </div>
+        </Field>
 
         <div className="grid gap-6 sm:grid-cols-[1fr_160px]">
           <Field>

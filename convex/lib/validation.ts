@@ -1,6 +1,6 @@
 import { ConvexError } from "convex/values";
 import { ErrorCode } from "./functions";
-import { isValidTurkishPhone } from "./phone";
+import { formatTurkishPhone, isValidTurkishPhone } from "./phone";
 
 /**
  * Trims and validates string length.
@@ -63,16 +63,18 @@ export function validateEmail(value: string): string {
 
 /**
  * Validates Turkish phone format (+90 5XX XXX XX XX).
- * Returns the phone string or throws ConvexError.
+ * Normalizes E.164 and other formats before validating.
+ * Returns the normalized phone string or throws ConvexError.
  */
 export function validatePhone(value: string): string {
-  if (!isValidTurkishPhone(value)) {
+  const normalized = formatTurkishPhone(value);
+  if (!isValidTurkishPhone(normalized)) {
     throw new ConvexError({
       code: ErrorCode.INVALID_INPUT,
       message: "Invalid phone format. Expected: +90 5XX XXX XX XX",
     });
   }
-  return value;
+  return normalized;
 }
 
 /**

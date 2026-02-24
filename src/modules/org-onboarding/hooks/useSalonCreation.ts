@@ -36,6 +36,7 @@ export function useSalonCreation() {
         formData.street ||
         formData.city ||
         formData.district ||
+        formData.neighbourhood ||
         formData.postalCode;
 
       promises.push(
@@ -48,6 +49,7 @@ export function useSalonCreation() {
                   street: formData.street || undefined,
                   city: formData.city || undefined,
                   state: formData.district || undefined,
+                  neighbourhood: formData.neighbourhood || undefined,
                   postalCode: formData.postalCode || undefined,
                   country: "Turkey",
                 },

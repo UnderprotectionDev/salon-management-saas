@@ -3,12 +3,20 @@
 import { useForm } from "@tanstack/react-form";
 import { useMutation } from "convex/react";
 import { Loader2 } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { z } from "zod";
 import { Button } from "@/components/ui/button";
+import {
+  Field,
+  FieldError,
+  FieldGroup,
+  FieldLabel,
+} from "@/components/ui/field";
+import { Input } from "@/components/ui/input";
 import { SearchableSelect } from "@/components/ui/searchable-select";
 import { CITY_NAMES, getDistricts } from "@/lib/data/turkey-cities";
+import { loadNeighbourhoods } from "@/lib/data/neighbourhood-loader";
 import { api } from "../../../../convex/_generated/api";
 import type { Doc, Id } from "../../../../convex/_generated/dataModel";
 
@@ -39,15 +47,24 @@ export function AddressForm({
   onSuccess,
 }: AddressFormProps) {
   const [isEditing, setIsEditing] = useState(false);
+  const [neighbourhoods, setNeighbourhoods] = useState<string[]>([]);
   const updateSettings = useMutation(api.organizations.updateSettings);
 
   const address = settings?.address;
+
+  // Load neighbourhoods when entering edit mode with existing city+district
+  useEffect(() => {
+    if (isEditing && address?.city && address?.state) {
+      loadNeighbourhoods(address.city, address.state).then(setNeighbourhoods);
+    }
+  }, [isEditing, address?.city, address?.state]);
 
   const form = useForm({
     defaultValues: {
       street: address?.street ?? "",
       city: address?.city ?? "",
       state: address?.state ?? "",
+      neighbourhood: address?.neighbourhood ?? "",
       postalCode: address?.postalCode ?? "",
       country: address?.country ?? "Turkey",
     },
@@ -59,6 +76,7 @@ export function AddressForm({
             street: value.street || undefined,
             city: value.city || undefined,
             state: value.state || undefined,
+            neighbourhood: value.neighbourhood || undefined,
             postalCode: value.postalCode || undefined,
             country: value.country || undefined,
           },
@@ -84,6 +102,7 @@ export function AddressForm({
     address?.street ||
     address?.city ||
     address?.state ||
+    address?.neighbourhood ||
     address?.postalCode ||
     address?.country;
 
@@ -93,11 +112,19 @@ export function AddressForm({
         {hasAddress ? (
           <div className="text-sm">
             {address?.street && <p>{address.street}</p>}
-            {[address?.city, address?.state, address?.postalCode].filter(
-              Boolean,
-            ).length > 0 && (
+            {[
+              address?.neighbourhood,
+              address?.city,
+              address?.state,
+              address?.postalCode,
+            ].filter(Boolean).length > 0 && (
               <p>
-                {[address?.city, address?.state, address?.postalCode]
+                {[
+                  address?.neighbourhood,
+                  address?.city,
+                  address?.state,
+                  address?.postalCode,
+                ]
                   .filter(Boolean)
                   .join(", ")}
               </p>
@@ -156,7 +183,7 @@ export function AddressForm({
           }}
         </form.Field>
 
-        {/* City & State */}
+        {/* City & District */}
         <div className="grid gap-4 sm:grid-cols-2">
           <form.Field
             name="city"
@@ -177,6 +204,8 @@ export function AddressForm({
                     onValueChange={(val) => {
                       field.handleChange(val);
                       form.setFieldValue("state", "");
+                      form.setFieldValue("neighbourhood", "");
+                      setNeighbourhoods([]);
                     }}
                     placeholder="Select province"
                     searchPlaceholder="Search province..."
@@ -208,7 +237,17 @@ export function AddressForm({
                       <SearchableSelect
                         items={getDistricts(city)}
                         value={field.state.value}
-                        onValueChange={field.handleChange}
+                        onValueChange={(val) => {
+                          field.handleChange(val);
+                          form.setFieldValue("neighbourhood", "");
+                          if (city && val) {
+                            loadNeighbourhoods(city, val).then(
+                              setNeighbourhoods,
+                            );
+                          } else {
+                            setNeighbourhoods([]);
+                          }
+                        }}
                         placeholder={
                           city ? "Select district" : "Select province first"
                         }
@@ -227,6 +266,44 @@ export function AddressForm({
             )}
           </form.Subscribe>
         </div>
+
+        {/* Neighbourhood */}
+        <form.Subscribe selector={(s) => s.values.state}>
+          {(district) => (
+            <form.Field
+              name="neighbourhood"
+              validators={{ onBlur: stringSchema }}
+            >
+              {(field) => {
+                const hasError =
+                  field.state.meta.isTouched &&
+                  field.state.meta.errors.length > 0;
+                return (
+                  <Field data-invalid={hasError || undefined}>
+                    <FieldLabel>Neighbourhood</FieldLabel>
+                    <SearchableSelect
+                      items={neighbourhoods}
+                      value={field.state.value}
+                      onValueChange={field.handleChange}
+                      placeholder={
+                        district
+                          ? "Select neighbourhood"
+                          : "Select district first"
+                      }
+                      searchPlaceholder="Search neighbourhood..."
+                      emptyMessage="No neighbourhood found."
+                      disabled={!district || form.state.isSubmitting}
+                      onBlur={field.handleBlur}
+                    />
+                    {hasError && (
+                      <FieldError errors={field.state.meta.errors} />
+                    )}
+                  </Field>
+                );
+              }}
+            </form.Field>
+          )}
+        </form.Subscribe>
 
         {/* Postal Code & Country */}
         <div className="grid gap-4 sm:grid-cols-2">

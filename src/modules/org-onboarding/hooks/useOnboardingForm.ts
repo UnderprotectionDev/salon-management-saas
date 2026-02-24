@@ -27,6 +27,7 @@ export type WizardFormData = {
   phone: string;
   city: string;
   district: string;
+  neighbourhood: string;
   street: string;
   postalCode: string;
   businessHours: BusinessHours;
@@ -43,6 +44,7 @@ const initialFormData: WizardFormData = {
   phone: "",
   city: "",
   district: "",
+  neighbourhood: "",
   street: "",
   postalCode: "",
   businessHours: getDefaultBusinessHours(),
@@ -117,6 +119,7 @@ export function useOnboardingForm() {
     formData.phone,
     formData.city,
     formData.district,
+    formData.neighbourhood,
     formData.street,
     formData.postalCode,
   ].filter(Boolean).length;
