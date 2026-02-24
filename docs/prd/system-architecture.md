@@ -164,7 +164,7 @@ src/
 │   │   ├── organization/components/ # RevenueForecastView, OrgAICreditManager
 │   │   ├── components/           # CreditBalance, CreditPurchaseDialog, AIPageLayout
 │   │   └── lib/                  # constants, types
-│   ├── settings/               # 8 files
+│   ├── settings/               # Settings forms, salon preferences (8 categories), PhotoUploadGrid, hooks
 │   ├── auth/                   # 11 files
 │   └── convex/                 # ConvexClientProvider
 ├── admin/                      # Admin panel layout + 4 pages (Dashboard, Organizations, Users, Action Log)

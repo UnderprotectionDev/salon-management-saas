@@ -68,11 +68,51 @@ Cross-organization profile for registered users. Created during user onboarding 
 - `hairLength?: "short" | "medium" | "long" | "very_long"`
 - `allergies?: string[]` — free-text allergy tags (e.g. `["ppd", "ammonia"]`)
 - `allergyNotes?: string`
+- `salonPreferences?: object` — Contextual salon category preferences (see below)
 - `emailReminders: boolean`, `marketingEmails: boolean`, `marketingConsent: boolean`, `marketingConsentAt?: number`
 - `dataProcessingConsent: boolean`, `dataProcessingConsentAt?: number`, `consentWithdrawnAt?: number`
 - `onboardingCompleted: boolean`, `onboardingCompletedAt?: number`, `onboardingDismissedAt?: number`
 - `avatarUrl?: string` — **Legacy field only.** Old Dicebear URL stored before avatar system migration. No longer written; kept in schema for backward compat with existing documents.
 - Indexes: `by_user`
+
+#### `salonPreferences` Embedded Object
+
+User-selected salon category preferences, managed from the Settings page. Each category is optional and only stored when the user selects that category.
+
+- `selectedCategories: string[]` — Which categories the user has opted into (e.g. `["hair_styling", "skin_face"]`)
+- `hair?` — Hair & Styling preferences
+  - `hairType?, hairLength?, naturalHairColor?, currentHairColor?, colorTreated?, scalpSensitivity?`
+  - `photos?: Id<"_storage">[]` — Up to 3 personal hair photos (max 3 per category)
+  - `washFrequency?: "daily" | "every_other_day" | "twice_week" | "weekly" | "less"`
+  - `heatToolUsage?: "none" | "occasional" | "frequent" | "daily"`
+  - `productsUsed?: string` — Free-text (max 500 chars)
+  - `lastChemicalTreatment?: string` — ISO date
+- `nails?` — Nails & Makeup: `nailType?, skinTone?, sensitiveSkin?`
+- `skin?` — Skin & Face preferences
+  - `skinType?, skinConditions?, lashExtensionsHistory?`
+  - `photos?: Id<"_storage">[]` — Up to 3 skin condition photos
+  - `dailyRoutine?: "none" | "basic" | "moderate" | "extensive"`
+  - `sunscreenUsage?: "never" | "sometimes" | "daily"`
+  - `activeIngredients?: string[]` — e.g. `["retinol", "niacinamide"]`
+  - `lastFacialDate?: string` — ISO date
+- `spa?` — Spa & Wellness preferences
+  - `pregnancy?, bloodPressureIssues?, chronicPainAreas?`
+  - `pressurePreference?: "light" | "medium" | "firm" | "deep"`
+  - `aromatherapyPreference?: string[]` — e.g. `["lavender", "eucalyptus"]`
+  - `focusAreas?: string[]` — e.g. `["back", "neck", "shoulders"]`
+- `body?` — Body Treatments preferences
+  - `skinSensitivityLevel?, previousLaserTreatments?, tanningHistory?`
+  - `preferredMethod?: "waxing" | "laser" | "ipl" | "sugaring" | "threading" | "shaving"`
+  - `painTolerance?: "low" | "medium" | "high"`
+  - `lastTreatmentDate?: string` — ISO date
+  - `treatmentAreas?: string[]` — e.g. `["legs", "underarms", "bikini"]`
+- `medical?` — Medical & Aesthetic: `currentMedications?, previousProcedures?, physicianClearance?`
+- `art?` — Art & Expression preferences
+  - `previousTattoos?, keloidTendency?, metalAllergies?`
+  - `photos?: Id<"_storage">[]` — Up to 3 existing tattoo/piercing documentation photos
+- `specialty?` — Specialty preferences
+  - `petType?, petBreed?, petSize?`
+  - `photos?: Id<"_storage">[]` — Up to 3 pet photos
 
 **Avatar generation** (`src/modules/user-onboarding/lib/avatar.ts`):
 - `generateAvatarConfig(gender?)` — generates a single `AvatarConfig` with explicit variety across all dimensions: skin tone (8 options), hair color (13), background (16), eye/nose/mouth style (3 each), shirt, ear size, optional glasses. Gender-specific: male gets normal/thick/mohawk hair + occasional hat; female gets womanLong/womanShort + optional earings + always `hatStyle: "none"` to show hair.
