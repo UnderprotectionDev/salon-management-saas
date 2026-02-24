@@ -109,6 +109,61 @@ export const listActive = orgQuery({
   },
 });
 
+/**
+ * Get avatar config from userProfile for a single staff member.
+ */
+export const getAvatarConfig = orgQuery({
+  args: { staffId: v.id("staff") },
+  returns: v.optional(v.any()),
+  handler: async (ctx, args) => {
+    const staff = await ctx.db.get(args.staffId);
+    if (!staff || staff.organizationId !== ctx.organizationId) return undefined;
+
+    const profile = await ctx.db
+      .query("userProfile")
+      .withIndex("by_userId", (q) => q.eq("userId", staff.userId))
+      .first();
+    return profile?.avatarConfig;
+  },
+});
+
+/**
+ * Get avatar configs from userProfile for all staff in the org.
+ * Returns a map of staffId → avatarConfig (from the linked user's profile).
+ */
+export const getAvatarConfigs = orgQuery({
+  args: {},
+  returns: v.array(
+    v.object({
+      staffId: v.id("staff"),
+      avatarConfig: v.optional(v.any()),
+    }),
+  ),
+  handler: async (ctx) => {
+    const staffMembers = await ctx.db
+      .query("staff")
+      .withIndex("organizationId", (q) =>
+        q.eq("organizationId", ctx.organizationId),
+      )
+      .collect();
+
+    const results: { staffId: typeof staffMembers[0]["_id"]; avatarConfig?: unknown }[] = [];
+
+    for (const staff of staffMembers) {
+      const profile = await ctx.db
+        .query("userProfile")
+        .withIndex("by_userId", (q) => q.eq("userId", staff.userId))
+        .first();
+      results.push({
+        staffId: staff._id,
+        avatarConfig: profile?.avatarConfig,
+      });
+    }
+
+    return results;
+  },
+});
+
 export const getByUser = orgQuery({
   args: { userId: v.string() },
   returns: v.union(staffDocValidator, v.null()),

@@ -47,6 +47,15 @@ export default function StaffPage() {
     activeOrganization ? { organizationId: activeOrganization._id } : "skip",
   );
 
+  const avatarConfigs = useQuery(
+    api.staff.getAvatarConfigs,
+    activeOrganization ? { organizationId: activeOrganization._id } : "skip",
+  );
+
+  const avatarConfigMap = new Map(
+    avatarConfigs?.map((a) => [a.staffId, a.avatarConfig]) ?? [],
+  );
+
   if (!activeOrganization) {
     return (
       <div className="flex items-center justify-center p-8">
@@ -110,7 +119,7 @@ export default function StaffPage() {
                         <NiceAvatar
                           style={{ width: "100%", height: "100%" }}
                           shape="circle"
-                          {...genConfig(staff._id)}
+                          {...(avatarConfigMap.get(staff._id) ?? genConfig(staff._id))}
                         />
                       </AvatarFallback>
                     </Avatar>

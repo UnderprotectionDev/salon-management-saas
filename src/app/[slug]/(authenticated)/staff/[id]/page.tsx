@@ -157,6 +157,12 @@ export default function StaffDetailPage() {
       ? { staffId, organizationId: activeOrganization._id }
       : "skip",
   );
+  const avatarConfig = useQuery(
+    api.staff.getAvatarConfig,
+    activeOrganization
+      ? { staffId, organizationId: activeOrganization._id }
+      : "skip",
+  );
   const [isEditing, setIsEditing] = useState(false);
   const [editSchedule, setEditSchedule] = useState<StaffSchedule | null>(null);
   const [showOverrideDialog, setShowOverrideDialog] = useState(false);
@@ -233,7 +239,7 @@ export default function StaffDetailPage() {
                 <NiceAvatar
                   style={{ width: "100%", height: "100%" }}
                   shape="circle"
-                  {...genConfig(staff._id)}
+                  {...(avatarConfig ?? genConfig(staff._id))}
                 />
               </AvatarFallback>
             </Avatar>
