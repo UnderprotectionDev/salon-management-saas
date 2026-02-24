@@ -21,7 +21,10 @@ import {
   validateString,
   validateUrl,
 } from "./lib/validation";
-import { orgSalonTypesValidator } from "./lib/validators";
+import {
+  orgSalonTypesValidator,
+  socialMediaValidator,
+} from "./lib/validators";
 
 type OrgSalonTypeItem =
   | "hair_women"
@@ -435,6 +438,7 @@ export const updateSettings = ownerMutation({
     locale: v.optional(v.string()),
     businessHours: businessHoursValidator,
     bookingSettings: bookingSettingsValidator,
+    socialMedia: socialMediaValidator,
   },
   returns: v.id("organizationSettings"),
   handler: async (ctx, args) => {
@@ -475,6 +479,8 @@ export const updateSettings = ownerMutation({
       updates.businessHours = args.businessHours;
     if (args.bookingSettings !== undefined)
       updates.bookingSettings = args.bookingSettings;
+    if (args.socialMedia !== undefined)
+      updates.socialMedia = args.socialMedia;
 
     await ctx.db.patch(settings._id, updates);
 
@@ -615,19 +621,19 @@ export const getSetupProgress = orgQuery({
         id: "set-hours",
         label: "Set your business hours",
         completed: hasCustomHours,
-        href: `/${slug}/settings`,
+        href: `/${slug}/settings/hours`,
       },
       {
         id: "complete-profile",
         label: "Complete your salon profile",
         completed: hasProfile,
-        href: `/${slug}/settings`,
+        href: `/${slug}/settings/contact`,
       },
       {
         id: "invite-team",
         label: "Invite a team member",
         completed: hasTeamMember,
-        href: `/${slug}/settings`,
+        href: `/${slug}/settings/team`,
       },
       {
         id: "share-booking",

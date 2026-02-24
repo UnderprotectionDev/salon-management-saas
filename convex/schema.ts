@@ -190,6 +190,15 @@ export default defineSchema({
         cancellationPolicyHours: v.optional(v.number()),
       }),
     ),
+    // Social media
+    socialMedia: v.optional(
+      v.object({
+        instagram: v.optional(v.string()),
+        facebook: v.optional(v.string()),
+        tiktok: v.optional(v.string()),
+        googleMapsUrl: v.optional(v.string()),
+      }),
+    ),
     // Subscription / billing
     subscriptionStatus: v.optional(
       v.union(

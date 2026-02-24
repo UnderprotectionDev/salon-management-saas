@@ -361,6 +361,10 @@ export const businessHoursValidator =
 export const bookingSettingsValidator =
   schema.tables.organizationSettings.validator.fields.bookingSettings;
 
+/** Social media — derived from organizationSettings schema */
+export const socialMediaValidator =
+  schema.tables.organizationSettings.validator.fields.socialMedia;
+
 /** Single staff day schedule entry */
 export const staffDayScheduleValidator = v.optional(
   v.object({ start: v.string(), end: v.string(), available: v.boolean() }),
