@@ -29,7 +29,18 @@ Dashboard metrics: today's appointments (total/completed/upcoming/no-shows/walk-
 - **Drag-and-drop reschedule (day view):** `@dnd-kit/core`, pending/confirmed only, ghost overlay, drop target highlight. Confirmation dialog with editable time selector showing appointment's actual duration, 15-min steps, target staff's occupied slots disabled with "(Dolu)" label
 - **Status actions:** Detail modal with state-specific buttons (Confirm, Check-In, Start, Complete, No-Show, Cancel with confirmation, Reschedule with date/time/staff picker)
 
-**Settings pages:** Business info, working hours, booking settings (advance window, min notice, cancellation window, slot duration, staff selection toggle).
+**Settings pages (`/{slug}/settings`):** Sub-page layout with sidebar nav (desktop) / horizontal pill bar (mobile). 5 sub-pages:
+- **General** (`/general`): Salon name, description, logo upload, salon type multi-select (34 types in 8 collapsible categories with `selected/total` badges)
+- **Contact & Location** (`/contact`): Email, phone, website, social media (Instagram, Facebook, TikTok, Google Maps), address (city/district/neighbourhood cascading selects with async neighbourhood loading)
+- **Working Hours** (`/hours`): Business hours editor per day of week
+- **Booking Settings** (`/booking`): Online booking toggle, cancellation policy, min/max advance booking, slot duration, buffer between bookings
+- **Team** (`/team`): Members list with roles, pending/past invitations
+
+**Settings UX patterns:**
+- **Unsaved changes guard:** `useUnsavedChanges` hook (in `src/hooks/use-unsaved-changes.tsx`) — `beforeunload` for hard navigation/tab close + click interception on internal links with AlertDialog confirmation ("Unsaved Changes" / "Stay on Page" / "Discard Changes")
+- **Dirty state detection:** Uses TanStack Form's `isDefaultValue` (deep equality) instead of `isDirty` (mutation flag). Arrays (e.g. salon types) are sorted before comparison to prevent false positives from reordering.
+- **Form reset after save:** `form.reset()` called after successful mutation so Save/Discard bar and navigation guard clear immediately
+- **Settings layout:** Server Component (`settings/layout.tsx`, no `"use client"`). Client boundary pushed to `SettingsNav` component. `aria-current="page"` on active nav links.
 
 **User Salon Preferences (Settings → Salon Preferences):** Users select relevant salon categories (Hair, Nails, Skin, Spa, Body, Medical, Art, Specialty) then fill category-specific preference forms. Each category form has dedicated fields:
 - **Hair:** Hair type/length/color, scalp sensitivity, wash frequency, heat tool usage, products used (textarea, 500 char), last chemical treatment (date), + up to 3 photos

@@ -146,7 +146,7 @@ src/
 │   ├── dashboard/              # Redirect to active org
 │   └── page.tsx                # Salon directory (/)
 ├── components/ui/              # shadcn/ui (56+ components)
-├── hooks/
+├── hooks/                         # useUnsavedChanges (navigation guard + AlertDialog)
 ├── lib/                        # auth-client, auth-server, utils
 ├── modules/
 │   ├── booking/                # 19 files (~1,824 lines)
@@ -164,7 +164,7 @@ src/
 │   │   ├── organization/components/ # RevenueForecastView, OrgAICreditManager
 │   │   ├── components/           # CreditBalance, CreditPurchaseDialog, AIPageLayout
 │   │   └── lib/                  # constants, types
-│   ├── settings/               # Settings forms, salon preferences (8 categories), PhotoUploadGrid, hooks
+│   ├── settings/               # SettingsNav, settings forms (general, contact, hours, booking, team), salon preferences (8 categories), PhotoUploadGrid, hooks
 │   ├── auth/                   # 11 files
 │   └── convex/                 # ConvexClientProvider
 ├── admin/                      # Admin panel layout + 4 pages (Dashboard, Organizations, Users, Action Log)
@@ -184,7 +184,7 @@ src/
 | `/:slug/staff` | Auth+Org | Staff management |
 | `/:slug/services` | Auth+Org | Service catalog |
 | `/:slug/reports` | Auth+Org (admin) | Reports & analytics |
-| `/:slug/settings` | Auth+Org | Org settings |
+| `/:slug/settings` | Auth+Org | Org settings (sub-pages: general, contact, hours, booking, team) |
 | `/:slug/billing` | Auth+Org | Subscription management |
 | `/:slug/ai` | Public | Customer AI features (photo analysis, simulation, chat, mood board, care schedule) |
 | `/:slug/ai-insights` | Auth+Org (owner) | Organization AI features (revenue forecast, credit management) |

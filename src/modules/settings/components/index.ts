@@ -1,9 +1,6 @@
-export { AddressForm } from "./AddressForm";
 export { AllergiesSection } from "./AllergiesSection";
-export { BookingSettingsForm } from "./BookingSettingsForm";
-export { ContactInfoForm } from "./ContactInfoForm";
-export { GeneralInfoForm } from "./GeneralInfoForm";
 export { InvitationsList } from "./InvitationsList";
 export { MembersList } from "./MembersList";
 export { SalonCategorySelector } from "./SalonCategorySelector";
+export { SettingsNav } from "./SettingsNav";
 export { TransferOwnershipDialog } from "./TransferOwnershipDialog";
