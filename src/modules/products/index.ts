@@ -1,7 +1,12 @@
-export { AddCategoryDialog } from "./components/AddCategoryDialog";
-export { AddProductDialog } from "./components/AddProductDialog";
+export { AddProductCategoryPopover } from "./components/AddProductCategoryPopover";
 export { AdjustStockDialog } from "./components/AdjustStockDialog";
 export { CategorySidebar } from "./components/CategorySidebar";
-export { EditProductDialog } from "./components/EditProductDialog";
 export { InventoryHistorySheet } from "./components/InventoryHistorySheet";
-export { ProductsList } from "./components/ProductsList";
+export { InventoryStatsBar } from "./components/InventoryStatsBar";
+export { LowStockBanner } from "./components/LowStockBanner";
+export { ProductCard } from "./components/ProductCard";
+export { ProductFiltersBar } from "./components/ProductFilters";
+export { ProductGrid } from "./components/ProductGrid";
+export { ProductMultiImageUpload } from "./components/ProductMultiImageUpload";
+export { ProductWizardDialog } from "./components/ProductWizardDialog";
+export { PublicProductCard } from "./components/PublicProductCard";

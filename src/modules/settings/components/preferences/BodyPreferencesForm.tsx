@@ -40,9 +40,7 @@ export function BodyPreferencesForm({ data }: { data?: BodyData }) {
   const [preferredMethod, setPreferredMethod] = useState(
     data?.preferredMethod ?? "",
   );
-  const [painTolerance, setPainTolerance] = useState(
-    data?.painTolerance ?? "",
-  );
+  const [painTolerance, setPainTolerance] = useState(data?.painTolerance ?? "");
   const [lastTreatmentDate, setLastTreatmentDate] = useState(
     data?.lastTreatmentDate ?? "",
   );

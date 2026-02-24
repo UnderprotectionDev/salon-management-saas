@@ -280,3 +280,112 @@ export const saveServiceImage = ownerMutation({
     return url;
   },
 });
+
+/**
+ * Save product images (append to existing)
+ * Called after files are uploaded to storage
+ */
+export const saveProductImages = ownerMutation({
+  args: {
+    productId: v.id("products"),
+    storageIds: v.array(v.id("_storage")),
+    fileNames: v.array(v.string()),
+    fileTypes: v.array(v.string()),
+    fileSizes: v.array(v.number()),
+  },
+  returns: v.array(v.string()),
+  handler: async (ctx, args) => {
+    // Verify product belongs to this organization
+    const product = await ctx.db.get(args.productId);
+    if (!product || product.organizationId !== ctx.organizationId) {
+      throw new ConvexError({
+        code: ErrorCode.NOT_FOUND,
+        message: "Product not found",
+      });
+    }
+
+    // Validate each file
+    for (let i = 0; i < args.storageIds.length; i++) {
+      if (args.fileSizes[i] > MAX_FILE_SIZE) {
+        throw new ConvexError({
+          code: ErrorCode.VALIDATION_ERROR,
+          message: `File ${args.fileNames[i]} exceeds maximum of ${MAX_FILE_SIZE / 1024 / 1024}MB`,
+        });
+      }
+      if (!ALLOWED_IMAGE_TYPES.includes(args.fileTypes[i])) {
+        throw new ConvexError({
+          code: ErrorCode.VALIDATION_ERROR,
+          message: "Only JPEG, PNG, and WebP images are allowed",
+        });
+      }
+    }
+
+    // Check total count ≤ 4
+    const existingIds = product.imageStorageIds ?? [];
+    if (existingIds.length + args.storageIds.length > 4) {
+      throw new ConvexError({
+        code: ErrorCode.INVALID_INPUT,
+        message: "Maximum 4 images allowed per product",
+      });
+    }
+
+    // Resolve URLs
+    const newUrls = await Promise.all(
+      args.storageIds.map((id) => ctx.storage.getUrl(id)),
+    );
+    const validUrls = newUrls.filter((u): u is string => u !== null);
+
+    const allStorageIds = [...existingIds, ...args.storageIds];
+    const allUrls = [...(product.imageUrls ?? []), ...validUrls];
+
+    await ctx.db.patch(args.productId, {
+      imageStorageIds: allStorageIds,
+      imageUrls: allUrls,
+      updatedAt: Date.now(),
+    });
+
+    return allUrls;
+  },
+});
+
+/**
+ * Remove a single product image by storageId
+ */
+export const removeProductImage = ownerMutation({
+  args: {
+    productId: v.id("products"),
+    storageId: v.id("_storage"),
+  },
+  returns: v.null(),
+  handler: async (ctx, args) => {
+    const product = await ctx.db.get(args.productId);
+    if (!product || product.organizationId !== ctx.organizationId) {
+      throw new ConvexError({
+        code: ErrorCode.NOT_FOUND,
+        message: "Product not found",
+      });
+    }
+
+    const existingIds = product.imageStorageIds ?? [];
+    const existingUrls = product.imageUrls ?? [];
+
+    const removeIndex = existingIds.indexOf(args.storageId);
+    if (removeIndex === -1) {
+      throw new ConvexError({
+        code: ErrorCode.NOT_FOUND,
+        message: "Image not found on this product",
+      });
+    }
+
+    const newIds = existingIds.filter((_, i) => i !== removeIndex);
+    const newUrls = existingUrls.filter((_, i) => i !== removeIndex);
+
+    await ctx.db.patch(args.productId, {
+      imageStorageIds: newIds.length > 0 ? newIds : undefined,
+      imageUrls: newUrls.length > 0 ? newUrls : undefined,
+      updatedAt: Date.now(),
+    });
+
+    return null;
+  },
+});

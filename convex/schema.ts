@@ -616,7 +616,8 @@ export default defineSchema({
     lowStockThreshold: v.optional(v.number()),
     // Status
     status: v.union(v.literal("active"), v.literal("inactive")),
-    imageStorageId: v.optional(v.id("_storage")),
+    imageStorageIds: v.optional(v.array(v.id("_storage"))),
+    imageUrls: v.optional(v.array(v.string())),
     createdAt: v.number(),
     updatedAt: v.number(),
   })
@@ -860,11 +861,7 @@ export default defineSchema({
               ),
             ),
             painTolerance: v.optional(
-              v.union(
-                v.literal("low"),
-                v.literal("medium"),
-                v.literal("high"),
-              ),
+              v.union(v.literal("low"), v.literal("medium"), v.literal("high")),
             ),
             lastTreatmentDate: v.optional(v.string()),
             treatmentAreas: v.optional(v.array(v.string())),
@@ -930,6 +927,7 @@ export default defineSchema({
       v.literal("reschedule"),
       v.literal("no_show"),
       v.literal("status_change"),
+      v.literal("low_stock"),
     ),
     title: v.string(),
     message: v.string(),

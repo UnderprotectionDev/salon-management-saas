@@ -49,19 +49,13 @@ export function HairPreferencesForm({ data }: { data?: HairData }) {
   const [currentHairColor, setCurrentHairColor] = useState(
     data?.currentHairColor ?? "",
   );
-  const [colorTreated, setColorTreated] = useState(
-    data?.colorTreated ?? false,
-  );
+  const [colorTreated, setColorTreated] = useState(data?.colorTreated ?? false);
   const [scalpSensitivity, setScalpSensitivity] = useState(
     data?.scalpSensitivity ?? "",
   );
   const [photos, setPhotos] = useState<string[]>(data?.photos ?? []);
-  const [washFrequency, setWashFrequency] = useState(
-    data?.washFrequency ?? "",
-  );
-  const [heatToolUsage, setHeatToolUsage] = useState(
-    data?.heatToolUsage ?? "",
-  );
+  const [washFrequency, setWashFrequency] = useState(data?.washFrequency ?? "");
+  const [heatToolUsage, setHeatToolUsage] = useState(data?.heatToolUsage ?? "");
   const [productsUsed, setProductsUsed] = useState(data?.productsUsed ?? "");
   const [lastChemicalTreatment, setLastChemicalTreatment] = useState(
     data?.lastChemicalTreatment ?? "",

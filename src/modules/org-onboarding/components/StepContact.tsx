@@ -173,9 +173,7 @@ export function StepContact({
               value={data.neighbourhood}
               onValueChange={(value) => onChange({ neighbourhood: value })}
               placeholder={
-                data.district
-                  ? "Select neighbourhood"
-                  : "Select district first"
+                data.district ? "Select neighbourhood" : "Select district first"
               }
               searchPlaceholder="Search neighbourhood..."
               disabled={!data.district}

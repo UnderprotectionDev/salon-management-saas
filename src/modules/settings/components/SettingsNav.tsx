@@ -1,12 +1,6 @@
 "use client";
 
-import {
-  Building2,
-  CalendarDays,
-  Clock,
-  MapPin,
-  Users,
-} from "lucide-react";
+import { Building2, CalendarDays, Clock, MapPin, Users } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useActiveOrganization } from "@/modules/organization";
@@ -30,7 +24,10 @@ export function SettingsNav() {
   return (
     <>
       {/* Mobile: horizontal scrollable pill bar */}
-      <nav className="flex gap-1 overflow-x-auto pb-2 md:hidden" aria-label="Settings navigation">
+      <nav
+        className="flex gap-1 overflow-x-auto pb-2 md:hidden"
+        aria-label="Settings navigation"
+      >
         {NAV_ITEMS.map((item) => {
           const href = `/${slug}/settings/${item.segment}`;
           const isActive = pathname === href;
@@ -55,7 +52,10 @@ export function SettingsNav() {
       </nav>
 
       {/* Desktop: vertical nav list */}
-      <nav className="hidden md:flex md:w-56 md:shrink-0 md:flex-col md:gap-1" aria-label="Settings navigation">
+      <nav
+        className="hidden md:flex md:w-56 md:shrink-0 md:flex-col md:gap-1"
+        aria-label="Settings navigation"
+      >
         {NAV_ITEMS.map((item) => {
           const href = `/${slug}/settings/${item.segment}`;
           const isActive = pathname === href;

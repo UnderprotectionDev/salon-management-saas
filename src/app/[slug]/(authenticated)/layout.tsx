@@ -45,6 +45,7 @@ import {
   SidebarProvider,
   SidebarTrigger,
 } from "@/components/ui/sidebar";
+import { Badge } from "@/components/ui/badge";
 import { authClient } from "@/lib/auth-client";
 import { GracePeriodBanner, SuspendedOverlay } from "@/modules/billing";
 import {
@@ -58,7 +59,14 @@ import {
 } from "@/modules/organization";
 import { api } from "../../../../convex/_generated/api";
 
-const menuItems = [
+type MenuItem = {
+  title: string;
+  icon: typeof LayoutDashboard;
+  href: string;
+  badge?: "low_stock";
+};
+
+const menuItems: MenuItem[] = [
   {
     title: "Dashboard",
     icon: LayoutDashboard,
@@ -93,6 +101,7 @@ const menuItems = [
     title: "Products",
     icon: Package,
     href: "/products",
+    badge: "low_stock",
   },
   {
     title: "Reports",
@@ -136,6 +145,10 @@ function AuthenticatedLayoutContent({
 
   // Show toast when a new notification arrives (reactive subscription)
   useNotificationToast();
+  const lowStockCount = useQuery(
+    api.products.countLowStock,
+    activeOrganization ? { organizationId: activeOrganization._id } : "skip",
+  );
   const isSuperAdmin = useQuery(
     api.admin.checkIsSuperAdmin,
     isAuthenticated ? {} : "skip",
@@ -241,7 +254,17 @@ function AuthenticatedLayoutContent({
                     <SidebarMenuButton asChild>
                       <Link href={`/${slug}${item.href}`}>
                         <item.icon className="size-4" />
-                        <span>{item.title}</span>
+                        <span className="flex-1">{item.title}</span>
+                        {item.badge === "low_stock" &&
+                          typeof lowStockCount === "number" &&
+                          lowStockCount > 0 && (
+                            <Badge
+                              variant="destructive"
+                              className="ml-auto size-5 items-center justify-center rounded-full p-0 text-[10px]"
+                            >
+                              {lowStockCount}
+                            </Badge>
+                          )}
                       </Link>
                     </SidebarMenuButton>
                   </SidebarMenuItem>

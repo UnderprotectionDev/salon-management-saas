@@ -338,6 +338,7 @@ export const notificationTypeValidator = literals(
   "reschedule",
   "no_show",
   "status_change",
+  "low_stock",
 );
 
 // =============================================================================
@@ -989,7 +990,16 @@ export const productPublicValidator = v.object({
   sku: v.optional(v.string()),
   sellingPrice: v.number(),
   inStock: v.boolean(),
+  imageUrls: v.optional(v.array(v.string())),
   status: literals("active", "inactive"),
+});
+
+/** Inventory stats for dashboard overview */
+export const inventoryStatsValidator = v.object({
+  totalProducts: v.number(),
+  totalStockValue: v.number(),
+  lowStockCount: v.number(),
+  outOfStockCount: v.number(),
 });
 
 // =============================================================================

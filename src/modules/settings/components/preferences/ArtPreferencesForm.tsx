@@ -39,10 +39,7 @@ export function ArtPreferencesForm({ data }: { data?: ArtData }) {
     photos,
   };
 
-  const { isSubmitting, isDirty, handleSave } = useCategoryForm(
-    "art",
-    initial,
-  );
+  const { isSubmitting, isDirty, handleSave } = useCategoryForm("art", initial);
 
   const dirty = isDirty(current);
 
