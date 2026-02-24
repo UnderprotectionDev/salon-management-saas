@@ -66,16 +66,16 @@ lines.push(`}`);
 lines.push(``);
 
 // CITY_CODE_MAP: city name → city code
-lines.push(
-  `/** Map city name → plate code (e.g. "Ankara" → "06") */`,
-);
+lines.push(`/** Map city name → plate code (e.g. "Ankara" → "06") */`);
 lines.push(`export const CITY_CODE_MAP: Record<string, string> = {`);
 for (const city of cities) {
   lines.push(`  ${JSON.stringify(city.name)}: ${JSON.stringify(city.code)},`);
 }
 lines.push(`};`);
 lines.push(``);
-lines.push(`export function getCityCode(cityName: string): string | undefined {`);
+lines.push(
+  `export function getCityCode(cityName: string): string | undefined {`,
+);
 lines.push(`  return CITY_CODE_MAP[cityName];`);
 lines.push(`}`);
 lines.push(``);

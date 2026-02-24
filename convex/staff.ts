@@ -147,7 +147,10 @@ export const getAvatarConfigs = orgQuery({
       )
       .collect();
 
-    const results: { staffId: typeof staffMembers[0]["_id"]; avatarConfig?: unknown }[] = [];
+    const results: {
+      staffId: (typeof staffMembers)[0]["_id"];
+      avatarConfig?: unknown;
+    }[] = [];
 
     for (const staff of staffMembers) {
       const profile = await ctx.db

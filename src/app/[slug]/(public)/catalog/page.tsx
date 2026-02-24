@@ -2,25 +2,73 @@
 
 import { useQuery } from "convex/react";
 import type { FunctionReturnType } from "convex/server";
-import { Building2, ShoppingBag } from "lucide-react";
+import {
+  Building2,
+  MessageCircle,
+  Phone,
+  Search,
+  ShoppingBag,
+} from "lucide-react";
 import Link from "next/link";
-import { useParams } from "next/navigation";
+import { useParams, useSearchParams } from "next/navigation";
+import { useEffect, useState } from "react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
-import { formatPrice } from "@/modules/services/lib/currency";
+import { PublicProductCard } from "@/modules/products/components/PublicProductCard";
 import { api } from "../../../../../convex/_generated/api";
+import type { Id } from "../../../../../convex/_generated/dataModel";
 
 type ProductPublic = FunctionReturnType<typeof api.products.listPublic>[number];
 
+type SortMode = "name_asc" | "name_desc" | "price_asc" | "price_desc";
+
 export default function ProductCatalogPage() {
   const params = useParams();
+  const searchParams = useSearchParams();
   const slug = typeof params.slug === "string" ? params.slug : "";
 
   const organization = useQuery(api.organizations.getBySlug, { slug });
-
   const products = useQuery(
     api.products.listPublic,
+    organization ? { organizationId: organization._id } : "skip",
+  );
+  const categories = useQuery(
+    api.productCategories.listPublic,
+    organization ? { organizationId: organization._id } : "skip",
+  );
+
+  // URL param-based filter state
+  const [search, setSearch] = useState(searchParams.get("search") ?? "");
+  const [selectedCategoryId, setSelectedCategoryId] = useState<string | null>(
+    searchParams.get("category"),
+  );
+  const [sort, setSort] = useState<SortMode>(
+    (searchParams.get("sort") as SortMode) ?? "name_asc",
+  );
+  const [inStockOnly, setInStockOnly] = useState(
+    searchParams.get("inStock") === "true",
+  );
+
+  // Debounced search
+  const [debouncedSearch, setDebouncedSearch] = useState(search);
+  useEffect(() => {
+    const timer = setTimeout(() => setDebouncedSearch(search), 300);
+    return () => clearTimeout(timer);
+  }, [search]);
+
+  // Fetch org settings for phone (public query)
+  const settings = useQuery(
+    api.organizations.getPublicSettings,
     organization ? { organizationId: organization._id } : "skip",
   );
 
@@ -68,7 +116,45 @@ export default function ProductCatalogPage() {
     );
   }
 
-  const grouped = groupByCategory(products);
+  // Apply filters
+  let filtered = [...products];
+
+  if (debouncedSearch) {
+    const q = debouncedSearch.toLowerCase();
+    filtered = filtered.filter(
+      (p) =>
+        p.name.toLowerCase().includes(q) ||
+        p.brand?.toLowerCase().includes(q) ||
+        p.description?.toLowerCase().includes(q),
+    );
+  }
+
+  if (selectedCategoryId) {
+    filtered = filtered.filter((p) => p.categoryId === selectedCategoryId);
+  }
+
+  if (inStockOnly) {
+    filtered = filtered.filter((p) => p.inStock);
+  }
+
+  // Sort
+  switch (sort) {
+    case "name_asc":
+      filtered.sort((a, b) => a.name.localeCompare(b.name, "tr"));
+      break;
+    case "name_desc":
+      filtered.sort((a, b) => b.name.localeCompare(a.name, "tr"));
+      break;
+    case "price_asc":
+      filtered.sort((a, b) => a.sellingPrice - b.sellingPrice);
+      break;
+    case "price_desc":
+      filtered.sort((a, b) => b.sellingPrice - a.sellingPrice);
+      break;
+  }
+
+  const phone = settings?.phone;
+  const cleanPhone = phone?.replace(/\s/g, "");
 
   return (
     <div className="min-h-screen bg-background">
@@ -77,8 +163,10 @@ export default function ProductCatalogPage() {
         orgName={organization.name}
         logo={organization.logo}
       />
+
       <main className="container mx-auto px-4 py-8">
-        <div className="mb-8">
+        {/* Title */}
+        <div className="mb-6">
           <h2 className="text-2xl font-bold tracking-tight">Products</h2>
           <p className="mt-1 text-muted-foreground">
             Products available at {organization.name}
@@ -91,98 +179,131 @@ export default function ProductCatalogPage() {
             <p className="text-muted-foreground">No products available yet.</p>
           </div>
         ) : (
-          <div className="space-y-10">
-            {grouped.map(({ category, items }) => (
-              <section key={category ?? "__uncategorized"}>
-                {category && (
-                  <h3 className="mb-4 border-b pb-2 text-lg font-semibold">
-                    {category}
-                  </h3>
-                )}
-                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-                  {items.map((product) => (
-                    <ProductCard key={product._id} product={product} />
+          <>
+            {/* Search + Filters */}
+            <div className="mb-6 space-y-4">
+              {/* Search bar */}
+              <div className="relative max-w-md">
+                <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+                <Input
+                  placeholder="Search products..."
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                  className="pl-9"
+                />
+              </div>
+
+              {/* Category chips */}
+              {categories && categories.length > 0 && (
+                <div className="flex flex-wrap gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setSelectedCategoryId(null)}
+                    className={`rounded-full border px-3 py-1 text-sm transition-colors ${
+                      selectedCategoryId === null
+                        ? "bg-primary text-primary-foreground border-primary"
+                        : "hover:bg-muted"
+                    }`}
+                  >
+                    All
+                  </button>
+                  {categories.map((cat) => (
+                    <button
+                      key={cat._id}
+                      type="button"
+                      onClick={() => setSelectedCategoryId(cat._id)}
+                      className={`rounded-full border px-3 py-1 text-sm transition-colors ${
+                        selectedCategoryId === cat._id
+                          ? "bg-primary text-primary-foreground border-primary"
+                          : "hover:bg-muted"
+                      }`}
+                    >
+                      {cat.name}
+                    </button>
                   ))}
                 </div>
-              </section>
-            ))}
-          </div>
+              )}
+
+              {/* Sort + In Stock toggle */}
+              <div className="flex flex-wrap items-center gap-3">
+                <Select
+                  value={sort}
+                  onValueChange={(v) => setSort(v as SortMode)}
+                >
+                  <SelectTrigger className="w-[160px]">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="name_asc">Name A-Z</SelectItem>
+                    <SelectItem value="name_desc">Name Z-A</SelectItem>
+                    <SelectItem value="price_asc">Price Low-High</SelectItem>
+                    <SelectItem value="price_desc">Price High-Low</SelectItem>
+                  </SelectContent>
+                </Select>
+
+                <button
+                  type="button"
+                  onClick={() => setInStockOnly(!inStockOnly)}
+                  className={`rounded-full border px-3 py-1 text-sm transition-colors ${
+                    inStockOnly
+                      ? "bg-primary text-primary-foreground border-primary"
+                      : "hover:bg-muted"
+                  }`}
+                >
+                  In Stock Only
+                </button>
+              </div>
+            </div>
+
+            {/* Product Grid */}
+            {filtered.length === 0 ? (
+              <div className="flex flex-col items-center justify-center py-16 text-center">
+                <Search className="mb-3 size-8 text-muted-foreground/40" />
+                <p className="text-muted-foreground">
+                  No products match your search.
+                </p>
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+                {filtered.map((product) => (
+                  <PublicProductCard key={product._id} product={product} />
+                ))}
+              </div>
+            )}
+          </>
         )}
       </main>
+
       <Footer />
+
+      {/* Floating contact buttons */}
+      {cleanPhone && (
+        <div className="fixed bottom-6 right-6 flex flex-col gap-2 z-50">
+          <a
+            href={`https://wa.me/${cleanPhone.replace("+", "")}`}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex size-12 items-center justify-center rounded-full bg-green-500 text-white shadow-lg transition-transform hover:scale-110"
+            aria-label="Contact via WhatsApp"
+          >
+            <MessageCircle className="size-5" />
+          </a>
+          <a
+            href={`tel:${cleanPhone}`}
+            className="flex size-12 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-lg transition-transform hover:scale-110"
+            aria-label="Call salon"
+          >
+            <Phone className="size-5" />
+          </a>
+        </div>
+      )}
     </div>
   );
-}
-
-// ---------------------------------------------------------------------------
-// Helpers
-// ---------------------------------------------------------------------------
-
-function groupByCategory(products: ProductPublic[]) {
-  const map = new Map<string, ProductPublic[]>();
-
-  for (const product of products) {
-    const key = product.categoryName ?? "";
-    const list = map.get(key) ?? [];
-    list.push(product);
-    map.set(key, list);
-  }
-
-  // Named categories first (sorted), uncategorized last
-  return [...map.entries()]
-    .sort(([a], [b]) => {
-      if (a === "" && b !== "") return 1;
-      if (a !== "" && b === "") return -1;
-      return a.localeCompare(b, "tr");
-    })
-    .map(([category, items]) => ({ category: category || null, items }));
 }
 
 // ---------------------------------------------------------------------------
 // Sub-components
 // ---------------------------------------------------------------------------
-
-function ProductCard({ product }: { product: ProductPublic }) {
-  return (
-    <div className="rounded-lg border bg-card p-4 transition-shadow hover:shadow-sm">
-      <div className="flex items-start justify-between gap-2">
-        <div className="min-w-0">
-          <p className="truncate font-medium leading-tight">{product.name}</p>
-          {product.brand && (
-            <p className="mt-0.5 text-xs text-muted-foreground">
-              {product.brand}
-            </p>
-          )}
-        </div>
-        <Badge
-          variant={product.inStock ? "default" : "secondary"}
-          className="shrink-0 text-xs"
-        >
-          {product.inStock ? "In Stock" : "Out of Stock"}
-        </Badge>
-      </div>
-
-      {product.description && (
-        <p className="mt-2 line-clamp-2 text-sm text-muted-foreground">
-          {product.description}
-        </p>
-      )}
-
-      <div className="mt-3 flex items-center justify-between border-t pt-3">
-        {product.categoryName ? (
-          <Badge variant="outline" className="text-xs font-normal">
-            {product.categoryName}
-          </Badge>
-        ) : (
-          <span />
-        )}
-        <span className="ml-auto text-base font-semibold">
-          {formatPrice(product.sellingPrice)}
-        </span>
-      </div>
-    </div>
-  );
-}
 
 function Header({
   slug,
@@ -243,15 +364,18 @@ function Footer() {
 
 function ProductsSkeleton() {
   return (
-    <div className="space-y-10">
-      <div>
-        <Skeleton className="mb-6 h-7 w-32" />
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {Array.from({ length: 6 }).map((_, i) => (
-            // biome-ignore lint/suspicious/noArrayIndexKey: skeleton items have no stable id
-            <Skeleton key={i} className="h-36 w-full rounded-lg" />
-          ))}
-        </div>
+    <div className="space-y-6">
+      <Skeleton className="h-7 w-32" />
+      <Skeleton className="h-10 w-full max-w-md" />
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+        {Array.from({ length: 8 }).map((_, i) => (
+          // biome-ignore lint/suspicious/noArrayIndexKey: skeleton items have no stable id
+          <div key={i} className="space-y-2">
+            <Skeleton className="aspect-[4/3] w-full rounded-lg" />
+            <Skeleton className="h-4 w-3/4" />
+            <Skeleton className="h-3 w-1/2" />
+          </div>
+        ))}
       </div>
     </div>
   );

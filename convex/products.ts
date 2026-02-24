@@ -1,4 +1,5 @@
 import { ConvexError, v } from "convex/values";
+import { internal } from "./_generated/api";
 import {
   ErrorCode,
   ownerMutation,
@@ -6,6 +7,7 @@ import {
   publicQuery,
 } from "./lib/functions";
 import {
+  inventoryStatsValidator,
   inventoryTransactionTypeValidator,
   productPublicValidator,
   productWithCategoryValidator,
@@ -145,6 +147,46 @@ export const countLowStock = ownerQuery({
 });
 
 /**
+ * Inventory stats for the products dashboard.
+ * Returns totals for products, stock value, low-stock, and out-of-stock counts.
+ */
+export const getInventoryStats = ownerQuery({
+  args: {},
+  returns: inventoryStatsValidator,
+  handler: async (ctx) => {
+    const products = await ctx.db
+      .query("products")
+      .withIndex("by_org_status", (q) =>
+        q.eq("organizationId", ctx.organizationId).eq("status", "active"),
+      )
+      .collect();
+
+    let totalStockValue = 0;
+    let lowStockCount = 0;
+    let outOfStockCount = 0;
+
+    for (const p of products) {
+      totalStockValue += p.stockQuantity * p.costPrice;
+      if (p.stockQuantity === 0) {
+        outOfStockCount++;
+      } else if (
+        p.lowStockThreshold !== undefined &&
+        p.stockQuantity <= p.lowStockThreshold
+      ) {
+        lowStockCount++;
+      }
+    }
+
+    return {
+      totalProducts: products.length,
+      totalStockValue,
+      lowStockCount,
+      outOfStockCount,
+    };
+  },
+});
+
+/**
  * Public catalog: list active products for a given org.
  * Excludes sensitive fields (costPrice, margin, supplierInfo, etc.).
  * No authentication required — used on the customer-facing catalog page.
@@ -193,6 +235,7 @@ export const listPublic = publicQuery({
         sku: product.sku,
         sellingPrice: product.sellingPrice,
         inStock: product.stockQuantity > 0,
+        imageUrls: product.imageUrls,
         status: product.status,
       }))
       .sort((a, b) => a.name.localeCompare(b.name, "tr"));
@@ -225,6 +268,7 @@ export const create = ownerMutation({
     ),
     stockQuantity: v.number(),
     lowStockThreshold: v.optional(v.number()),
+    imageStorageIds: v.optional(v.array(v.id("_storage"))),
   },
   returns: v.id("products"),
   handler: async (ctx, args) => {
@@ -274,6 +318,23 @@ export const create = ownerMutation({
       });
     }
 
+    // Validate and resolve image URLs if storageIds provided
+    let imageStorageIds: typeof args.imageStorageIds;
+    let imageUrls: string[] | undefined;
+    if (args.imageStorageIds && args.imageStorageIds.length > 0) {
+      if (args.imageStorageIds.length > 4) {
+        throw new ConvexError({
+          code: ErrorCode.INVALID_INPUT,
+          message: "Maximum 4 images allowed per product",
+        });
+      }
+      imageStorageIds = args.imageStorageIds;
+      const urls = await Promise.all(
+        args.imageStorageIds.map((id) => ctx.storage.getUrl(id)),
+      );
+      imageUrls = urls.filter((u): u is string => u !== null);
+    }
+
     const productId = await ctx.db.insert("products", {
       organizationId: ctx.organizationId,
       categoryId: args.categoryId,
@@ -286,6 +347,8 @@ export const create = ownerMutation({
       supplierInfo: args.supplierInfo,
       stockQuantity: args.stockQuantity,
       lowStockThreshold: args.lowStockThreshold,
+      imageStorageIds,
+      imageUrls,
       status: "active",
       createdAt: Date.now(),
       updatedAt: Date.now(),
@@ -333,6 +396,7 @@ export const update = ownerMutation({
     ),
     lowStockThreshold: v.optional(v.number()),
     status: v.optional(v.union(v.literal("active"), v.literal("inactive"))),
+    imageStorageIds: v.optional(v.array(v.id("_storage"))),
   },
   returns: v.boolean(),
   handler: async (ctx, args) => {
@@ -403,6 +467,25 @@ export const update = ownerMutation({
       updates.lowStockThreshold = args.lowStockThreshold;
     if (args.status !== undefined) updates.status = args.status;
 
+    // Handle image updates
+    if (args.imageStorageIds !== undefined) {
+      if (args.imageStorageIds.length > 4) {
+        throw new ConvexError({
+          code: ErrorCode.INVALID_INPUT,
+          message: "Maximum 4 images allowed per product",
+        });
+      }
+      updates.imageStorageIds = args.imageStorageIds;
+      if (args.imageStorageIds.length > 0) {
+        const urls = await Promise.all(
+          args.imageStorageIds.map((id) => ctx.storage.getUrl(id)),
+        );
+        updates.imageUrls = urls.filter((u): u is string => u !== null);
+      } else {
+        updates.imageUrls = [];
+      }
+    }
+
     await ctx.db.patch(args.productId, updates);
     return true;
   },
@@ -462,6 +545,21 @@ export const adjustStock = ownerMutation({
       note: args.note,
       createdAt: Date.now(),
     });
+
+    // Fire low-stock notification if stock dropped below threshold
+    const threshold = product.lowStockThreshold;
+    if (
+      threshold !== undefined &&
+      newStock <= threshold &&
+      previousStock > threshold
+    ) {
+      await ctx.scheduler.runAfter(0, internal.notifications.notifyAllStaff, {
+        organizationId: ctx.organizationId,
+        type: "low_stock" as const,
+        title: "Low Stock Alert",
+        message: `${product.name} is running low on stock (${newStock} remaining)`,
+      });
+    }
 
     return newStock;
   },

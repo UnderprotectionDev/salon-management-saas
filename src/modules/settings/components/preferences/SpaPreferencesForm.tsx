@@ -55,10 +55,7 @@ export function SpaPreferencesForm({ data }: { data?: SpaData }) {
     focusAreas,
   };
 
-  const { isSubmitting, isDirty, handleSave } = useCategoryForm(
-    "spa",
-    initial,
-  );
+  const { isSubmitting, isDirty, handleSave } = useCategoryForm("spa", initial);
 
   const dirty = isDirty(current);
 
@@ -88,9 +85,7 @@ export function SpaPreferencesForm({ data }: { data?: SpaData }) {
         chronicPainAreas.length > 0 ? chronicPainAreas : undefined,
       pressurePreference: pressurePreference || undefined,
       aromatherapyPreference:
-        aromatherapyPreference.length > 0
-          ? aromatherapyPreference
-          : undefined,
+        aromatherapyPreference.length > 0 ? aromatherapyPreference : undefined,
       focusAreas: focusAreas.length > 0 ? focusAreas : undefined,
     });
 

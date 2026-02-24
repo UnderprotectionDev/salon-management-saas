@@ -119,7 +119,8 @@ export default function StaffPage() {
                         <NiceAvatar
                           style={{ width: "100%", height: "100%" }}
                           shape="circle"
-                          {...(avatarConfigMap.get(staff._id) ?? genConfig(staff._id))}
+                          {...(avatarConfigMap.get(staff._id) ??
+                            genConfig(staff._id))}
                         />
                       </AvatarFallback>
                     </Avatar>

@@ -1,5 +1,10 @@
 import { ConvexError, v } from "convex/values";
-import { ErrorCode, ownerMutation, ownerQuery } from "./lib/functions";
+import {
+  ErrorCode,
+  ownerMutation,
+  ownerQuery,
+  publicQuery,
+} from "./lib/functions";
 import {
   productCategoryDocValidator,
   productCategoryWithCountValidator,
@@ -43,6 +48,32 @@ export const list = ownerQuery({
         ...category,
         productCount: countMap.get(category._id) ?? 0,
       }))
+      .sort((a, b) => a.sortOrder - b.sortOrder);
+  },
+});
+
+/**
+ * Public list of active product categories for a given organization.
+ * Used on the customer-facing catalog page.
+ */
+export const listPublic = publicQuery({
+  args: { organizationId: v.id("organization") },
+  returns: v.array(
+    v.object({
+      _id: v.id("productCategories"),
+      name: v.string(),
+      sortOrder: v.number(),
+    }),
+  ),
+  handler: async (ctx, args) => {
+    const categories = await ctx.db
+      .query("productCategories")
+      .withIndex("by_org", (q) => q.eq("organizationId", args.organizationId))
+      .collect();
+
+    return categories
+      .filter((c) => c.status === "active")
+      .map((c) => ({ _id: c._id, name: c.name, sortOrder: c.sortOrder }))
       .sort((a, b) => a.sortOrder - b.sortOrder);
   },
 });

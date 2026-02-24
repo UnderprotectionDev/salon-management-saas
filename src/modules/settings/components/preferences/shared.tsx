@@ -54,9 +54,7 @@ export function PillSelect({
             type="button"
             role="radio"
             aria-checked={value === o.id}
-            tabIndex={
-              value === o.id || (value === "" && index === 0) ? 0 : -1
-            }
+            tabIndex={value === o.id || (value === "" && index === 0) ? 0 : -1}
             onClick={() => onChange(o.id)}
             onKeyDown={(e) => handleKeyDown(e, index)}
             className={cn(

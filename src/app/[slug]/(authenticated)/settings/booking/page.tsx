@@ -122,285 +122,288 @@ export default function BookingSettingsPage() {
 
   return (
     <>
-    {dialog}
-    <form
-      onSubmit={(e) => {
-        e.preventDefault();
-        e.stopPropagation();
-        form.handleSubmit();
-      }}
-      className="space-y-6"
-    >
-      <Card>
-        <CardHeader>
-          <CardTitle>Booking Settings</CardTitle>
-          <CardDescription>
-            Configure online booking rules, cancellation policy, and scheduling
-            preferences
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <FieldGroup>
-            {/* Online Booking Toggle */}
-            <form.Field name="allowOnlineBooking">
-              {(field) => (
-                <div className="flex items-center justify-between rounded-lg border p-4">
-                  <div>
-                    <Label htmlFor="allowOnlineBooking" className="font-medium">
-                      Online Booking
-                    </Label>
-                    <p className="text-sm text-muted-foreground mt-0.5">
-                      Allow customers to book appointments online
-                    </p>
+      {dialog}
+      <form
+        onSubmit={(e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          form.handleSubmit();
+        }}
+        className="space-y-6"
+      >
+        <Card>
+          <CardHeader>
+            <CardTitle>Booking Settings</CardTitle>
+            <CardDescription>
+              Configure online booking rules, cancellation policy, and
+              scheduling preferences
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <FieldGroup>
+              {/* Online Booking Toggle */}
+              <form.Field name="allowOnlineBooking">
+                {(field) => (
+                  <div className="flex items-center justify-between rounded-lg border p-4">
+                    <div>
+                      <Label
+                        htmlFor="allowOnlineBooking"
+                        className="font-medium"
+                      >
+                        Online Booking
+                      </Label>
+                      <p className="text-sm text-muted-foreground mt-0.5">
+                        Allow customers to book appointments online
+                      </p>
+                    </div>
+                    <Switch
+                      id="allowOnlineBooking"
+                      checked={field.state.value}
+                      onCheckedChange={field.handleChange}
+                      disabled={form.state.isSubmitting}
+                    />
                   </div>
-                  <Switch
-                    id="allowOnlineBooking"
-                    checked={field.state.value}
-                    onCheckedChange={field.handleChange}
-                    disabled={form.state.isSubmitting}
-                  />
-                </div>
-              )}
-            </form.Field>
-
-            {/* Cancellation Policy Hours */}
-            <form.Field
-              name="cancellationPolicyHours"
-              validators={{
-                onBlur: cancellationHoursSchema,
-                onSubmit: cancellationHoursSchema,
-              }}
-            >
-              {(field) => {
-                const hasError =
-                  field.state.meta.isTouched &&
-                  field.state.meta.errors.length > 0;
-                return (
-                  <Field data-invalid={hasError || undefined}>
-                    <FieldLabel htmlFor={field.name}>
-                      Cancellation Policy (hours)
-                    </FieldLabel>
-                    <Input
-                      id={field.name}
-                      name={field.name}
-                      type="number"
-                      min={0}
-                      max={168}
-                      value={field.state.value}
-                      onBlur={field.handleBlur}
-                      onChange={(e) =>
-                        field.handleChange(Number(e.target.value))
-                      }
-                      disabled={form.state.isSubmitting}
-                    />
-                    <FieldDescription>
-                      Customers cannot cancel or reschedule within this many
-                      hours of their appointment. Set to 0 to disable.
-                    </FieldDescription>
-                    {hasError && (
-                      <FieldError errors={field.state.meta.errors} />
-                    )}
-                  </Field>
-                );
-              }}
-            </form.Field>
-
-            {/* Minimum Advance Booking */}
-            <form.Field
-              name="minAdvanceBookingMinutes"
-              validators={{
-                onBlur: minAdvanceSchema,
-                onSubmit: minAdvanceSchema,
-              }}
-            >
-              {(field) => {
-                const hasError =
-                  field.state.meta.isTouched &&
-                  field.state.meta.errors.length > 0;
-                return (
-                  <Field data-invalid={hasError || undefined}>
-                    <FieldLabel htmlFor={field.name}>
-                      Minimum Advance Booking (minutes)
-                    </FieldLabel>
-                    <Input
-                      id={field.name}
-                      name={field.name}
-                      type="number"
-                      min={0}
-                      max={1440}
-                      value={field.state.value}
-                      onBlur={field.handleBlur}
-                      onChange={(e) =>
-                        field.handleChange(Number(e.target.value))
-                      }
-                      disabled={form.state.isSubmitting}
-                    />
-                    <FieldDescription>
-                      How far in advance a booking must be made. E.g. 60 = at
-                      least 1 hour before.
-                    </FieldDescription>
-                    {hasError && (
-                      <FieldError errors={field.state.meta.errors} />
-                    )}
-                  </Field>
-                );
-              }}
-            </form.Field>
-
-            {/* Maximum Advance Booking */}
-            <form.Field
-              name="maxAdvanceBookingDays"
-              validators={{
-                onBlur: maxAdvanceDaysSchema,
-                onSubmit: maxAdvanceDaysSchema,
-              }}
-            >
-              {(field) => {
-                const hasError =
-                  field.state.meta.isTouched &&
-                  field.state.meta.errors.length > 0;
-                return (
-                  <Field data-invalid={hasError || undefined}>
-                    <FieldLabel htmlFor={field.name}>
-                      Maximum Advance Booking (days)
-                    </FieldLabel>
-                    <Input
-                      id={field.name}
-                      name={field.name}
-                      type="number"
-                      min={1}
-                      max={365}
-                      value={field.state.value}
-                      onBlur={field.handleBlur}
-                      onChange={(e) =>
-                        field.handleChange(Number(e.target.value))
-                      }
-                      disabled={form.state.isSubmitting}
-                    />
-                    <FieldDescription>
-                      How many days ahead customers can book. E.g. 30 = up to 1
-                      month ahead.
-                    </FieldDescription>
-                    {hasError && (
-                      <FieldError errors={field.state.meta.errors} />
-                    )}
-                  </Field>
-                );
-              }}
-            </form.Field>
-
-            {/* Slot Duration */}
-            <form.Field
-              name="slotDurationMinutes"
-              validators={{
-                onBlur: slotDurationSchema,
-                onSubmit: slotDurationSchema,
-              }}
-            >
-              {(field) => {
-                const hasError =
-                  field.state.meta.isTouched &&
-                  field.state.meta.errors.length > 0;
-                return (
-                  <Field data-invalid={hasError || undefined}>
-                    <FieldLabel htmlFor={field.name}>
-                      Slot Duration (minutes)
-                    </FieldLabel>
-                    <Input
-                      id={field.name}
-                      name={field.name}
-                      type="number"
-                      min={5}
-                      max={480}
-                      value={field.state.value}
-                      onBlur={field.handleBlur}
-                      onChange={(e) =>
-                        field.handleChange(Number(e.target.value))
-                      }
-                      disabled={form.state.isSubmitting}
-                    />
-                    <FieldDescription>
-                      Time slot granularity shown in the booking calendar. E.g.
-                      30 = slots every 30 minutes.
-                    </FieldDescription>
-                    {hasError && (
-                      <FieldError errors={field.state.meta.errors} />
-                    )}
-                  </Field>
-                );
-              }}
-            </form.Field>
-
-            {/* Buffer Between Bookings */}
-            <form.Field
-              name="bufferBetweenBookingsMinutes"
-              validators={{ onBlur: bufferSchema, onSubmit: bufferSchema }}
-            >
-              {(field) => {
-                const hasError =
-                  field.state.meta.isTouched &&
-                  field.state.meta.errors.length > 0;
-                return (
-                  <Field data-invalid={hasError || undefined}>
-                    <FieldLabel htmlFor={field.name}>
-                      Buffer Between Bookings (minutes)
-                    </FieldLabel>
-                    <Input
-                      id={field.name}
-                      name={field.name}
-                      type="number"
-                      min={0}
-                      max={120}
-                      value={field.state.value}
-                      onBlur={field.handleBlur}
-                      onChange={(e) =>
-                        field.handleChange(Number(e.target.value))
-                      }
-                      disabled={form.state.isSubmitting}
-                    />
-                    <FieldDescription>
-                      Break time added after each appointment before the next
-                      slot becomes available. Set to 0 for no buffer.
-                    </FieldDescription>
-                    {hasError && (
-                      <FieldError errors={field.state.meta.errors} />
-                    )}
-                  </Field>
-                );
-              }}
-            </form.Field>
-          </FieldGroup>
-        </CardContent>
-      </Card>
-
-      {/* Save / Discard */}
-      <form.Subscribe selector={(s) => [s.isDefaultValue, s.isSubmitting]}>
-        {([isDefaultValue, isSubmitting]) =>
-          !isDefaultValue ? (
-            <div className="flex gap-2 justify-end">
-              <Button
-                type="button"
-                variant="outline"
-                onClick={() => form.reset()}
-                disabled={isSubmitting as boolean}
-              >
-                Discard
-              </Button>
-              <Button type="submit" disabled={isSubmitting as boolean}>
-                {isSubmitting ? (
-                  <>
-                    <Loader2 className="mr-2 size-4 animate-spin" />
-                    Saving...
-                  </>
-                ) : (
-                  "Save Changes"
                 )}
-              </Button>
-            </div>
-          ) : null
-        }
-      </form.Subscribe>
-    </form>
+              </form.Field>
+
+              {/* Cancellation Policy Hours */}
+              <form.Field
+                name="cancellationPolicyHours"
+                validators={{
+                  onBlur: cancellationHoursSchema,
+                  onSubmit: cancellationHoursSchema,
+                }}
+              >
+                {(field) => {
+                  const hasError =
+                    field.state.meta.isTouched &&
+                    field.state.meta.errors.length > 0;
+                  return (
+                    <Field data-invalid={hasError || undefined}>
+                      <FieldLabel htmlFor={field.name}>
+                        Cancellation Policy (hours)
+                      </FieldLabel>
+                      <Input
+                        id={field.name}
+                        name={field.name}
+                        type="number"
+                        min={0}
+                        max={168}
+                        value={field.state.value}
+                        onBlur={field.handleBlur}
+                        onChange={(e) =>
+                          field.handleChange(Number(e.target.value))
+                        }
+                        disabled={form.state.isSubmitting}
+                      />
+                      <FieldDescription>
+                        Customers cannot cancel or reschedule within this many
+                        hours of their appointment. Set to 0 to disable.
+                      </FieldDescription>
+                      {hasError && (
+                        <FieldError errors={field.state.meta.errors} />
+                      )}
+                    </Field>
+                  );
+                }}
+              </form.Field>
+
+              {/* Minimum Advance Booking */}
+              <form.Field
+                name="minAdvanceBookingMinutes"
+                validators={{
+                  onBlur: minAdvanceSchema,
+                  onSubmit: minAdvanceSchema,
+                }}
+              >
+                {(field) => {
+                  const hasError =
+                    field.state.meta.isTouched &&
+                    field.state.meta.errors.length > 0;
+                  return (
+                    <Field data-invalid={hasError || undefined}>
+                      <FieldLabel htmlFor={field.name}>
+                        Minimum Advance Booking (minutes)
+                      </FieldLabel>
+                      <Input
+                        id={field.name}
+                        name={field.name}
+                        type="number"
+                        min={0}
+                        max={1440}
+                        value={field.state.value}
+                        onBlur={field.handleBlur}
+                        onChange={(e) =>
+                          field.handleChange(Number(e.target.value))
+                        }
+                        disabled={form.state.isSubmitting}
+                      />
+                      <FieldDescription>
+                        How far in advance a booking must be made. E.g. 60 = at
+                        least 1 hour before.
+                      </FieldDescription>
+                      {hasError && (
+                        <FieldError errors={field.state.meta.errors} />
+                      )}
+                    </Field>
+                  );
+                }}
+              </form.Field>
+
+              {/* Maximum Advance Booking */}
+              <form.Field
+                name="maxAdvanceBookingDays"
+                validators={{
+                  onBlur: maxAdvanceDaysSchema,
+                  onSubmit: maxAdvanceDaysSchema,
+                }}
+              >
+                {(field) => {
+                  const hasError =
+                    field.state.meta.isTouched &&
+                    field.state.meta.errors.length > 0;
+                  return (
+                    <Field data-invalid={hasError || undefined}>
+                      <FieldLabel htmlFor={field.name}>
+                        Maximum Advance Booking (days)
+                      </FieldLabel>
+                      <Input
+                        id={field.name}
+                        name={field.name}
+                        type="number"
+                        min={1}
+                        max={365}
+                        value={field.state.value}
+                        onBlur={field.handleBlur}
+                        onChange={(e) =>
+                          field.handleChange(Number(e.target.value))
+                        }
+                        disabled={form.state.isSubmitting}
+                      />
+                      <FieldDescription>
+                        How many days ahead customers can book. E.g. 30 = up to
+                        1 month ahead.
+                      </FieldDescription>
+                      {hasError && (
+                        <FieldError errors={field.state.meta.errors} />
+                      )}
+                    </Field>
+                  );
+                }}
+              </form.Field>
+
+              {/* Slot Duration */}
+              <form.Field
+                name="slotDurationMinutes"
+                validators={{
+                  onBlur: slotDurationSchema,
+                  onSubmit: slotDurationSchema,
+                }}
+              >
+                {(field) => {
+                  const hasError =
+                    field.state.meta.isTouched &&
+                    field.state.meta.errors.length > 0;
+                  return (
+                    <Field data-invalid={hasError || undefined}>
+                      <FieldLabel htmlFor={field.name}>
+                        Slot Duration (minutes)
+                      </FieldLabel>
+                      <Input
+                        id={field.name}
+                        name={field.name}
+                        type="number"
+                        min={5}
+                        max={480}
+                        value={field.state.value}
+                        onBlur={field.handleBlur}
+                        onChange={(e) =>
+                          field.handleChange(Number(e.target.value))
+                        }
+                        disabled={form.state.isSubmitting}
+                      />
+                      <FieldDescription>
+                        Time slot granularity shown in the booking calendar.
+                        E.g. 30 = slots every 30 minutes.
+                      </FieldDescription>
+                      {hasError && (
+                        <FieldError errors={field.state.meta.errors} />
+                      )}
+                    </Field>
+                  );
+                }}
+              </form.Field>
+
+              {/* Buffer Between Bookings */}
+              <form.Field
+                name="bufferBetweenBookingsMinutes"
+                validators={{ onBlur: bufferSchema, onSubmit: bufferSchema }}
+              >
+                {(field) => {
+                  const hasError =
+                    field.state.meta.isTouched &&
+                    field.state.meta.errors.length > 0;
+                  return (
+                    <Field data-invalid={hasError || undefined}>
+                      <FieldLabel htmlFor={field.name}>
+                        Buffer Between Bookings (minutes)
+                      </FieldLabel>
+                      <Input
+                        id={field.name}
+                        name={field.name}
+                        type="number"
+                        min={0}
+                        max={120}
+                        value={field.state.value}
+                        onBlur={field.handleBlur}
+                        onChange={(e) =>
+                          field.handleChange(Number(e.target.value))
+                        }
+                        disabled={form.state.isSubmitting}
+                      />
+                      <FieldDescription>
+                        Break time added after each appointment before the next
+                        slot becomes available. Set to 0 for no buffer.
+                      </FieldDescription>
+                      {hasError && (
+                        <FieldError errors={field.state.meta.errors} />
+                      )}
+                    </Field>
+                  );
+                }}
+              </form.Field>
+            </FieldGroup>
+          </CardContent>
+        </Card>
+
+        {/* Save / Discard */}
+        <form.Subscribe selector={(s) => [s.isDefaultValue, s.isSubmitting]}>
+          {([isDefaultValue, isSubmitting]) =>
+            !isDefaultValue ? (
+              <div className="flex gap-2 justify-end">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => form.reset()}
+                  disabled={isSubmitting as boolean}
+                >
+                  Discard
+                </Button>
+                <Button type="submit" disabled={isSubmitting as boolean}>
+                  {isSubmitting ? (
+                    <>
+                      <Loader2 className="mr-2 size-4 animate-spin" />
+                      Saving...
+                    </>
+                  ) : (
+                    "Save Changes"
+                  )}
+                </Button>
+              </div>
+            ) : null
+          }
+        </form.Subscribe>
+      </form>
     </>
   );
 }

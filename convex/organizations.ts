@@ -21,10 +21,7 @@ import {
   validateString,
   validateUrl,
 } from "./lib/validation";
-import {
-  orgSalonTypesValidator,
-  socialMediaValidator,
-} from "./lib/validators";
+import { orgSalonTypesValidator, socialMediaValidator } from "./lib/validators";
 
 type OrgSalonTypeItem =
   | "hair_women"
@@ -302,9 +299,7 @@ export const create = authedMutation({
       });
     }
 
-    const normalizedPhone = args.phone
-      ? validatePhone(args.phone)
-      : undefined;
+    const normalizedPhone = args.phone ? validatePhone(args.phone) : undefined;
     if (args.email) validateEmail(args.email);
 
     const existingMembership = await ctx.db
@@ -479,8 +474,7 @@ export const updateSettings = ownerMutation({
       updates.businessHours = args.businessHours;
     if (args.bookingSettings !== undefined)
       updates.bookingSettings = args.bookingSettings;
-    if (args.socialMedia !== undefined)
-      updates.socialMedia = args.socialMedia;
+    if (args.socialMedia !== undefined) updates.socialMedia = args.socialMedia;
 
     await ctx.db.patch(settings._id, updates);
 

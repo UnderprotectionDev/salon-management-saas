@@ -23,9 +23,7 @@ export function PhotoUploadGrid({
   const generateUploadUrl = useMutation(api.files.generateUploadUrl);
   const fileUrls = useQuery(
     api.files.getFileUrls,
-    photos.length > 0
-      ? { storageIds: photos as Id<"_storage">[] }
-      : "skip",
+    photos.length > 0 ? { storageIds: photos as Id<"_storage">[] } : "skip",
   );
   const inputRef = useRef<HTMLInputElement>(null);
 
