@@ -59,6 +59,7 @@
 | `services.create` | ownerMutation | `name, description?, duration, bufferTime?, price, priceType, categoryId?` | `id("services")` |
 | `services.update` | ownerMutation | `serviceId, name?, duration?, price?, priceType?, categoryId?, isPopular?, showOnline?, status?` | `id("services")` |
 | `services.remove` | ownerMutation | `serviceId` | `null` (soft-delete) |
+| `services.permanentDelete` | ownerMutation | `serviceId` | `null` (hard-delete, blocked if appointments exist) |
 | `services.assignStaff` | ownerMutation | `serviceId, staffId, assign: boolean` | `null` |
 | `services.listPublic` | publicQuery | `organizationId` | `array({_id, name, description?, duration, price, priceType, imageUrl?, isPopular, categoryName?})` |
 | `services.getStaffForService` | orgQuery | `serviceId` | `array({_id, name, imageUrl?, assigned})` |
@@ -147,6 +148,8 @@
 | `files.saveOrganizationLogo` | ownerMutation | `storageId, fileName, fileType, fileSize` | `string` (CDN URL) |
 | `files.saveStaffImage` | authedMutation | `staffId, storageId, fileName, fileType, fileSize` | `string` (CDN URL) |
 | `files.saveServiceImage` | ownerMutation | `serviceId, storageId, fileName, fileType, fileSize` | `string` (CDN URL) |
+| `files.saveProductImages` | ownerMutation | `productId, storageIds[], fileNames[], fileTypes[], fileSizes[]` | `array(string)` (URLs, max 4 images total) |
+| `files.removeProductImage` | ownerMutation | `productId, storageId` | `null` |
 
 Upload flow: `generateUploadUrl()` → `fetch(url, {method: "POST", body: file})` → `save*({storageId, ...})`
 
@@ -188,6 +191,29 @@ Subscription state transitions:
 | `reports.getRevenueReport` | ownerQuery | `startDate, endDate` | `revenueReport` (totalRevenue, expectedRevenue, completionRate, cancellationRate, statusBreakdown, daily[], byService[], byStaff[]) |
 | `reports.getStaffPerformanceReport` | ownerQuery | `startDate, endDate` | `staffPerformanceReport` (staff[]: appointments, completed, noShows, revenue, utilization%) |
 | `reports.getCustomerReport` | ownerQuery | `startDate, endDate` | `customerReport` (totalActive, newInPeriod, retentionRate, monthly[], topCustomers[]) |
+
+## Products & Inventory
+
+| Function | Wrapper | Args | Returns |
+|----------|---------|------|---------|
+| `productCategories.list` | ownerQuery | `{}` | `array(categoryWithCount)` |
+| `productCategories.listPublic` | publicQuery | `organizationId` | `array({_id, name, sortOrder})` |
+| `productCategories.create` | ownerMutation | `name, description?` | `id("productCategories")` |
+| `productCategories.update` | ownerMutation | `categoryId, name?, description?, sortOrder?` | `id("productCategories")` |
+| `productCategories.remove` | ownerMutation | `categoryId` | `null` |
+| `products.list` | ownerQuery | `categoryId?, status?` | `array(productDoc)` |
+| `products.get` | ownerQuery | `productId` | `productDoc \| null` |
+| `products.create` | ownerMutation | `name, categoryId?, description?, sku?, brand?, costPrice, sellingPrice, stockQuantity, lowStockThreshold?, supplierInfo?, imageStorageIds?` | `id("products")` |
+| `products.update` | ownerMutation | `productId, name?, categoryId?, description?, sku?, brand?, costPrice?, sellingPrice?, lowStockThreshold?, supplierInfo?, imageStorageIds?` | `id("products")` |
+| `products.remove` | ownerMutation | `productId` | `null` (soft-delete) |
+| `products.adjustStock` | ownerMutation | `productId, quantity, type, note?` | `id("inventoryTransactions")` |
+| `products.countLowStock` | ownerQuery | `{}` | `number` |
+| `products.getInventoryStats` | ownerQuery | `{}` | `{totalProducts, totalStockValue, lowStockCount, outOfStockCount}` |
+| `products.listPublic` | publicQuery | `organizationId` | `array(productPublic)` (no costPrice, margin, supplierInfo) |
+| `inventoryTransactions.list` | ownerQuery | `productId` | `array(inventoryTransactionDoc)` |
+
+- `products.create`/`update` accept `imageStorageIds` (max 4 images), resolves URLs and stores both `imageStorageIds` and `imageUrls`
+- `products.adjustStock` triggers `low_stock` notification to all staff when stock crosses below threshold
 
 ## Notifications
 
@@ -331,11 +357,11 @@ All actions use `"use node"` runtime. Triggered via `ctx.scheduler.runAfter(0)` 
 
 ## Validators Summary
 
-**Sub-validators:** memberRole, invitationRole/Status, staffStatus, subscriptionStatus, servicePriceType/Status, appointmentStatus/Source, cancelledBy, paymentStatus, customerAccountStatus/Source, address, businessHours, bookingSettings, staffSchedule, notificationType
+**Sub-validators:** memberRole, invitationRole/Status, staffStatus, subscriptionStatus, servicePriceType/Status, appointmentStatus/Source, cancelledBy, paymentStatus, customerAccountStatus/Source, address, businessHours, bookingSettings, staffSchedule, notificationType (includes `low_stock`)
 
 **Doc validators:** organizationDoc, memberDoc, invitationDoc, staffDoc, serviceCategoryDoc, serviceDoc, scheduleOverrideDoc, timeOffRequestDoc, staffOvertimeDoc, customerDoc, customerListItem, appointmentDoc, appointmentServiceDoc, slotLockDoc, notificationDoc
 
-**Composite validators:** organizationWithRole, invitationWithOrg, serviceWithCategory, serviceCategoryWithCount, timeOffRequestWithStaff, customerWithStaff, availableSlot, publicAppointment, userAppointment, appointmentWithDetails, dashboardStats
+**Composite validators:** organizationWithRole, invitationWithOrg, serviceWithCategory, serviceCategoryWithCount, timeOffRequestWithStaff, customerWithStaff, availableSlot, publicAppointment, userAppointment, appointmentWithDetails, dashboardStats, inventoryStats, productPublic
 
 **Report validators:** statusBreakdown, revenueReport (with dailyRevenue, revenueByService, revenueByStaff sub-validators), staffPerformanceReport (with staffPerformance sub-validator), customerReport (with monthlyNewVsReturning, topCustomer sub-validators)
 

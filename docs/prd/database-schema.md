@@ -225,7 +225,7 @@ The role enum was consolidated from `owner|admin|member` to `owner|staff` (compl
 
 ### `appointmentServices`
 - `appointmentId, serviceId, serviceName, duration, price, staffId`
-- Index: `by_appointment`
+- Indexes: `by_appointment`, `by_service` (used by `services.permanentDelete` to check references)
 
 ### `slotLocks`
 - `organizationId, staffId, date, startTime, endTime, sessionId, expiresAt`
@@ -314,12 +314,14 @@ The role enum was consolidated from `owner|admin|member` to `owner|staff` (compl
 - `organizationId: id("organization")`, `categoryId?: id("productCategories")`
 - `name: string`, `description?: string`, `sku?: string`, `brand?: string`
 - `costPrice: number`, `sellingPrice: number` (kuruş integers)
+- `imageStorageIds?: array(id("_storage"))` — Up to 4 product images (storage IDs)
+- `imageUrls?: array(string)` — Resolved URLs for immediate display (kept in sync with `imageStorageIds`)
 - `supplierInfo?: { name?, phone?, email?, notes? }`
 - `stockQuantity: number`, `lowStockThreshold?: number`
 - `status: "active" | "inactive"`
 - Indexes: `by_org`, `by_org_category`, `by_org_status`
 - Soft-delete via `status: "inactive"`. Margin computed in queries: `((sellingPrice - costPrice) / sellingPrice) * 100`, guarded on `sellingPrice > 0`.
-- **`productPublicValidator`:** Safe public subset exposed by `products.listPublic` (no costPrice, margin, supplierInfo, lowStockThreshold, stockQuantity). Used by `/{slug}/catalog`.
+- **`productPublicValidator`:** Safe public subset exposed by `products.listPublic` (no costPrice, margin, supplierInfo, lowStockThreshold, stockQuantity). Includes `imageUrls`. Used by `/{slug}/catalog`.
 
 ### `inventoryTransactions`
 - `organizationId: id("organization")`, `productId: id("products")`, `staffId?: id("staff")`
@@ -378,3 +380,4 @@ The role enum was consolidated from `owner|admin|member` to `owner|staff` (compl
 | Products by category | `products.by_org_category` |
 | Active products (public catalog) | `products.by_org_status` |
 | Inventory history | `inventoryTransactions.by_product` |
+| Appointment services by service | `appointmentServices.by_service` |

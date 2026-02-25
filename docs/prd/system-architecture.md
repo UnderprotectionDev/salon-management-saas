@@ -118,15 +118,16 @@ convex/
 │   ├── ics.ts            # ICS calendar file generator
 │   ├── relationships.ts  # DB relationship helpers
 │   └── rls.ts            # RLS helpers
-├── schema.ts             # Database schema (~533 lines)
+├── schema.ts             # Database schema (~575 lines)
 ├── appointments.ts       # ~1,700 lines
 ├── customers.ts          # ~610 lines
-├── services.ts           # ~411 lines
+├── services.ts           # ~460 lines
 ├── staff.ts (~447 lines), members.ts, organizations.ts, invitations.ts
 ├── slots.ts, slotLocks.ts, crons.ts
 ├── scheduleOverrides.ts, timeOffRequests.ts, staffOvertime.ts
 ├── serviceCategories.ts, appointmentServices.ts
 ├── polar.ts, polarActions.ts, polarSync.ts, subscriptions.ts, subscriptions_helpers.ts
+├── productCategories.ts, products.ts, inventoryTransactions.ts
 ├── analytics.ts, reports.ts (~603 lines), notifications.ts
 ├── email.tsx (~380 lines), email_helpers.ts
 ├── aiAnalysis.ts, aiSimulations.ts, aiChat.ts
@@ -141,7 +142,7 @@ src/
 ├── app/
 │   ├── (auth)/sign-in/        # Sign-in page
 │   ├── [slug]/(authenticated)/ # Dashboard, appointments, customers, staff, services, reports, settings
-│   ├── [slug]/(public)/        # Book, appointment/[code]
+│   ├── [slug]/(public)/        # Book, appointment/[code], catalog, designs, gallery
 │   ├── onboarding/             # Org creation wizard
 │   ├── dashboard/              # Redirect to active org
 │   └── page.tsx                # Salon directory (/)
@@ -159,6 +160,7 @@ src/
 │   ├── calendar/               # 15 files (day/week views, DnD, staff filter, reschedule, status actions)
 │   ├── notifications/          # 4 files (bell, panel)
 │   ├── reports/                # 16 files (revenue, staff, customer reports, CSV export)
+│   ├── products/               # 12 components (ProductWizardDialog, ProductGrid, ProductCard, filters, inventory stats, multi-image upload, public catalog card)
 │   ├── ai/
 │   │   ├── customer/components/  # PhotoAnalysisView, SimulationView, StyleChatView, MoodBoardView, CareScheduleView
 │   │   ├── organization/components/ # RevenueForecastView, OrgAICreditManager
@@ -188,7 +190,9 @@ src/
 | `/:slug/billing` | Auth+Org | Subscription management |
 | `/:slug/ai` | Public | Customer AI features (photo analysis, simulation, chat, mood board, care schedule) |
 | `/:slug/ai-insights` | Auth+Org (owner) | Organization AI features (revenue forecast, credit management) |
+| `/:slug/products` | Auth+Org (owner) | Product & inventory management |
 | `/:slug/book` | Public | Public booking |
+| `/:slug/catalog` | Public | Public product catalog (search, filter, sort) |
 | `/:slug/appointment/:code` | Public | Appointment lookup |
 | `/admin` | Auth+SuperAdmin | Platform management (stats, orgs, users, action log) |
 

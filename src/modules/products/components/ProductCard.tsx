@@ -161,19 +161,10 @@ export function ProductCard({
           </Badge>
         )}
 
-        {/* Price + Margin */}
-        <div className="flex items-baseline justify-between">
-          <span className="text-base font-semibold">
-            {formatPrice(product.sellingPrice)}
-          </span>
-          {product.margin !== undefined && (
-            <span
-              className={`text-xs ${product.margin < 0 ? "text-destructive" : "text-muted-foreground"}`}
-            >
-              {product.margin}% margin
-            </span>
-          )}
-        </div>
+        {/* Price */}
+        <p className="text-base font-semibold">
+          {formatPrice(product.sellingPrice)}
+        </p>
 
         {/* Stock indicator */}
         <div className={`flex items-center gap-1.5 text-xs ${stockColor}`}>

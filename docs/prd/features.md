@@ -145,25 +145,35 @@ Owner invites via email → pending invitation + staff record → staff accepts 
 
 ## Products & Inventory
 
-> **Files:** `convex/productCategories.ts`, `convex/products.ts`, `convex/inventoryTransactions.ts`
-> **Frontend:** `src/modules/products/` (7 components), `src/app/[slug]/(authenticated)/products/page.tsx`
+> **Files:** `convex/productCategories.ts`, `convex/products.ts`, `convex/inventoryTransactions.ts`, `convex/files.ts`
+> **Frontend:** `src/modules/products/` (12 components), `src/app/[slug]/(authenticated)/products/page.tsx`
 > **Public:** `src/app/[slug]/(public)/catalog/page.tsx` — `/{slug}/catalog`
 
 Owner-only management interface + public customer-facing catalog page. No e-commerce/online sales.
+
+**Product management UX:** Single-page sectioned dialog (`ProductWizardDialog`) for both add and edit. Collapsible sections: Basic Info, Pricing, Stock Management, Images, Supplier Info. Card-based grid layout (`ProductGrid`) replaces table view. Filters: search, status, stock level, sort order.
+
+**Multi-image support:** Up to 4 images per product. `imageStorageIds` (storage IDs) + `imageUrls` (resolved URLs) stored on product. Upload via `ProductMultiImageUpload` component with client-side validation (size/type). File mutations: `files.saveProductImages` (append, max 4 total), `files.removeProductImage` (by storageId).
+
+**Inventory dashboard:** `InventoryStatsBar` shows total products, total stock value, low stock count, out of stock count via `products.getInventoryStats` ownerQuery. `LowStockBanner` alert with CTA to filter grid by low stock.
 
 **Pricing:** `costPrice` + `sellingPrice` (kuruş integers). Margin auto-calculated: `((sellingPrice - costPrice) / sellingPrice) * 100` — guarded on `sellingPrice > 0` (returns `undefined` when zero, preventing division by zero). Negative margin shown in red.
 
 **Inventory transactions:** Every stock change logs to `inventoryTransactions`. Types: `restock | adjustment | waste`. Previous/new stock snapshot stored per entry. `restock` quantity always forced positive; `waste` always forced negative; `adjustment` is signed as-entered.
 
-**Low stock alerts:** Products where `stockQuantity <= lowStockThreshold` show an amber alert icon. `products.countLowStock` owner query for dashboard integration.
+**Low stock alerts:** Products where `stockQuantity <= lowStockThreshold` show an amber alert icon. `products.countLowStock` owner query for dashboard integration. Sidebar nav shows destructive badge with low stock count. `products.adjustStock` triggers `low_stock` notification to all staff when stock crosses below threshold.
 
 **Supplier info:** Embedded object on product (name, phone, email, notes). Not a separate table.
 
-**Public catalog (`products.listPublic`):** `publicQuery` — no auth required. Returns only `active` products with safe fields: name, brand, description, category, sellingPrice, inStock (boolean). Excludes: costPrice, margin, supplierInfo, lowStockThreshold, stockQuantity. URL: `/{slug}/catalog`. Navigation: homepage salon cards (Products button) and booking page header.
+**Public catalog (`/{slug}/catalog`):** `publicQuery` — no auth required. Returns only `active` products with safe fields: name, brand, description, category, sellingPrice, imageUrls, inStock (boolean). Excludes: costPrice, margin, supplierInfo, lowStockThreshold, stockQuantity. Enhanced UX: search with 300ms debounce, category filter (via `productCategories.listPublic`), in-stock toggle, sort options (name/price asc/desc), contact CTA section (phone/WhatsApp/email from org settings). URL params persisted for shareable filtered views.
+
+**Service hard-delete:** `services.permanentDelete` (ownerMutation) — checks `appointmentServices.by_service` index for existing appointments. If found, throws VALIDATION_ERROR. Removes service from all staff `serviceIds` arrays, then hard-deletes.
 
 **Access control:** All management queries/mutations use `ownerQuery`/`ownerMutation`. `productCategories.list` uses `ownerQuery` — staff members cannot access even directly via the Convex client.
 
-**In scope:** Category CRUD (with sort reorder), Product CRUD (soft-delete via `status: inactive`), pricing, inventory tracking, low stock alerts, search & filter by category, public catalog page.
+**Frontend components:** ProductWizardDialog, ProductGrid, ProductCard, ProductFiltersBar, CategorySidebar, InventoryStatsBar, LowStockBanner, ProductMultiImageUpload, PublicProductCard, AddProductCategoryPopover, AdjustStockDialog, InventoryHistorySheet
+
+**In scope:** Category CRUD (with sort reorder), Product CRUD (soft-delete via `status: inactive`), pricing, multi-image upload (max 4), inventory tracking, inventory stats dashboard, low stock alerts (banner + sidebar badge + notification), search & filter by category/status/stock, public catalog page with search/sort/filter.
 **Out of scope:** Online sales, payment processing, purchase orders, barcode scanning, appointment-linked product sales.
 
 ---
