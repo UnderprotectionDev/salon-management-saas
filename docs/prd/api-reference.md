@@ -1,19 +1,7 @@
 # API Reference
 
-> **All functions use custom wrappers** from `convex/lib/functions.ts`. All have `returns:` validators.
-> **Validators:** `convex/lib/validators.ts` (~910 lines)
-
-## Custom Function Wrappers
-
-| Wrapper | Auth | Context | Use Case |
-|---------|------|---------|----------|
-| `publicQuery/Mutation` | None | — | Public data, booking |
-| `authedQuery/Mutation` | Required | `ctx.user` | User-scoped |
-| `orgQuery/Mutation` | Required + membership | `ctx.user, organizationId, member, staff` | Org-scoped |
-| `ownerQuery/Mutation` | Required + owner only | Same + owner check | Staff mgmt, settings, billing, reports |
-| `superAdminQuery/Mutation` | Required + env email | `ctx.user, isSuperAdmin` | Platform admin |
-
-`orgQuery`/`orgMutation` auto-inject `organizationId` from args. ErrorCode enum for structured errors.
+> **All functions use custom wrappers** from `convex/lib/functions.ts` (see CLAUDE.md → Convex Custom Function Wrappers).
+> **Validators:** `convex/lib/validators.ts` (~910 lines). All functions have `returns:` validators.
 
 ---
 
@@ -41,7 +29,7 @@
 | `staff.get` | orgQuery | `staffId` | `staffDoc \| null` |
 | `staff.update` | ownerMutation | `staffId, name?, phone?, bio?, defaultSchedule?` | `id("staff")` |
 | `staff.listPublicActive` | publicQuery | `organizationId` | `array({_id, name, imageUrl?, bio?, serviceIds?})` |
-| `staff.getResolvedSchedule` | orgQuery | `staffId, startDate, endDate` | `array({date, available, effectiveStart, effectiveEnd, overtimeWindows, overrideType, isTimeOff})` |
+| `staff.getResolvedSchedule` | orgQuery | `staffId, startDate, endDate` | `array(resolvedScheduleDay)` |
 | `invitations.create` | ownerMutation | `email, name, role, serviceIds?` | `id("invitation")` |
 | `invitations.accept` | authedMutation | `token` | `{organizationId, organizationSlug}` |
 | `members.updateRole` | ownerMutation | `memberId, role` | `{success}` |
@@ -51,58 +39,34 @@
 | Function | Wrapper | Args | Returns |
 |----------|---------|------|---------|
 | `serviceCategories.list` | orgQuery | `{}` | `array(categoryWithCount)` |
-| `serviceCategories.create` | ownerMutation | `name, description?` | `id("serviceCategories")` |
-| `serviceCategories.update` | ownerMutation | `categoryId, name?, description?` | `id("serviceCategories")` |
-| `serviceCategories.remove` | ownerMutation | `categoryId` | `null` |
+| `serviceCategories.create/update/remove` | ownerMutation | `name, description?` / `categoryId, ...` | `id \| null` |
 | `services.list` | orgQuery | `categoryId?, status?` | `array(serviceWithCategory)` |
 | `services.get` | orgQuery | `serviceId` | `serviceWithCategory \| null` |
-| `services.create` | ownerMutation | `name, description?, duration, bufferTime?, price, priceType, categoryId?` | `id("services")` |
-| `services.update` | ownerMutation | `serviceId, name?, duration?, price?, priceType?, categoryId?, isPopular?, showOnline?, status?` | `id("services")` |
+| `services.create` | ownerMutation | `name, duration, price, priceType, categoryId?, ...` | `id("services")` |
+| `services.update` | ownerMutation | `serviceId, ...` | `id("services")` |
 | `services.remove` | ownerMutation | `serviceId` | `null` (soft-delete) |
-| `services.permanentDelete` | ownerMutation | `serviceId` | `null` (hard-delete, blocked if appointments exist) |
-| `services.assignStaff` | ownerMutation | `serviceId, staffId, assign: boolean` | `null` |
-| `services.listPublic` | publicQuery | `organizationId` | `array({_id, name, description?, duration, price, priceType, imageUrl?, isPopular, categoryName?})` |
-| `services.getStaffForService` | orgQuery | `serviceId` | `array({_id, name, imageUrl?, assigned})` |
+| `services.permanentDelete` | ownerMutation | `serviceId` | `null` (blocked if appointments exist) |
+| `services.assignStaff` | ownerMutation | `serviceId, staffId, assign` | `null` |
+| `services.listPublic` | publicQuery | `organizationId` | `array(publicService)` |
 
 ## Booking & Appointments
 
 | Function | Wrapper | Args | Returns |
 |----------|---------|------|---------|
-| `slots.available` | publicQuery | `organizationId, date, serviceIds, staffId?, sessionId?` | `array({staffId, staffName, staffImageUrl?, startTime, endTime})` |
+| `slots.available` | publicQuery | `organizationId, date, serviceIds, staffId?, sessionId?` | `array(availableSlot)` |
 | `slotLocks.acquire` | publicMutation | `organizationId, staffId, date, startTime, endTime, sessionId` | `{lockId, expiresAt}` |
 | `slotLocks.release` | publicMutation | `lockId, sessionId` | `null` |
-| `appointments.create` | publicMutation | `organizationId, staffId, date, startTime, endTime, serviceIds, customer: {name, phone, email?, notes?}, sessionId, source?` | `{appointmentId, confirmationCode, customerId}` |
-| `appointments.createByStaff` | orgMutation | `staffId, date, startTime, serviceIds, customerId, source: walk_in\|phone\|staff, customerNotes?, staffNotes?` | `{appointmentId, confirmationCode}` |
+| `appointments.create` | publicMutation | `organizationId, staffId, date, startTime, endTime, serviceIds, customer, sessionId` | `{appointmentId, confirmationCode, customerId}` |
+| `appointments.createByStaff` | orgMutation | `staffId, date, startTime, serviceIds, customerId, source` | `{appointmentId, confirmationCode}` |
 | `appointments.list` | orgQuery | `statusFilter?, startDate?, endDate?` | `array(appointmentWithDetails)` |
 | `appointments.get` | orgQuery | `appointmentId` | `appointmentWithDetails \| null` |
 | `appointments.getByDate` | orgQuery | `date, staffId?` | `array(appointmentWithDetails)` |
 | `appointments.getByConfirmationCode` | publicQuery | `organizationId, confirmationCode` | `publicAppointment \| null` |
-| `appointments.listForCurrentUser` | authedQuery | `{}` | `array(userAppointment)` |
 | `appointments.updateStatus` | orgMutation | `appointmentId, status` | `{success}` |
 | `appointments.cancel` | orgMutation | `appointmentId, reason?, cancelledBy` | `{success}` |
 | `appointments.cancelByCustomer` | publicMutation | `organizationId, confirmationCode, phone, reason?` | `{success}` |
 | `appointments.reschedule` | orgMutation | `appointmentId, newDate, newStartTime, newEndTime, newStaffId?` | `{success}` |
 | `appointments.rescheduleByCustomer` | publicMutation | `organizationId, confirmationCode, phone, newDate, newStartTime, newEndTime, sessionId` | `{success}` |
-
-## User Profile & Preferences
-
-| Function | Wrapper | Args | Returns |
-|----------|---------|------|---------|
-| `userProfile.get` | authedQuery | `{}` | `userOnboardingProfile \| null` |
-| `userProfile.hasConsent` | authedQuery | `{}` | `boolean` |
-| `userProfile.acceptConsent` | authedMutation | `marketingConsent?` | `id("userProfile")` |
-| `userProfile.updateProfile` | authedMutation | `gender?, avatarConfig?, dateOfBirth?, hairType?, hairLength?, allergies?, allergyNotes?, phone?, emailReminders?, marketingEmails?, marketingConsent?` | `null` |
-| `userProfile.updateSelectedCategories` | authedMutation | `selectedCategories: string[]` | `null` |
-| `userProfile.updateCategoryPreferences` | authedMutation | `category: "hair"\|"nails"\|"skin"\|"spa"\|"body"\|"medical"\|"art"\|"specialty", data: {category-specific fields}` | `null` |
-| `userProfile.completeOnboarding` | authedMutation | `{}` | `null` |
-| `userProfile.updateNotificationPreferences` | authedMutation | `emailReminders?, marketingEmails?, marketingConsent?` | `null` |
-
-**Validation rules:**
-- Photos: max 3 per category (hair, skin, art, specialty support photos)
-- `productsUsed`: max 500 characters
-- `currentMedications`, `previousProcedures`: max 1000 characters each
-- `petType`, `petBreed`: max 100 characters each
-- Phone: Turkish format (+90 5XX XXX XX XX)
 
 ## Customer Management
 
@@ -110,159 +74,97 @@
 |----------|---------|------|---------|
 | `customers.list` | orgQuery | `search?, accountStatus?` | `array(customerListItem)` |
 | `customers.get` | orgQuery | `customerId` | `customerWithStaff \| null` |
-| `customers.create` | orgMutation | `name, phone, email?, preferredStaffId?, customerNotes?, staffNotes?, tags?, source?` | `id("customers")` |
-| `customers.update` | orgMutation | `customerId, name?, email?, phone?, preferredStaffId?, customerNotes?, staffNotes?, tags?` | `customerDoc` |
+| `customers.create` | orgMutation | `name, phone, email?, ...` | `id("customers")` |
+| `customers.update` | orgMutation | `customerId, ...` | `customerDoc` |
 | `customers.remove` | ownerMutation | `customerId` | `null` (hard delete) |
-| `customers.advancedSearch` | orgQuery | `query?, accountStatus?, source?, totalVisits/Spent/NoShow min/max?, tags?, lastVisitDays?` | `{customers, totalCount}` |
+| `customers.advancedSearch` | orgQuery | `query?, filters...` | `{customers, totalCount}` |
 | `customers.merge` | ownerMutation | `primaryCustomerId, duplicateCustomerId` | `{success}` |
-| `customers.linkToCurrentUser` | authedMutation | `customerId` | `{success}` |
 | `customers.searchByPhone` | orgQuery | `phonePrefix` | `array(customerListItem)` |
 
 ## Schedule & Time-Off
 
 | Function | Wrapper | Args | Returns |
 |----------|---------|------|---------|
-| `scheduleOverrides.listByStaff` | orgQuery | `staffId, startDate?, endDate?` | `array(scheduleOverrideDoc)` |
-| `scheduleOverrides.listByDate` | orgQuery | `date` | `array(scheduleOverrideDoc)` |
-| `scheduleOverrides.create` | orgMutation | `staffId, date, type, startTime?, endTime?, reason?` | `id("scheduleOverrides")` |
-| `scheduleOverrides.remove` | orgMutation | `overrideId` | `null` |
-| `timeOffRequests.listByOrg` | orgQuery | `status?` | `array(timeOffWithStaff)` |
-| `timeOffRequests.getMyRequests` | orgQuery | `{}` | `array(timeOffRequestDoc)` |
-| `timeOffRequests.getPendingCount` | orgQuery | `{}` | `number` |
-| `timeOffRequests.request` | orgMutation | `startDate, endDate, type, reason?` | `id("timeOffRequests")` |
-| `timeOffRequests.approve` | ownerMutation | `requestId` | `id("timeOffRequests")` |
-| `timeOffRequests.reject` | ownerMutation | `requestId, rejectionReason?` | `id("timeOffRequests")` |
-| `timeOffRequests.cancel` | orgMutation | `requestId` | `null` (deletes record) |
-| `staffOvertime.listByStaff` | orgQuery | `staffId, startDate?, endDate?` | `array(staffOvertimeDoc)` |
-| `staffOvertime.listByDate` | orgQuery | `date` | `array(staffOvertimeDoc)` |
-| `staffOvertime.create` | orgMutation | `staffId, date, startTime, endTime, reason?` | `id("staffOvertime")` |
-| `staffOvertime.remove` | orgMutation | `overtimeId` | `null` |
+| `scheduleOverrides.listByStaff/listByDate/create/remove` | orgQuery/Mutation | varies | varies |
+| `timeOffRequests.listByOrg/getMyRequests/getPendingCount/request` | orgQuery/Mutation | varies | varies |
+| `timeOffRequests.approve/reject` | ownerMutation | `requestId, rejectionReason?` | `id` |
+| `staffOvertime.listByStaff/listByDate/create/remove` | orgQuery/Mutation | varies | varies |
 
 ## File Storage
 
 | Function | Wrapper | Args | Returns |
 |----------|---------|------|---------|
-| `files.generateUploadUrl` | authedMutation | `{}` | `string` (upload URL) |
-| `files.getFileUrls` | authedQuery | `storageIds: Id<"_storage">[]` | `(string \| null)[]` (batch URL resolution) |
-| `files.getFileUrl` | authedMutation | `storageId` | `string \| null` |
-| `files.saveOrganizationLogo` | ownerMutation | `storageId, fileName, fileType, fileSize` | `string` (CDN URL) |
-| `files.saveStaffImage` | authedMutation | `staffId, storageId, fileName, fileType, fileSize` | `string` (CDN URL) |
-| `files.saveServiceImage` | ownerMutation | `serviceId, storageId, fileName, fileType, fileSize` | `string` (CDN URL) |
-| `files.saveProductImages` | ownerMutation | `productId, storageIds[], fileNames[], fileTypes[], fileSizes[]` | `array(string)` (URLs, max 4 images total) |
-| `files.removeProductImage` | ownerMutation | `productId, storageId` | `null` |
+| `files.generateUploadUrl` | authedMutation | `{}` | `string` |
+| `files.getFileUrls` | authedQuery | `storageIds[]` | `(string \| null)[]` |
+| `files.saveOrganizationLogo` | ownerMutation | `storageId, fileName, fileType, fileSize` | `string` (URL) |
+| `files.saveProductImages` | ownerMutation | `productId, storageIds[], ...` | `array(string)` (max 4) |
 
 Upload flow: `generateUploadUrl()` → `fetch(url, {method: "POST", body: file})` → `save*({storageId, ...})`
-
-For photo thumbnails (settings preferences): `useQuery(api.files.getFileUrls, { storageIds })` resolves storage IDs to URLs in batch.
 
 ## SaaS Billing (Polar.sh)
 
 | Function | Wrapper | Args | Returns |
 |----------|---------|------|---------|
-| `subscriptions.getSubscriptionStatus` | orgQuery | `{}` | `{status, plan?, polarSubscriptionId?, trialEndsAt?, currentPeriodEnd?, gracePeriodEndsAt?, suspendedAt?, cancelledAt?}` |
+| `subscriptions.getSubscriptionStatus` | orgQuery | `{}` | subscription status object |
 | `subscriptions.isSuspended` | orgQuery | `{}` | `boolean` |
-| `subscriptions.cancelSubscription` | ownerMutation | `reason?, comment?` | `null` (sets status to "canceling", schedules Polar cancelAtPeriodEnd) |
-| `subscriptions.reactivateSubscription` | ownerMutation | `{}` | `null` (sets status back to "active", schedules Polar uncancel) |
-| `polarActions.generateCheckoutLink` | action | `productIds, origin, successUrl, subscriptionId?` | `{url}` |
-| `polarActions.generateCustomerPortalUrl` | action | `{}` | `{url}` |
-| `polarActions.getBillingHistory` | action | `{}` | `array({id, createdAt, amount, currency, productName, status, billingReason})` |
-| `polarActions.cancelInPolar` | internalAction | `polarSubscriptionId, reason?, comment?` | `null` (cancelAtPeriodEnd: true + reason to Polar API) |
-| `polarActions.reactivateInPolar` | internalAction | `polarSubscriptionId` | `null` (cancelAtPeriodEnd: false to Polar API) |
-| `polar.changeCurrentSubscription` | action | `productId` | `void` (switches plan via Polar subscriptionsUpdate) |
-| `polar.cancelCurrentSubscription` | action | `{}` | `void` |
-| `polar.getConfiguredProducts` | query | `{}` | `{monthly?, yearly?}` |
-| `polarSync.triggerSync` | action (super-admin only) | `{}` | — |
-| `polarSync.getProductBenefits` | query | `{}` | `array({polarProductId, benefits})` |
+| `subscriptions.cancelSubscription` | ownerMutation | `reason?, comment?` | `null` |
+| `subscriptions.reactivateSubscription` | ownerMutation | `{}` | `null` |
+| `polarActions.generateCheckoutLink` | action | `productIds, origin, successUrl` | `{url}` |
+| `polarActions.getBillingHistory` | action | `{}` | `array(billingEntry)` |
 
-Webhook routes registered in `convex/http.ts` via `polar.registerRoutes()`:
-- `onSubscriptionCreated`: Maps Polar customer → org owner → activates subscription
-- `onSubscriptionUpdated`: Finds org by `polarSubscriptionId` (indexed) → syncs status via `mapPolarStatus(status, canceledAt, endedAt)`
+Webhook: `onSubscriptionCreated` (maps customer → org), `onSubscriptionUpdated` (syncs status).
+State transitions: active → canceling → canceled; canceling → active (reactivate).
 
-Subscription state transitions:
-- Cancel: `active` → `cancelSubscription()` → `"canceling"` → Polar webhook (period end) → `"canceled"`
-- Reactivate: `"canceling"` → `reactivateSubscription()` → `"active"` → Polar webhook confirms
-- Plan change: `"active"/"canceling"` → `changeCurrentSubscription()` → Polar webhook → `"active"` (new plan)
+## Products & Inventory
+
+| Function | Wrapper | Args | Returns |
+|----------|---------|------|---------|
+| `productCategories.list/create/update/remove` | ownerQuery/Mutation | varies | varies |
+| `products.list` | ownerQuery | `categoryId?, status?` | `array(productDoc)` |
+| `products.create/update` | ownerMutation | product fields | `id("products")` |
+| `products.remove` | ownerMutation | `productId` | `null` (soft-delete) |
+| `products.adjustStock` | ownerMutation | `productId, quantity, type, note?` | `id("inventoryTransactions")` |
+| `products.getInventoryStats` | ownerQuery | `{}` | inventory stats object |
+| `products.listPublic` | publicQuery | `organizationId` | `array(productPublic)` (no cost/supplier) |
 
 ## Reports & Analytics
 
 | Function | Wrapper | Args | Returns |
 |----------|---------|------|---------|
 | `analytics.getDashboardStats` | orgQuery | `date` | `dashboardStats` |
-| `reports.getRevenueReport` | ownerQuery | `startDate, endDate` | `revenueReport` (totalRevenue, expectedRevenue, completionRate, cancellationRate, statusBreakdown, daily[], byService[], byStaff[]) |
-| `reports.getStaffPerformanceReport` | ownerQuery | `startDate, endDate` | `staffPerformanceReport` (staff[]: appointments, completed, noShows, revenue, utilization%) |
-| `reports.getCustomerReport` | ownerQuery | `startDate, endDate` | `customerReport` (totalActive, newInPeriod, retentionRate, monthly[], topCustomers[]) |
-
-## Products & Inventory
-
-| Function | Wrapper | Args | Returns |
-|----------|---------|------|---------|
-| `productCategories.list` | ownerQuery | `{}` | `array(categoryWithCount)` |
-| `productCategories.listPublic` | publicQuery | `organizationId` | `array({_id, name, sortOrder})` |
-| `productCategories.create` | ownerMutation | `name, description?` | `id("productCategories")` |
-| `productCategories.update` | ownerMutation | `categoryId, name?, description?, sortOrder?` | `id("productCategories")` |
-| `productCategories.remove` | ownerMutation | `categoryId` | `null` |
-| `products.list` | ownerQuery | `categoryId?, status?` | `array(productDoc)` |
-| `products.get` | ownerQuery | `productId` | `productDoc \| null` |
-| `products.create` | ownerMutation | `name, categoryId?, description?, sku?, brand?, costPrice, sellingPrice, stockQuantity, lowStockThreshold?, supplierInfo?, imageStorageIds?` | `id("products")` |
-| `products.update` | ownerMutation | `productId, name?, categoryId?, description?, sku?, brand?, costPrice?, sellingPrice?, lowStockThreshold?, supplierInfo?, imageStorageIds?` | `id("products")` |
-| `products.remove` | ownerMutation | `productId` | `null` (soft-delete) |
-| `products.adjustStock` | ownerMutation | `productId, quantity, type, note?` | `id("inventoryTransactions")` |
-| `products.countLowStock` | ownerQuery | `{}` | `number` |
-| `products.getInventoryStats` | ownerQuery | `{}` | `{totalProducts, totalStockValue, lowStockCount, outOfStockCount}` |
-| `products.listPublic` | publicQuery | `organizationId` | `array(productPublic)` (no costPrice, margin, supplierInfo) |
-| `inventoryTransactions.list` | ownerQuery | `productId` | `array(inventoryTransactionDoc)` |
-
-- `products.create`/`update` accept `imageStorageIds` (max 4 images), resolves URLs and stores both `imageStorageIds` and `imageUrls`
-- `products.adjustStock` triggers `low_stock` notification to all staff when stock crosses below threshold
+| `reports.getRevenueReport` | ownerQuery | `startDate, endDate` | `revenueReport` |
+| `reports.getStaffPerformanceReport` | ownerQuery | `startDate, endDate` | `staffPerformanceReport` |
+| `reports.getCustomerReport` | ownerQuery | `startDate, endDate` | `customerReport` |
 
 ## Notifications
 
 | Function | Wrapper | Args | Returns |
 |----------|---------|------|---------|
 | `notifications.list` | orgQuery | `limit?` | `array(notificationDoc)` |
-| `notifications.getLatest` | orgQuery | `{}` | `notificationDoc \| null` |
 | `notifications.getUnreadCount` | orgQuery | `{}` | `number` |
-| `notifications.markAsRead` | orgMutation | `notificationId` | `null` |
-| `notifications.markAllAsRead` | orgMutation | `{}` | `null` |
+| `notifications.markAsRead/markAllAsRead` | orgMutation | `notificationId?` | `null` |
 
-## SuperAdmin Platform Management
-
-> **Access:** Environment-based via `SUPER_ADMIN_EMAILS` env var (comma-separated email list)
+## SuperAdmin
 
 | Function | Wrapper | Args | Returns |
 |----------|---------|------|---------|
 | `admin.checkIsSuperAdmin` | authedQuery | `{}` | `boolean` |
-| `admin.getPlatformStats` | superAdminQuery | `{}` | `{totalOrgs, activeOrgs, totalUsers, totalAppointments, totalRevenue}` |
+| `admin.getPlatformStats` | superAdminQuery | `{}` | platform stats |
 | `admin.listAllOrganizations` | superAdminQuery | `status?, limit?, cursor?` | `{organizations[], nextCursor?}` |
 | `admin.suspendOrganization` | superAdminMutation | `organizationId, reason?` | `{success}` |
-| `admin.unsuspendOrganization` | superAdminMutation | `organizationId` | `{success}` |
-| `admin.deleteOrganization` | superAdminMutation | `organizationId, reason?` | `{success}` (cascading delete) |
-| `admin.updateSubscriptionManually` | superAdminMutation | `organizationId, status, plan?, currentPeriodEnd?` | `{success}` |
+| `admin.deleteOrganization` | superAdminMutation | `organizationId, reason?` | `{success}` (cascading) |
 | `admin.listAllUsers` | superAdminQuery | `banned?, limit?, cursor?` | `{users[], nextCursor?}` |
-| `admin.banUser` | superAdminMutation | `userId, reason?` | `{success}` |
-| `admin.unbanUser` | superAdminMutation | `userId` | `{success}` |
-| `admin.getActionLog` | superAdminQuery | `limit?, cursor?` | `{actions[], nextCursor?}` |
-
-**Permissions:** SuperAdmins bypass org membership checks (synthetic owner member). Ban check in `getAuthUser` — banned users get FORBIDDEN on any authenticated request.
-
-**Rate limits:** `suspendOrganization` (10/hour), `deleteOrganization` (5/day), `banUser` (10/hour)
-
-**Cascading behaviors:**
-- `deleteOrganization`: Deletes org + settings + members + staff + services + customers + appointments + all related data
-- `suspendOrganization`: Sets `subscriptionStatus: "suspended"`, blocks all booking/staff operations
-- `banUser`: Creates record in `bannedUsers` table, blocks all authenticated requests
+| `admin.banUser/unbanUser` | superAdminMutation | `userId, reason?` | `{success}` |
 
 ## Email Notifications (Internal)
 
-| Function | Type | Trigger | Description |
-|----------|------|---------|-------------|
-| `email.sendBookingConfirmation` | internalAction | appointment create | Sends confirmation with ICS attachment |
-| `email.sendCancellationEmail` | internalAction | appointment cancel | Sends cancellation notice |
-| `email.sendInvitationEmail` | internalAction | invitation create/resend | Sends staff invitation link |
+| Function | Type | Trigger |
+|----------|------|---------|
+| `email.sendBookingConfirmation` | internalAction | appointment create |
+| `email.sendCancellationEmail` | internalAction | appointment cancel |
+| `email.sendInvitationEmail` | internalAction | invitation create/resend |
 
-All email actions use retry (3 attempts, exponential backoff). Triggered via `ctx.scheduler.runAfter(0)`.
-
-> **Note:** 24-hour reminder emails (`send24HourReminder`) were removed. Only event-driven emails are sent.
+All use retry (3 attempts, exponential backoff). Triggered via `ctx.scheduler.runAfter(0)`.
 
 ## Rate Limits
 
@@ -274,7 +176,7 @@ All email actions use retry (3 attempts, exponential backoff). Triggered via `ct
 | `addMember` | 10/hour | org |
 | `createService` | 20/hour | org |
 | `createBooking` | 10/hour | org |
-| `cancelBooking` | 3/hour | user (used by appointments.cancel, cancelByCustomer, cancelByUser) |
+| `cancelBooking` | 3/hour | user |
 | `rescheduleBooking` | 3/hour | org |
 | `createScheduleOverride` | 30/day | org |
 | `createTimeOffRequest` | 5/day | staff |
@@ -282,87 +184,23 @@ All email actions use retry (3 attempts, exponential backoff). Triggered via `ct
 | `createCustomer` | 30/hour | org |
 | `cancelSubscription` | 3/hour | org |
 | `aiPhotoAnalysis` | 5/hour | customer |
-| `aiSimulation` | 3/hour | customer |
-| `aiChat` | 30/hour | customer |
-| `aiForecast` | 5/day | org |
+| `aiVirtualTryOn` | 3/hour | customer |
 | `aiCreditPurchase` | 5/hour | customer/org |
 
 ## Scheduled Jobs
 
-| Job | Interval | Function |
-|-----|----------|----------|
-| Cleanup expired slot locks | 1 minute | `slotLocks.cleanupExpired` |
-| Cleanup old notifications | 1 hour | `notifications.cleanupOld` |
-| Send 30-min staff reminders | 5 minutes | `notifications.sendReminders` |
-| Check grace periods | 1 hour | `subscriptions.checkGracePeriods` |
-| Check trial expirations | 1 hour | `subscriptions.checkTrialExpirations` |
-| Sync Polar products | 1 hour | `polarSync.syncProducts` |
-| Expire old invitations | 1 hour | `invitations.expireOldInvitations` |
-| Cleanup expired AI forecasts | 6 hours | `aiForecasts.cleanupExpired` |
-| Check care schedules & notify | Weekly | `aiCareSchedules.checkAndNotify` |
+See CLAUDE.md → Scheduled Jobs (Crons) for the full table.
 
-## AI — Credits
+## AI Functions
 
-| Function | Wrapper | Args | Returns |
-|----------|---------|------|---------|
-| `aiCredits.getBalance` | orgQuery / publicQuery | `customerId?` | `{balance, updatedAt}` |
-| `aiCredits.purchaseCredits` | publicMutation / ownerMutation | `package: 50\|200\|500, customerId?` | `{transactionId, newBalance}` |
-| `aiCredits.getTransactions` | orgQuery / publicQuery | `customerId?, limit?, referenceType?` | `array(aiCreditTransactionDoc)` |
-| `aiCredits.deductCredits` | internalMutation | `creditId, amount, referenceType, referenceId?, description?` | `{transactionId, newBalance}` |
-
-- Customer credit functions use `publicQuery`/`publicMutation` (customer identified via auth)
-- Organization credit functions use `orgQuery`/`ownerMutation`
-- `deductCredits` is internal-only — called by AI action functions, never directly by clients
-
-## AI — Customer Features
-
-| Function | Wrapper | Args | Returns |
-|----------|---------|------|---------|
-| `aiAnalysis.create` | publicMutation | `organizationId, imageStorageId` | `{analysisId}` |
-| `aiAnalysis.get` | publicQuery | `analysisId` | `aiAnalysisDoc \| null` |
-| `aiAnalysis.listHistory` | publicQuery | `organizationId, customerId?` | `array(aiAnalysisDoc)` |
-| `aiSimulations.create` | publicMutation | `organizationId, imageStorageId, prompt` | `{simulationId}` |
-| `aiSimulations.get` | publicQuery | `simulationId` | `aiSimulationDoc \| null` |
-| `aiChat.createThread` | publicMutation | `organizationId, title?` | `{threadId}` |
-| `aiChat.listThreads` | publicQuery | `organizationId` | `array(aiChatThreadDoc)` |
-| `aiChat.getMessages` | publicQuery | `threadId` | `array(aiChatMessageDoc)` |
-| `aiMoodBoard.save` | publicMutation | `organizationId, imageStorageId, note?, source` | `{success}` |
-| `aiMoodBoard.list` | publicQuery | `organizationId` | `aiMoodBoardDoc \| null` |
-| `aiMoodBoard.remove` | publicMutation | `organizationId, itemIndex` | `{success}` |
-
-- All customer AI functions require auth (customer identified via `ctx.user`)
-- Photo analysis and simulation create records with `status: pending`, then schedule action
-- Real-time status updates via Convex reactivity (`useQuery` on `get` function)
-
-## AI — Organization Features
-
-| Function | Wrapper | Args | Returns |
-|----------|---------|------|---------|
-| `aiForecasts.generate` | ownerMutation | `type: weekly\|monthly` | `{forecastId}` |
-| `aiForecasts.get` | ownerQuery | `type: weekly\|monthly` | `aiForecastDoc \| null` |
-| `aiCareSchedules.generate` | orgMutation | `customerId` | `{scheduleId}` |
-| `aiCareSchedules.get` | orgQuery | `customerId` | `aiCareScheduleDoc \| null` |
-
-## AI — Actions (External API)
-
-| Function | Type | Description |
-|----------|------|-------------|
-| `aiActions.analyzePhoto` | internalAction | AI Gateway vision call (GPT-4o) → structured analysis result |
-| `aiActions.generateSimulation` | internalAction | fal.ai call → generated image stored in Convex file storage |
-| `aiActions.generateForecast` | internalAction | AI Gateway text call (Gemini Flash) → structured predictions |
-| `aiActions.generateCareSchedule` | internalAction | AI Gateway text call → personalized care recommendations |
-| `aiActions.generatePostVisitContent` | internalAction | AI Gateway text call → personalized follow-up email content |
-
-All actions use `"use node"` runtime. Triggered via `ctx.scheduler.runAfter(0)` from mutations. Chat streaming handled separately via Next.js API route (`src/app/api/ai/chat/route.ts`).
+See [Milestone 10](../milestones/milestone-10-ai-features.md) for AI function specifications.
 
 ## Validators Summary
 
-**Sub-validators:** memberRole, invitationRole/Status, staffStatus, subscriptionStatus, servicePriceType/Status, appointmentStatus/Source, cancelledBy, paymentStatus, customerAccountStatus/Source, address, businessHours, bookingSettings, staffSchedule, notificationType (includes `low_stock`)
+**Sub-validators:** memberRole, invitationRole/Status, staffStatus, subscriptionStatus, servicePriceType/Status, appointmentStatus/Source, cancelledBy, customerAccountStatus/Source, notificationType
 
-**Doc validators:** organizationDoc, memberDoc, invitationDoc, staffDoc, serviceCategoryDoc, serviceDoc, scheduleOverrideDoc, timeOffRequestDoc, staffOvertimeDoc, customerDoc, customerListItem, appointmentDoc, appointmentServiceDoc, slotLockDoc, notificationDoc
+**Doc validators:** organizationDoc, memberDoc, invitationDoc, staffDoc, serviceDoc, customerDoc, appointmentDoc, notificationDoc, productDoc, inventoryTransactionDoc
 
-**Composite validators:** organizationWithRole, invitationWithOrg, serviceWithCategory, serviceCategoryWithCount, timeOffRequestWithStaff, customerWithStaff, availableSlot, publicAppointment, userAppointment, appointmentWithDetails, dashboardStats, inventoryStats, productPublic
+**Composite validators:** organizationWithRole, serviceWithCategory, appointmentWithDetails, publicAppointment, dashboardStats, revenueReport, staffPerformanceReport, customerReport, productPublic
 
-**Report validators:** statusBreakdown, revenueReport (with dailyRevenue, revenueByService, revenueByStaff sub-validators), staffPerformanceReport (with staffPerformance sub-validator), customerReport (with monthlyNewVsReturning, topCustomer sub-validators)
-
-**AI validators:** aiCreditDoc, aiCreditTransactionDoc, aiAnalysisDoc, aiSimulationDoc, aiChatThreadDoc, aiChatMessageDoc, aiForecastDoc, aiCareScheduleDoc, aiMoodBoardDoc, aiAnalysisResult (structured output), aiForecastPrediction, aiForecastInsight, aiCareRecommendation
+**AI validators:** aiCreditDoc, aiCreditTransactionDoc, aiAnalysisDoc, aiSimulationDoc, aiCareScheduleDoc, aiMoodBoardDoc

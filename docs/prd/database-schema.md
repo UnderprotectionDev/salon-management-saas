@@ -21,172 +21,75 @@ erDiagram
     services }o--|| serviceCategories : belongs_to
     customers ||--o{ appointments : books
     appointments ||--o{ appointmentServices : contains
-    organization ||--o{ aiCredits : has
-    organization ||--o{ aiAnalyses : has
-    organization ||--o{ aiSimulations : has
-    organization ||--o{ aiForecasts : has
-    organization ||--o{ aiCareSchedules : has
-    customers ||--o{ aiAnalyses : uploads
-    customers ||--o{ aiSimulations : requests
-    customers ||--o{ aiChatThreads : starts
-    customers ||--o{ aiMoodBoard : saves
     organization ||--o{ productCategories : has
     organization ||--o{ products : stocks
     products }o--o| productCategories : belongs_to
     products ||--o{ inventoryTransactions : logs
+    organization ||--o{ aiCredits : has
+    organization ||--o{ aiAnalyses : has
+    organization ||--o{ aiSimulations : has
+    customers ||--o{ aiAnalyses : uploads
+    customers ||--o{ aiSimulations : requests
+    customers ||--o{ aiMoodBoard : saves
 ```
-
-## Implementation Status
-
-| Table | Status | Milestone |
-|-------|--------|-----------|
-| userProfile | ✅ | M1 (extended in user-onboarding) |
-| organization, organizationSettings, member, invitation, staff | ✅ | M1 |
-| serviceCategories, services | ✅ | M2A |
-| scheduleOverrides, timeOffRequests, staffOvertime | ✅ | M2B |
-| customers | ✅ | M2C |
-| appointments, appointmentServices, slotLocks | ✅ | M3-M4 |
-| auditLogs | ⚠️ Partial | Table exists, helpers pending |
-| productCategories, products, inventoryTransactions | ✅ | M11 |
-| notifications | ✅ | M5 |
-| productBenefits | ✅ | M6 |
-| aiCredits, aiCreditTransactions | 📋 | M10A |
-| aiAnalyses, aiSimulations, aiChatThreads, aiChatMessages, aiMoodBoard | 📋 | M10B |
-| aiForecasts, aiCareSchedules | 📋 | M10C |
 
 ## User Profile Table
 
 ### `userProfile`
-Cross-organization profile for registered users. Created during user onboarding (`/welcome`). One document per user (not per org).
+Cross-organization profile for registered users. One document per user (not per org).
 
 - `userId: string` — Better Auth user ID (unique, index `by_user`)
-- `avatarConfig?: any` — Full `AvatarConfig` JSON from **react-nice-avatar**. Stored as-is; rendered client-side via `<NiceAvatar {...avatarConfig} />`. Never stored as URL or seed — the full config object is persisted so the exact avatar is reproduced deterministically.
+- `avatarConfig?: any` — Full `AvatarConfig` JSON from react-nice-avatar (rendered client-side)
 - `gender?: "male" | "female" | "unspecified"`
-- `dateOfBirth?: string` — ISO date `"YYYY-MM-DD"` (min age 13)
-- `phone?: string` — Turkish format `+90 5XX XXX XX XX`
-- `hairType?: "straight" | "wavy" | "curly" | "very_curly"`
-- `hairLength?: "short" | "medium" | "long" | "very_long"`
-- `allergies?: string[]` — free-text allergy tags (e.g. `["ppd", "ammonia"]`)
-- `allergyNotes?: string`
-- `salonPreferences?: object` — Contextual salon category preferences (see below)
-- `emailReminders: boolean`, `marketingEmails: boolean`, `marketingConsent: boolean`, `marketingConsentAt?: number`
-- `dataProcessingConsent: boolean`, `dataProcessingConsentAt?: number`, `consentWithdrawnAt?: number`
-- `onboardingCompleted: boolean`, `onboardingCompletedAt?: number`, `onboardingDismissedAt?: number`
-- `avatarUrl?: string` — **Legacy field only.** Old Dicebear URL stored before avatar system migration. No longer written; kept in schema for backward compat with existing documents.
+- `dateOfBirth?, phone?, hairType?, hairLength?, allergies?, allergyNotes?`
+- `salonPreferences?: object` — Category-specific preferences (see `convex/schema.ts` for full structure)
+- `emailReminders, marketingEmails, marketingConsent` (booleans) + consent timestamps
+- `onboardingCompleted, onboardingCompletedAt?, onboardingDismissedAt?`
+- `avatarUrl?: string` — **Legacy** (old Dicebear URL, no longer written)
 - Indexes: `by_user`
-
-#### `salonPreferences` Embedded Object
-
-User-selected salon category preferences, managed from the Settings page. Each category is optional and only stored when the user selects that category.
-
-- `selectedCategories: string[]` — Which categories the user has opted into (e.g. `["hair_styling", "skin_face"]`)
-- `hair?` — Hair & Styling preferences
-  - `hairType?, hairLength?, naturalHairColor?, currentHairColor?, colorTreated?, scalpSensitivity?`
-  - `photos?: Id<"_storage">[]` — Up to 3 personal hair photos (max 3 per category)
-  - `washFrequency?: "daily" | "every_other_day" | "twice_week" | "weekly" | "less"`
-  - `heatToolUsage?: "none" | "occasional" | "frequent" | "daily"`
-  - `productsUsed?: string` — Free-text (max 500 chars)
-  - `lastChemicalTreatment?: string` — ISO date
-- `nails?` — Nails & Makeup: `nailType?, skinTone?, sensitiveSkin?`
-- `skin?` — Skin & Face preferences
-  - `skinType?, skinConditions?, lashExtensionsHistory?`
-  - `photos?: Id<"_storage">[]` — Up to 3 skin condition photos
-  - `dailyRoutine?: "none" | "basic" | "moderate" | "extensive"`
-  - `sunscreenUsage?: "never" | "sometimes" | "daily"`
-  - `activeIngredients?: string[]` — e.g. `["retinol", "niacinamide"]`
-  - `lastFacialDate?: string` — ISO date
-- `spa?` — Spa & Wellness preferences
-  - `pregnancy?, bloodPressureIssues?, chronicPainAreas?`
-  - `pressurePreference?: "light" | "medium" | "firm" | "deep"`
-  - `aromatherapyPreference?: string[]` — e.g. `["lavender", "eucalyptus"]`
-  - `focusAreas?: string[]` — e.g. `["back", "neck", "shoulders"]`
-- `body?` — Body Treatments preferences
-  - `skinSensitivityLevel?, previousLaserTreatments?, tanningHistory?`
-  - `preferredMethod?: "waxing" | "laser" | "ipl" | "sugaring" | "threading" | "shaving"`
-  - `painTolerance?: "low" | "medium" | "high"`
-  - `lastTreatmentDate?: string` — ISO date
-  - `treatmentAreas?: string[]` — e.g. `["legs", "underarms", "bikini"]`
-- `medical?` — Medical & Aesthetic: `currentMedications?, previousProcedures?, physicianClearance?`
-- `art?` — Art & Expression preferences
-  - `previousTattoos?, keloidTendency?, metalAllergies?`
-  - `photos?: Id<"_storage">[]` — Up to 3 existing tattoo/piercing documentation photos
-- `specialty?` — Specialty preferences
-  - `petType?, petBreed?, petSize?`
-  - `photos?: Id<"_storage">[]` — Up to 3 pet photos
-
-**Avatar generation** (`src/modules/user-onboarding/lib/avatar.ts`):
-- `generateAvatarConfig(gender?)` — generates a single `AvatarConfig` with explicit variety across all dimensions: skin tone (8 options), hair color (13), background (16), eye/nose/mouth style (3 each), shirt, ear size, optional glasses. Gender-specific: male gets normal/thick/mohawk hair + occasional hat; female gets womanLong/womanShort + optional earings + always `hatStyle: "none"` to show hair.
-- `generateAvatarSet(gender?, count = 6)` — generates `count` distinct configs for the avatar picker grid.
-- Fallback for staff/users without `avatarConfig`: `genConfig(id)` (deterministic from ID).
 
 ## Core Tables
 
 ### `organization`
-- `name: string`, `slug: string` (unique, 3-30 chars), `description?: string`, `logo?: string`
+- `name, slug` (unique), `description?, logo?, salonType?: string[]` (multi-select, 34 types)
 - Indexes: `slug`, `name`
 
 ### `organizationSettings`
-- `organizationId: id("organization")` (1:1)
-- `email?, phone?, website?, address?: {street?, city?, state?, postalCode?, country?}`
-- `timezone?: string` ("Europe/Istanbul"), `currency?: string`, `locale?: string`
-- `businessHours?: {monday..sunday: {open, close, closed}}`
-- `bookingSettings?: {minAdvanceBookingMinutes?, maxAdvanceBookingDays?, slotDurationMinutes?, bufferBetweenBookingsMinutes?, allowOnlineBooking?, cancellationPolicyHours?}`
-- `subscriptionStatus?: active|trialing|past_due|canceling|canceled|unpaid|suspended|pending_payment`
-  - `pending_payment`: New org awaiting first subscription purchase
-  - `canceling`: Cancellation requested but subscription still active until period end (user can reactivate or switch plans)
-  - `canceled`: Subscription has actually ended (`endedAt` set by Polar webhook)
-  - `suspended`: Subscription expired after grace period, booking/operations blocked
-- `subscriptionPlan?, polarSubscriptionId?, polarCustomerId?, trialEndsAt?, currentPeriodEnd?, gracePeriodEndsAt?, suspendedAt?, cancelledAt?`
-- `cancellationReason?: string` (Polar `CustomerCancellationReason`: too_expensive, missing_features, switched_service, unused, customer_service, low_quality, too_complex, other)
-- `cancellationComment?: string` (free-text feedback from user)
-- Indexes: `organizationId`, `by_polar_subscription` (on `polarSubscriptionId`)
+- `organizationId` (1:1), `email?, phone?, website?, address?`
+- `timezone?, currency?, locale?, businessHours?, bookingSettings?`
+- `subscriptionStatus?` (active|trialing|past_due|canceling|canceled|unpaid|suspended|pending_payment)
+- `subscriptionPlan?, polarSubscriptionId?, polarCustomerId?, trialEndsAt?, currentPeriodEnd?, gracePeriodEndsAt?, suspendedAt?, cancelledAt?, cancellationReason?, cancellationComment?`
+- Indexes: `organizationId`, `by_polar_subscription`
 
 ### `member`
-- `organizationId, userId: string, role: owner|staff`
+- `organizationId, userId, role: owner|staff`
 - Indexes: `organizationId`, `userId`, `organizationId_userId`
-- Owner (1 per org): full access including billing, settings, reports, staff management. Staff: own schedule, time-off requests, overtime only.
-
-**Migration Note (Role Consolidation):**
-The role enum was consolidated from `owner|admin|member` to `owner|staff` (completed in commit 1d49327). This breaking schema change required migration:
-- All existing `admin` and `member` role values were converted to `staff`
-- Permission boundaries simplified: `owner` has full access, `staff` has limited self-service access
-- `ownerQuery`/`ownerMutation` wrappers enforce owner role checks (previously `adminQuery`/`adminMutation`)
-- No additional data reconciliation needed as permission checks already handled at function wrapper level
-- Rollback: Not supported - forward-only migration with clear permission boundaries
+- Owner (1 per org): full access. Staff: limited self-service.
 
 ### `invitation`
 - `organizationId, email, name, role: staff, phone?, status: pending|accepted|expired|cancelled|rejected, invitedBy, expiresAt?`
 - Indexes: `organizationId`, `email`, `organizationId_email`, `status`
-- Note: Ownership transfers handled separately, invitations are for staff only
 
 ### `staff`
-- `userId, organizationId, memberId` (links to member for role)
-- Profile: `name, email, phone?, imageUrl?, bio?`
-- `status: active|inactive|pending`
-- `serviceIds?: array(id("services"))` - services staff can perform
-- `defaultSchedule?: {monday..sunday: {start, end, available}}`
+- `userId, organizationId, memberId, name, email, phone?, imageUrl?, bio?`
+- `status: active|inactive|pending`, `serviceIds?: array(id("services"))`, `defaultSchedule?`
 - Indexes: `organizationId`, `userId`, `memberId`, `organizationId_userId`, `organizationId_status`, `organizationId_email`
 
 ## Services Tables
 
 ### `serviceCategories`
-- `organizationId, name, description?, sortOrder`
-- Index: `by_organization`
+- `organizationId, name, description?, sortOrder` — Index: `by_organization`
 
 ### `services`
-- `organizationId, categoryId?, name, description?, duration: number` (minutes)
-- `price: number` (kuruş, 15000=₺150), `priceType: fixed|starting_from|variable`
-- `imageUrl?, sortOrder, isPopular, status: active|inactive, showOnline`
+- `organizationId, categoryId?, name, description?, duration, price` (kuruş), `priceType, imageUrl?, sortOrder, isPopular, status, showOnline`
 - Indexes: `by_organization`, `by_org_category`, `by_org_status`
 - Soft-delete via status="inactive". Staff assignment via `staff.serviceIds`.
 
 ## Schedule Management Tables
 
 ### `scheduleOverrides`
-- `staffId, organizationId, date: string, type: custom_hours|day_off|time_off`
-- `startTime?, endTime?: string` ("09:00"), `reason?`
+- `staffId, organizationId, date, type: custom_hours|day_off|time_off, startTime?, endTime?, reason?`
 - Indexes: `by_staff_date`, `by_org_date`
-- `time_off` type auto-created when time-off request approved.
 
 ### `timeOffRequests`
 - `staffId, organizationId, startDate, endDate, type: vacation|sick|personal|other`
@@ -194,164 +97,93 @@ The role enum was consolidated from `owner|admin|member` to `owner|staff` (compl
 - Indexes: `by_staff`, `by_org_status`
 
 ### `staffOvertime`
-- `staffId, organizationId, date, startTime, endTime: string, reason?`
+- `staffId, organizationId, date, startTime, endTime, reason?`
 - Indexes: `by_staff_date`, `by_org_date`
 
 ## Customers & Appointments Tables
 
 ### `customers`
-- `organizationId, userId?: string` (if registered)
-- `name, email, phone` (Turkish format, unique per org)
+- `organizationId, userId?, name, email, phone` (Turkish format, unique per org)
 - `accountStatus: guest|recognized|prompted|registered`
-- `preferredStaffId?, notificationPreferences: {emailReminders}`
 - Stats: `totalVisits, totalSpent, lastVisitDate?, noShowCount`
-- `customerNotes?, staffNotes?, tags: array(string), source: online|walk_in|phone|staff|import`
-- `consents: {dataProcessing, marketing, dataProcessingAt?, marketingAt?, withdrawnAt?}`
+- `customerNotes?, staffNotes?, tags[], source, consents`
 - Indexes: `by_organization`, `by_org_email`, `by_org_phone`, `by_user`, `by_org_status`
-- Search: `searchIndex("search_customers")` on name, filter by organizationId
+- Search: `searchIndex("search_customers")` on name
 
 ### `appointments`
-- `organizationId, customerId, staffId`
-- `date: string, startTime: number` (minutes from midnight), `endTime: number`
+- `organizationId, customerId, staffId, date, startTime, endTime` (minutes from midnight)
 - `status: pending|confirmed|checked_in|in_progress|completed|cancelled|no_show`
-- `source: online|walk_in|phone|staff, confirmationCode: string`
-- Timestamps: `confirmedAt?` (customer confirmed appointment), `checkedInAt?, completedAt?, cancelledAt?`
+- `source, confirmationCode, subtotal, discount?, total`
+- Timestamps: `confirmedAt?, checkedInAt?, completedAt?, cancelledAt?, noShowAt?, rescheduledAt?`
 - Cancel: `cancelledBy?: customer|staff|system, cancellationReason?`
-- Pricing: `subtotal, discount?, total`
-- Reschedule: `rescheduledAt?, rescheduleCount?, rescheduleHistory?: array({from/to dates+times, rescheduledBy, rescheduledAt})`
-- Tracking: `noShowAt?` (when marked no-show), `notificationReminderSentAt?` (30-min reminder notification sent), `confirmationSentAt?` (booking confirmation email sent to customer)
-- `customerNotes?, staffNotes?`
-- Indexes: `by_organization`, `by_org_date`, `by_staff_date`, `by_customer`, `by_confirmation`, `by_org_status`, `by_status_date` (fields: `[status, date]`, used by cron for cross-org reminder queries)
+- Reschedule: `rescheduleCount?, rescheduleHistory?`
+- `notificationReminderSentAt?, confirmationSentAt?, customerNotes?, staffNotes?`
+- Indexes: `by_organization`, `by_org_date`, `by_staff_date`, `by_customer`, `by_confirmation`, `by_org_status`, `by_status_date`
 
 ### `appointmentServices`
 - `appointmentId, serviceId, serviceName, duration, price, staffId`
-- Indexes: `by_appointment`, `by_service` (used by `services.permanentDelete` to check references)
+- Indexes: `by_appointment`, `by_service`
 
 ### `slotLocks`
 - `organizationId, staffId, date, startTime, endTime, sessionId, expiresAt`
-- Indexes: `by_staff_date`, `by_expiry`, `by_session`, `by_org_date`
-- 2-min TTL, cleaned up by cron every 1 minute.
+- 2-min TTL, cleaned by cron every 1 minute.
 
-## Billing Tables
+## Product & Inventory Tables
 
-### `productBenefits` (M6)
-- `polarProductId: string`, `benefits: array(string)`
-- Index: `polarProductId`
-- Synced from Polar API via `polarSync.triggerSync`
+### `productCategories`
+- `organizationId, name, description?, sortOrder, status` — Index: `by_org`
 
-## AI Tables (M10)
+### `products`
+- `organizationId, categoryId?, name, description?, sku?, brand?`
+- `costPrice, sellingPrice` (kuruş), `imageStorageIds?, imageUrls?` (max 4), `supplierInfo?`
+- `stockQuantity, lowStockThreshold?, status: active|inactive`
+- Indexes: `by_org`, `by_org_category`, `by_org_status`
+- Margin: `((sellingPrice - costPrice) / sellingPrice) * 100`, guarded on `sellingPrice > 0`
+
+### `inventoryTransactions`
+- `organizationId, productId, staffId?, type: restock|adjustment|waste`
+- `quantity` (signed), `previousStock, newStock, note?, createdAt`
+- Indexes: `by_product`, `by_org_date`
+
+## Billing & Admin Tables
+
+### `productBenefits`
+- `polarProductId, benefits[]` — Index: `polarProductId`
+
+### `adminActions`
+- `action, performedBy, targetType, targetId?, details?, timestamp` — Index: `by_timestamp`
+
+### `bannedUsers`
+- `userId, bannedBy, reason?, bannedAt` — Index: `by_user_id`
+
+## AI Tables
 
 ### `aiCredits`
-- `customerId?: id("customers")`, `organizationId?: id("organization")` (one must be set — separate pools)
-- `balance: number` (current credit balance)
-- `updatedAt: number` (last balance change timestamp)
+- `customerId? | organizationId?` (one must be set), `balance, updatedAt`
 - Indexes: `by_customer`, `by_organization`
-- Two pools: customer credits (for photo analysis, simulation, chat) and org credits (for forecasts, post-visit, care schedule)
 
 ### `aiCreditTransactions`
-- `creditId: id("aiCredits")`, `type: purchase|usage|refund`
-- `amount: number` (positive for purchase/refund, negative for usage)
-- `referenceType?: string` (e.g., "photo_analysis", "simulation", "chat", "forecast", "post_visit", "care_schedule")
-- `referenceId?: string` (ID of the related resource)
-- `description?: string`
+- `creditId, type: purchase|usage|refund, amount, referenceType?, referenceId?, description?`
 - Indexes: `by_credit`, `by_credit_type`
 
 ### `aiAnalyses`
-- `customerId: id("customers")`, `organizationId: id("organization")`
-- `imageStorageId: id("_storage")`, `status: pending|processing|completed|failed`
-- `result?: { faceShape, skinTone, skinUndertone, hairType, hairColor, hairDensity, hairCondition, recommendations[], productRecommendations[], salonServiceMatches[] }`
-- `errorMessage?: string`, `creditTransactionId?: id("aiCreditTransactions")`
+- `customerId, organizationId, imageStorageId, status, result?, errorMessage?, creditTransactionId?`
 - Indexes: `by_customer`, `by_org_status`
 
 ### `aiSimulations`
-- `customerId: id("customers")`, `organizationId: id("organization")`
-- `originalImageId: id("_storage")`, `resultImageId?: id("_storage")`
-- `prompt: string`, `status: pending|processing|completed|failed`
-- `errorMessage?: string`, `creditTransactionId?: id("aiCreditTransactions")`
+- `customerId, organizationId, originalImageId, resultImageId?, prompt, status, errorMessage?, creditTransactionId?`
 - Indexes: `by_customer`, `by_org_status`
-
-### `aiChatThreads`
-- `customerId: id("customers")`, `organizationId: id("organization")`
-- `title: string`, `status: active|archived`
-- Indexes: `by_customer`, `by_org_status`
-
-### `aiChatMessages`
-- `threadId: id("aiChatThreads")`, `role: user|assistant|system`
-- `content: string`, `creditDeducted: boolean`
-- Index: `by_thread`
-
-### `aiForecasts`
-- `organizationId: id("organization")`
-- `type: weekly|monthly`
-- `predictions: array({ date, predictedRevenue, predictedAppointments, confidence })`
-- `insights: array({ type, title, description, impact? })`
-- `expiresAt: number` (24h cache TTL)
-- `creditTransactionId?: id("aiCreditTransactions")`
-- Indexes: `by_org_type`, `by_expiry`
 
 ### `aiCareSchedules`
-- `customerId: id("customers")`, `organizationId: id("organization")`
-- `recommendations: array({ serviceType, recommendedDate, reason, priority })`
-- `nextCheckDate: string` (YYYY-MM-DD)
-- `creditTransactionId?: id("aiCreditTransactions")`
+- `customerId, organizationId, recommendations[], nextCheckDate, creditTransactionId?`
 - Indexes: `by_customer`, `by_org`, `by_next_check`
 
 ### `aiMoodBoard`
-- `customerId: id("customers")`, `organizationId: id("organization")`
-- `items: array({ imageStorageId: id("_storage"), note?, source: analysis|simulation, savedAt: number })`
-- Indexes: `by_customer`, `by_org`
-- Free feature (no credit cost)
+- `customerId, organizationId, items[]` — Indexes: `by_customer`, `by_org`
 
-## Product & Inventory Tables (M11)
-
-### `productCategories`
-- `organizationId: id("organization")`
-- `name: string`, `description?: string`, `sortOrder: number`
-- `status: "active" | "inactive"`
-- Indexes: `by_org`
-
-### `products`
-- `organizationId: id("organization")`, `categoryId?: id("productCategories")`
-- `name: string`, `description?: string`, `sku?: string`, `brand?: string`
-- `costPrice: number`, `sellingPrice: number` (kuruş integers)
-- `imageStorageIds?: array(id("_storage"))` — Up to 4 product images (storage IDs)
-- `imageUrls?: array(string)` — Resolved URLs for immediate display (kept in sync with `imageStorageIds`)
-- `supplierInfo?: { name?, phone?, email?, notes? }`
-- `stockQuantity: number`, `lowStockThreshold?: number`
-- `status: "active" | "inactive"`
-- Indexes: `by_org`, `by_org_category`, `by_org_status`
-- Soft-delete via `status: "inactive"`. Margin computed in queries: `((sellingPrice - costPrice) / sellingPrice) * 100`, guarded on `sellingPrice > 0`.
-- **`productPublicValidator`:** Safe public subset exposed by `products.listPublic` (no costPrice, margin, supplierInfo, lowStockThreshold, stockQuantity). Includes `imageUrls`. Used by `/{slug}/catalog`.
-
-### `inventoryTransactions`
-- `organizationId: id("organization")`, `productId: id("products")`, `staffId?: id("staff")`
-- `type: "restock" | "adjustment" | "waste"`
-- `quantity: number` (signed: positive=add, negative=remove), `previousStock: number`, `newStock: number`
-- `note?: string`, `createdAt: number`
-- Indexes: `by_product`, `by_org_date`
-- Append-only. `restock` always positive, `waste` always negative, `adjustment` signed as-entered.
-
-## Planned Tables
-
-### `auditLogs`
-- `organizationId, userId, action, resourceType, resourceId?, details?, ipAddress?, timestamp`
-- Table exists, helper functions pending.
-
-### `adminActions` (SuperAdmin)
-- `action: string` (suspend_org, delete_org, ban_user, etc.)
-- `performedBy: string` (SuperAdmin userId)
-- `targetType: string` (organization, user, subscription)
-- `targetId?: string`
-- `details?: object` (reason, old/new values)
-- `timestamp: number`
-- Index: `by_timestamp`
-
-### `bannedUsers` (SuperAdmin)
-- `userId: string` (Better Auth user ID)
-- `bannedBy: string` (SuperAdmin userId)
-- `reason?: string`
-- `bannedAt: number`
-- Index: `by_user_id`
+### `designCatalog`
+- `organizationId, name, category, imageStorageId, thumbnailStorageId?, description?, tags[], salonType, status, sortOrder`
+- Indexes: `by_org`, `by_org_category`
 
 ## Index Usage Guide
 
@@ -366,18 +198,9 @@ The role enum was consolidated from `owner|admin|member` to `owner|staff` (compl
 | Staff schedule | `appointments.by_staff_date` |
 | Customer by phone | `customers.by_org_phone` |
 | Appointment by code | `appointments.by_confirmation` |
-| Appointments by status+date (cron) | `appointments.by_status_date` |
+| Appointments by status+date | `appointments.by_status_date` |
 | Subscription by Polar ID | `organizationSettings.by_polar_subscription` |
-| Product benefits | `productBenefits.polarProductId` |
-| Customer AI credits | `aiCredits.by_customer` |
-| Org AI credits | `aiCredits.by_organization` |
-| Customer analyses | `aiAnalyses.by_customer` |
-| Chat messages in thread | `aiChatMessages.by_thread` |
-| Org forecasts | `aiForecasts.by_org_type` |
-| Care schedule check | `aiCareSchedules.by_next_check` |
-| Customer mood board | `aiMoodBoard.by_customer` |
 | Products in org | `products.by_org` |
 | Products by category | `products.by_org_category` |
-| Active products (public catalog) | `products.by_org_status` |
+| Active products (public) | `products.by_org_status` |
 | Inventory history | `inventoryTransactions.by_product` |
-| Appointment services by service | `appointmentServices.by_service` |
