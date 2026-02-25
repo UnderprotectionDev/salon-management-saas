@@ -32,15 +32,15 @@ export function DeleteServiceDialog({
   serviceName,
   organizationId,
 }: DeleteServiceDialogProps) {
-  const removeService = useMutation(api.services.remove);
+  const deleteService = useMutation(api.services.permanentDelete);
   const [isDeleting, setIsDeleting] = useState(false);
 
   const handleDelete = async () => {
     if (!serviceId) return;
     setIsDeleting(true);
     try {
-      await removeService({ organizationId, serviceId });
-      toast.success("Service deactivated");
+      await deleteService({ organizationId, serviceId });
+      toast.success("Service deleted");
       onOpenChange(false);
     } catch (error) {
       const message =
@@ -55,11 +55,10 @@ export function DeleteServiceDialog({
     <AlertDialog open={open} onOpenChange={onOpenChange}>
       <AlertDialogContent>
         <AlertDialogHeader>
-          <AlertDialogTitle>Deactivate Service</AlertDialogTitle>
+          <AlertDialogTitle>Delete Service</AlertDialogTitle>
           <AlertDialogDescription>
-            Are you sure you want to deactivate &ldquo;{serviceName}&rdquo;?
-            This service will be hidden from clients and staff, but existing
-            bookings will not be affected.
+            Are you sure you want to permanently delete &ldquo;{serviceName}
+            &rdquo;? This action cannot be undone.
           </AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>
@@ -72,10 +71,10 @@ export function DeleteServiceDialog({
             {isDeleting ? (
               <>
                 <Loader2 className="mr-2 size-4 animate-spin" />
-                Deactivating...
+                Deleting...
               </>
             ) : (
-              "Deactivate"
+              "Delete"
             )}
           </AlertDialogAction>
         </AlertDialogFooter>

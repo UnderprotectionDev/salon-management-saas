@@ -17,10 +17,14 @@ import type { Id } from "../../../../convex/_generated/dataModel";
 
 type AddCategoryPopoverProps = {
   organizationId: Id<"organization">;
+  onCreated?: (categoryId: Id<"serviceCategories">) => void;
+  variant?: "sidebar" | "inline";
 };
 
 export function AddCategoryPopover({
   organizationId,
+  onCreated,
+  variant = "sidebar",
 }: AddCategoryPopoverProps) {
   const [open, setOpen] = useState(false);
   const [name, setName] = useState("");
@@ -33,10 +37,14 @@ export function AddCategoryPopover({
 
     setIsSubmitting(true);
     try {
-      await createCategory({ organizationId, name: name.trim() });
+      const categoryId = await createCategory({
+        organizationId,
+        name: name.trim(),
+      });
       setName("");
       setOpen(false);
       toast.success("Category created");
+      onCreated?.(categoryId);
     } catch (error) {
       const message =
         error instanceof Error ? error.message : "Failed to create category";
@@ -47,12 +55,30 @@ export function AddCategoryPopover({
   };
 
   return (
-    <Popover open={open} onOpenChange={setOpen}>
+    <Popover
+      open={open}
+      onOpenChange={(isOpen) => {
+        setOpen(isOpen);
+        if (!isOpen) setName("");
+      }}
+    >
       <PopoverTrigger asChild>
-        <Button variant="ghost" size="sm" className="w-full justify-start">
-          <Plus className="mr-2 size-4" />
-          Add Category
-        </Button>
+        {variant === "inline" ? (
+          <Button
+            type="button"
+            variant="outline"
+            size="icon"
+            className="shrink-0"
+          >
+            <Plus className="size-4" />
+            <span className="sr-only">New Category</span>
+          </Button>
+        ) : (
+          <Button variant="ghost" size="sm" className="w-full justify-start">
+            <Plus className="mr-2 size-4" />
+            Add Category
+          </Button>
+        )}
       </PopoverTrigger>
       <PopoverContent className="w-64" align="start">
         <form onSubmit={handleSubmit} className="space-y-3">

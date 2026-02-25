@@ -367,6 +367,54 @@ export const remove = ownerMutation({
   },
 });
 
+export const permanentDelete = ownerMutation({
+  args: { serviceId: v.id("services") },
+  returns: v.boolean(),
+  handler: async (ctx, args) => {
+    const service = await ctx.db.get(args.serviceId);
+    if (!service || service.organizationId !== ctx.organizationId) {
+      throw new ConvexError({
+        code: ErrorCode.NOT_FOUND,
+        message: "Service not found",
+      });
+    }
+
+    // Check for existing appointment references using index
+    const appointmentService = await ctx.db
+      .query("appointmentServices")
+      .withIndex("by_service", (q) => q.eq("serviceId", args.serviceId))
+      .first();
+
+    if (appointmentService) {
+      throw new ConvexError({
+        code: ErrorCode.VALIDATION_ERROR,
+        message:
+          "Cannot permanently delete this service because it has existing appointments.",
+      });
+    }
+
+    // Remove this service from all staff serviceIds
+    const staffMembers = await ctx.db
+      .query("staff")
+      .withIndex("organizationId", (q) =>
+        q.eq("organizationId", ctx.organizationId),
+      )
+      .collect();
+
+    for (const staff of staffMembers) {
+      if (staff.serviceIds?.includes(args.serviceId)) {
+        await ctx.db.patch(staff._id, {
+          serviceIds: staff.serviceIds.filter((id) => id !== args.serviceId),
+          updatedAt: Date.now(),
+        });
+      }
+    }
+
+    await ctx.db.delete(args.serviceId);
+    return true;
+  },
+});
+
 /**
  * Reorder services.
  * Accepts an ordered array of service IDs and updates their sortOrder.
