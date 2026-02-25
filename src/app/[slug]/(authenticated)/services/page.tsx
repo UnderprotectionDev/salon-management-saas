@@ -7,6 +7,7 @@ import {
   CategorySidebar,
   ServicesList,
 } from "@/modules/services";
+import type { Id } from "../../../../../convex/_generated/dataModel";
 
 export default function ServicesPage() {
   const { activeOrganization, currentRole } = useOrganization();
@@ -33,9 +34,7 @@ export default function ServicesPage() {
             organizationId={activeOrganization._id}
             defaultCategoryId={
               selectedCategoryId
-                ? (selectedCategoryId as Parameters<
-                    typeof AddServiceDialog
-                  >[0]["defaultCategoryId"])
+                ? (selectedCategoryId as Id<"serviceCategories">)
                 : undefined
             }
           />

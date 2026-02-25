@@ -6,6 +6,7 @@ import { Loader2, Plus } from "lucide-react";
 import { useState } from "react";
 import { z } from "zod";
 import NiceAvatar, { genConfig } from "react-nice-avatar";
+import { toast } from "sonner";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -39,6 +40,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { api } from "../../../../convex/_generated/api";
 import type { Id } from "../../../../convex/_generated/dataModel";
 import { liraToKurus } from "../lib/currency";
+import { AddCategoryPopover } from "./AddCategoryPopover";
 
 type AddServiceDialogProps = {
   organizationId: Id<"organization">;
@@ -58,6 +60,18 @@ const durationSchema = z
 
 const priceSchema = z.number().min(0, "Price cannot be negative");
 
+function SectionSeparator({ label }: { label: string }) {
+  return (
+    <div className="flex items-center gap-2">
+      <Separator className="flex-1" />
+      <span className="text-xs font-medium text-muted-foreground">
+        {label}
+      </span>
+      <Separator className="flex-1" />
+    </div>
+  );
+}
+
 export function AddServiceDialog({
   organizationId,
   defaultCategoryId,
@@ -71,12 +85,19 @@ export function AddServiceDialog({
   const assignStaff = useMutation(api.services.assignStaff);
   const categories = useQuery(api.serviceCategories.list, { organizationId });
   const allStaff = useQuery(api.staff.list, { organizationId });
+  const avatarConfigs = useQuery(api.staff.getAvatarConfigs, {
+    organizationId,
+  });
+
+  const avatarConfigMap = new Map(
+    avatarConfigs?.map((a) => [a.staffId, a.avatarConfig]) ?? [],
+  );
 
   const form = useForm({
     defaultValues: {
       name: "",
       description: "",
-      categoryId: (defaultCategoryId ?? "") as string,
+      categoryId: (defaultCategoryId ?? "none") as string,
       duration: 30,
       bufferTime: 0,
       price: 0,
@@ -98,18 +119,27 @@ export function AddServiceDialog({
           priceType: value.priceType,
         });
 
-        // Assign selected staff to the newly created service
+        // Assign selected staff sequentially with error collection
         if (selectedStaffIds.size > 0) {
-          await Promise.all(
-            [...selectedStaffIds].map((staffId) =>
-              assignStaff({
+          const failedStaff: string[] = [];
+          for (const staffId of selectedStaffIds) {
+            try {
+              await assignStaff({
                 organizationId,
                 serviceId,
                 staffId,
                 assign: true,
-              }),
-            ),
-          );
+              });
+            } catch {
+              const staffMember = allStaff?.find((s) => s._id === staffId);
+              failedStaff.push(staffMember?.name ?? "Unknown");
+            }
+          }
+          if (failedStaff.length > 0) {
+            toast.warning(
+              `Service created but staff assignment failed for: ${failedStaff.join(", ")}. Edit the service to retry.`,
+            );
+          }
         }
 
         setOpen(false);
@@ -121,7 +151,6 @@ export function AddServiceDialog({
           error instanceof Error
             ? error.message
             : "Failed to create service. Please try again.";
-        const { toast } = await import("sonner");
         toast.error(message);
       }
     },
@@ -172,6 +201,9 @@ export function AddServiceDialog({
           }}
         >
           <FieldGroup>
+            {/* Basic Info */}
+            <SectionSeparator label="Basic Info" />
+
             <form.Field
               name="name"
               validators={{
@@ -228,26 +260,38 @@ export function AddServiceDialog({
               {(field) => (
                 <Field>
                   <FieldLabel htmlFor={field.name}>Category</FieldLabel>
-                  <Select
-                    value={field.state.value}
-                    onValueChange={(value) => field.handleChange(value)}
-                    disabled={form.state.isSubmitting}
-                  >
-                    <SelectTrigger id={field.name}>
-                      <SelectValue placeholder="No category" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="none">No category</SelectItem>
-                      {categories?.map((category) => (
-                        <SelectItem key={category._id} value={category._id}>
-                          {category.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                  <div className="flex items-center gap-2">
+                    <Select
+                      value={field.state.value}
+                      onValueChange={(value) => field.handleChange(value)}
+                      disabled={form.state.isSubmitting}
+                    >
+                      <SelectTrigger id={field.name} className="flex-1">
+                        <SelectValue placeholder="No category" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="none">No category</SelectItem>
+                        {categories?.map((category) => (
+                          <SelectItem key={category._id} value={category._id}>
+                            {category.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <AddCategoryPopover
+                      organizationId={organizationId}
+                      variant="inline"
+                      onCreated={(categoryId) =>
+                        field.handleChange(categoryId)
+                      }
+                    />
+                  </div>
                 </Field>
               )}
             </form.Field>
+
+            {/* Timing & Pricing */}
+            <SectionSeparator label="Timing & Pricing" />
 
             <div className="grid grid-cols-2 gap-4">
               <form.Field
@@ -374,9 +418,9 @@ export function AddServiceDialog({
               </form.Field>
             </div>
 
-            <Separator />
-
             {/* Staff Assignment */}
+            <SectionSeparator label="Staff Assignment" />
+
             <div className="space-y-2">
               <Label>Assign Staff</Label>
               {allStaff === undefined ? (
@@ -387,29 +431,32 @@ export function AddServiceDialog({
                 </div>
               ) : activeStaff && activeStaff.length > 0 ? (
                 <div className="space-y-1">
-                  {activeStaff.map((staff) => (
-                    <label
-                      key={staff._id}
-                      className="flex items-center gap-3 rounded-md p-2 hover:bg-accent cursor-pointer"
-                    >
-                      <Checkbox
-                        checked={selectedStaffIds.has(staff._id)}
-                        onCheckedChange={() => toggleStaff(staff._id)}
-                        disabled={form.state.isSubmitting}
-                      />
-                      <Avatar className="size-7">
-                        <AvatarImage src={staff.imageUrl ?? undefined} />
-                        <AvatarFallback>
-                          <NiceAvatar
-                            style={{ width: "100%", height: "100%" }}
-                            shape="circle"
-                            {...genConfig(staff._id)}
-                          />
-                        </AvatarFallback>
-                      </Avatar>
-                      <span className="text-sm truncate">{staff.name}</span>
-                    </label>
-                  ))}
+                  {activeStaff.map((staff) => {
+                    const config = avatarConfigMap.get(staff._id);
+                    return (
+                      <label
+                        key={staff._id}
+                        className="flex items-center gap-3 rounded-md p-2 hover:bg-accent cursor-pointer"
+                      >
+                        <Checkbox
+                          checked={selectedStaffIds.has(staff._id)}
+                          onCheckedChange={() => toggleStaff(staff._id)}
+                          disabled={form.state.isSubmitting}
+                        />
+                        <Avatar className="size-7">
+                          <AvatarImage src={staff.imageUrl ?? undefined} />
+                          <AvatarFallback>
+                            <NiceAvatar
+                              style={{ width: "100%", height: "100%" }}
+                              shape="circle"
+                              {...(config ?? genConfig(staff._id))}
+                            />
+                          </AvatarFallback>
+                        </Avatar>
+                        <span className="text-sm truncate">{staff.name}</span>
+                      </label>
+                    );
+                  })}
                 </div>
               ) : (
                 <p className="text-sm text-muted-foreground py-2">

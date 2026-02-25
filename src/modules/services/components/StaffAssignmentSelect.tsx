@@ -19,7 +19,14 @@ export function StaffAssignmentSelect({
   serviceId,
 }: StaffAssignmentSelectProps) {
   const allStaff = useQuery(api.staff.list, { organizationId });
+  const avatarConfigs = useQuery(api.staff.getAvatarConfigs, {
+    organizationId,
+  });
   const assignStaff = useMutation(api.services.assignStaff);
+
+  const avatarConfigMap = new Map(
+    avatarConfigs?.map((a) => [a.staffId, a.avatarConfig]) ?? [],
+  );
 
   if (allStaff === undefined) {
     return (
@@ -60,6 +67,7 @@ export function StaffAssignmentSelect({
     <div className="space-y-1">
       {activeStaff.map((staff) => {
         const isAssigned = staff.serviceIds?.includes(serviceId) ?? false;
+        const config = avatarConfigMap.get(staff._id);
         return (
           <label
             key={staff._id}
@@ -75,7 +83,7 @@ export function StaffAssignmentSelect({
                 <NiceAvatar
                   style={{ width: "100%", height: "100%" }}
                   shape="circle"
-                  {...genConfig(staff._id)}
+                  {...(config ?? genConfig(staff._id))}
                 />
               </AvatarFallback>
             </Avatar>

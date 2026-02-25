@@ -559,7 +559,9 @@ export default defineSchema({
     duration: v.number(), // minutes
     price: v.number(), // kuruş
     staffId: v.union(v.id("staff"), v.null()), // Nullable: set to null when staff is removed
-  }).index("by_appointment", ["appointmentId"]),
+  })
+    .index("by_appointment", ["appointmentId"])
+    .index("by_service", ["serviceId"]),
 
   // Slot Locks — temporary locks to prevent double booking
   slotLocks: defineTable({

@@ -86,11 +86,13 @@ function SortableServiceRow({
   isOwner,
   onEdit,
   onDelete,
+  onToggleStatus,
 }: {
   service: ServiceItem;
   isOwner: boolean;
   onEdit: () => void;
   onDelete: () => void;
+  onToggleStatus: () => void;
 }) {
   const {
     attributes,
@@ -147,9 +149,25 @@ function SortableServiceRow({
         <PriceDisplay price={service.price} priceType={service.priceType} />
       </TableCell>
       <TableCell className="hidden sm:table-cell">
-        <Badge variant={getStatusBadgeVariant(service.status)}>
-          {service.status}
-        </Badge>
+        {isOwner ? (
+          <button
+            type="button"
+            onClick={onToggleStatus}
+            className="appearance-none border-0 bg-transparent p-0"
+            aria-label={`Toggle status: currently ${service.status}`}
+          >
+            <Badge
+              variant={getStatusBadgeVariant(service.status)}
+              className="cursor-pointer select-none"
+            >
+              {service.status}
+            </Badge>
+          </button>
+        ) : (
+          <Badge variant={getStatusBadgeVariant(service.status)}>
+            {service.status}
+          </Badge>
+        )}
       </TableCell>
       {isOwner && (
         <TableCell>
@@ -165,15 +183,13 @@ function SortableServiceRow({
                 <Edit2 className="mr-2 size-4" />
                 Edit
               </DropdownMenuItem>
-              {service.status === "active" && (
-                <DropdownMenuItem
-                  onClick={onDelete}
-                  className="text-destructive"
-                >
-                  <Trash2 className="mr-2 size-4" />
-                  Deactivate
-                </DropdownMenuItem>
-              )}
+              <DropdownMenuItem
+                onClick={onDelete}
+                className="text-destructive"
+              >
+                <Trash2 className="mr-2 size-4" />
+                Delete
+              </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
         </TableCell>
@@ -194,6 +210,7 @@ export function ServicesList({
       : undefined,
   });
   const reorderServices = useMutation(api.services.reorder);
+  const updateService = useMutation(api.services.update);
 
   // Local state for optimistic drag-and-drop reordering
   const [localServices, setLocalServices] = useState(services);
@@ -244,6 +261,23 @@ export function ServicesList({
   }
 
   const displayServices = localServices ?? services;
+
+  const handleToggleStatus = async (
+    serviceId: Id<"services">,
+    currentStatus: "active" | "inactive",
+  ) => {
+    const newStatus = currentStatus === "active" ? "inactive" : "active";
+    try {
+      await updateService({ organizationId, serviceId, status: newStatus });
+      toast.success(
+        newStatus === "active" ? "Service activated" : "Service deactivated",
+      );
+    } catch (error) {
+      const message =
+        error instanceof Error ? error.message : "Failed to update service status";
+      toast.error(message);
+    }
+  };
 
   const handleDragEnd = async (event: DragEndEvent) => {
     const { active, over } = event;
@@ -301,6 +335,9 @@ export function ServicesList({
                       id: service._id,
                       name: service.name,
                     })
+                  }
+                  onToggleStatus={() =>
+                    handleToggleStatus(service._id, service.status)
                   }
                 />
               ))}

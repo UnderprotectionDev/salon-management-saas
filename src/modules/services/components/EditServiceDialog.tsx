@@ -3,6 +3,7 @@
 import { useForm } from "@tanstack/react-form";
 import { useMutation, useQuery } from "convex/react";
 import { Loader2 } from "lucide-react";
+import { toast } from "sonner";
 import { z } from "zod";
 import { Button } from "@/components/ui/button";
 import {
@@ -33,6 +34,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { api } from "../../../../convex/_generated/api";
 import type { Id } from "../../../../convex/_generated/dataModel";
 import { kurusToLira, liraToKurus } from "../lib/currency";
+import { AddCategoryPopover } from "./AddCategoryPopover";
 import { StaffAssignmentSelect } from "./StaffAssignmentSelect";
 
 type ServiceData = {
@@ -68,6 +70,18 @@ const durationSchema = z
 
 const priceSchema = z.number().min(0, "Price cannot be negative");
 
+function SectionSeparator({ label }: { label: string }) {
+  return (
+    <div className="flex items-center gap-2">
+      <Separator className="flex-1" />
+      <span className="text-xs font-medium text-muted-foreground">
+        {label}
+      </span>
+      <Separator className="flex-1" />
+    </div>
+  );
+}
+
 export function EditServiceDialog({
   open,
   onOpenChange,
@@ -81,7 +95,7 @@ export function EditServiceDialog({
     defaultValues: {
       name: service?.name ?? "",
       description: service?.description ?? "",
-      categoryId: (service?.categoryId ?? "") as string,
+      categoryId: (service?.categoryId ?? "none") as string,
       duration: service?.duration ?? 30,
       bufferTime: service?.bufferTime ?? 0,
       price: service ? kurusToLira(service.price) : 0,
@@ -108,14 +122,12 @@ export function EditServiceDialog({
           priceType: value.priceType,
         });
         onOpenChange(false);
-        const { toast } = await import("sonner");
         toast.success("Service updated");
       } catch (error) {
         const message =
           error instanceof Error
             ? error.message
             : "Failed to update service. Please try again.";
-        const { toast } = await import("sonner");
         toast.error(message);
       }
     },
@@ -141,6 +153,9 @@ export function EditServiceDialog({
           }}
         >
           <FieldGroup>
+            {/* Basic Info */}
+            <SectionSeparator label="Basic Info" />
+
             <form.Field
               name="name"
               validators={{
@@ -195,26 +210,38 @@ export function EditServiceDialog({
               {(field) => (
                 <Field>
                   <FieldLabel htmlFor={field.name}>Category</FieldLabel>
-                  <Select
-                    value={field.state.value || "none"}
-                    onValueChange={(value) => field.handleChange(value)}
-                    disabled={form.state.isSubmitting}
-                  >
-                    <SelectTrigger id={field.name}>
-                      <SelectValue placeholder="No category" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="none">No category</SelectItem>
-                      {categories?.map((category) => (
-                        <SelectItem key={category._id} value={category._id}>
-                          {category.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                  <div className="flex items-center gap-2">
+                    <Select
+                      value={field.state.value}
+                      onValueChange={(value) => field.handleChange(value)}
+                      disabled={form.state.isSubmitting}
+                    >
+                      <SelectTrigger id={field.name} className="flex-1">
+                        <SelectValue placeholder="No category" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="none">No category</SelectItem>
+                        {categories?.map((category) => (
+                          <SelectItem key={category._id} value={category._id}>
+                            {category.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <AddCategoryPopover
+                      organizationId={organizationId}
+                      variant="inline"
+                      onCreated={(categoryId) =>
+                        field.handleChange(categoryId)
+                      }
+                    />
+                  </div>
                 </Field>
               )}
             </form.Field>
+
+            {/* Timing & Pricing */}
+            <SectionSeparator label="Timing & Pricing" />
 
             <div className="grid grid-cols-2 gap-4">
               <form.Field
@@ -341,9 +368,10 @@ export function EditServiceDialog({
               </form.Field>
             </div>
 
+            {/* Staff Assignment */}
             {service && (
               <>
-                <Separator />
+                <SectionSeparator label="Staff Assignment" />
                 <div className="space-y-2">
                   <Label>Assigned Staff</Label>
                   <StaffAssignmentSelect
