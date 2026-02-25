@@ -15,6 +15,7 @@ import {
   customerAccountStatusValidator,
   customerDocValidator,
   customerListItemValidator,
+  customerListStatsValidator,
   customerProfileValidator,
   customerSearchResultValidator,
   customerSourceValidator,
@@ -125,6 +126,65 @@ export const list = orgQuery({
       source: c.source,
       createdAt: c.createdAt,
     }));
+  },
+});
+
+/**
+ * Get aggregate stats for the customer list page header.
+ * Respects staff-scoped visibility.
+ */
+export const getListStats = orgQuery({
+  args: {},
+  returns: customerListStatsValidator,
+  handler: async (ctx) => {
+    const isStaffOnly = ctx.member.role === "staff";
+    const staffCustomerIds =
+      isStaffOnly && ctx.staff?._id
+        ? await getStaffCustomerIds(ctx.db, ctx.staff._id, ctx.organizationId)
+        : null;
+
+    let customers = await ctx.db
+      .query("customers")
+      .withIndex("by_organization", (q) =>
+        q.eq("organizationId", ctx.organizationId),
+      )
+      .collect();
+
+    if (staffCustomerIds) {
+      customers = customers.filter((c) =>
+        staffCustomerIds.has(c._id as string),
+      );
+    }
+
+    const totalCustomers = customers.length;
+
+    // New this month
+    const now = new Date();
+    const startOfMonth = new Date(
+      now.getFullYear(),
+      now.getMonth(),
+      1,
+    ).getTime();
+    const newThisMonth = customers.filter(
+      (c) => c.createdAt >= startOfMonth,
+    ).length;
+
+    // Active: visited in last 90 days
+    const ninetyDaysAgo = new Date();
+    ninetyDaysAgo.setDate(ninetyDaysAgo.getDate() - 90);
+    const cutoffStr = ninetyDaysAgo.toISOString().split("T")[0];
+    const activeCustomers = customers.filter(
+      (c) => c.lastVisitDate && c.lastVisitDate >= cutoffStr,
+    ).length;
+
+    // Average spend
+    const totalSpent = customers.reduce(
+      (sum, c) => sum + (c.totalSpent ?? 0),
+      0,
+    );
+    const averageSpend = totalCustomers > 0 ? Math.round(totalSpent / totalCustomers) : 0;
+
+    return { totalCustomers, newThisMonth, activeCustomers, averageSpend };
   },
 });
 

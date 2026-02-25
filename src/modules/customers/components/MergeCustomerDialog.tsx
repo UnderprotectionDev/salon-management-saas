@@ -23,7 +23,7 @@ import { formatPrice } from "@/modules/services/lib/currency";
 type MergeCustomerDialogProps = {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  primaryCustomerId: Id<"customers">;
+  primaryCustomerId: Id<"customers"> | null;
   primaryCustomerName: string;
   organizationId: Id<"organization">;
 };
@@ -59,7 +59,9 @@ export function MergeCustomerDialog({
 
   const primaryCustomer = useQuery(
     api.customers.get,
-    open ? { organizationId, customerId: primaryCustomerId } : "skip",
+    open && primaryCustomerId
+      ? { organizationId, customerId: primaryCustomerId }
+      : "skip",
   );
 
   const filteredResults = searchResults?.filter(
@@ -67,7 +69,7 @@ export function MergeCustomerDialog({
   );
 
   const handleMerge = async () => {
-    if (!selectedDuplicate) return;
+    if (!selectedDuplicate || !primaryCustomerId) return;
     setIsMerging(true);
     try {
       await mergeCustomer({

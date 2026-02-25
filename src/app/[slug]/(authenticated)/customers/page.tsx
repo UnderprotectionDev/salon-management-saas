@@ -1,16 +1,20 @@
 "use client";
 
 import { useQuery } from "convex/react";
-import { Users } from "lucide-react";
+import { Download, Users } from "lucide-react";
 import { useEffect, useState } from "react";
+import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useOrganization } from "@/modules/organization";
 import {
   AddCustomerDialog,
+  CustomerDataGrid,
+  CustomerListStatsBar,
   CustomerSearch,
-  CustomerTable,
 } from "@/modules/customers";
+import { downloadCsv, sanitizeCsvValue } from "@/modules/reports/lib/csv";
+import { formatPrice } from "@/modules/services/lib/currency";
 import { api } from "../../../../../convex/_generated/api";
 
 export default function CustomersPage() {
@@ -29,7 +33,6 @@ export default function CustomersPage() {
     tags?: string;
   }>({});
 
-  // Debounce search input
   useEffect(() => {
     const timer = setTimeout(() => {
       setDebouncedSearch(search);
@@ -41,7 +44,6 @@ export default function CustomersPage() {
     (v) => v !== undefined && v !== "",
   );
 
-  // Use advancedSearch when filters are active, otherwise use list
   const advancedResults = useQuery(
     api.customers.advancedSearch,
     activeOrganization && hasAdvancedFilters
@@ -90,6 +92,36 @@ export default function CustomersPage() {
     : simpleResults;
   const isLoading = customers === undefined;
 
+  const handleExportCsv = () => {
+    if (!customers || customers.length === 0) return;
+
+    const headers = [
+      "Name",
+      "Phone",
+      "Email",
+      "Status",
+      "Visits",
+      "Spent (TL)",
+      "Last Visit",
+      "Tags",
+      "Source",
+    ];
+    const rows = customers.map((c) => [
+      sanitizeCsvValue(c.name),
+      sanitizeCsvValue(c.phone),
+      sanitizeCsvValue(c.email ?? ""),
+      sanitizeCsvValue(c.accountStatus ?? ""),
+      c.totalVisits ?? 0,
+      (c.totalSpent ?? 0) / 100,
+      sanitizeCsvValue(c.lastVisitDate ?? ""),
+      sanitizeCsvValue(c.tags?.join(", ") ?? ""),
+      sanitizeCsvValue(c.source ?? ""),
+    ]);
+
+    const date = new Date().toISOString().split("T")[0];
+    downloadCsv(headers, rows, `customers_${date}.csv`);
+  };
+
   if (!activeOrganization) {
     return (
       <div className="flex items-center justify-center p-8">
@@ -107,8 +139,21 @@ export default function CustomersPage() {
             Manage your salon&apos;s customer database
           </p>
         </div>
-        <AddCustomerDialog organizationId={activeOrganization._id} />
+        <div className="flex items-center gap-2">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleExportCsv}
+            disabled={!customers || customers.length === 0}
+          >
+            <Download className="mr-2 size-4" />
+            Export CSV
+          </Button>
+          <AddCustomerDialog organizationId={activeOrganization._id} />
+        </div>
       </div>
+
+      <CustomerListStatsBar organizationId={activeOrganization._id} />
 
       <CustomerSearch
         search={search}
@@ -152,7 +197,7 @@ export default function CustomersPage() {
               {advancedResults.totalCount !== 1 ? "s" : ""} found
             </p>
           )}
-          <CustomerTable
+          <CustomerDataGrid
             customers={customers}
             organizationId={activeOrganization._id}
             isOwner={isOwner}

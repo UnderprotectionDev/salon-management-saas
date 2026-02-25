@@ -22,6 +22,7 @@ import {
   FieldLabel,
 } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
+import { PhoneInput } from "@/components/reui/phone-input";
 import {
   Select,
   SelectContent,
@@ -33,7 +34,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { api } from "../../../../convex/_generated/api";
 import type { Id } from "../../../../convex/_generated/dataModel";
 import { SOURCE_LABELS, SOURCES } from "../lib/constants";
-import { formatPhoneInput, turkishPhoneSchema } from "../lib/phone";
+import { formatPhoneInput } from "../lib/phone";
 
 type AddCustomerDialogProps = {
   organizationId: Id<"organization">;
@@ -77,7 +78,7 @@ export function AddCustomerDialog({
         await createCustomer({
           organizationId,
           name: value.name,
-          phone: value.phone,
+          phone: formatPhoneInput(value.phone),
           email: value.email || undefined,
           preferredStaffId:
             value.preferredStaffId && value.preferredStaffId !== "none"
@@ -178,8 +179,20 @@ export function AddCustomerDialog({
             <form.Field
               name="phone"
               validators={{
-                onBlur: turkishPhoneSchema,
-                onSubmit: turkishPhoneSchema,
+                onBlur: z
+                  .string()
+                  .refine(
+                    (val) =>
+                      !val || /^\+905\d{9}$/.test(val.replace(/\s/g, "")),
+                    "Please enter a valid Turkish phone number",
+                  ),
+                onSubmit: z
+                  .string()
+                  .min(1, "Phone is required")
+                  .refine(
+                    (val) => /^\+905\d{9}$/.test(val.replace(/\s/g, "")),
+                    "Please enter a valid Turkish phone number",
+                  ),
               }}
             >
               {(field) => {
@@ -189,17 +202,11 @@ export function AddCustomerDialog({
                 return (
                   <Field data-invalid={hasError || undefined}>
                     <FieldLabel htmlFor={field.name}>Phone</FieldLabel>
-                    <Input
-                      id={field.name}
-                      name={field.name}
-                      type="tel"
-                      placeholder="+90 5XX XXX XX XX"
+                    <PhoneInput
+                      defaultCountry="TR"
+                      maxInputLength={10}
                       value={field.state.value}
-                      onBlur={(e) => {
-                        field.handleChange(formatPhoneInput(e.target.value));
-                        field.handleBlur();
-                      }}
-                      onChange={(e) => field.handleChange(e.target.value)}
+                      onChange={(value) => field.handleChange(value || "")}
                       disabled={form.state.isSubmitting}
                       aria-invalid={hasError}
                     />
