@@ -1,18 +1,34 @@
 "use client";
 
+import {
+  type ColumnDef,
+  getCoreRowModel,
+  getPaginationRowModel,
+  getSortedRowModel,
+  type SortingState,
+  useReactTable,
+} from "@tanstack/react-table";
 import { useQuery } from "convex/react";
 import {
   ArrowLeft,
   CalendarDays,
-  Clock,
+  Edit2,
   GitMerge,
   Mail,
   Phone,
+  Trash2,
   User,
 } from "lucide-react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useState } from "react";
+import {
+  DataGrid,
+  DataGridContainer,
+} from "@/components/reui/data-grid/data-grid";
+import { DataGridColumnHeader } from "@/components/reui/data-grid/data-grid-column-header";
+import { DataGridPagination } from "@/components/reui/data-grid/data-grid-pagination";
+import { DataGridTable } from "@/components/reui/data-grid/data-grid-table";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -23,14 +39,17 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { CustomerStats, MergeCustomerDialog } from "@/modules/customers";
-import { EditCustomerDialog } from "@/modules/customers/components/EditCustomerDialog";
 import {
   APPOINTMENT_STATUS_BADGE_CLASSES,
   APPOINTMENT_STATUS_LABELS,
   type AppointmentStatus,
 } from "@/lib/status-colors";
+import {
+  CustomerStats,
+  DeleteCustomerDialog,
+  EditCustomerDialog,
+  MergeCustomerDialog,
+} from "@/modules/customers";
 import {
   ACCOUNT_STATUS_LABELS,
   SOURCE_LABELS,
@@ -39,45 +58,6 @@ import { useOrganization } from "@/modules/organization";
 import { formatPrice } from "@/modules/services/lib/currency";
 import { api } from "../../../../../../convex/_generated/api";
 import type { Id } from "../../../../../../convex/_generated/dataModel";
-
-function CustomerDetailSkeleton() {
-  return (
-    <div className="space-y-6">
-      <div className="flex items-center gap-2">
-        <Skeleton className="size-8" />
-        <Skeleton className="h-6 w-32" />
-      </div>
-      <Card>
-        <CardContent className="p-6">
-          <div className="flex items-start gap-6">
-            <Skeleton className="size-16 rounded-full" />
-            <div className="space-y-3 flex-1">
-              <Skeleton className="h-6 w-48" />
-              <Skeleton className="h-4 w-32" />
-              <Skeleton className="h-4 w-40" />
-            </div>
-          </div>
-        </CardContent>
-      </Card>
-      <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
-        {[1, 2, 3, 4].map((i) => (
-          <Skeleton key={i} className="h-20" />
-        ))}
-      </div>
-      <Skeleton className="h-10 w-full" />
-      <Card>
-        <CardHeader>
-          <Skeleton className="h-6 w-40" />
-        </CardHeader>
-        <CardContent className="space-y-3">
-          {[1, 2, 3].map((i) => (
-            <Skeleton key={i} className="h-8 w-full" />
-          ))}
-        </CardContent>
-      </Card>
-    </div>
-  );
-}
 
 function getInitials(name: string): string {
   return name
@@ -94,24 +74,166 @@ function formatTime(minutes: number): string {
   return `${hours.toString().padStart(2, "0")}:${mins.toString().padStart(2, "0")}`;
 }
 
-function CustomerActivityTab({
+type AppointmentRow = {
+  _id: Id<"appointments">;
+  date: string;
+  startTime: number;
+  endTime: number;
+  status: string;
+  staffName: string;
+  total: number;
+  services: { serviceName: string; duration: number; price: number }[];
+};
+
+const appointmentColumns: ColumnDef<AppointmentRow>[] = [
+  {
+    accessorKey: "date",
+    header: ({ column }) => (
+      <DataGridColumnHeader column={column} title="Date" />
+    ),
+    cell: ({ row }) => (
+      <span className="text-sm font-medium">{row.original.date}</span>
+    ),
+    meta: {
+      headerTitle: "Date",
+      skeleton: <Skeleton className="h-4 w-20" />,
+    },
+  },
+  {
+    id: "time",
+    header: () => (
+      <span className="text-secondary-foreground/80 text-[0.8125rem]">
+        Time
+      </span>
+    ),
+    cell: ({ row }) => (
+      <span className="text-sm text-muted-foreground">
+        {formatTime(row.original.startTime)} -{" "}
+        {formatTime(row.original.endTime)}
+      </span>
+    ),
+    enableSorting: false,
+    meta: {
+      headerTitle: "Time",
+      skeleton: <Skeleton className="h-4 w-24" />,
+    },
+  },
+  {
+    id: "services",
+    header: () => (
+      <span className="text-secondary-foreground/80 text-[0.8125rem]">
+        Services
+      </span>
+    ),
+    cell: ({ row }) => (
+      <span className="text-sm">
+        {row.original.services.length > 0
+          ? row.original.services.map((s) => s.serviceName).join(", ")
+          : "No services"}
+      </span>
+    ),
+    enableSorting: false,
+    meta: {
+      headerTitle: "Services",
+      headerClassName: "hidden md:table-cell",
+      cellClassName: "hidden md:table-cell",
+      skeleton: <Skeleton className="h-4 w-32" />,
+    },
+  },
+  {
+    accessorKey: "staffName",
+    header: () => (
+      <span className="text-secondary-foreground/80 text-[0.8125rem]">
+        Staff
+      </span>
+    ),
+    cell: ({ row }) => (
+      <span className="text-sm">{row.original.staffName}</span>
+    ),
+    enableSorting: false,
+    meta: {
+      headerTitle: "Staff",
+      headerClassName: "hidden lg:table-cell",
+      cellClassName: "hidden lg:table-cell",
+      skeleton: <Skeleton className="h-4 w-24" />,
+    },
+  },
+  {
+    accessorKey: "status",
+    header: ({ column }) => (
+      <DataGridColumnHeader column={column} title="Status" />
+    ),
+    cell: ({ row }) => {
+      const status = row.original.status as AppointmentStatus;
+      return (
+        <Badge
+          variant="secondary"
+          className={APPOINTMENT_STATUS_BADGE_CLASSES[status] ?? ""}
+        >
+          {APPOINTMENT_STATUS_LABELS[status] ?? status}
+        </Badge>
+      );
+    },
+    meta: {
+      headerTitle: "Status",
+      skeleton: <Skeleton className="h-5 w-20" />,
+    },
+  },
+  {
+    accessorKey: "total",
+    header: ({ column }) => (
+      <DataGridColumnHeader column={column} title="Total" />
+    ),
+    cell: ({ row }) => (
+      <span className="text-sm font-medium tabular-nums">
+        {formatPrice(row.original.total)}
+      </span>
+    ),
+    meta: {
+      headerTitle: "Total",
+      skeleton: <Skeleton className="h-4 w-16" />,
+    },
+  },
+];
+
+function AppointmentHistory({
   customerId,
   organizationId,
 }: {
   customerId: Id<"customers">;
-  organizationId: Id<"organization"> | undefined;
+  organizationId: Id<"organization">;
 }) {
-  const appointments = useQuery(
-    api.appointments.getByCustomer,
-    organizationId ? { organizationId, customerId } : "skip",
-  );
+  const [sorting, setSorting] = useState<SortingState>([
+    { id: "date", desc: true },
+  ]);
+  const [pagination, setPagination] = useState({
+    pageIndex: 0,
+    pageSize: 10,
+  });
+
+  const appointments = useQuery(api.appointments.getByCustomer, {
+    organizationId,
+    customerId,
+    limit: 200,
+  });
+
+  const table = useReactTable({
+    data: appointments ?? [],
+    columns: appointmentColumns,
+    state: { sorting, pagination },
+    onSortingChange: setSorting,
+    onPaginationChange: setPagination,
+    getCoreRowModel: getCoreRowModel(),
+    getSortedRowModel: getSortedRowModel(),
+    getPaginationRowModel: getPaginationRowModel(),
+  });
 
   if (appointments === undefined) {
     return (
       <Card>
         <CardContent className="space-y-4 py-6">
           {Array.from({ length: 3 }).map((_, i) => (
-            <Skeleton key={i} className="h-20 w-full" />
+            <Skeleton key={i} className="h-12 w-full" />
           ))}
         </CardContent>
       </Card>
@@ -133,59 +255,56 @@ function CustomerActivityTab({
   }
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle>Appointment History</CardTitle>
-        <CardDescription>
-          {appointments.length} appointment
-          {appointments.length !== 1 ? "s" : ""}
-        </CardDescription>
-      </CardHeader>
-      <CardContent>
-        <div className="space-y-3">
-          {appointments.map((apt) => (
-            <div
-              key={apt._id}
-              className="flex items-start justify-between rounded-lg border p-4"
-            >
-              <div className="space-y-1">
-                <div className="flex items-center gap-2">
-                  <span className="font-medium">{apt.date}</span>
-                  <span className="flex items-center gap-1 text-sm text-muted-foreground">
-                    <Clock className="size-3" />
-                    {formatTime(apt.startTime)} - {formatTime(apt.endTime)}
-                  </span>
-                </div>
-                <div className="text-sm text-muted-foreground">
-                  {apt.services?.length
-                    ? apt.services.map((s) => s.serviceName).join(", ")
-                    : "No services"}
-                </div>
-                <div className="text-sm text-muted-foreground">
-                  Staff: {apt.staffName ?? "Unassigned"}
-                </div>
-              </div>
-              <div className="flex flex-col items-end gap-1">
-                <Badge
-                  variant="secondary"
-                  className={
-                    APPOINTMENT_STATUS_BADGE_CLASSES[
-                      apt.status as AppointmentStatus
-                    ] ?? ""
-                  }
-                >
-                  {APPOINTMENT_STATUS_LABELS[apt.status as AppointmentStatus] ??
-                    apt.status}
-                </Badge>
-                <span className="text-sm font-medium">
-                  {formatPrice(apt.total)}
-                </span>
-              </div>
+    <div className="space-y-3">
+      <div className="flex items-center justify-between">
+        <h3 className="text-lg font-semibold">Appointment History</h3>
+        <span className="text-sm text-muted-foreground">
+          {appointments.length >= 200
+            ? "200+ appointments"
+            : `${appointments.length} appointment${appointments.length !== 1 ? "s" : ""}`}
+        </span>
+      </div>
+      <DataGridContainer>
+        <DataGrid
+          table={table}
+          recordCount={appointments.length}
+          tableLayout={{
+            headerBackground: true,
+            headerBorder: true,
+            rowBorder: true,
+          }}
+        >
+          <DataGridTable />
+          <DataGridPagination sizes={[10, 25]} className="px-4 py-2.5" />
+        </DataGrid>
+      </DataGridContainer>
+    </div>
+  );
+}
+
+function CustomerDetailSkeleton() {
+  return (
+    <div className="space-y-6">
+      <Skeleton className="h-5 w-32" />
+      <Card>
+        <CardContent className="p-6">
+          <div className="flex items-start gap-6">
+            <Skeleton className="size-16 rounded-full" />
+            <div className="flex-1 space-y-3">
+              <Skeleton className="h-6 w-48" />
+              <Skeleton className="h-4 w-32" />
+              <Skeleton className="h-4 w-40" />
             </div>
-          ))}
-        </div>
-      </CardContent>
-    </Card>
+          </div>
+        </CardContent>
+      </Card>
+      <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
+        {[1, 2, 3, 4].map((i) => (
+          <Skeleton key={i} className="h-20" />
+        ))}
+      </div>
+      <Skeleton className="h-48 w-full" />
+    </div>
   );
 }
 
@@ -204,6 +323,7 @@ export default function CustomerDetailPage() {
 
   const [showEditDialog, setShowEditDialog] = useState(false);
   const [showMergeDialog, setShowMergeDialog] = useState(false);
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
 
   const isOwner = currentRole === "owner";
 
@@ -249,14 +369,14 @@ export default function CustomerDetailPage() {
       <Card>
         <CardContent className="p-6">
           <div className="flex items-start gap-6">
-            <div className="flex size-16 items-center justify-center rounded-full bg-muted text-xl font-semibold">
+            <div className="flex size-16 shrink-0 items-center justify-center rounded-full bg-muted text-xl font-semibold">
               {getInitials(customer.name)}
             </div>
-            <div className="flex-1 min-w-0">
-              <div className="flex items-center gap-3">
-                <h2 className="text-xl font-semibold truncate">
+            <div className="min-w-0 flex-1">
+              <div className="flex flex-wrap items-center gap-3">
+                <h1 className="text-xl font-semibold truncate">
                   {customer.name}
-                </h2>
+                </h1>
                 {customer.accountStatus && (
                   <Badge variant="secondary">
                     {ACCOUNT_STATUS_LABELS[customer.accountStatus] ??
@@ -288,7 +408,7 @@ export default function CustomerDetailPage() {
                 )}
               </div>
               {customer.tags && customer.tags.length > 0 && (
-                <div className="mt-3 flex gap-1.5 flex-wrap">
+                <div className="mt-3 flex flex-wrap gap-1.5">
                   {customer.tags.map((tag) => (
                     <Badge key={tag} variant="outline">
                       {tag}
@@ -297,30 +417,42 @@ export default function CustomerDetailPage() {
                 </div>
               )}
             </div>
-            <div className="flex gap-2">
-              {isOwner && (
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => setShowMergeDialog(true)}
-                >
-                  <GitMerge className="mr-2 size-4" />
-                  Merge
-                </Button>
-              )}
+            <div className="flex shrink-0 gap-2">
               <Button
                 variant="outline"
                 size="sm"
                 onClick={() => setShowEditDialog(true)}
               >
+                <Edit2 className="mr-2 size-4" />
                 Edit
               </Button>
+              {isOwner && (
+                <>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setShowMergeDialog(true)}
+                  >
+                    <GitMerge className="mr-2 size-4" />
+                    Merge
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="text-destructive"
+                    onClick={() => setShowDeleteDialog(true)}
+                  >
+                    <Trash2 className="mr-2 size-4" />
+                    Delete
+                  </Button>
+                </>
+              )}
             </div>
           </div>
         </CardContent>
       </Card>
 
-      {/* Stats */}
+      {/* Stats Row */}
       <CustomerStats
         totalVisits={customer.totalVisits ?? 0}
         totalSpent={customer.totalSpent ?? 0}
@@ -328,75 +460,71 @@ export default function CustomerDetailPage() {
         createdAt={customer.createdAt}
       />
 
-      {/* Tabs */}
-      <Tabs defaultValue="overview">
-        <TabsList>
-          <TabsTrigger value="overview">Overview</TabsTrigger>
-          <TabsTrigger value="activity">Activity</TabsTrigger>
-        </TabsList>
+      {/* Overview Card */}
+      <div className="grid gap-4 md:grid-cols-2">
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base">Customer Notes</CardTitle>
+            <CardDescription>Notes visible to the customer</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <p className="whitespace-pre-wrap text-sm">
+              {customer.customerNotes || (
+                <span className="text-muted-foreground">No notes</span>
+              )}
+            </p>
+          </CardContent>
+        </Card>
 
-        {/* Overview Tab */}
-        <TabsContent value="overview" className="space-y-6">
-          {/* Notes */}
-          <div className="grid gap-4 md:grid-cols-2">
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-base">Customer Notes</CardTitle>
-                <CardDescription>Notes visible to the customer</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <p className="text-sm">
-                  {customer.customerNotes || (
-                    <span className="text-muted-foreground">No notes</span>
-                  )}
-                </p>
-              </CardContent>
-            </Card>
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base">Staff Notes</CardTitle>
+            <CardDescription>Internal notes for staff only</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <p className="whitespace-pre-wrap text-sm">
+              {customer.staffNotes || (
+                <span className="text-muted-foreground">No notes</span>
+              )}
+            </p>
+          </CardContent>
+        </Card>
+      </div>
 
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-base">Staff Notes</CardTitle>
-                <CardDescription>Internal notes for staff only</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <p className="text-sm">
-                  {customer.staffNotes || (
-                    <span className="text-muted-foreground">No notes</span>
-                  )}
-                </p>
-              </CardContent>
-            </Card>
-          </div>
-        </TabsContent>
-
-        {/* Activity Tab */}
-        <TabsContent value="activity" className="space-y-6">
-          <CustomerActivityTab
-            customerId={customerId}
-            organizationId={activeOrganization?._id}
-          />
-        </TabsContent>
-      </Tabs>
-
-      {/* Edit Dialog */}
+      {/* Appointment History */}
       {activeOrganization && (
-        <EditCustomerDialog
-          open={showEditDialog}
-          onOpenChange={setShowEditDialog}
-          customerId={showEditDialog ? customer._id : null}
+        <AppointmentHistory
+          customerId={customerId}
           organizationId={activeOrganization._id}
         />
       )}
 
-      {/* Merge Dialog */}
+      {/* Dialogs */}
       {activeOrganization && (
-        <MergeCustomerDialog
-          open={showMergeDialog}
-          onOpenChange={setShowMergeDialog}
-          primaryCustomerId={customerId}
-          primaryCustomerName={customer.name}
-          organizationId={activeOrganization._id}
-        />
+        <>
+          <EditCustomerDialog
+            open={showEditDialog}
+            onOpenChange={setShowEditDialog}
+            customerId={showEditDialog ? customer._id : null}
+            organizationId={activeOrganization._id}
+          />
+
+          <MergeCustomerDialog
+            open={showMergeDialog}
+            onOpenChange={setShowMergeDialog}
+            primaryCustomerId={customerId}
+            primaryCustomerName={customer.name}
+            organizationId={activeOrganization._id}
+          />
+
+          <DeleteCustomerDialog
+            open={showDeleteDialog}
+            onOpenChange={setShowDeleteDialog}
+            customerId={showDeleteDialog ? customer._id : null}
+            customerName={customer.name}
+            organizationId={activeOrganization._id}
+          />
+        </>
       )}
     </div>
   );

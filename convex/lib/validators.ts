@@ -1266,6 +1266,18 @@ export const designCatalogPublicValidator = v.object(
 );
 
 // =============================================================================
+// Customer List Stats Validators
+// =============================================================================
+
+/** Aggregate stats for customer list page header */
+export const customerListStatsValidator = v.object({
+  totalCustomers: v.number(),
+  newThisMonth: v.number(),
+  activeCustomers: v.number(),
+  averageSpend: v.number(),
+});
+
+// =============================================================================
 // Setup Progress (Onboarding Checklist)
 // =============================================================================
 
