@@ -7,11 +7,13 @@ import {
   MoreHorizontal,
   Package,
   PackageX,
+  Trash2,
   Warehouse,
 } from "lucide-react";
 import Image from "next/image";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -21,6 +23,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { formatPrice } from "@/modules/services/lib/currency";
 import type { Id } from "../../../../convex/_generated/dataModel";
+import { StockIndicatorBar } from "./StockIndicatorBar";
 
 export type Product = {
   _id: Id<"products">;
@@ -34,6 +37,7 @@ export type Product = {
   sellingPrice: number;
   stockQuantity: number;
   lowStockThreshold?: number;
+  hasVariants?: boolean;
   status: "active" | "inactive";
   isLowStock: boolean;
   margin?: number;
@@ -45,22 +49,40 @@ export type Product = {
     email?: string;
     notes?: string;
   };
+  // Variant price range (only for hasVariants products)
+  minPrice?: number;
+  maxPrice?: number;
+  variantCount?: number;
+  totalVariantStock?: number;
+  // First option preview (for card chips)
+  firstOptionName?: string;
+  firstOptionValues?: string[];
 };
 
 type ProductCardProps = {
   product: Product;
+  onClick: (product: Product) => void;
   onEdit: (product: Product) => void;
   onAdjustStock: (product: Product) => void;
   onViewHistory: (product: Product) => void;
   onDeactivate: (product: Product) => void;
+  onDelete: (product: Product) => void;
+  selectionMode?: boolean;
+  isSelected?: boolean;
+  onToggleSelect?: (productId: Id<"products">) => void;
 };
 
 export function ProductCard({
   product,
+  onClick,
   onEdit,
   onAdjustStock,
   onViewHistory,
   onDeactivate,
+  onDelete,
+  selectionMode,
+  isSelected,
+  onToggleSelect,
 }: ProductCardProps) {
   const stockColor =
     product.stockQuantity === 0
@@ -69,10 +91,38 @@ export function ProductCard({
         ? "text-amber-600"
         : "text-muted-foreground";
 
+  const handleCardClick = () => {
+    if (selectionMode && onToggleSelect) {
+      onToggleSelect(product._id);
+    } else {
+      onClick(product);
+    }
+  };
+
   return (
-    <div className="group relative rounded-lg border bg-card transition-shadow hover:shadow-md">
+    <div
+      className={`group relative rounded-lg border bg-card transition-shadow hover:shadow-md ${isSelected ? "ring-2 ring-primary" : ""}`}
+    >
+      {/* Accessible click target covering the entire card */}
+      <button
+        type="button"
+        className="absolute inset-0 z-0 cursor-pointer rounded-lg focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
+        onClick={handleCardClick}
+        aria-label={`View ${product.name}`}
+      />
+
       {/* Image area */}
       <div className="relative aspect-[4/3] overflow-hidden rounded-t-lg bg-muted">
+        {/* Selection checkbox */}
+        {selectionMode && (
+          <div className="absolute top-2 left-2 z-10">
+            <Checkbox
+              checked={isSelected}
+              onCheckedChange={() => onToggleSelect?.(product._id)}
+              className="size-5 bg-background/80 backdrop-blur-sm"
+            />
+          </div>
+        )}
         {product.imageUrls?.[0] ? (
           <Image
             src={product.imageUrls[0]}
@@ -91,14 +141,14 @@ export function ProductCard({
         {product.status === "inactive" && (
           <Badge
             variant="destructive"
-            className="absolute top-2 left-2 text-xs"
+            className={`absolute top-2 text-xs ${selectionMode ? "left-10" : "left-2"}`}
           >
             Inactive
           </Badge>
         )}
 
         {/* Actions dropdown overlay */}
-        <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity">
+        <div className="absolute top-2 right-2 z-10 opacity-0 group-hover:opacity-100 transition-opacity">
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button
@@ -135,6 +185,14 @@ export function ProductCard({
                   </DropdownMenuItem>
                 </>
               )}
+              <DropdownMenuSeparator />
+              <DropdownMenuItem
+                onClick={() => onDelete(product)}
+                className="text-destructive"
+              >
+                <Trash2 className="mr-2 size-4" />
+                Delete
+              </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
         </div>
@@ -161,10 +219,67 @@ export function ProductCard({
           </Badge>
         )}
 
-        {/* Price */}
-        <p className="text-base font-semibold">
-          {formatPrice(product.sellingPrice)}
-        </p>
+        {/* Price + Margin */}
+        <div className="flex items-baseline gap-2">
+          <p className="text-base font-semibold">
+            {product.hasVariants &&
+            product.minPrice !== undefined &&
+            product.maxPrice !== undefined
+              ? product.minPrice !== product.maxPrice
+                ? `${formatPrice(product.minPrice)} – ${formatPrice(product.maxPrice)}`
+                : formatPrice(product.minPrice)
+              : formatPrice(product.sellingPrice)}
+          </p>
+          {!product.hasVariants && product.margin !== undefined && (
+            <span
+              className={`text-[11px] font-medium ${
+                product.margin >= 30
+                  ? "text-emerald-600"
+                  : product.margin >= 15
+                    ? "text-amber-600"
+                    : "text-destructive"
+              }`}
+            >
+              {product.margin}%
+            </span>
+          )}
+        </div>
+
+        {/* Cost price or variant count + chips */}
+        {product.hasVariants && (product.variantCount ?? 0) > 0 ? (
+          <div className="space-y-1">
+            <p className="text-[11px] text-muted-foreground/70">
+              {product.variantCount} variant
+              {product.variantCount !== 1 ? "s" : ""}
+            </p>
+            {product.firstOptionValues &&
+              product.firstOptionValues.length > 0 && (
+                <div className="flex flex-wrap gap-1">
+                  {product.firstOptionValues.slice(0, 5).map((val) => (
+                    <Badge
+                      key={val}
+                      variant="secondary"
+                      className="text-[10px] px-1.5 py-0"
+                    >
+                      {val}
+                    </Badge>
+                  ))}
+                  {product.firstOptionValues.length > 5 && (
+                    <Badge
+                      variant="secondary"
+                      className="text-[10px] px-1.5 py-0"
+                    >
+                      +{product.firstOptionValues.length - 5}
+                    </Badge>
+                  )}
+                </div>
+              )}
+          </div>
+        ) : (
+          <p className="text-[11px] text-muted-foreground/70 tabular-nums">
+            Cost: {formatPrice(product.costPrice)}
+          </p>
+        )}
 
         {/* Stock indicator */}
         <div className={`flex items-center gap-1.5 text-xs ${stockColor}`}>
@@ -177,6 +292,12 @@ export function ProductCard({
               : `${product.stockQuantity} in stock`}
           </span>
         </div>
+
+        {/* Stock bar */}
+        <StockIndicatorBar
+          stockQuantity={product.stockQuantity}
+          lowStockThreshold={product.lowStockThreshold}
+        />
       </div>
     </div>
   );

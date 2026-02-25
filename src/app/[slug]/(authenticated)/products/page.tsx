@@ -1,6 +1,6 @@
 "use client";
 
-import { Plus } from "lucide-react";
+import { CheckSquare, Plus } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
@@ -21,6 +21,7 @@ export default function ProductsPage() {
   const { activeOrganization, currentRole, isLoading } = useOrganization();
   const router = useRouter();
   const [addOpen, setAddOpen] = useState(false);
+  const [selectionMode, setSelectionMode] = useState(false);
   const [selectedCategoryId, setSelectedCategoryId] = useState<string | null>(
     null,
   );
@@ -48,7 +49,7 @@ export default function ProductsPage() {
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
@@ -57,10 +58,20 @@ export default function ProductsPage() {
             Manage your salon&apos;s product catalog and inventory
           </p>
         </div>
-        <Button onClick={() => setAddOpen(true)}>
-          <Plus className="mr-2 size-4" />
-          Add Product
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button
+            variant={selectionMode ? "secondary" : "outline"}
+            size="sm"
+            onClick={() => setSelectionMode(!selectionMode)}
+          >
+            <CheckSquare className="mr-1.5 size-4" />
+            {selectionMode ? "Done" : "Select"}
+          </Button>
+          <Button size="sm" onClick={() => setAddOpen(true)}>
+            <Plus className="mr-2 size-4" />
+            Add Product
+          </Button>
+        </div>
       </div>
 
       {/* Low Stock Banner */}
@@ -95,6 +106,7 @@ export default function ProductsPage() {
             organizationId={activeOrganization._id}
             categoryId={selectedCategoryId}
             filters={filters}
+            selectionMode={selectionMode}
           />
         </div>
       </div>

@@ -64,9 +64,7 @@ function SectionSeparator({ label }: { label: string }) {
   return (
     <div className="flex items-center gap-2">
       <Separator className="flex-1" />
-      <span className="text-xs font-medium text-muted-foreground">
-        {label}
-      </span>
+      <span className="text-xs font-medium text-muted-foreground">{label}</span>
       <Separator className="flex-1" />
     </div>
   );
@@ -281,9 +279,7 @@ export function AddServiceDialog({
                     <AddCategoryPopover
                       organizationId={organizationId}
                       variant="inline"
-                      onCreated={(categoryId) =>
-                        field.handleChange(categoryId)
-                      }
+                      onCreated={(categoryId) => field.handleChange(categoryId)}
                     />
                   </div>
                 </Field>

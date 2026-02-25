@@ -183,10 +183,7 @@ function SortableServiceRow({
                 <Edit2 className="mr-2 size-4" />
                 Edit
               </DropdownMenuItem>
-              <DropdownMenuItem
-                onClick={onDelete}
-                className="text-destructive"
-              >
+              <DropdownMenuItem onClick={onDelete} className="text-destructive">
                 <Trash2 className="mr-2 size-4" />
                 Delete
               </DropdownMenuItem>
@@ -274,7 +271,9 @@ export function ServicesList({
       );
     } catch (error) {
       const message =
-        error instanceof Error ? error.message : "Failed to update service status";
+        error instanceof Error
+          ? error.message
+          : "Failed to update service status";
       toast.error(message);
     }
   };

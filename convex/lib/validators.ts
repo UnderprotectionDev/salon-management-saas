@@ -523,6 +523,15 @@ export const productDocValidator = vv.doc("products");
 /** Inventory transaction document validator */
 export const inventoryTransactionDocValidator = vv.doc("inventoryTransactions");
 
+/** Price history document validator */
+export const priceHistoryDocValidator = vv.doc("priceHistory");
+
+/** Product variant option document validator */
+export const productVariantOptionDocValidator = vv.doc("productVariantOptions");
+
+/** Product variant document validator */
+export const productVariantDocValidator = vv.doc("productVariants");
+
 /** Product benefits document validator */
 export const productBenefitsDocValidator = vv.doc("productBenefits");
 
@@ -961,6 +970,14 @@ export const productWithCategoryValidator = v.object(
     categoryName: v.optional(v.string()),
     isLowStock: v.boolean(),
     margin: v.optional(v.number()), // percentage, omitted if sellingPrice is 0
+    // Variant price range (only for hasVariants products)
+    minPrice: v.optional(v.number()),
+    maxPrice: v.optional(v.number()),
+    variantCount: v.optional(v.number()),
+    totalVariantStock: v.optional(v.number()),
+    // First option preview (for card chips)
+    firstOptionName: v.optional(v.string()),
+    firstOptionValues: v.optional(v.array(v.string())),
   }),
 );
 
@@ -1001,6 +1018,68 @@ export const inventoryStatsValidator = v.object({
   lowStockCount: v.number(),
   outOfStockCount: v.number(),
 });
+
+/** Product detail with category, margin, and recent transactions */
+export const productDetailValidator = v.object(
+  withSystemFields("products", {
+    ...schema.tables.products.validator.fields,
+    categoryName: v.optional(v.string()),
+    isLowStock: v.boolean(),
+    margin: v.optional(v.number()),
+    recentTransactions: v.array(
+      v.object(
+        withSystemFields("inventoryTransactions", {
+          ...schema.tables.inventoryTransactions.validator.fields,
+          staffName: v.optional(v.string()),
+        }),
+      ),
+    ),
+    variants: v.optional(
+      v.array(
+        v.object(
+          withSystemFields("productVariants", {
+            ...schema.tables.productVariants.validator.fields,
+          }),
+        ),
+      ),
+    ),
+    variantOptions: v.optional(
+      v.array(
+        v.object(
+          withSystemFields("productVariantOptions", {
+            ...schema.tables.productVariantOptions.validator.fields,
+          }),
+        ),
+      ),
+    ),
+  }),
+);
+
+/** Price history entry with staff name */
+export const priceHistoryWithStaffValidator = v.object(
+  withSystemFields("priceHistory", {
+    ...schema.tables.priceHistory.validator.fields,
+    staffName: v.optional(v.string()),
+  }),
+);
+
+/** Product variant status */
+export const productVariantStatusValidator = literals("active", "inactive");
+
+/** Option value pair used in variant combinations */
+export const optionValueValidator = v.object({
+  optionName: v.string(),
+  value: v.string(),
+});
+
+/** Variant with computed label (e.g. "Size: 100ml / Color: Red") and margin */
+export const variantWithLabelValidator = v.object(
+  withSystemFields("productVariants", {
+    ...schema.tables.productVariants.validator.fields,
+    label: v.string(),
+    margin: v.optional(v.number()),
+  }),
+);
 
 // =============================================================================
 // AI Feature Validators (M10)

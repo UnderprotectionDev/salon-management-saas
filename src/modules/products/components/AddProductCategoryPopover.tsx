@@ -55,7 +55,12 @@ export function AddProductCategoryPopover({
   return (
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
-        <Button type="button" variant="outline" size="icon" className="shrink-0">
+        <Button
+          type="button"
+          variant="outline"
+          size="icon"
+          className="shrink-0"
+        >
           <Plus className="size-4" />
           <span className="sr-only">New Category</span>
         </Button>
