@@ -6,9 +6,11 @@ import {
   ownerQuery,
   publicQuery,
 } from "./lib/functions";
+import { rateLimiter } from "./lib/rateLimits";
 import {
   inventoryStatsValidator,
   inventoryTransactionTypeValidator,
+  productDetailValidator,
   productPublicValidator,
   productWithCategoryValidator,
 } from "./lib/validators";
@@ -61,24 +63,79 @@ export const list = ownerQuery({
       );
     }
 
+    // Pre-fetch variant data for products with variants
+    const variantProducts = products.filter((p) => p.hasVariants);
+    const variantMap = new Map<
+      string,
+      {
+        minPrice: number;
+        maxPrice: number;
+        count: number;
+        totalStock: number;
+        firstOptionName?: string;
+        firstOptionValues?: string[];
+      }
+    >();
+
+    for (const vp of variantProducts) {
+      const variants = await ctx.db
+        .query("productVariants")
+        .withIndex("by_product", (q) => q.eq("productId", vp._id))
+        .collect();
+
+      if (variants.length > 0) {
+        const activeVariants = variants.filter(
+          (av) => av.status === "active",
+        );
+        const prices = activeVariants.map((av) => av.sellingPrice);
+
+        // Fetch first option (lowest sortOrder) for card chips
+        const firstOption = await ctx.db
+          .query("productVariantOptions")
+          .withIndex("by_product", (q) => q.eq("productId", vp._id))
+          .first();
+
+        variantMap.set(vp._id, {
+          minPrice: prices.length > 0 ? Math.min(...prices) : 0,
+          maxPrice: prices.length > 0 ? Math.max(...prices) : 0,
+          count: variants.length,
+          totalStock: variants.reduce(
+            (sum, av) => sum + av.stockQuantity,
+            0,
+          ),
+          firstOptionName: firstOption?.name,
+          firstOptionValues: firstOption?.values,
+        });
+      }
+    }
+
     return products
-      .map((product) => ({
-        ...product,
-        categoryName: product.categoryId
-          ? categoryMap.get(product.categoryId)
-          : undefined,
-        isLowStock:
-          product.lowStockThreshold !== undefined &&
-          product.stockQuantity <= product.lowStockThreshold,
-        margin:
-          product.sellingPrice > 0
-            ? Math.round(
-                ((product.sellingPrice - product.costPrice) /
-                  product.sellingPrice) *
-                  100,
-              )
+      .map((product) => {
+        const variantInfo = variantMap.get(product._id);
+        return {
+          ...product,
+          categoryName: product.categoryId
+            ? categoryMap.get(product.categoryId)
             : undefined,
-      }))
+          isLowStock:
+            product.lowStockThreshold !== undefined &&
+            product.stockQuantity <= product.lowStockThreshold,
+          margin:
+            product.sellingPrice > 0
+              ? Math.round(
+                  ((product.sellingPrice - product.costPrice) /
+                    product.sellingPrice) *
+                    100,
+                )
+              : undefined,
+          minPrice: variantInfo?.minPrice,
+          maxPrice: variantInfo?.maxPrice,
+          variantCount: variantInfo?.count,
+          totalVariantStock: variantInfo?.totalStock,
+          firstOptionName: variantInfo?.firstOptionName,
+          firstOptionValues: variantInfo?.firstOptionValues,
+        };
+      })
       .sort((a, b) => a.name.localeCompare(b.name, "tr"));
   },
 });
@@ -120,6 +177,91 @@ export const get = ownerQuery({
                 100,
             )
           : undefined,
+    };
+  },
+});
+
+/**
+ * Get detailed product info including category, margin, and recent transactions.
+ * Used by the product detail sheet.
+ */
+export const getDetail = ownerQuery({
+  args: {
+    productId: v.id("products"),
+  },
+  returns: productDetailValidator,
+  handler: async (ctx, args) => {
+    const product = await ctx.db.get(args.productId);
+    if (!product || product.organizationId !== ctx.organizationId) {
+      throw new ConvexError({
+        code: ErrorCode.NOT_FOUND,
+        message: "Product not found",
+      });
+    }
+
+    let categoryName: string | undefined;
+    if (product.categoryId) {
+      const cat = await ctx.db.get(product.categoryId);
+      categoryName = cat?.name;
+    }
+
+    // Fetch recent 5 inventory transactions
+    const transactions = await ctx.db
+      .query("inventoryTransactions")
+      .withIndex("by_product", (q) => q.eq("productId", args.productId))
+      .order("desc")
+      .take(5);
+
+    // Enrich with staff names
+    const staffIds = [
+      ...new Set(transactions.map((t) => t.staffId).filter(Boolean)),
+    ];
+    const staffMap = new Map<string, string>();
+    for (const staffId of staffIds) {
+      if (staffId) {
+        const staff = await ctx.db.get(staffId);
+        if (staff) staffMap.set(staffId, staff.name);
+      }
+    }
+
+    const recentTransactions = transactions.map((t) => ({
+      ...t,
+      staffName: t.staffId ? staffMap.get(t.staffId) : undefined,
+    }));
+
+    // Fetch variant data if product has variants
+    let variants: any[] | undefined;
+    let variantOptions: any[] | undefined;
+
+    if (product.hasVariants) {
+      variants = await ctx.db
+        .query("productVariants")
+        .withIndex("by_product", (q) => q.eq("productId", args.productId))
+        .collect();
+
+      variantOptions = await ctx.db
+        .query("productVariantOptions")
+        .withIndex("by_product", (q) => q.eq("productId", args.productId))
+        .collect();
+    }
+
+    return {
+      ...product,
+      categoryName,
+      isLowStock:
+        product.lowStockThreshold !== undefined &&
+        product.stockQuantity <= product.lowStockThreshold,
+      margin:
+        product.sellingPrice > 0
+          ? Math.round(
+              ((product.sellingPrice - product.costPrice) /
+                product.sellingPrice) *
+                100,
+            )
+          : undefined,
+      recentTransactions,
+      variants,
+      variantOptions,
     };
   },
 });
@@ -486,6 +628,34 @@ export const update = ownerMutation({
       }
     }
 
+    // Log price changes to price history
+    const now = Date.now();
+    if (args.costPrice !== undefined && args.costPrice !== product.costPrice) {
+      await ctx.db.insert("priceHistory", {
+        organizationId: ctx.organizationId,
+        productId: args.productId,
+        field: "costPrice",
+        previousValue: product.costPrice,
+        newValue: args.costPrice,
+        changedBy: ctx.staff?._id,
+        createdAt: now,
+      });
+    }
+    if (
+      args.sellingPrice !== undefined &&
+      args.sellingPrice !== product.sellingPrice
+    ) {
+      await ctx.db.insert("priceHistory", {
+        organizationId: ctx.organizationId,
+        productId: args.productId,
+        field: "sellingPrice",
+        previousValue: product.sellingPrice,
+        newValue: args.sellingPrice,
+        changedBy: ctx.staff?._id,
+        createdAt: now,
+      });
+    }
+
     await ctx.db.patch(args.productId, updates);
     return true;
   },
@@ -587,5 +757,221 @@ export const deactivate = ownerMutation({
       updatedAt: Date.now(),
     });
     return true;
+  },
+});
+
+/**
+ * Permanently delete a product and all related records.
+ * Removes: inventoryTransactions, priceHistory, productVariants,
+ * productVariantOptions, storage files, and the product itself.
+ */
+export const remove = ownerMutation({
+  args: {
+    productId: v.id("products"),
+  },
+  returns: v.null(),
+  handler: async (ctx, args) => {
+    const product = await ctx.db.get(args.productId);
+    if (!product || product.organizationId !== ctx.organizationId) {
+      throw new ConvexError({
+        code: ErrorCode.NOT_FOUND,
+        message: "Product not found",
+      });
+    }
+
+    // 1. Delete all inventory transactions
+    const transactions = await ctx.db
+      .query("inventoryTransactions")
+      .withIndex("by_product", (q) => q.eq("productId", args.productId))
+      .collect();
+    for (const tx of transactions) {
+      await ctx.db.delete(tx._id);
+    }
+
+    // 2. Delete all price history
+    const priceHistoryRecords = await ctx.db
+      .query("priceHistory")
+      .withIndex("by_product", (q) => q.eq("productId", args.productId))
+      .collect();
+    for (const ph of priceHistoryRecords) {
+      await ctx.db.delete(ph._id);
+    }
+
+    // 3. Delete all product variants
+    const variants = await ctx.db
+      .query("productVariants")
+      .withIndex("by_product", (q) => q.eq("productId", args.productId))
+      .collect();
+    for (const variant of variants) {
+      await ctx.db.delete(variant._id);
+    }
+
+    // 4. Delete all product variant options
+    const variantOptions = await ctx.db
+      .query("productVariantOptions")
+      .withIndex("by_product", (q) => q.eq("productId", args.productId))
+      .collect();
+    for (const opt of variantOptions) {
+      await ctx.db.delete(opt._id);
+    }
+
+    // 5. Delete storage files
+    if (product.imageStorageIds && product.imageStorageIds.length > 0) {
+      for (const storageId of product.imageStorageIds) {
+        await ctx.storage.delete(storageId);
+      }
+    }
+
+    // 6. Delete the product
+    await ctx.db.delete(args.productId);
+
+    return null;
+  },
+});
+
+// =============================================================================
+// Bulk Operations
+// =============================================================================
+
+/**
+ * Bulk update product status (active/inactive).
+ */
+export const bulkUpdateStatus = ownerMutation({
+  args: {
+    productIds: v.array(v.id("products")),
+    status: v.union(v.literal("active"), v.literal("inactive")),
+  },
+  returns: v.number(),
+  handler: async (ctx, args) => {
+    if (args.productIds.length > 100) {
+      throw new ConvexError({
+        code: ErrorCode.INVALID_INPUT,
+        message: "Cannot update more than 100 products at once",
+      });
+    }
+    await rateLimiter.limit(ctx, "bulkProductOperation", {
+      key: ctx.organizationId,
+    });
+
+    let count = 0;
+    const now = Date.now();
+    for (const productId of args.productIds) {
+      const product = await ctx.db.get(productId);
+      if (product && product.organizationId === ctx.organizationId) {
+        await ctx.db.patch(productId, { status: args.status, updatedAt: now });
+        count++;
+      }
+    }
+    return count;
+  },
+});
+
+/**
+ * Bulk update product category.
+ */
+export const bulkUpdateCategory = ownerMutation({
+  args: {
+    productIds: v.array(v.id("products")),
+    categoryId: v.optional(v.id("productCategories")),
+  },
+  returns: v.number(),
+  handler: async (ctx, args) => {
+    if (args.productIds.length > 100) {
+      throw new ConvexError({
+        code: ErrorCode.INVALID_INPUT,
+        message: "Cannot update more than 100 products at once",
+      });
+    }
+    await rateLimiter.limit(ctx, "bulkProductOperation", {
+      key: ctx.organizationId,
+    });
+
+    // Validate category if provided
+    if (args.categoryId) {
+      const cat = await ctx.db.get(args.categoryId);
+      if (!cat || cat.organizationId !== ctx.organizationId) {
+        throw new ConvexError({
+          code: ErrorCode.NOT_FOUND,
+          message: "Category not found",
+        });
+      }
+    }
+
+    let count = 0;
+    const now = Date.now();
+    for (const productId of args.productIds) {
+      const product = await ctx.db.get(productId);
+      if (product && product.organizationId === ctx.organizationId) {
+        await ctx.db.patch(productId, {
+          categoryId: args.categoryId,
+          updatedAt: now,
+        });
+        count++;
+      }
+    }
+    return count;
+  },
+});
+
+/**
+ * Bulk adjust prices by percentage or fixed amount.
+ */
+export const bulkAdjustPrices = ownerMutation({
+  args: {
+    productIds: v.array(v.id("products")),
+    adjustmentType: v.union(v.literal("percentage"), v.literal("fixed")),
+    priceField: v.union(v.literal("costPrice"), v.literal("sellingPrice")),
+    amount: v.number(), // percentage (e.g. 10 for +10%) or kuruş amount
+  },
+  returns: v.number(),
+  handler: async (ctx, args) => {
+    if (args.productIds.length > 100) {
+      throw new ConvexError({
+        code: ErrorCode.INVALID_INPUT,
+        message: "Cannot update more than 100 products at once",
+      });
+    }
+    await rateLimiter.limit(ctx, "bulkProductOperation", {
+      key: ctx.organizationId,
+    });
+
+    let count = 0;
+    const now = Date.now();
+    for (const productId of args.productIds) {
+      const product = await ctx.db.get(productId);
+      if (!product || product.organizationId !== ctx.organizationId) continue;
+
+      const currentPrice = product[args.priceField];
+      let newPrice: number;
+
+      if (args.adjustmentType === "percentage") {
+        newPrice = Math.round(currentPrice * (1 + args.amount / 100));
+      } else {
+        newPrice = currentPrice + args.amount;
+      }
+
+      // Ensure price doesn't go below 0
+      newPrice = Math.max(0, newPrice);
+
+      await ctx.db.patch(productId, {
+        [args.priceField]: newPrice,
+        updatedAt: now,
+      });
+
+      // Log price change to price history
+      if (newPrice !== currentPrice) {
+        await ctx.db.insert("priceHistory", {
+          organizationId: ctx.organizationId,
+          productId,
+          field: args.priceField,
+          previousValue: currentPrice,
+          newValue: newPrice,
+          changedBy: ctx.staff?._id,
+          createdAt: now,
+        });
+      }
+      count++;
+    }
+    return count;
   },
 });

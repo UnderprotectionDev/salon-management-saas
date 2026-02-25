@@ -78,7 +78,9 @@ export function ProductMultiImageUpload({
     // Validate all files
     for (const file of filesToUpload) {
       if (!ALLOWED_TYPES.includes(file.type)) {
-        toast.error(`${file.name}: Only JPEG, PNG, and WebP images are allowed`);
+        toast.error(
+          `${file.name}: Only JPEG, PNG, and WebP images are allowed`,
+        );
         return;
       }
       if (file.size > MAX_FILE_SIZE) {

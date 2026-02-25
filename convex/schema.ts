@@ -613,6 +613,8 @@ export default defineSchema({
         notes: v.optional(v.string()),
       }),
     ),
+    // Variants
+    hasVariants: v.optional(v.boolean()),
     // Inventory
     stockQuantity: v.number(),
     lowStockThreshold: v.optional(v.number()),
@@ -627,10 +629,39 @@ export default defineSchema({
     .index("by_org_category", ["organizationId", "categoryId"])
     .index("by_org_status", ["organizationId", "status"]),
 
+  // Product Variant Options — option definitions (e.g. "Size" with values ["100ml","250ml"])
+  productVariantOptions: defineTable({
+    organizationId: v.id("organization"),
+    productId: v.id("products"),
+    name: v.string(), // e.g. "Size", "Color"
+    values: v.array(v.string()), // e.g. ["100ml", "250ml", "500ml"]
+    sortOrder: v.number(),
+  }).index("by_product", ["productId"]),
+
+  // Product Variants — individual variant combinations with own pricing/stock
+  productVariants: defineTable({
+    organizationId: v.id("organization"),
+    productId: v.id("products"),
+    optionValues: v.array(
+      v.object({
+        optionName: v.string(),
+        value: v.string(),
+      }),
+    ),
+    sku: v.optional(v.string()),
+    costPrice: v.number(),
+    sellingPrice: v.number(),
+    stockQuantity: v.number(),
+    status: v.union(v.literal("active"), v.literal("inactive")),
+  })
+    .index("by_product", ["productId"])
+    .index("by_org", ["organizationId"]),
+
   // Inventory Transactions — audit log for every stock change
   inventoryTransactions: defineTable({
     organizationId: v.id("organization"),
     productId: v.id("products"),
+    variantId: v.optional(v.id("productVariants")),
     staffId: v.optional(v.id("staff")),
     type: v.union(
       v.literal("restock"),
@@ -644,6 +675,20 @@ export default defineSchema({
     createdAt: v.number(),
   })
     .index("by_product", ["productId"])
+    .index("by_org_date", ["organizationId", "createdAt"]),
+
+  // Price History — audit log for price changes
+  priceHistory: defineTable({
+    organizationId: v.id("organization"),
+    productId: v.id("products"),
+    variantId: v.optional(v.id("productVariants")),
+    field: v.union(v.literal("costPrice"), v.literal("sellingPrice")),
+    previousValue: v.number(),
+    newValue: v.number(),
+    changedBy: v.optional(v.id("staff")),
+    createdAt: v.number(),
+  })
+    .index("by_product", ["productId", "createdAt"])
     .index("by_org_date", ["organizationId", "createdAt"]),
 
   // Product Benefits — cached from Polar API
