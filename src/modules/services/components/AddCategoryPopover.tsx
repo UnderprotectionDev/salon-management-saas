@@ -1,6 +1,7 @@
 "use client";
 
-import { useMutation } from "convex/react";
+import { useMutation, useQuery } from "convex/react";
+import { ConvexError } from "convex/values";
 import { Loader2, Plus } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
@@ -30,9 +31,9 @@ export function AddCategoryPopover({
   const [name, setName] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const createCategory = useMutation(api.serviceCategories.create);
+  const categories = useQuery(api.serviceCategories.list, { organizationId });
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleSubmit = async () => {
     if (!name.trim()) return;
 
     setIsSubmitting(true);
@@ -46,8 +47,28 @@ export function AddCategoryPopover({
       toast.success("Category created");
       onCreated?.(categoryId);
     } catch (error) {
+      if (
+        error instanceof ConvexError &&
+        (error.data as { code?: string })?.code === "ALREADY_EXISTS"
+      ) {
+        // Category already exists — auto-select it instead of showing an error
+        const existing = categories?.find(
+          (c) => c.name.toLowerCase() === name.trim().toLowerCase(),
+        );
+        if (existing) {
+          setName("");
+          setOpen(false);
+          toast.info(`"${existing.name}" already exists — selected automatically`);
+          onCreated?.(existing._id);
+          return;
+        }
+      }
       const message =
-        error instanceof Error ? error.message : "Failed to create category";
+        error instanceof ConvexError
+          ? (error.data as { message?: string })?.message ?? "Failed to create category"
+          : error instanceof Error
+            ? error.message
+            : "Failed to create category";
       toast.error(message);
     } finally {
       setIsSubmitting(false);
@@ -81,7 +102,7 @@ export function AddCategoryPopover({
         )}
       </PopoverTrigger>
       <PopoverContent className="w-64" align="start">
-        <form onSubmit={handleSubmit} className="space-y-3">
+        <div className="space-y-3">
           <div className="space-y-1">
             <Label htmlFor="category-name">Category Name</Label>
             <Input
@@ -91,13 +112,20 @@ export function AddCategoryPopover({
               onChange={(e) => setName(e.target.value)}
               disabled={isSubmitting}
               autoFocus
+              onKeyDown={(e) => {
+                if (e.key === "Enter") {
+                  e.preventDefault();
+                  handleSubmit();
+                }
+              }}
             />
           </div>
           <Button
-            type="submit"
+            type="button"
             size="sm"
             className="w-full"
             disabled={!name.trim() || isSubmitting}
+            onClick={handleSubmit}
           >
             {isSubmitting ? (
               <>
@@ -108,7 +136,7 @@ export function AddCategoryPopover({
               "Create"
             )}
           </Button>
-        </form>
+        </div>
       </PopoverContent>
     </Popover>
   );

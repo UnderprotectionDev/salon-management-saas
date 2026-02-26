@@ -50,6 +50,7 @@ export const listPublicActive = publicQuery({
       _id: v.id("staff"),
       name: v.string(),
       imageUrl: v.optional(v.string()),
+      avatarConfig: v.optional(v.any()),
       bio: v.optional(v.string()),
       serviceIds: v.optional(v.array(v.id("services"))),
     }),
@@ -70,13 +71,25 @@ export const listPublicActive = publicQuery({
       return hasSchedule && hasServices;
     });
 
-    return bookableStaff.map((s) => ({
-      _id: s._id,
-      name: s.name,
-      imageUrl: s.imageUrl,
-      bio: s.bio,
-      serviceIds: s.serviceIds,
-    }));
+    // Fetch avatarConfig from userProfile for each staff member
+    const results = await Promise.all(
+      bookableStaff.map(async (s) => {
+        const profile = await ctx.db
+          .query("userProfile")
+          .withIndex("by_userId", (q) => q.eq("userId", s.userId))
+          .first();
+        return {
+          _id: s._id,
+          name: s.name,
+          imageUrl: s.imageUrl,
+          avatarConfig: profile?.avatarConfig,
+          bio: s.bio,
+          serviceIds: s.serviceIds,
+        };
+      }),
+    );
+
+    return results;
   },
 });
 

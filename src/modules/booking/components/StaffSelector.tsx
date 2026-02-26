@@ -1,7 +1,7 @@
 "use client";
 
 import { Users } from "lucide-react";
-import NiceAvatar, { genConfig } from "react-nice-avatar";
+import NiceAvatar, { type AvatarConfig, genConfig } from "react-nice-avatar";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import type { Id } from "../../../../convex/_generated/dataModel";
 
@@ -9,6 +9,7 @@ type Staff = {
   _id: Id<"staff">;
   name: string;
   imageUrl?: string;
+  avatarConfig?: AvatarConfig;
   bio?: string;
 };
 
@@ -83,7 +84,7 @@ export function StaffSelector({
                 <NiceAvatar
                   style={{ width: "100%", height: "100%" }}
                   shape="circle"
-                  {...genConfig(staff._id)}
+                  {...(staff.avatarConfig ?? genConfig(staff._id))}
                 />
               </AvatarFallback>
             </Avatar>
