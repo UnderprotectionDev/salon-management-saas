@@ -1,0 +1,25 @@
+{
+  "version": 1,
+  "skills": {
+    "Sweep": {
+      "source": "simota/agent-skills",
+      "sourceType": "github",
+      "computedHash": "6ebd90cc12e3a4d985f953b668d9dd6365c304fa6b5d1750082af982a952b736"
+    },
+    "agent-md-refactor": {
+      "source": "softaworks/agent-toolkit",
+      "sourceType": "github",
+      "computedHash": "51c53259bba830ebad6741b2ab69d213d5a4d02835f7f27925a0e4e93515fc22"
+    },
+    "code-quality-expert": {
+      "source": "oimiragieo/agent-studio",
+      "sourceType": "github",
+      "computedHash": "8a8446366d1a07ffe049117d5a30233ecb4e45ff5cd027633f5decd647ee226c"
+    },
+    "refactoring-surgeon": {
+      "source": "erichowens/some_claude_skills",
+      "sourceType": "github",
+      "computedHash": "e9ce31c4622e9dc9ea5a750d72ff13b4b0bc657243e7cf74c87c790308858497"
+    }
+  }
+}
