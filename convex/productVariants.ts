@@ -1,9 +1,7 @@
 import { ConvexError, v } from "convex/values";
-import { internal } from "./_generated/api";
 import { ErrorCode, ownerMutation, ownerQuery } from "./lib/functions";
 import {
   inventoryTransactionTypeValidator,
-  productVariantDocValidator,
   productVariantOptionDocValidator,
   variantWithLabelValidator,
 } from "./lib/validators";
@@ -306,47 +304,6 @@ export const adjustStock = ownerMutation({
     await syncParentStock(ctx, variant.productId);
 
     return newStock;
-  },
-});
-
-/**
- * Bulk update prices for all active variants of a product.
- */
-export const bulkUpdatePrices = ownerMutation({
-  args: {
-    productId: v.id("products"),
-    costPrice: v.optional(v.number()),
-    sellingPrice: v.optional(v.number()),
-  },
-  returns: v.number(), // count updated
-  handler: async (ctx, args) => {
-    const product = await ctx.db.get(args.productId);
-    if (!product || product.organizationId !== ctx.organizationId) {
-      throw new ConvexError({
-        code: ErrorCode.NOT_FOUND,
-        message: "Product not found",
-      });
-    }
-
-    const variants = await ctx.db
-      .query("productVariants")
-      .withIndex("by_product", (q) => q.eq("productId", args.productId))
-      .collect();
-
-    let count = 0;
-    for (const variant of variants) {
-      if (variant.status !== "active") continue;
-      const patch: Record<string, unknown> = {};
-      if (args.costPrice !== undefined) patch.costPrice = args.costPrice;
-      if (args.sellingPrice !== undefined)
-        patch.sellingPrice = args.sellingPrice;
-      if (Object.keys(patch).length > 0) {
-        await ctx.db.patch(variant._id, patch);
-        count++;
-      }
-    }
-
-    return count;
   },
 });
 

@@ -127,24 +127,6 @@ export const getMySchedule = authedQuery({
   },
 });
 
-/**
- * List all care schedules for the authenticated user.
- */
-export const listMySchedules = authedQuery({
-  args: {
-    limit: v.optional(v.number()),
-  },
-  returns: v.array(aiCareScheduleDocValidator),
-  handler: async (ctx, args) => {
-    const limit = args.limit ?? 10;
-    return await ctx.db
-      .query("aiCareSchedules")
-      .withIndex("by_user", (q) => q.eq("userId", ctx.user._id))
-      .order("desc")
-      .take(limit);
-  },
-});
-
 // =============================================================================
 // Internal Functions (called by aiActions + cron)
 // =============================================================================

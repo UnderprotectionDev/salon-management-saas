@@ -2,7 +2,6 @@ import { ConvexError, v } from "convex/values";
 import {
   authedQuery,
   ErrorCode,
-  internalMutation,
   orgMutation,
   orgQuery,
   publicQuery,
@@ -177,19 +176,6 @@ export const getAvatarConfigs = orgQuery({
     }
 
     return results;
-  },
-});
-
-export const getByUser = orgQuery({
-  args: { userId: v.string() },
-  returns: v.union(staffDocValidator, v.null()),
-  handler: async (ctx, args) => {
-    return await ctx.db
-      .query("staff")
-      .withIndex("organizationId_userId", (q) =>
-        q.eq("organizationId", ctx.organizationId).eq("userId", args.userId),
-      )
-      .first();
   },
 });
 
@@ -413,33 +399,3 @@ export const getResolvedSchedule = orgQuery({
   },
 });
 
-export const migrateStaffSchedules = internalMutation({
-  args: {},
-  returns: v.object({
-    migrated: v.number(),
-    total: v.number(),
-  }),
-  handler: async (ctx) => {
-    const allStaff = await ctx.db.query("staff").collect();
-
-    const defaultSchedule = {
-      monday: { available: true, start: "09:00", end: "17:00" },
-      tuesday: { available: true, start: "09:00", end: "17:00" },
-      wednesday: { available: true, start: "09:00", end: "17:00" },
-      thursday: { available: true, start: "09:00", end: "17:00" },
-      friday: { available: true, start: "09:00", end: "17:00" },
-      saturday: { available: false, start: "", end: "" },
-      sunday: { available: false, start: "", end: "" },
-    };
-
-    let migrated = 0;
-    for (const staff of allStaff) {
-      if (!staff.defaultSchedule) {
-        await ctx.db.patch(staff._id, { defaultSchedule });
-        migrated++;
-      }
-    }
-
-    return { migrated, total: allStaff.length };
-  },
-});

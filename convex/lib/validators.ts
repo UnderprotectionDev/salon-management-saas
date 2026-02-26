@@ -25,15 +25,6 @@ export const memberRoleValidator = literals("owner", "staff");
 /** Invitation role: always staff (no owner invitations) */
 export const invitationRoleValidator = v.literal("staff");
 
-/** Invitation status: pending | accepted | expired | cancelled | rejected */
-export const invitationStatusValidator = literals(
-  "pending",
-  "accepted",
-  "expired",
-  "cancelled",
-  "rejected",
-);
-
 /** Staff status: active | inactive | pending */
 export const staffStatusValidator = literals("active", "inactive", "pending");
 
@@ -119,14 +110,6 @@ export const appointmentSourceValidator = literals(
 
 /** Cancelled by: customer | staff | system */
 export const cancelledByValidator = literals("customer", "staff", "system");
-
-/** Payment status */
-export const paymentStatusValidator = literals(
-  "pending",
-  "paid",
-  "partial",
-  "refunded",
-);
 
 /** User profile gender: male | female | unspecified */
 export const genderValidator = literals("male", "female", "unspecified");
