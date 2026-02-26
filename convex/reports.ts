@@ -1,6 +1,7 @@
 import { ConvexError, v } from "convex/values";
 import type { Id } from "./_generated/dataModel";
 import type { DatabaseReader } from "./_generated/server";
+import { DATE_FORMAT_REGEX } from "./lib/constants";
 import {
   formatDateStr,
   parseDateUTC,
@@ -36,8 +37,7 @@ async function getAppointmentsForDateRange(
 }
 
 function validateDateRange(startDate: string, endDate: string) {
-  const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
-  if (!dateRegex.test(startDate) || !dateRegex.test(endDate)) {
+  if (!DATE_FORMAT_REGEX.test(startDate) || !DATE_FORMAT_REGEX.test(endDate)) {
     throw new ConvexError({
       code: ErrorCode.INVALID_INPUT,
       message: "Date must be in YYYY-MM-DD format",
