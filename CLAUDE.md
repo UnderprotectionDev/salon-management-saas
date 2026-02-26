@@ -55,7 +55,7 @@ convex/                  # Backend functions and schema
 ├── betterAuth/          # Better Auth component
 ├── lib/                 # Shared: functions.ts (wrappers), validators.ts, rateLimits.ts,
 │                        #   triggers.ts, aiConstants.ts, agents.ts, scheduleResolver.ts,
-│                        #   confirmation.ts, dateTime.ts, ics.ts, phone.ts, relationships.ts
+│                        #   confirmation.ts, dateTime.ts, ics.ts, phone.ts
 ├── schema.ts            # Database schema
 ├── appointments.ts      # Appointment CRUD + booking + reschedule (~1400 lines)
 ├── email.tsx            # Email actions ("use node", JSX rendering)
@@ -78,7 +78,9 @@ src/
 └── modules/             # Feature modules (domain-driven)
     ├── ai/              # AI features (customer, staff, organization components)
     ├── booking/         # Booking engine (16 components)
-    ├── calendar/        # Day/week calendar views, DnD rescheduling
+    ├── calendar/        # 5 calendar views (day/week/month/year/agenda), DnD rescheduling
+    │   └── components/  #   Modular: day-view/, week-view/, month-view/, year-view/,
+    │                    #   agenda-view/, header/, dialogs/, dnd/ (20 files)
     ├── billing/         # Subscription plans, grace period banner
     ├── products/        # Product catalog, inventory management
     ├── reports/         # Revenue, staff, customer reports
@@ -261,7 +263,7 @@ See `.env.example` for all required environment variables with descriptions.
 - Use `ctx.db` in queries/mutations only, not in actions
 - Actions can't access `ctx.db` — use `ctx.runQuery(internal.xxx)` / `ctx.runMutation(internal.xxx)`
 - Import `internalQuery` from `"./_generated/server"` directly (not from `./lib/functions`)
-- Avoid N+1 queries: use index range queries and pre-fetch lookups into Maps
+- Avoid N+1 queries: use `getAll()` from `convex-helpers/server/relationships` for batch fetches, or index range queries with pre-fetch lookups into Maps
 - **Triggers:** `convex/lib/triggers.ts` auto-fires side effects on appointment changes. All mutations use `triggerMutation` base.
 
 ### Tailwind v4

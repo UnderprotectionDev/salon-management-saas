@@ -1,27 +1,33 @@
 "use client";
 
-import { format, parseISO } from "date-fns";
-import { useEffect, useRef } from "react";
+import { format } from "date-fns";
+import { useEffect, useRef, useState } from "react";
 import {
   DEFAULT_END_HOUR,
   DEFAULT_START_HOUR,
   HOUR_HEIGHT,
   PIXELS_PER_MINUTE,
-} from "../lib/constants";
-import type { AppointmentWithDetails } from "../lib/types";
-import { formatDateStr } from "../lib/utils";
-import { AppointmentBlock } from "./AppointmentBlock";
+} from "../../lib/constants";
+import type { AppointmentWithDetails } from "../../lib/types";
+import { formatDateStr, parseLocalDate } from "../../lib/utils";
+import { AppointmentBlock } from "../dnd/AppointmentBlock";
 
 type WeekViewProps = {
   appointments: AppointmentWithDetails[];
+  staffColorMap?: Map<string, string>;
   startDate: string;
   onAppointmentClick: (appt: AppointmentWithDetails) => void;
+  startHour?: number;
+  endHour?: number;
 };
 
 export function WeekView({
   appointments,
+  staffColorMap,
   startDate,
   onAppointmentClick,
+  startHour = DEFAULT_START_HOUR,
+  endHour = DEFAULT_END_HOUR,
 }: WeekViewProps) {
   const scrollRef = useRef<HTMLDivElement>(null);
 
@@ -30,21 +36,37 @@ export function WeekView({
       const now = new Date();
       const currentMinutes = now.getHours() * 60 + now.getMinutes();
       const offset =
-        (currentMinutes - DEFAULT_START_HOUR * 60) * PIXELS_PER_MINUTE - 100;
+        (currentMinutes - startHour * 60) * PIXELS_PER_MINUTE - 100;
       scrollRef.current.scrollTop = Math.max(0, offset);
     }
-  }, []);
+  }, [startHour]);
 
   // Generate 7 days starting from startDate
   const days: string[] = [];
-  const start = parseISO(startDate);
+  const start = parseLocalDate(startDate);
   for (let i = 0; i < 7; i++) {
     const d = new Date(start);
     d.setDate(start.getDate() + i);
     days.push(formatDateStr(d));
   }
 
+  // Reactive current time — updates every 60s
+  const [currentMinutes, setCurrentMinutes] = useState(() => {
+    const n = new Date();
+    return n.getHours() * 60 + n.getMinutes();
+  });
+
+  useEffect(() => {
+    const id = setInterval(() => {
+      const n = new Date();
+      setCurrentMinutes(n.getHours() * 60 + n.getMinutes());
+    }, 60_000);
+    return () => clearInterval(id);
+  }, []);
+
   const todayStr = formatDateStr(new Date());
+  const showCurrentTime =
+    currentMinutes >= startHour * 60 && currentMinutes <= endHour * 60;
 
   // Group appointments by date
   const apptsByDate = new Map<string, AppointmentWithDetails[]>();
@@ -57,8 +79,8 @@ export function WeekView({
   }
 
   const hours = Array.from(
-    { length: DEFAULT_END_HOUR - DEFAULT_START_HOUR },
-    (_, i) => DEFAULT_START_HOUR + i,
+    { length: endHour - startHour },
+    (_, i) => startHour + i,
   );
 
   return (
@@ -67,26 +89,29 @@ export function WeekView({
       className="overflow-auto rounded-lg border bg-background"
     >
       <div className="min-w-fit">
-        {/* Sticky header row — separate from the grid so time axis and day
-            columns start at exactly the same vertical position */}
+        {/* Sticky header row */}
         <div className="sticky top-0 z-10 flex border-b bg-background">
           <div className="w-16 shrink-0 border-r" />
           <div className="flex flex-1">
             {days.map((day) => {
-              const dayDate = parseISO(day);
+              const dayDate = parseLocalDate(day);
               const isToday = day === todayStr;
               return (
                 <div
                   key={day}
-                  className={`min-w-[140px] flex-1 border-r last:border-r-0 p-2 text-center ${isToday ? "bg-brand/5" : "bg-background"}`}
+                  className={`min-w-[140px] flex-1 border-r last:border-r-0 p-2 text-center ${isToday ? "bg-primary/5" : "bg-background"}`}
                 >
                   <div className="text-xs text-muted-foreground">
                     {format(dayDate, "EEE")}
                   </div>
-                  <div
-                    className={`text-sm font-medium ${isToday ? "text-brand" : ""}`}
-                  >
-                    {format(dayDate, "d")}
+                  <div className="mt-0.5 flex justify-center">
+                    <span
+                      className={`inline-flex size-7 items-center justify-center rounded-full text-sm font-medium ${
+                        isToday ? "bg-primary text-primary-foreground" : ""
+                      }`}
+                    >
+                      {format(dayDate, "d")}
+                    </span>
                   </div>
                 </div>
               );
@@ -112,7 +137,7 @@ export function WeekView({
           </div>
 
           {/* Day columns */}
-          <div className="flex flex-1">
+          <div className="relative flex flex-1">
             {days.map((day) => {
               const isToday = day === todayStr;
               const dayAppts = (apptsByDate.get(day) ?? []).filter(
@@ -122,7 +147,7 @@ export function WeekView({
               return (
                 <div
                   key={day}
-                  className={`min-w-[140px] flex-1 border-r last:border-r-0 ${isToday ? "bg-brand/3" : ""}`}
+                  className={`min-w-[140px] flex-1 border-r last:border-r-0 ${isToday ? "bg-primary/3" : ""}`}
                 >
                   <div className="relative">
                     {hours.map((hour) => (
@@ -139,12 +164,37 @@ export function WeekView({
                         appointment={appt}
                         onClick={() => onAppointmentClick(appt)}
                         isDragDisabled
+                        staffColor={staffColorMap?.get(appt.staffId)}
+                        startHour={startHour}
                       />
                     ))}
                   </div>
                 </div>
               );
             })}
+
+            {/* Current time indicator — scoped to today's column */}
+            {showCurrentTime &&
+              (() => {
+                const todayIndex = days.indexOf(todayStr);
+                if (todayIndex === -1) return null;
+                const colPercent = 100 / days.length;
+                return (
+                  <div
+                    className="absolute z-20 pointer-events-none"
+                    style={{
+                      top:
+                        (currentMinutes - startHour * 60) * PIXELS_PER_MINUTE,
+                      left: `${todayIndex * colPercent}%`,
+                      width: `${colPercent}%`,
+                    }}
+                  >
+                    <div className="relative h-0.5 bg-primary">
+                      <div className="absolute -left-1 -top-1 size-2.5 rounded-full bg-primary" />
+                    </div>
+                  </div>
+                );
+              })()}
           </div>
         </div>
       </div>

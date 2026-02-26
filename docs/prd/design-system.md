@@ -110,11 +110,35 @@ const { bg, text, border } = APPOINTMENT_STATUS_COLORS[status];
 
 **Button sizes:** default (h-10), sm (h-9), lg (h-11), icon (h-10 w-10)
 
+### Staff Color Coding
+
+Staff members are assigned a unique border color from a 10-color palette (indigo, pink, amber, emerald, blue, violet, red, teal, orange, purple). Colors are index-based and wrap around. Defined in `src/modules/calendar/lib/constants.ts`.
+
+**Usage:** Appointment blocks show a 3px left border in the assigned staff color. Color map is built from the full (unfiltered) staff list so colors remain stable regardless of active filter.
+
+### Calendar Event Colors
+
+Calendar appointment blocks use semantic status-based background colors via CSS variables (`--status-*-bg`, `--status-*-text`), combined with a staff-colored left border for visual staff distinction. Defined in `EVENT_COLOR_CLASSES` in `src/modules/calendar/lib/constants.ts`.
+
+| Status | Event Color | Dot Color (Year View) |
+|--------|-------------|----------------------|
+| pending | Yellow bg | amber-500 |
+| confirmed | Blue bg | blue-500 |
+| checked_in | Green bg | emerald-500 |
+| in_progress | Purple bg | purple-500 |
+| completed | Gray bg | gray-400 |
+| cancelled | Red bg | red-500 |
+| no_show | Orange bg | orange-500 |
+
 ## Layout Patterns
 
 - **Dashboard:** Header (h-14) + Sidebar (w-64, hidden on mobile) + Main (flex-1, p-6)
 - **Booking wizard:** Progress bar + centered content (max-w-2xl) + Back/Continue
-- **Calendar:** Time column + staff columns (horizontal scroll)
+- **Calendar (Day):** Time axis (w-16) + staff columns (horizontal scroll) + right sidebar (mini calendar + "Happening now" panel)
+- **Calendar (Week):** Time axis + 7 day columns with sticky header row
+- **Calendar (Month):** 7-column grid (Mon-Sun), min-h-[100px] cells, overflow popover for "+N more"
+- **Calendar (Year):** 4x3 grid of mini month calendars with appointment dot indicators
+- **Calendar (Agenda):** Date-grouped list with status badges and service details
 - **AI Page:** Tab navigation (Photo Analysis, Simulation, Chat, Mood Board, Care Schedule) + Credit balance header badge
 - **AI Insights:** Tab navigation (Revenue Forecast, Credit Management) for admin/owner
 

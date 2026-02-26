@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
@@ -20,10 +21,10 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { DatePicker, TimeSlotGrid } from "@/modules/booking";
-import { api } from "../../../../convex/_generated/api";
-import type { Id } from "../../../../convex/_generated/dataModel";
-import type { AppointmentWithDetails } from "../lib/types";
-import { formatTime } from "../lib/utils";
+import { api } from "../../../../../convex/_generated/api";
+import type { Id } from "../../../../../convex/_generated/dataModel";
+import type { AppointmentWithDetails } from "../../lib/types";
+import { formatTime } from "../../lib/utils";
 
 type CalendarRescheduleDialogProps = {
   appointment: AppointmentWithDetails;
@@ -136,6 +137,9 @@ export function CalendarRescheduleDialog({
       <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Reschedule Appointment</DialogTitle>
+          <DialogDescription>
+            Select a new date, time, and optionally a different staff member.
+          </DialogDescription>
         </DialogHeader>
 
         {/* Current time info */}

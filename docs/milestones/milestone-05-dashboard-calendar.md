@@ -5,8 +5,10 @@
 ## Goals
 
 - Admin dashboard with daily/weekly/monthly metrics
-- Calendar day and week views with staff columns
-- Interactive calendar: drag-and-drop, click-to-create, staff filter, status actions
+- Calendar with 5 view modes: day (staff columns), week (7-day grid), month (35-42 day grid), year (12 mini-calendars), agenda (date-grouped list)
+- Interactive calendar: drag-and-drop rescheduling (day view), click-to-create, staff filter, status actions
+- Business-hours-based dynamic calendar range from org settings
+- "Happening now" sidebar panel with live appointment tracking
 - In-app notification system (bell + panel)
 
 ## User Stories
@@ -20,15 +22,20 @@
 - Files: `convex/analytics.ts`, `src/modules/dashboard/`
 
 ### US-010: Calendar Views
-- Day view: staff columns, vertical timeline (15-min rows), sticky staff headers
-- Week view: 7 days grid, aligned time axis with sticky day headers
-- Appointment blocks color-coded by status + left border color-coded by service type (10-color palette, deterministic hash)
+- **5 view modes** with modular component architecture:
+  - **Day view:** Staff columns, vertical timeline (15-min rows), sticky staff headers, "Happening now" sidebar, mini calendar date picker
+  - **Week view:** 7-day grid, aligned time axis with sticky day headers, current time indicator scoped to today's column
+  - **Month view:** 35-42 day grid (Mon-aligned), appointment badges with overflow "+N more" popovers, responsive (dots on mobile, full badges on desktop)
+  - **Year view:** 12 mini month calendars in 4x3 grid, colored dot indicators for appointment density, click-through to month/day
+  - **Agenda view:** Date-grouped chronological list, service details, status badges
+- Appointment blocks color-coded by status (CSS variable-based, dark mode compatible) + left border color-coded by staff (10-color palette, index-based)
 - Appointment tooltips on hover (400ms delay): customer name, time range, services, status, total price
 - Click appointment → detail modal with status action buttons
-- Staff filter dropdown (owner only): filter by specific staff member, applies to both day and week views
-- Navigation: prev/next, today button
-- Real-time updates
-- Files: `src/modules/calendar/`, `convex/appointments.ts` (+getByDateRange)
+- Staff filter dropdown (owner only): filter by specific staff member, applies to all views
+- Navigation: prev/next, today button (mini calendar icon), 5-mode view toggle
+- Business-hours-based dynamic calendar range via `computeCalendarHourRange()` from org settings
+- Real-time updates via Convex subscriptions
+- Files: `src/modules/calendar/` (modular: `day-view/`, `week-view/`, `month-view/`, `year-view/`, `agenda-view/`, `header/`, `dialogs/`, `dnd/`), `convex/appointments.ts` (+getByDateRange)
 
 ### US-010.1: Drag-and-Drop Rescheduling (Day View)
 - Drag pending/confirmed appointment blocks to new time slot or different staff column
@@ -70,6 +77,6 @@
 
 ## Non-Goals
 
-- Month view calendar (M8)
 - Custom notification preferences
-- Drag-and-drop in week view (day view only)
+- Drag-and-drop in week/month/year views (day view only)
+- Inline editing of appointments from month/year views

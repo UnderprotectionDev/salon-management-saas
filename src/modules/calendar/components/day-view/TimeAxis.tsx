@@ -4,16 +4,27 @@ import {
   DEFAULT_END_HOUR,
   DEFAULT_START_HOUR,
   HOUR_HEIGHT,
-} from "../lib/constants";
+  STAFF_HEADER_HEIGHT,
+} from "../../lib/constants";
 
-export function TimeAxis() {
+type TimeAxisProps = {
+  startHour?: number;
+  endHour?: number;
+};
+
+export function TimeAxis({
+  startHour = DEFAULT_START_HOUR,
+  endHour = DEFAULT_END_HOUR,
+}: TimeAxisProps) {
   const hours = Array.from(
-    { length: DEFAULT_END_HOUR - DEFAULT_START_HOUR },
-    (_, i) => DEFAULT_START_HOUR + i,
+    { length: endHour - startHour },
+    (_, i) => startHour + i,
   );
 
   return (
     <div className="relative w-16 shrink-0 border-r">
+      {/* Spacer matching the sticky staff header so the first label isn't clipped */}
+      <div style={{ height: STAFF_HEADER_HEIGHT }} className="border-b" />
       {hours.map((hour) => (
         <div
           key={hour}

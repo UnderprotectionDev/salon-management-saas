@@ -1,7 +1,10 @@
 import { ConvexError, v } from "convex/values";
+import { getAll } from "convex-helpers/server/relationships";
 import { internal } from "./_generated/api";
+import type { Id } from "./_generated/dataModel";
 import {
   ErrorCode,
+  orgQuery,
   ownerMutation,
   ownerQuery,
   publicQuery,
@@ -44,7 +47,7 @@ export const list = ownerQuery({
         (args.status === undefined || p.status === args.status),
     );
 
-    // Batch fetch categories to avoid N+1
+    // Batch fetch categories (single round-trip via getAll)
     const uniqueCategoryIds = [
       ...new Set(
         products
@@ -55,12 +58,10 @@ export const list = ownerQuery({
     const categoryMap = new Map<string, string>();
 
     if (uniqueCategoryIds.length > 0) {
-      await Promise.all(
-        uniqueCategoryIds.map(async (id) => {
-          const cat = await ctx.db.get(id);
-          if (cat) categoryMap.set(id, cat.name);
-        }),
-      );
+      const catDocs = await getAll(ctx.db, uniqueCategoryIds);
+      for (const cat of catDocs) {
+        if (cat) categoryMap.set(cat._id, cat.name);
+      }
     }
 
     // Pre-fetch variant data for products with variants
@@ -84,9 +85,7 @@ export const list = ownerQuery({
         .collect();
 
       if (variants.length > 0) {
-        const activeVariants = variants.filter(
-          (av) => av.status === "active",
-        );
+        const activeVariants = variants.filter((av) => av.status === "active");
         const prices = activeVariants.map((av) => av.sellingPrice);
 
         // Fetch first option (lowest sortOrder) for card chips
@@ -99,10 +98,7 @@ export const list = ownerQuery({
           minPrice: prices.length > 0 ? Math.min(...prices) : 0,
           maxPrice: prices.length > 0 ? Math.max(...prices) : 0,
           count: variants.length,
-          totalStock: variants.reduce(
-            (sum, av) => sum + av.stockQuantity,
-            0,
-          ),
+          totalStock: variants.reduce((sum, av) => sum + av.stockQuantity, 0),
           firstOptionName: firstOption?.name,
           firstOptionValues: firstOption?.values,
         });
@@ -212,16 +208,14 @@ export const getDetail = ownerQuery({
       .order("desc")
       .take(5);
 
-    // Enrich with staff names
+    // Enrich with staff names (batch via getAll)
     const staffIds = [
       ...new Set(transactions.map((t) => t.staffId).filter(Boolean)),
-    ];
+    ] as Id<"staff">[];
+    const staffDocs = await getAll(ctx.db, staffIds);
     const staffMap = new Map<string, string>();
-    for (const staffId of staffIds) {
-      if (staffId) {
-        const staff = await ctx.db.get(staffId);
-        if (staff) staffMap.set(staffId, staff.name);
-      }
+    for (const staff of staffDocs) {
+      if (staff) staffMap.set(staff._id, staff.name);
     }
 
     const recentTransactions = transactions.map((t) => ({
@@ -269,7 +263,7 @@ export const getDetail = ownerQuery({
 /**
  * Count of low-stock products for the dashboard alert.
  */
-export const countLowStock = ownerQuery({
+export const countLowStock = orgQuery({
   args: {},
   returns: v.number(),
   handler: async (ctx) => {
@@ -344,7 +338,7 @@ export const listPublic = publicQuery({
       )
       .collect();
 
-    // Batch fetch category names
+    // Batch fetch category names (single round-trip via getAll)
     const uniqueCategoryIds = [
       ...new Set(
         products
@@ -354,12 +348,10 @@ export const listPublic = publicQuery({
     ];
     const categoryMap = new Map<string, string>();
     if (uniqueCategoryIds.length > 0) {
-      await Promise.all(
-        uniqueCategoryIds.map(async (id) => {
-          const cat = await ctx.db.get(id);
-          if (cat) categoryMap.set(id, cat.name);
-        }),
-      );
+      const catDocs = await getAll(ctx.db, uniqueCategoryIds);
+      for (const cat of catDocs) {
+        if (cat) categoryMap.set(cat._id, cat.name);
+      }
     }
 
     return products

@@ -31,11 +31,6 @@ type AddStaffDialogProps = {
   onSuccess?: () => void;
 };
 
-const nameSchema = z
-  .string()
-  .min(2, "Name must be at least 2 characters")
-  .max(100, "Name cannot exceed 100 characters");
-
 const emailSchema = z.string().email("Please enter a valid email");
 
 export function AddStaffDialog({
@@ -47,29 +42,23 @@ export function AddStaffDialog({
 
   const form = useForm({
     defaultValues: {
-      name: "",
       email: "",
-      phone: "",
     },
     onSubmit: async ({ value }) => {
       try {
         await createInvitation({
           organizationId,
           email: value.email,
-          name: value.name,
           role: "staff",
-          phone: value.phone || undefined,
         });
         setOpen(false);
         form.reset();
         onSuccess?.();
       } catch (error) {
-        // Surface error to form using toast instead
         const message =
           error instanceof Error
             ? error.message
             : "Failed to send invitation. Please try again.";
-        // Using toast for error display since TanStack Form API has changed
         const { toast } = await import("sonner");
         toast.error(message);
       }
@@ -95,7 +84,8 @@ export function AddStaffDialog({
         <DialogHeader>
           <DialogTitle>Invite Staff Member</DialogTitle>
           <DialogDescription>
-            Send an invitation to add a new team member to your salon
+            Send an invitation email. They will set up their name and profile
+            when they sign up.
           </DialogDescription>
         </DialogHeader>
         <form
@@ -106,38 +96,6 @@ export function AddStaffDialog({
           }}
         >
           <FieldGroup>
-            <form.Field
-              name="name"
-              validators={{
-                onBlur: nameSchema,
-                onSubmit: nameSchema,
-              }}
-            >
-              {(field) => {
-                const hasError =
-                  field.state.meta.isTouched &&
-                  field.state.meta.errors.length > 0;
-                return (
-                  <Field data-invalid={hasError || undefined}>
-                    <FieldLabel htmlFor={field.name}>Full Name</FieldLabel>
-                    <Input
-                      id={field.name}
-                      name={field.name}
-                      placeholder="John Doe"
-                      value={field.state.value}
-                      onBlur={field.handleBlur}
-                      onChange={(e) => field.handleChange(e.target.value)}
-                      disabled={form.state.isSubmitting}
-                      aria-invalid={hasError}
-                    />
-                    {hasError && (
-                      <FieldError errors={field.state.meta.errors} />
-                    )}
-                  </Field>
-                );
-              }}
-            </form.Field>
-
             <form.Field
               name="email"
               validators={{
@@ -172,24 +130,6 @@ export function AddStaffDialog({
                   </Field>
                 );
               }}
-            </form.Field>
-
-            <form.Field name="phone">
-              {(field) => (
-                <Field>
-                  <FieldLabel htmlFor={field.name}>Phone (optional)</FieldLabel>
-                  <Input
-                    id={field.name}
-                    name={field.name}
-                    type="tel"
-                    placeholder="+90 555 123 4567"
-                    value={field.state.value}
-                    onBlur={field.handleBlur}
-                    onChange={(e) => field.handleChange(e.target.value)}
-                    disabled={form.state.isSubmitting}
-                  />
-                </Field>
-              )}
             </form.Field>
 
             <form.Subscribe selector={(state) => state.errors}>
