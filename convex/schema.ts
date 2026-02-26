@@ -91,6 +91,8 @@ export default defineSchema({
     ),
     invitedBy: v.string(), // User ID who sent the invite
     expiresAt: v.optional(v.number()),
+    name: v.optional(v.string()),
+    phone: v.optional(v.string()),
     createdAt: v.number(),
     updatedAt: v.number(),
   })

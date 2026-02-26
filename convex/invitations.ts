@@ -97,6 +97,8 @@ export const create = ownerMutation({
   args: {
     email: v.string(),
     role: invitationRoleValidator,
+    name: v.optional(v.string()),
+    phone: v.optional(v.string()),
   },
   returns: v.id("invitation"),
   handler: async (ctx, args) => {
@@ -173,6 +175,8 @@ export const create = ownerMutation({
       status: "pending",
       invitedBy: ctx.user._id,
       expiresAt,
+      ...(args.name ? { name: args.name } : {}),
+      ...(args.phone ? { phone: args.phone } : {}),
       createdAt: now,
       updatedAt: now,
     });
