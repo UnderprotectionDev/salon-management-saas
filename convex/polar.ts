@@ -32,8 +32,6 @@ export const polar: Polar<DataModel, { monthly: string; yearly: string }> =
   });
 
 const polarApi = polar.api();
-export const cancelCurrentSubscription = polarApi.cancelCurrentSubscription;
 export const changeCurrentSubscription = polarApi.changeCurrentSubscription;
 export const generateCustomerPortalUrl = polarApi.generateCustomerPortalUrl;
 export const getConfiguredProducts = polarApi.getConfiguredProducts;
-export const listAllProducts = polarApi.listAllProducts;

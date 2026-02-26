@@ -89,20 +89,6 @@ export const get = authedQuery({
   },
 });
 
-/** Check if user has accepted KVKK consent (lightweight check) */
-export const hasConsent = authedQuery({
-  args: {},
-  returns: v.boolean(),
-  handler: async (ctx) => {
-    const profile = await ctx.db
-      .query("userProfile")
-      .withIndex("by_userId", (q) => q.eq("userId", ctx.user._id))
-      .first();
-
-    return profile?.dataProcessingConsent === true;
-  },
-});
-
 // =============================================================================
 // Mutations
 // =============================================================================

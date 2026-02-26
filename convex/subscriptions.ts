@@ -46,27 +46,6 @@ export const getSubscriptionStatus = orgQuery({
   },
 });
 
-/**
- * Quick boolean check if org is suspended.
- */
-export const isSuspended = orgQuery({
-  args: {},
-  returns: v.boolean(),
-  handler: async (ctx) => {
-    const settings = await ctx.db
-      .query("organizationSettings")
-      .withIndex("organizationId", (q) =>
-        q.eq("organizationId", ctx.organizationId),
-      )
-      .first();
-
-    return (
-      settings?.subscriptionStatus === "suspended" ||
-      settings?.subscriptionStatus === "pending_payment"
-    );
-  },
-});
-
 // =============================================================================
 // Mutations
 // =============================================================================

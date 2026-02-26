@@ -13,10 +13,7 @@ import {
   ownerMutation,
   publicQuery,
 } from "./lib/functions";
-import {
-  designCatalogDocValidator,
-  designCatalogPublicValidator,
-} from "./lib/validators";
+import { designCatalogPublicValidator } from "./lib/validators";
 
 // =============================================================================
 // Org Mutations (owner + staff)
@@ -185,36 +182,6 @@ export const remove = ownerMutation({
   },
 });
 
-/**
- * Batch update sortOrder values for drag-to-reorder.
- */
-export const reorder = ownerMutation({
-  args: {
-    orderedIds: v.array(v.id("designCatalog")),
-  },
-  returns: v.null(),
-  handler: async (ctx, args) => {
-    // Validate all IDs belong to this organization
-    const designs = await Promise.all(
-      args.orderedIds.map((id) => ctx.db.get(id)),
-    );
-    for (const design of designs) {
-      if (!design || design.organizationId !== ctx.organizationId) {
-        throw new ConvexError({
-          code: ErrorCode.FORBIDDEN,
-          message: "One or more designs do not belong to this organization",
-        });
-      }
-    }
-
-    const updates = args.orderedIds.map((id, index) =>
-      ctx.db.patch(id, { sortOrder: index, updatedAt: Date.now() }),
-    );
-    await Promise.all(updates);
-    return null;
-  },
-});
-
 // =============================================================================
 // Owner-only Mutations (status/delete/reorder)
 // =============================================================================
@@ -252,26 +219,6 @@ export const listAllByOrg = orgQuery({
         };
       }),
     );
-  },
-});
-
-/**
- * List designs created by the current staff member.
- * Used in staff view to show "my designs".
- */
-export const listMyDesigns = orgQuery({
-  args: {},
-  returns: v.array(designCatalogDocValidator),
-  handler: async (ctx) => {
-    if (!ctx.staff) return [];
-    return await ctx.db
-      .query("designCatalog")
-      .withIndex("by_org_staff", (q) =>
-        q
-          .eq("organizationId", ctx.organizationId)
-          .eq("createdByStaffId", ctx.staff?._id),
-      )
-      .collect();
   },
 });
 
@@ -365,52 +312,6 @@ export const listByStaff = publicQuery({
         };
       }),
     );
-  },
-});
-
-/**
- * List active designs filtered by category.
- */
-export const listByCategory = publicQuery({
-  args: {
-    organizationId: v.id("organization"),
-    category: v.string(),
-  },
-  returns: v.array(designCatalogPublicValidator),
-  handler: async (ctx, args) => {
-    // by_org_category index doesn't include status — filter in memory after
-    // a capped fetch (categories are usually a small subset of the full catalog).
-    const designs = await ctx.db
-      .query("designCatalog")
-      .withIndex("by_org_category", (q) =>
-        q
-          .eq("organizationId", args.organizationId)
-          .eq("category", args.category),
-      )
-      .take(200);
-
-    // Filter to active only and sort
-    const active = designs
-      .filter((d) => d.status === "active")
-      .sort((a, b) => a.sortOrder - b.sortOrder);
-
-    // Resolve image URLs
-    const withUrls = await Promise.all(
-      active.map(async (design) => {
-        const imageUrl = await ctx.storage.getUrl(design.imageStorageId);
-        const thumbnailUrl = design.thumbnailStorageId
-          ? await ctx.storage.getUrl(design.thumbnailStorageId)
-          : null;
-
-        return {
-          ...design,
-          imageUrl: imageUrl ?? undefined,
-          thumbnailUrl: thumbnailUrl ?? undefined,
-        };
-      }),
-    );
-
-    return withUrls;
   },
 });
 

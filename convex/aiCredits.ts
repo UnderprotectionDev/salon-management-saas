@@ -19,7 +19,6 @@ import {
 import { rateLimiter } from "./lib/rateLimits";
 import {
   aiCreditBalanceValidator,
-  aiCreditTransactionDocValidator,
   aiFeatureTypeValidator,
 } from "./lib/validators";
 
@@ -252,34 +251,6 @@ export const getMyBalance = authedQuery({
 
     if (!record) return { balance: 0, poolType: "customer" as const };
     return { balance: record.balance, poolType: record.poolType };
-  },
-});
-
-/**
- * Get transaction history for the authenticated user.
- */
-export const getMyTransactionHistory = authedQuery({
-  args: {
-    limit: v.optional(v.number()),
-  },
-  returns: v.array(aiCreditTransactionDocValidator),
-  handler: async (ctx, args) => {
-    const limit = args.limit ?? 50;
-
-    const creditRecord = await ctx.db
-      .query("aiCredits")
-      .withIndex("by_user_pool", (q) =>
-        q.eq("userId", ctx.user._id).eq("poolType", "customer"),
-      )
-      .first();
-
-    if (!creditRecord) return [];
-
-    return await ctx.db
-      .query("aiCreditTransactions")
-      .withIndex("by_credit", (q) => q.eq("creditId", creditRecord._id))
-      .order("desc")
-      .take(limit);
   },
 });
 

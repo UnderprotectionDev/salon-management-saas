@@ -1,15 +1,24 @@
-import { paginationOptsValidator } from "convex/server";
 import { ConvexError, v } from "convex/values";
-import { getAll } from "convex-helpers/server/relationships";
 import type { Doc, Id } from "./_generated/dataModel";
-import type { DatabaseReader } from "./_generated/server";
 import { internalQuery } from "./_generated/server";
+import {
+  batchEnrichAppointments,
+  enrichAppointment,
+  lookupByConfirmationCode,
+  validateSlotAvailability,
+} from "./appointments_helpers";
 import { ensureUniqueCode } from "./lib/confirmation";
+import {
+  DATE_FORMAT_REGEX,
+  DEFAULT_APPOINTMENT_LIST_LIMIT,
+  MAX_APPOINTMENT_LIST_LIMIT,
+  MAX_CUSTOMER_NOTES_LENGTH,
+  MAX_SERVICES_PER_APPOINTMENT,
+  MAX_USER_APPOINTMENTS,
+} from "./lib/constants";
 import {
   dateTimeToEpoch,
   getTodayDateString,
-  isOverlapping,
-  timeStringToMinutes,
   validateDateString,
 } from "./lib/dateTime";
 import {
@@ -22,7 +31,6 @@ import {
 } from "./lib/functions";
 import { isValidTurkishPhone } from "./lib/phone";
 import { rateLimiter } from "./lib/rateLimits";
-import { resolveSchedule } from "./lib/scheduleResolver";
 import {
   appointmentSourceValidator,
   appointmentStatusValidator,
@@ -33,227 +41,7 @@ import {
   userAppointmentValidator,
 } from "./lib/validators";
 
-const DELETED_CUSTOMER = "Deleted Customer";
-const DELETED_STAFF = "Deleted Staff";
 const UNKNOWN_ORG = "Unknown";
-
-// =============================================================================
-// Helper: Enrich appointment with customer, staff, services
-// =============================================================================
-
-async function enrichAppointment(
-  ctx: { db: DatabaseReader },
-  appointment: Doc<"appointments">,
-) {
-  const [customer, staff] = await Promise.all([
-    ctx.db.get(appointment.customerId),
-    appointment.staffId ? ctx.db.get(appointment.staffId) : null,
-  ]);
-
-  const apptServices = await ctx.db
-    .query("appointmentServices")
-    .withIndex("by_appointment", (q) => q.eq("appointmentId", appointment._id))
-    .collect();
-
-  return {
-    ...appointment,
-    customerName: customer?.name ?? DELETED_CUSTOMER,
-    customerPhone: customer?.phone ?? "",
-    customerEmail: customer?.email,
-    staffName: staff?.name ?? DELETED_STAFF,
-    staffImageUrl: staff?.imageUrl,
-    services: apptServices.map((s) => ({
-      serviceId: s.serviceId,
-      serviceName: s.serviceName,
-      duration: s.duration,
-      price: s.price,
-    })),
-  };
-}
-
-// =============================================================================
-// Helper: Batch enrich appointments (avoids N+1 queries)
-// =============================================================================
-
-async function batchEnrichAppointments(
-  ctx: { db: DatabaseReader },
-  appointments: Doc<"appointments">[],
-) {
-  if (appointments.length === 0) return [];
-
-  // Collect unique IDs
-  const customerIds = [...new Set(appointments.map((a) => a.customerId))];
-  const staffIds = [
-    ...new Set(
-      appointments
-        .map((a) => a.staffId)
-        .filter((id): id is Id<"staff"> => id != null),
-    ),
-  ];
-
-  // Batch fetch customers and staff (single round-trip each via getAll)
-  const [customerDocs, staffDocs] = await Promise.all([
-    getAll(ctx.db, customerIds),
-    getAll(ctx.db, staffIds),
-  ]);
-
-  const customerMap = new Map(
-    customerDocs
-      .filter((c): c is NonNullable<typeof c> => c != null)
-      .map((c) => [c._id, c]),
-  );
-  const staffMap = new Map(
-    staffDocs
-      .filter((s): s is NonNullable<typeof s> => s != null)
-      .map((s) => [s._id, s]),
-  );
-
-  // Batch fetch appointment services (one query per appointment — unavoidable with index)
-  const allServices = await Promise.all(
-    appointments.map((a) =>
-      ctx.db
-        .query("appointmentServices")
-        .withIndex("by_appointment", (q) => q.eq("appointmentId", a._id))
-        .collect(),
-    ),
-  );
-  const servicesMap = new Map(
-    appointments.map((a, i) => [a._id, allServices[i]]),
-  );
-
-  return appointments.map((appt) => {
-    const customer = customerMap.get(appt.customerId);
-    const staff = appt.staffId ? staffMap.get(appt.staffId) : null;
-    const apptServices = servicesMap.get(appt._id) ?? [];
-
-    return {
-      ...appt,
-      customerName: customer?.name ?? DELETED_CUSTOMER,
-      customerPhone: customer?.phone ?? "",
-      customerEmail: customer?.email,
-      staffName: staff?.name ?? DELETED_STAFF,
-      staffImageUrl: staff?.imageUrl,
-      services: apptServices.map((s) => ({
-        serviceId: s.serviceId,
-        serviceName: s.serviceName,
-        duration: s.duration,
-        price: s.price,
-      })),
-    };
-  });
-}
-
-// =============================================================================
-// Helper: Validate slot availability for a staff member
-// =============================================================================
-
-async function validateSlotAvailability(
-  ctx: { db: DatabaseReader },
-  params: {
-    staffId: Id<"staff">;
-    date: string;
-    startTime: number;
-    endTime: number;
-    excludeAppointmentId?: Id<"appointments">;
-    /** Skip working hours check (for staff-created appointments) */
-    skipScheduleCheck?: boolean;
-  },
-) {
-  const {
-    staffId,
-    date,
-    startTime,
-    endTime,
-    excludeAppointmentId,
-    skipScheduleCheck,
-  } = params;
-
-  // Verify staff exists and is active
-  const staff = await ctx.db.get(staffId);
-  if (!staff || staff.status !== "active") {
-    throw new ConvexError({
-      code: ErrorCode.NOT_FOUND,
-      message: "Staff member not found or inactive",
-    });
-  }
-
-  // Check working hours (unless explicitly skipped for staff-created appointments)
-  if (!skipScheduleCheck) {
-    const override = await ctx.db
-      .query("scheduleOverrides")
-      .withIndex("by_staff_date", (q) =>
-        q.eq("staffId", staffId).eq("date", date),
-      )
-      .first();
-
-    const overtimeEntries = await ctx.db
-      .query("staffOvertime")
-      .withIndex("by_staff_date", (q) =>
-        q.eq("staffId", staffId).eq("date", date),
-      )
-      .collect();
-
-    const resolved = resolveSchedule({
-      date,
-      defaultSchedule: staff.defaultSchedule ?? undefined,
-      override: override ?? null,
-      overtimeEntries,
-    });
-
-    // Build working windows
-    const windows: Array<{ start: number; end: number }> = [];
-    if (
-      resolved.available &&
-      resolved.effectiveStart &&
-      resolved.effectiveEnd
-    ) {
-      windows.push({
-        start: timeStringToMinutes(resolved.effectiveStart),
-        end: timeStringToMinutes(resolved.effectiveEnd),
-      });
-    }
-    for (const ot of resolved.overtimeWindows) {
-      windows.push({
-        start: timeStringToMinutes(ot.start),
-        end: timeStringToMinutes(ot.end),
-      });
-    }
-
-    const fitsInWindow = windows.some(
-      (w) => startTime >= w.start && endTime <= w.end,
-    );
-    if (!fitsInWindow) {
-      throw new ConvexError({
-        code: ErrorCode.VALIDATION_ERROR,
-        message: "Selected time is outside staff working hours",
-      });
-    }
-  }
-
-  // Check for conflicting appointments
-  const existingAppts = await ctx.db
-    .query("appointments")
-    .withIndex("by_staff_date", (q) =>
-      q.eq("staffId", staffId).eq("date", date),
-    )
-    .collect();
-  const activeAppts = existingAppts.filter(
-    (a) =>
-      a.status !== "cancelled" &&
-      a.status !== "no_show" &&
-      a._id !== excludeAppointmentId,
-  );
-  for (const appt of activeAppts) {
-    if (isOverlapping(startTime, endTime, appt.startTime, appt.endTime)) {
-      throw new ConvexError({
-        code: ErrorCode.ALREADY_EXISTS,
-        message: "This time slot is no longer available",
-      });
-    }
-  }
-
-  return staff;
-}
 
 // =============================================================================
 // Public API (Customer-facing)
@@ -298,7 +86,7 @@ export const create = authedMutation({
     }
 
     // 2. Validate inputs
-    if (!/^\d{4}-\d{2}-\d{2}$/.test(args.date)) {
+    if (!DATE_FORMAT_REGEX.test(args.date)) {
       throw new ConvexError({
         code: ErrorCode.VALIDATION_ERROR,
         message: "Invalid date format. Expected YYYY-MM-DD.",
@@ -310,13 +98,13 @@ export const create = authedMutation({
         message: "End time must be after start time.",
       });
     }
-    if (args.serviceIds.length > 10) {
+    if (args.serviceIds.length > MAX_SERVICES_PER_APPOINTMENT) {
       throw new ConvexError({
         code: ErrorCode.VALIDATION_ERROR,
-        message: "Maximum 10 services per appointment.",
+        message: `Maximum ${MAX_SERVICES_PER_APPOINTMENT} services per appointment.`,
       });
     }
-    if (args.customer.notes && args.customer.notes.length > 500) {
+    if (args.customer.notes && args.customer.notes.length > MAX_CUSTOMER_NOTES_LENGTH) {
       throw new ConvexError({
         code: ErrorCode.VALIDATION_ERROR,
         message: "Customer notes must be 500 characters or less.",
@@ -507,10 +295,7 @@ export const create = authedMutation({
 
 /**
  * Look up an appointment by confirmation code (public).
- * Returns a limited view excluding sensitive fields.
- *
- * Note: Also available as rate-limited HTTP action at /api/appointments/by-confirmation.
- * The publicQuery version is kept for backward compatibility and reactive subscriptions.
+ * Also available as rate-limited HTTP action at /api/appointments/by-confirmation.
  */
 export const getByConfirmationCode = publicQuery({
   args: {
@@ -518,104 +303,17 @@ export const getByConfirmationCode = publicQuery({
     confirmationCode: v.string(),
   },
   returns: v.union(publicAppointmentValidator, v.null()),
-  handler: async (ctx, args) => {
-    // Validate confirmation code format (6 chars, alphanumeric excluding 0/O/I/1)
-    if (!/^[A-HJ-NP-Z2-9]{6}$/.test(args.confirmationCode)) {
-      return null;
-    }
-
-    const appointment = await ctx.db
-      .query("appointments")
-      .withIndex("by_confirmation", (q) =>
-        q.eq("confirmationCode", args.confirmationCode),
-      )
-      .first();
-
-    if (!appointment || appointment.organizationId !== args.organizationId) {
-      return null;
-    }
-
-    const enriched = await enrichAppointment(ctx, appointment);
-
-    return {
-      _id: enriched._id,
-      date: enriched.date,
-      startTime: enriched.startTime,
-      endTime: enriched.endTime,
-      status: enriched.status,
-      source: enriched.source,
-      confirmationCode: enriched.confirmationCode,
-      staffName: enriched.staffName,
-      staffImageUrl: enriched.staffImageUrl,
-      staffId: enriched.staffId,
-      customerName: enriched.customerName,
-      customerPhone: enriched.customerPhone,
-      customerNotes: enriched.customerNotes,
-      cancelledAt: enriched.cancelledAt,
-      rescheduleCount: enriched.rescheduleCount,
-      total: enriched.total,
-      services: enriched.services.map((s) => ({
-        serviceId: s.serviceId,
-        serviceName: s.serviceName,
-        duration: s.duration,
-        price: s.price,
-      })),
-    };
-  },
+  handler: async (ctx, args) => lookupByConfirmationCode(ctx, args),
 });
 
-/**
- * Internal version of getByConfirmationCode for HTTP action rate limiting.
- */
+/** Internal version for HTTP action rate limiting. */
 export const _getByConfirmationCode = internalQuery({
   args: {
     organizationId: v.id("organization"),
     confirmationCode: v.string(),
   },
   returns: v.union(publicAppointmentValidator, v.null()),
-  handler: async (ctx, args) => {
-    if (!/^[A-HJ-NP-Z2-9]{6}$/.test(args.confirmationCode)) {
-      return null;
-    }
-
-    const appointment = await ctx.db
-      .query("appointments")
-      .withIndex("by_confirmation", (q) =>
-        q.eq("confirmationCode", args.confirmationCode),
-      )
-      .first();
-
-    if (!appointment || appointment.organizationId !== args.organizationId) {
-      return null;
-    }
-
-    const enriched = await enrichAppointment(ctx, appointment);
-
-    return {
-      _id: enriched._id,
-      date: enriched.date,
-      startTime: enriched.startTime,
-      endTime: enriched.endTime,
-      status: enriched.status,
-      source: enriched.source,
-      confirmationCode: enriched.confirmationCode,
-      staffName: enriched.staffName,
-      staffImageUrl: enriched.staffImageUrl,
-      staffId: enriched.staffId,
-      customerName: enriched.customerName,
-      customerPhone: enriched.customerPhone,
-      customerNotes: enriched.customerNotes,
-      cancelledAt: enriched.cancelledAt,
-      rescheduleCount: enriched.rescheduleCount,
-      total: enriched.total,
-      services: enriched.services.map((s) => ({
-        serviceId: s.serviceId,
-        serviceName: s.serviceName,
-        duration: s.duration,
-        price: s.price,
-      })),
-    };
-  },
+  handler: async (ctx, args) => lookupByConfirmationCode(ctx, args),
 });
 
 /**
@@ -652,7 +350,7 @@ export const listForCurrentUser = authedQuery({
       const dateCompare = b.date.localeCompare(a.date);
       return dateCompare !== 0 ? dateCompare : a.startTime - b.startTime;
     });
-    const cappedAppointments = allAppointments.slice(0, 100);
+    const cappedAppointments = allAppointments.slice(0, MAX_USER_APPOINTMENTS);
 
     // Batch fetch unique org and staff IDs
     const orgIds = [
@@ -835,76 +533,6 @@ export const list = orgQuery({
     });
 
     return batchEnrichAppointments(ctx, appointments);
-  },
-});
-
-/**
- * List appointments with cursor-based pagination.
- * Supports optional status filter.
- */
-export const listPaginated = orgQuery({
-  args: {
-    paginationOpts: paginationOptsValidator,
-    statusFilter: v.optional(appointmentStatusValidator),
-  },
-  returns: v.object({
-    page: v.array(appointmentWithDetailsValidator),
-    isDone: v.boolean(),
-    continueCursor: v.string(),
-  }),
-  handler: async (ctx, args) => {
-    const isStaffOnly = ctx.member.role === "staff";
-    const staffFilter = isStaffOnly ? ctx.staff?._id : undefined;
-
-    let paginationResult: {
-      page: Doc<"appointments">[];
-      isDone: boolean;
-      continueCursor: string;
-    };
-
-    if (isStaffOnly && staffFilter) {
-      // Staff members can only paginate their own appointments.
-      // Known limitation: post-pagination filtering may cause inconsistent page
-      // sizes because by_staff_date index doesn't include organizationId.
-      // A composite index (by_staff_org_date) would fix this but isn't worth
-      // the index overhead since staff rarely belong to multiple orgs.
-      paginationResult = await ctx.db
-        .query("appointments")
-        .withIndex("by_staff_date", (q) => q.eq("staffId", staffFilter))
-        .order("desc")
-        .paginate(args.paginationOpts);
-      paginationResult.page = paginationResult.page.filter(
-        (a) =>
-          a.organizationId === ctx.organizationId &&
-          (!args.statusFilter || a.status === args.statusFilter),
-      );
-    } else if (args.statusFilter) {
-      paginationResult = await ctx.db
-        .query("appointments")
-        .withIndex("by_org_status", (q) =>
-          q
-            .eq("organizationId", ctx.organizationId)
-            .eq("status", args.statusFilter!),
-        )
-        .order("desc")
-        .paginate(args.paginationOpts);
-    } else {
-      paginationResult = await ctx.db
-        .query("appointments")
-        .withIndex("by_organization", (q) =>
-          q.eq("organizationId", ctx.organizationId),
-        )
-        .order("desc")
-        .paginate(args.paginationOpts);
-    }
-
-    const enriched = await batchEnrichAppointments(ctx, paginationResult.page);
-
-    return {
-      page: enriched,
-      isDone: paginationResult.isDone,
-      continueCursor: paginationResult.continueCursor,
-    };
   },
 });
 
@@ -1242,7 +870,7 @@ export const getByCustomer = orgQuery({
       return [];
     }
 
-    const maxResults = Math.min(args.limit ?? 50, 200);
+    const maxResults = Math.min(args.limit ?? DEFAULT_APPOINTMENT_LIST_LIMIT, MAX_APPOINTMENT_LIST_LIMIT);
 
     const appointments = await ctx.db
       .query("appointments")

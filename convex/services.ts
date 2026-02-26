@@ -13,7 +13,6 @@ import {
   servicePriceTypeValidator,
   serviceStatusValidator,
   serviceWithCategoryValidator,
-  staffDocValidator,
 } from "./lib/validators";
 
 // =============================================================================
@@ -491,27 +490,3 @@ export const assignStaff = ownerMutation({
   },
 });
 
-/**
- * Get staff members who can perform a specific service
- */
-export const getStaffForService = orgQuery({
-  args: { serviceId: v.id("services") },
-  returns: v.array(staffDocValidator),
-  handler: async (ctx, args) => {
-    const service = await ctx.db.get(args.serviceId);
-    if (!service || service.organizationId !== ctx.organizationId) {
-      return [];
-    }
-
-    const allStaff = await ctx.db
-      .query("staff")
-      .withIndex("organizationId", (q) =>
-        q.eq("organizationId", ctx.organizationId),
-      )
-      .collect();
-
-    return allStaff.filter(
-      (s) => s.status === "active" && s.serviceIds?.includes(args.serviceId),
-    );
-  },
-});

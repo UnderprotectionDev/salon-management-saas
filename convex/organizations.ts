@@ -516,19 +516,6 @@ export const getSalonType = orgQuery({
   },
 });
 
-/**
- * Get salon types by organizationId — accessible to any authenticated user
- * (e.g. customers viewing /dashboard/ai who are not org members).
- */
-export const getSalonTypePublic = authedQuery({
-  args: { organizationId: v.id("organization") },
-  returns: v.union(orgSalonTypesValidator, v.null()),
-  handler: async (ctx, args) => {
-    const org = await ctx.db.get(args.organizationId);
-    return normalizeSalonType(org?.salonType);
-  },
-});
-
 // =============================================================================
 // Slug Availability Check
 // =============================================================================

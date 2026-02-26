@@ -134,22 +134,3 @@ export const listMyMoodBoard = authedQuery({
   },
 });
 
-/**
- * Legacy: list mood board items for a user (backward compat).
- * Kept so existing components still compile.
- */
-export const listMoodBoard = authedQuery({
-  args: {
-    limit: v.optional(v.number()),
-  },
-  returns: v.array(aiMoodBoardDocValidator),
-  handler: async (ctx, args) => {
-    const limit = args.limit ?? 50;
-
-    return await ctx.db
-      .query("aiMoodBoard")
-      .withIndex("by_user", (q) => q.eq("userId", ctx.user._id))
-      .order("desc")
-      .take(limit);
-  },
-});
