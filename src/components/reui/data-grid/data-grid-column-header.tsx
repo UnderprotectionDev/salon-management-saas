@@ -230,7 +230,7 @@ function DataGridColumnHeaderInner<TData, TValue>({
             <Settings2Icon className="size-3.5!" />
             <span>Columns</span>
           </DropdownMenuSubTrigger>
-          <DropdownMenuSubContent side="right">
+          <DropdownMenuSubContent>
             {table
               .getAllColumns()
               .filter(

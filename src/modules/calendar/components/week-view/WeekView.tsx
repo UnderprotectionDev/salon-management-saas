@@ -164,7 +164,7 @@ export function WeekView({
                         appointment={appt}
                         onClick={() => onAppointmentClick(appt)}
                         isDragDisabled
-                        staffColor={staffColorMap?.get(appt.staffId)}
+                        staffColor={appt.staffId ? staffColorMap?.get(appt.staffId) : undefined}
                         startHour={startHour}
                       />
                     ))}

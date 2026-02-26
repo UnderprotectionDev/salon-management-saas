@@ -22,3 +22,7 @@ export const MAX_BOOKING_HOUR_MINUTES = 1320; // 22:00
 
 // -- Date format regex --
 export const DATE_FORMAT_REGEX = /^\d{4}-\d{2}-\d{2}$/;
+
+// -- Display fallbacks --
+export const DELETED_STAFF = "[Deleted Staff]";
+export const UNKNOWN_ORG = "[Unknown Salon]";

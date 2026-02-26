@@ -63,7 +63,7 @@ export function MonthDayCell({
         {visible.map((appt) => {
           const colorClasses = getStatusEventColor(appt.status);
           const dotColor = getStatusDotColor(appt.status);
-          const staffColor = staffColorMap?.get(appt.staffId);
+          const staffColor = appt.staffId ? staffColorMap?.get(appt.staffId) : undefined;
 
           return (
             <button
@@ -130,7 +130,7 @@ export function MonthDayCell({
               <div className="max-h-48 overflow-y-auto p-1.5 space-y-0.5">
                 {appointments.map((appt) => {
                   const colorClasses = getStatusEventColor(appt.status);
-                  const staffColor = staffColorMap?.get(appt.staffId);
+                  const staffColor = appt.staffId ? staffColorMap?.get(appt.staffId) : undefined;
 
                   return (
                     <button

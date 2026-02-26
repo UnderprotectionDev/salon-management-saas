@@ -73,7 +73,6 @@ const MALE_HAT_STYLES = ["none", "none", "none", "beanie", "turban"] as const;
 
 const FEMALE_HAIR_STYLES = ["womanLong", "womanShort"] as const;
 // Weighted: earings appear occasionally
-const FEMALE_ACCESSORIES = ["none", "none", "earings"] as const;
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -136,7 +135,6 @@ export function generateAvatarConfig(gender?: Gender | null): AvatarConfig {
       eyeBrowStyle: "upWoman",
       hairStyle: pickRandom(FEMALE_HAIR_STYLES),
       hatStyle: "none",
-      accessoriesStyle: pickRandom(FEMALE_ACCESSORIES),
     });
   }
 
