@@ -81,9 +81,7 @@ export default defineSchema({
   invitation: defineTable({
     organizationId: v.id("organization"),
     email: v.string(),
-    name: v.string(),
     role: v.literal("staff"),
-    phone: v.optional(v.string()),
     status: v.union(
       v.literal("pending"),
       v.literal("accepted"),

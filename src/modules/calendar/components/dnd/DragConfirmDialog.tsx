@@ -21,12 +21,14 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { api } from "../../../../convex/_generated/api";
-import type { Id } from "../../../../convex/_generated/dataModel";
-import { DEFAULT_END_HOUR, DEFAULT_START_HOUR } from "../lib/constants";
-import type { AppointmentWithDetails } from "../lib/types";
-import { formatTime } from "../lib/utils";
-import type { DragRescheduleData } from "./DayView";
+import { api } from "../../../../../convex/_generated/api";
+import type { Id } from "../../../../../convex/_generated/dataModel";
+import { DEFAULT_END_HOUR, DEFAULT_START_HOUR } from "../../lib/constants";
+import type {
+  AppointmentWithDetails,
+  DragRescheduleData,
+} from "../../lib/types";
+import { formatTime } from "../../lib/utils";
 
 type DragConfirmDialogProps = {
   data: DragRescheduleData | null;
@@ -35,10 +37,17 @@ type DragConfirmDialogProps = {
   /** All appointments for the current day — used for conflict detection. */
   appointments: AppointmentWithDetails[];
   onClose: () => void;
+  startHour?: number;
+  endHour?: number;
 };
 
 const SLOT_STEP = 15; // minutes between slot start times
 const EXCLUDED_STATUSES = new Set(["cancelled", "no_show"]);
+
+/** Snap a minute value to the nearest slot boundary. */
+function snapToSlot(time: number, step: number = SLOT_STEP): number {
+  return Math.round(time / step) * step;
+}
 
 /**
  * Check whether a proposed slot [start, start+duration) overlaps with any
@@ -60,6 +69,8 @@ export function DragConfirmDialog({
   date,
   appointments,
   onClose,
+  startHour = DEFAULT_START_HOUR,
+  endHour = DEFAULT_END_HOUR,
 }: DragConfirmDialogProps) {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const reschedule = useMutation(api.appointments.reschedule);
@@ -88,9 +99,9 @@ export function DragConfirmDialog({
       !EXCLUDED_STATUSES.has(a.status),
   );
 
-  // Generate time slots with 15-min steps, each spanning the appointment's duration
-  const startMin = DEFAULT_START_HOUR * 60;
-  const endMin = DEFAULT_END_HOUR * 60;
+  // Generate time slots within org business hours
+  const startMin = startHour * 60;
+  const endMin = endHour * 60;
   const slots: Array<{
     start: number;
     end: number;
@@ -105,8 +116,8 @@ export function DragConfirmDialog({
     });
   }
 
-  // Use user-selected time if changed, otherwise use drag-calculated time
-  const effectiveStart = selectedStart ?? dragStartTime;
+  // Use user-selected time if changed, otherwise snap drag-calculated time to nearest slot
+  const effectiveStart = selectedStart ?? snapToSlot(dragStartTime);
   const effectiveEnd = effectiveStart + duration;
   const effectiveConflict = hasConflict(
     effectiveStart,

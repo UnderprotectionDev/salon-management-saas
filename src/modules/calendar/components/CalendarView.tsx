@@ -8,13 +8,18 @@ import { useOrganization } from "@/modules/organization";
 import { api } from "../../../../convex/_generated/api";
 import type { Id } from "../../../../convex/_generated/dataModel";
 import { useCalendarState } from "../hooks/useCalendarState";
-import type { AppointmentWithDetails } from "../lib/types";
-import { AppointmentDetailModal } from "./AppointmentDetailModal";
-import { CalendarHeader } from "./CalendarHeader";
-import { CalendarRescheduleDialog } from "./CalendarRescheduleDialog";
-import { DayView, type DragRescheduleData } from "./DayView";
-import { DragConfirmDialog } from "./DragConfirmDialog";
-import { WeekView } from "./WeekView";
+import { getStaffColor } from "../lib/constants";
+import type { AppointmentWithDetails, DragRescheduleData } from "../lib/types";
+import { computeCalendarHourRange } from "../lib/utils";
+import { AgendaView } from "./agenda-view/AgendaView";
+import { DayView } from "./day-view/DayView";
+import { AppointmentDetailModal } from "./dialogs/AppointmentDetailModal";
+import { CalendarRescheduleDialog } from "./dialogs/CalendarRescheduleDialog";
+import { DragConfirmDialog } from "./dnd/DragConfirmDialog";
+import { CalendarHeader } from "./header/CalendarHeader";
+import { MonthView } from "./month-view/MonthView";
+import { WeekView } from "./week-view/WeekView";
+import { YearView } from "./year-view/YearView";
 
 export function CalendarView() {
   const { activeOrganization, currentRole, currentStaff } = useOrganization();
@@ -61,6 +66,26 @@ export function CalendarView() {
       ? staffList.filter((s) => s._id === staffFilter)
       : staffList;
 
+  // Fetch org settings for dynamic business hours
+  const orgSettings = useQuery(
+    api.organizations.getSettings,
+    orgId ? { organizationId: orgId } : "skip",
+  );
+  const { startHour, endHour } = computeCalendarHourRange(
+    orgSettings?.businessHours ?? undefined,
+  );
+
+  // Build staff → color map from the full (unfiltered) staff list so colors
+  // remain stable regardless of the active filter.
+  const staffColorMap = new Map<string, string>();
+  if (staffList) {
+    for (let i = 0; i < staffList.length; i++) {
+      staffColorMap.set(staffList[i]._id, getStaffColor(i));
+    }
+  }
+
+  // --- Data queries per view mode ---
+
   // Day view data
   const dayAppointments = useQuery(
     api.appointments.getByDate,
@@ -81,11 +106,62 @@ export function CalendarView() {
       : "skip",
   );
 
-  const rawAppointments =
-    calendar.viewMode === "day" ? dayAppointments : weekAppointments;
+  // Month view data (covers full grid range, 35-42 days)
+  const monthAppointments = useQuery(
+    api.appointments.getByDateRange,
+    orgId && calendar.viewMode === "month"
+      ? {
+          organizationId: orgId,
+          startDate: calendar.monthRange.startDate,
+          endDate: calendar.monthRange.endDate,
+        }
+      : "skip",
+  );
 
-  // Apply staff filter to appointments (for both day and week views)
-  const appointments =
+  // Year view data (Jan 1 - Dec 31)
+  const yearAppointments = useQuery(
+    api.appointments.getByDateRange,
+    orgId && calendar.viewMode === "year"
+      ? {
+          organizationId: orgId,
+          startDate: `${calendar.yearValue}-01-01`,
+          endDate: `${calendar.yearValue}-12-31`,
+        }
+      : "skip",
+  );
+
+  // Agenda view data (same range as month)
+  const agendaAppointments = useQuery(
+    api.appointments.getByDateRange,
+    orgId && calendar.viewMode === "agenda"
+      ? {
+          organizationId: orgId,
+          startDate: calendar.monthRange.startDate,
+          endDate: calendar.monthRange.endDate,
+        }
+      : "skip",
+  );
+
+  // Select raw appointments based on current view
+  function getRawAppointments() {
+    switch (calendar.viewMode) {
+      case "day":
+        return dayAppointments;
+      case "week":
+        return weekAppointments;
+      case "month":
+        return monthAppointments;
+      case "year":
+        return yearAppointments;
+      case "agenda":
+        return agendaAppointments;
+    }
+  }
+
+  const rawAppointments = getRawAppointments();
+
+  // Apply staff filter to appointments
+  const appointments: AppointmentWithDetails[] | undefined =
     isOwner && staffFilter !== "all" && rawAppointments
       ? rawAppointments.filter((a) => a.staffId === staffFilter)
       : rawAppointments;
@@ -109,6 +185,23 @@ export function CalendarView() {
     setSlotCreate({ staffId: staffId as Id<"staff">, time: minutes });
   }
 
+  /** Navigate from month/year to day view for a specific date. */
+  function handleDayClick(date: Date) {
+    calendar.goToDate(date, "day");
+  }
+
+  /** Navigate from year view to month view for a specific month. */
+  function handleMonthClick(date: Date) {
+    calendar.goToDate(date, "month");
+  }
+
+  // Count visible (non-cancelled/no-show) appointments for the badge
+  const appointmentCount = appointments
+    ? appointments.filter(
+        (a) => a.status !== "cancelled" && a.status !== "no_show",
+      ).length
+    : undefined;
+
   return (
     <div className="space-y-4">
       <CalendarHeader
@@ -123,6 +216,7 @@ export function CalendarView() {
         staffList={isOwner ? (allStaffList ?? []) : undefined}
         staffFilter={staffFilter}
         onStaffFilterChange={isOwner ? setStaffFilter : undefined}
+        appointmentCount={appointmentCount}
       />
 
       {loading ? (
@@ -130,16 +224,45 @@ export function CalendarView() {
       ) : calendar.viewMode === "day" ? (
         <DayView
           staffList={filteredStaffList ?? []}
-          appointments={(appointments ?? []) as AppointmentWithDetails[]}
+          appointments={appointments ?? []}
+          staffColorMap={staffColorMap}
           date={calendar.dateStr}
+          selectedDate={calendar.selectedDate}
+          onDateSelect={(d) => calendar.goToDate(d, "day")}
           onAppointmentClick={handleAppointmentClick}
           onDragReschedule={handleDragReschedule}
           onSlotClick={handleSlotClick}
+          startHour={startHour}
+          endHour={endHour}
+        />
+      ) : calendar.viewMode === "week" ? (
+        <WeekView
+          appointments={appointments ?? []}
+          staffColorMap={staffColorMap}
+          startDate={calendar.weekRange.startDate}
+          onAppointmentClick={handleAppointmentClick}
+          startHour={startHour}
+          endHour={endHour}
+        />
+      ) : calendar.viewMode === "month" ? (
+        <MonthView
+          selectedDate={calendar.selectedDate}
+          appointments={appointments ?? []}
+          staffColorMap={staffColorMap}
+          onDayClick={handleDayClick}
+          onAppointmentClick={handleAppointmentClick}
+        />
+      ) : calendar.viewMode === "year" ? (
+        <YearView
+          year={calendar.yearValue}
+          appointments={appointments ?? []}
+          onMonthClick={handleMonthClick}
+          onDayClick={handleDayClick}
         />
       ) : (
-        <WeekView
-          appointments={(appointments ?? []) as AppointmentWithDetails[]}
-          startDate={calendar.weekRange.startDate}
+        <AgendaView
+          appointments={appointments ?? []}
+          staffColorMap={staffColorMap}
           onAppointmentClick={handleAppointmentClick}
         />
       )}
@@ -172,8 +295,10 @@ export function CalendarView() {
           data={dragData}
           organizationId={orgId}
           date={calendar.dateStr}
-          appointments={(appointments ?? []) as AppointmentWithDetails[]}
+          appointments={appointments ?? []}
           onClose={() => setDragData(null)}
+          startHour={startHour}
+          endHour={endHour}
         />
       )}
 

@@ -1,5 +1,6 @@
 import { paginationOptsValidator } from "convex/server";
 import { ConvexError, v } from "convex/values";
+import { getAll } from "convex-helpers/server/relationships";
 import type { Doc, Id } from "./_generated/dataModel";
 import type { DatabaseReader } from "./_generated/server";
 import { internalQuery } from "./_generated/server";
@@ -90,10 +91,10 @@ async function batchEnrichAppointments(
     ),
   ];
 
-  // Batch fetch customers and staff
+  // Batch fetch customers and staff (single round-trip each via getAll)
   const [customerDocs, staffDocs] = await Promise.all([
-    Promise.all(customerIds.map((id) => ctx.db.get(id))),
-    Promise.all(staffIds.map((id) => ctx.db.get(id))),
+    getAll(ctx.db, customerIds),
+    getAll(ctx.db, staffIds),
   ]);
 
   const customerMap = new Map(

@@ -13,3 +13,10 @@ export type AppointmentWithDetails = Doc<"appointments"> & {
     price: number;
   }>;
 };
+
+export type DragRescheduleData = {
+  appointment: AppointmentWithDetails;
+  newStaffId: string;
+  newStartTime: number;
+  newEndTime: number;
+};

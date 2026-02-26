@@ -131,9 +131,6 @@ export function InvitationsList({ organizationId }: InvitationsListProps) {
               <TableCell>
                 <div className="min-w-0">
                   <p className="text-sm font-medium truncate">
-                    {invitation.name}
-                  </p>
-                  <p className="text-xs text-muted-foreground truncate">
                     {invitation.email}
                   </p>
                 </div>

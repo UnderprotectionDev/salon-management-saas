@@ -429,7 +429,7 @@ export const sendInvitationEmail = internalAction({
       <StaffInvitation
         organizationName={orgName}
         organizationLogo={org?.logo}
-        inviteeName={invitation.name}
+        inviteeName={invitation.email.split("@")[0]}
         inviterName={inviter ?? "Team"}
         role={invitation.role}
         acceptUrl={`${siteUrl}/sign-in`}

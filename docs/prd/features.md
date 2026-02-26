@@ -20,7 +20,17 @@
 
 Dashboard metrics: today's appointments (total/completed/upcoming/no-shows/walk-ins), weekly bookings (+% change), monthly revenue (+% change, avg ticket).
 
-**Calendar views:** Day view (staff columns, 15-min rows, current time indicator), week view (7-day grid). Staff filter (owner-only). Status color-coded appointment blocks with hover tooltips. Click-to-create, drag-and-drop reschedule (@dnd-kit/core), status actions in detail modal.
+**Calendar views:** 5 view modes — Day (staff columns, 15-min rows, DnD rescheduling, click-to-create), Week (7-day grid), Month (35-42 day grid with overflow popovers), Year (12-month mini-calendars with dot indicators), Agenda (grouped date list). Current time indicator in day/week views. Staff filter (owner-only). Status color-coded appointment blocks with hover tooltips. Business-hours-based dynamic calendar range from org settings. "Happening now" sidebar panel (day view). Drag-and-drop reschedule via @dnd-kit/core (day view). Status actions in detail modal.
+
+**Calendar module structure:** Modular directory architecture under `src/modules/calendar/components/`:
+- `day-view/` — DayView, StaffColumn, TimeAxis
+- `week-view/` — WeekView
+- `month-view/` — MonthView, MonthDayCell (overflow popover with "+N more")
+- `year-view/` — YearView, MiniMonth (dot indicators per day)
+- `agenda-view/` — AgendaView (date-grouped appointment list)
+- `header/` — CalendarHeader, TodayButton, ViewToggle, StaffFilter, DateTitle
+- `dialogs/` — AppointmentDetailModal, CalendarRescheduleDialog, DetailsContent
+- `dnd/` — AppointmentBlock, AppointmentBlockOverlay, DragConfirmDialog
 
 **Settings pages (`/{slug}/settings`):** General (name, logo, salon type), Contact & Location, Working Hours, Booking Settings, Team. Uses `useUnsavedChanges` hook for navigation guard. TanStack Form with `isDefaultValue` for dirty state.
 

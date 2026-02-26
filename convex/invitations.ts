@@ -1,4 +1,5 @@
 import { ConvexError, v } from "convex/values";
+import { getAll } from "convex-helpers/server/relationships";
 import { internal } from "./_generated/api";
 import { internalMutation } from "./_generated/server";
 import { DEFAULT_STAFF_SCHEDULE } from "./lib/defaults";
@@ -62,33 +63,40 @@ export const getPendingForCurrentUser = authedQuery({
       .collect();
 
     const now = Date.now();
-    const validInvitations = await Promise.all(
-      invitations
-        .filter((inv) => !inv.expiresAt || inv.expiresAt > now)
-        .map(async (inv) => {
-          const org = await ctx.db.get(inv.organizationId);
-          return org
-            ? {
-                ...inv,
-                organizationName: org.name,
-                organizationSlug: org.slug,
-              }
-            : null;
-        }),
+    const validInvitations = invitations.filter(
+      (inv) => !inv.expiresAt || inv.expiresAt > now,
     );
 
-    return validInvitations.filter(
-      (inv): inv is NonNullable<typeof inv> => inv !== null,
+    // Batch fetch all orgs at once (avoids N+1)
+    const orgIds = [
+      ...new Set(validInvitations.map((inv) => inv.organizationId)),
+    ];
+    const orgDocs = await getAll(ctx.db, orgIds);
+    const orgMap = new Map(
+      orgDocs
+        .filter((o): o is NonNullable<typeof o> => o != null)
+        .map((o) => [o._id, o]),
     );
+
+    return validInvitations
+      .map((inv) => {
+        const org = orgMap.get(inv.organizationId);
+        return org
+          ? {
+              ...inv,
+              organizationName: org.name,
+              organizationSlug: org.slug,
+            }
+          : null;
+      })
+      .filter((inv): inv is NonNullable<typeof inv> => inv !== null);
   },
 });
 
 export const create = ownerMutation({
   args: {
     email: v.string(),
-    name: v.string(),
     role: invitationRoleValidator,
-    phone: v.optional(v.string()),
   },
   returns: v.id("invitation"),
   handler: async (ctx, args) => {
@@ -161,9 +169,7 @@ export const create = ownerMutation({
     const invitationId = await ctx.db.insert("invitation", {
       organizationId: ctx.organizationId,
       email: normalizedEmail,
-      name: args.name,
       role: args.role,
-      phone: args.phone,
       status: "pending",
       invitedBy: ctx.user._id,
       expiresAt,
@@ -251,14 +257,13 @@ export const accept = authedMutation({
       updatedAt: now,
     });
 
-    // Cascading: Create staff profile
+    // Cascading: Create staff profile using the accepting user's name/email
     await ctx.db.insert("staff", {
       userId: ctx.user._id,
       organizationId: invitation.organizationId,
       memberId,
-      name: invitation.name,
-      email: invitation.email,
-      phone: invitation.phone,
+      name: ctx.user.name || invitation.email.split("@")[0],
+      email: ctx.user.email || invitation.email,
       status: "active",
       serviceIds: [],
       defaultSchedule: { ...DEFAULT_STAFF_SCHEDULE },

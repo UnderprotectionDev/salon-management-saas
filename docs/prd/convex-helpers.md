@@ -12,7 +12,7 @@
 | 4 | `pick` | `convex-helpers` | Implemented | `convex/lib/validators.ts` |
 | 5 | `makeUseQueryWithStatus` | `convex-helpers/react` | Dead code | `src/hooks/useQueryWithStatus.ts` |
 | 6 | Action Retry Wrapper | `convex-helpers/server/retries` | Planned (M10) | `convex/lib/retries.ts` |
-| 7 | Relationship Helpers | `convex-helpers/server/relationships` | Planned | Multiple convex files |
+| 7 | Relationship Helpers | `convex-helpers/server/relationships` | Implemented | `convex/appointments.ts`, `convex/invitations.ts`, `convex/products.ts` |
 | 8 | Manual Pagination | `convex-helpers/server/pagination` | Planned | `convex/admin.ts`, `convex/notifications.ts` |
 
 ---
@@ -74,9 +74,14 @@ Create `convex/lib/retries.ts` with `makeActionRetrier("lib/retries:retry")`. Co
 
 Notes: `retry` must be a **named export**. The library's `retry` mutation uses `v.any()` (suppress Biome warning). Actions must be idempotent.
 
-### Story 7: Relationship Helpers (Medium Priority)
+### ~~Story 7: Relationship Helpers~~ ✅ Implemented
 
-Replace ~13 instances of `Promise.all(ids.map(id => ctx.db.get(id)))` with `getAll(ctx.db, ids)` from `convex-helpers/server/relationships`. Returns `(Doc | null)[]` in same order. Target files: appointments.ts, services.ts, products.ts, customers.ts, organizations.ts, invitations.ts, favoriteSalons.ts, timeOffRequests.ts, inventoryTransactions.ts.
+`getAll(ctx.db, ids)` from `convex-helpers/server/relationships` now used in:
+- `convex/appointments.ts` — `batchEnrichAppointments`: batch fetch customers + staff
+- `convex/invitations.ts` — `getPendingForCurrentUser`: batch fetch organizations
+- `convex/products.ts` — `list`, `listPublic`: batch fetch categories; `getDetail`: batch fetch staff for transactions
+
+Remaining candidates for future cleanup: services.ts, customers.ts, organizations.ts, favoriteSalons.ts, timeOffRequests.ts, inventoryTransactions.ts.
 
 ### Story 8: Manual Pagination (Medium Priority)
 
