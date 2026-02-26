@@ -15,7 +15,7 @@ import { checkoutsCreate } from "@polar-sh/sdk/funcs/checkoutsCreate.js";
 import { productsGet } from "@polar-sh/sdk/funcs/productsGet.js";
 import { ConvexError, v } from "convex/values";
 import { api, internal } from "./_generated/api";
-import { action } from "./_generated/server";
+import { action, internalAction } from "./_generated/server";
 import { ErrorCode } from "./lib/functions";
 import { createPolarClient, resolveCustomerId } from "./lib/polarHelpers";
 import { rateLimiter } from "./lib/rateLimits";
@@ -194,7 +194,7 @@ export const initiatePurchase = action({
  * Called from the Polar webhook handler when a one-time order for AI credits completes.
  * Adds the purchased credits to the user's balance.
  */
-export const addCreditsForOrder = action({
+export const addCreditsForOrder = internalAction({
   args: {
     userId: v.string(),
     productId: v.string(),

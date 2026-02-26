@@ -134,33 +134,31 @@ export function VariantStockAdjustDialog({
                 <Loader2 className="size-4 animate-spin" />
                 Loading variants...
               </div>
+            ) : variants.length === 0 ? (
+              <p className="text-sm text-muted-foreground">
+                No variants found for this product.
+              </p>
             ) : (
-              {variants.length === 0 ? (
-                <p className="text-sm text-muted-foreground">
-                  No variants found for this product.
-                </p>
-              ) : (
-                <Select
-                  value={selectedVariantId}
-                  onValueChange={(val) => setSelectedVariantId(val)}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select a variant" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {variants.map((v) => (
-                      <SelectItem key={v._id} value={v._id}>
-                        <div className="flex items-center gap-2">
-                          <span>{v.label}</span>
-                          <Badge variant="outline" className="text-[10px]">
-                            {v.stockQuantity} in stock
-                          </Badge>
-                        </div>
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              )}
+              <Select
+                value={selectedVariantId}
+                onValueChange={(val) => setSelectedVariantId(val)}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Select a variant" />
+                </SelectTrigger>
+                <SelectContent>
+                  {variants.map((v) => (
+                    <SelectItem key={v._id} value={v._id}>
+                      <div className="flex items-center gap-2">
+                        <span>{v.label}</span>
+                        <Badge variant="outline" className="text-[10px]">
+                          {v.stockQuantity} in stock
+                        </Badge>
+                      </div>
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             )}
           </div>
 
