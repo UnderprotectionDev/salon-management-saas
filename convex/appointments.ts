@@ -105,7 +105,10 @@ export const create = authedMutation({
         message: `Maximum ${MAX_SERVICES_PER_APPOINTMENT} services per appointment.`,
       });
     }
-    if (args.customer.notes && args.customer.notes.length > MAX_CUSTOMER_NOTES_LENGTH) {
+    if (
+      args.customer.notes &&
+      args.customer.notes.length > MAX_CUSTOMER_NOTES_LENGTH
+    ) {
       throw new ConvexError({
         code: ErrorCode.VALIDATION_ERROR,
         message: "Customer notes must be 500 characters or less.",
@@ -871,7 +874,10 @@ export const getByCustomer = orgQuery({
       return [];
     }
 
-    const maxResults = Math.min(args.limit ?? DEFAULT_APPOINTMENT_LIST_LIMIT, MAX_APPOINTMENT_LIST_LIMIT);
+    const maxResults = Math.min(
+      args.limit ?? DEFAULT_APPOINTMENT_LIST_LIMIT,
+      MAX_APPOINTMENT_LIST_LIMIT,
+    );
 
     const appointments = await ctx.db
       .query("appointments")

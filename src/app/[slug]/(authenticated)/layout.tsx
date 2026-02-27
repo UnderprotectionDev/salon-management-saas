@@ -16,6 +16,7 @@ import {
   Sparkles,
   UserRound,
   Users,
+  Wallet,
 } from "lucide-react";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
@@ -107,6 +108,11 @@ const menuItems: MenuItem[] = [
     title: "Reports",
     icon: BarChart3,
     href: "/reports",
+  },
+  {
+    title: "Financials",
+    icon: Wallet,
+    href: "/financials",
   },
   {
     title: "Design Studio",

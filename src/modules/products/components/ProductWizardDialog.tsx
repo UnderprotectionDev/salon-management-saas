@@ -49,10 +49,7 @@ import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
 import { api } from "../../../../convex/_generated/api";
 import type { Id } from "../../../../convex/_generated/dataModel";
-import {
-  buildVariantStockMap,
-  optionsChanged,
-} from "../lib/variant-helpers";
+import { buildVariantStockMap, optionsChanged } from "../lib/variant-helpers";
 import { AddProductCategoryPopover } from "./AddProductCategoryPopover";
 import { ProductMultiImageUpload } from "./ProductMultiImageUpload";
 import {
@@ -174,7 +171,9 @@ export function ProductWizardDialog({
   );
 
   const variantStockMap =
-    existingVariants && isEdit ? buildVariantStockMap(existingVariants) : undefined;
+    existingVariants && isEdit
+      ? buildVariantStockMap(existingVariants)
+      : undefined;
 
   const totalVariantStock =
     existingVariants?.reduce((sum, v) => sum + v.stockQuantity, 0) ?? 0;
@@ -187,7 +186,9 @@ export function ProductWizardDialog({
         values: [...o.values],
       }));
       setVariantOptions(opts);
-      setInitialOptions(opts.map((o) => ({ name: o.name, values: [...o.values] })));
+      setInitialOptions(
+        opts.map((o) => ({ name: o.name, values: [...o.values] })),
+      );
       setHasVariants(true);
     } else if (isEdit && !product?.hasVariants) {
       setHasVariants(false);
@@ -378,9 +379,7 @@ export function ProductWizardDialog({
       <Dialog open={open} onOpenChange={(o) => !o && handleClose()}>
         <DialogContent className="sm:max-w-lg max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>
-              {isEdit ? "Edit Product" : "Add Product"}
-            </DialogTitle>
+            <DialogTitle>{isEdit ? "Edit Product" : "Add Product"}</DialogTitle>
           </DialogHeader>
 
           <form

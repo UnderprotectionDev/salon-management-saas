@@ -136,9 +136,7 @@ export function CustomerDataGrid({
       header: ({ column }) => (
         <DataGridColumnHeader column={column} title="Phone" />
       ),
-      cell: ({ row }) => (
-        <span className="text-sm">{row.original.phone}</span>
-      ),
+      cell: ({ row }) => <span className="text-sm">{row.original.phone}</span>,
       enableSorting: false,
       meta: {
         headerTitle: "Phone",
@@ -255,9 +253,7 @@ export function CustomerDataGrid({
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end">
-                <DropdownMenuItem
-                  onClick={() => setEditTargetId(customer._id)}
-                >
+                <DropdownMenuItem onClick={() => setEditTargetId(customer._id)}>
                   <Edit2 className="mr-2 size-4" />
                   Edit
                 </DropdownMenuItem>
@@ -331,10 +327,7 @@ export function CustomerDataGrid({
           }}
         >
           <DataGridTable />
-          <DataGridPagination
-            sizes={[10, 25, 50]}
-            className="px-4 py-2.5"
-          />
+          <DataGridPagination sizes={[10, 25, 50]} className="px-4 py-2.5" />
         </DataGrid>
       </DataGridContainer>
 

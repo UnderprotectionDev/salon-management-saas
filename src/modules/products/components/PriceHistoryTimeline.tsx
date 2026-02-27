@@ -102,7 +102,12 @@ export function PriceHistoryTimeline({
                 <span className="text-xs text-muted-foreground tabular-nums">
                   {formatPrice(entry.previousValue)}
                 </span>
-                <span className="text-xs text-muted-foreground" aria-hidden="true">→</span>
+                <span
+                  className="text-xs text-muted-foreground"
+                  aria-hidden="true"
+                >
+                  →
+                </span>
                 <span className="text-xs font-medium tabular-nums">
                   {formatPrice(entry.newValue)}
                 </span>

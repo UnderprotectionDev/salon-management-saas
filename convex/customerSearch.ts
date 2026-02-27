@@ -200,7 +200,9 @@ export const searchByPhone = orgQuery({
       )
       .take(2000);
 
-    let filtered = customers.filter((c) => c.phone?.startsWith(args.phonePrefix));
+    let filtered = customers.filter((c) =>
+      c.phone?.startsWith(args.phonePrefix),
+    );
 
     // Staff: only their customers
     if (staffCustomerIds) {

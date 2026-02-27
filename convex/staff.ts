@@ -159,21 +159,15 @@ export const getAvatarConfigs = orgQuery({
       )
       .collect();
 
-    const results: {
-      staffId: (typeof staffMembers)[0]["_id"];
-      avatarConfig?: unknown;
-    }[] = [];
-
-    for (const staff of staffMembers) {
-      const profile = await ctx.db
-        .query("userProfile")
-        .withIndex("by_userId", (q) => q.eq("userId", staff.userId))
-        .first();
-      results.push({
-        staffId: staff._id,
-        avatarConfig: profile?.avatarConfig,
-      });
-    }
+    const results = await Promise.all(
+      staffMembers.map(async (staff) => {
+        const profile = await ctx.db
+          .query("userProfile")
+          .withIndex("by_userId", (q) => q.eq("userId", staff.userId))
+          .first();
+        return { staffId: staff._id, avatarConfig: profile?.avatarConfig };
+      }),
+    );
 
     return results;
   },
@@ -398,4 +392,3 @@ export const getResolvedSchedule = orgQuery({
     });
   },
 });
-

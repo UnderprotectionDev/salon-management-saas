@@ -48,7 +48,9 @@ export function VariantOptionsEditor({
   if (optionKeys.length !== options.length) {
     const newKeys: number[] = [];
     for (let i = 0; i < options.length; i++) {
-      newKeys.push(i < optionKeys.length ? optionKeys[i] : idCounterRef.current++);
+      newKeys.push(
+        i < optionKeys.length ? optionKeys[i] : idCounterRef.current++,
+      );
     }
     setOptionKeys(newKeys);
   }
@@ -64,7 +66,8 @@ export function VariantOptionsEditor({
     if (variantStockMap) {
       const option = options[index];
       for (const val of option.values) {
-        const stock = variantStockMap.get(variantStockKey(option.name, val)) ?? 0;
+        const stock =
+          variantStockMap.get(variantStockKey(option.name, val)) ?? 0;
         if (stock > 0) return; // blocked
       }
     }
@@ -89,7 +92,10 @@ export function VariantOptionsEditor({
     if (preset.id === "custom") {
       updated[index] = { name: "", values: [] };
     } else {
-      updated[index] = { name: preset.label, values: [...preset.defaultValues] };
+      updated[index] = {
+        name: preset.label,
+        values: [...preset.defaultValues],
+      };
     }
     onChange(updated);
   };
@@ -121,7 +127,8 @@ export function VariantOptionsEditor({
 
     // In edit mode, check stock
     if (variantStockMap) {
-      const stock = variantStockMap.get(variantStockKey(option.name, value)) ?? 0;
+      const stock =
+        variantStockMap.get(variantStockKey(option.name, value)) ?? 0;
       if (stock > 0) return; // blocked
     }
 
@@ -138,7 +145,8 @@ export function VariantOptionsEditor({
     if (!variantStockMap) return false;
     const option = options[index];
     return option.values.some(
-      (val) => (variantStockMap.get(variantStockKey(option.name, val)) ?? 0) > 0,
+      (val) =>
+        (variantStockMap.get(variantStockKey(option.name, val)) ?? 0) > 0,
     );
   };
 
@@ -159,7 +167,10 @@ export function VariantOptionsEditor({
   return (
     <div className="space-y-4">
       {options.map((option, index) => (
-        <div key={optionKeys[index] ?? index} className="rounded-lg border p-4 space-y-3">
+        <div
+          key={optionKeys[index] ?? index}
+          className="rounded-lg border p-4 space-y-3"
+        >
           <div className="flex items-center gap-2">
             {/* Preset selector */}
             <div className="w-[140px] shrink-0">
@@ -312,8 +323,8 @@ export function VariantOptionsEditor({
 
       {totalCombinations > 0 && (
         <p className="text-xs text-muted-foreground text-center">
-          {totalCombinations} variant{totalCombinations !== 1 ? "s" : ""} will be
-          generated
+          {totalCombinations} variant{totalCombinations !== 1 ? "s" : ""} will
+          be generated
           {totalCombinations > 100 && (
             <span className="text-destructive font-medium">
               {" "}

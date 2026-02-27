@@ -187,9 +187,9 @@ Story 1 (Schema) ──┬── Story 2 (Credits) ──┬── Story 12 (Cre
 
 ## Story Summary
 
-| Sub-milestone | Stories | Description |
-| ------------- | ------- | ----------- |
-| **10A** | 5 | Schema + constants, credits, design catalog, onboarding + nav, catalog UI |
-| **10B** | 9 | Photo analysis, multi-image, quick questions, try-on BE/UI, comparison, credit purchase, mood board, gallery |
-| **10C** | 3 | Care schedule, staff prep view, org credit management |
-| **Total** | **17** | |
+| Sub-milestone | Stories | Description                                                                                                  |
+| ------------- | ------- | ------------------------------------------------------------------------------------------------------------ |
+| **10A**       | 5       | Schema + constants, credits, design catalog, onboarding + nav, catalog UI                                    |
+| **10B**       | 9       | Photo analysis, multi-image, quick questions, try-on BE/UI, comparison, credit purchase, mood board, gallery |
+| **10C**       | 3       | Care schedule, staff prep view, org credit management                                                        |
+| **Total**     | **17**  |                                                                                                              |

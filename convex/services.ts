@@ -489,4 +489,3 @@ export const assignStaff = ownerMutation({
     return true;
   },
 });
-

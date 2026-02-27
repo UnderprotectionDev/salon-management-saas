@@ -16,7 +16,15 @@ export const listByProduct = ownerQuery({
   },
   returns: v.array(priceHistoryWithStaffValidator),
   handler: async (ctx, args) => {
-    const sanitizedLimit = Math.min(Math.max(1, Math.floor(args.limit ?? 20)), 100);
+    const product = await ctx.db.get(args.productId);
+    if (!product || product.organizationId !== ctx.organizationId) {
+      return [];
+    }
+
+    const sanitizedLimit = Math.min(
+      Math.max(1, Math.floor(args.limit ?? 20)),
+      100,
+    );
     const entries = await ctx.db
       .query("priceHistory")
       .withIndex("by_product", (q) => q.eq("productId", args.productId))

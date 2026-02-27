@@ -1,11 +1,11 @@
-"use client"
+"use client";
 
-import { HTMLAttributes, memo, ReactNode, useMemo } from "react"
-import { useDataGrid } from "@/components/reui/data-grid/data-grid"
-import { Column } from "@tanstack/react-table"
+import { HTMLAttributes, memo, ReactNode, useMemo } from "react";
+import { useDataGrid } from "@/components/reui/data-grid/data-grid";
+import { Column } from "@tanstack/react-table";
 
-import { cn } from "@/lib/utils"
-import { Button } from "@/components/ui/button"
+import { cn } from "@/lib/utils";
+import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
   DropdownMenuCheckboxItem,
@@ -18,19 +18,27 @@ import {
   DropdownMenuSubContent,
   DropdownMenuSubTrigger,
   DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu"
-import { ArrowDownIcon, ArrowUpIcon, ChevronsUpDownIcon, CheckIcon, ArrowLeftToLineIcon, ArrowRightToLineIcon, ArrowLeftIcon, ArrowRightIcon, Settings2Icon, PinOffIcon } from "lucide-react"
+} from "@/components/ui/dropdown-menu";
+import {
+  ArrowDownIcon,
+  ArrowUpIcon,
+  ChevronsUpDownIcon,
+  CheckIcon,
+  ArrowLeftToLineIcon,
+  ArrowRightToLineIcon,
+  ArrowLeftIcon,
+  ArrowRightIcon,
+  Settings2Icon,
+  PinOffIcon,
+} from "lucide-react";
 
-interface DataGridColumnHeaderProps<
-  TData,
-  TValue,
-> extends HTMLAttributes<HTMLDivElement> {
-  column: Column<TData, TValue>
-  title?: string
-  icon?: ReactNode
-  pinnable?: boolean
-  filter?: ReactNode
-  visibility?: boolean
+interface DataGridColumnHeaderProps<TData, TValue>
+  extends HTMLAttributes<HTMLDivElement> {
+  column: Column<TData, TValue>;
+  title?: string;
+  icon?: ReactNode;
+  filter?: ReactNode;
+  visibility?: boolean;
 }
 
 function DataGridColumnHeaderInner<TData, TValue>({
@@ -41,39 +49,39 @@ function DataGridColumnHeaderInner<TData, TValue>({
   filter,
   visibility = false,
 }: DataGridColumnHeaderProps<TData, TValue>) {
-  const { isLoading, table, props, recordCount } = useDataGrid()
+  const { isLoading, table, props, recordCount } = useDataGrid();
 
-  const columnOrder = table.getState().columnOrder
-  const columnVisibilityKey = JSON.stringify(table.getState().columnVisibility)
-  const isSorted = column.getIsSorted()
-  const isPinned = column.getIsPinned()
-  const canSort = column.getCanSort()
-  const canPin = column.getCanPin()
-  const canResize = column.getCanResize()
+  const columnOrder = table.getState().columnOrder;
+  const columnVisibilityKey = JSON.stringify(table.getState().columnVisibility);
+  const isSorted = column.getIsSorted();
+  const isPinned = column.getIsPinned();
+  const canSort = column.getCanSort();
+  const canPin = column.getCanPin();
+  const canResize = column.getCanResize();
 
-  const columnIndex = columnOrder.indexOf(column.id)
-  const canMoveLeft = columnIndex > 0
-  const canMoveRight = columnIndex >= 0 && columnIndex < columnOrder.length - 1
+  const columnIndex = columnOrder.indexOf(column.id);
+  const canMoveLeft = columnIndex > 0;
+  const canMoveRight = columnIndex >= 0 && columnIndex < columnOrder.length - 1;
 
   const handleSort = () => {
     if (isSorted === "asc") {
-      column.toggleSorting(true)
+      column.toggleSorting(true);
     } else if (isSorted === "desc") {
-      column.clearSorting()
+      column.clearSorting();
     } else {
-      column.toggleSorting(false)
+      column.toggleSorting(false);
     }
-  }
+  };
 
   const headerLabelClassName = cn(
     "text-secondary-foreground/80 inline-flex h-full items-center gap-1.5 font-normal [&_svg]:opacity-60 text-[0.8125rem] leading-[calc(1.125/0.8125)] [&_svg]:size-3.5",
-    className
-  )
+    className,
+  );
 
   const headerButtonClassName = cn(
     "text-secondary-foreground/80 hover:bg-secondary data-[state=open]:bg-secondary hover:text-foreground data-[state=open]:text-foreground -ms-2 px-2 font-normal h-6 rounded-lg",
-    className
-  )
+    className,
+  );
 
   const sortIcon =
     canSort &&
@@ -83,41 +91,41 @@ function DataGridColumnHeaderInner<TData, TValue>({
       <ArrowUpIcon className="size-3.25" />
     ) : (
       <ChevronsUpDownIcon className="mt-px size-3.25" />
-    ))
+    ));
 
   const hasControls =
     props.tableLayout?.columnsMovable ||
     (props.tableLayout?.columnsVisibility && visibility) ||
     (props.tableLayout?.columnsPinnable && canPin) ||
-    filter
+    filter;
 
   const menuItems = useMemo(() => {
-    const items: ReactNode[] = []
-    let hasPreviousSection = false
+    const items: ReactNode[] = [];
+    let hasPreviousSection = false;
 
     // Filter section
     if (filter) {
       items.push(
         <DropdownMenuGroup key="group-filter">
           <DropdownMenuLabel key="filter">{filter}</DropdownMenuLabel>
-        </DropdownMenuGroup>
-      )
-      hasPreviousSection = true
+        </DropdownMenuGroup>,
+      );
+      hasPreviousSection = true;
     }
 
     // Sort section
     if (canSort) {
       if (hasPreviousSection) {
-        items.push(<DropdownMenuSeparator key="sep-sort" />)
+        items.push(<DropdownMenuSeparator key="sep-sort" />);
       }
       items.push(
         <DropdownMenuItem
           key="sort-asc"
           onClick={() => {
             if (isSorted === "asc") {
-              column.clearSorting()
+              column.clearSorting();
             } else {
-              column.toggleSorting(false)
+              column.toggleSorting(false);
             }
           }}
           disabled={!canSort}
@@ -132,9 +140,9 @@ function DataGridColumnHeaderInner<TData, TValue>({
           key="sort-desc"
           onClick={() => {
             if (isSorted === "desc") {
-              column.clearSorting()
+              column.clearSorting();
             } else {
-              column.toggleSorting(true)
+              column.toggleSorting(true);
             }
           }}
           disabled={!canSort}
@@ -144,15 +152,15 @@ function DataGridColumnHeaderInner<TData, TValue>({
           {isSorted === "desc" && (
             <CheckIcon className="text-primary size-4 opacity-100!" />
           )}
-        </DropdownMenuItem>
-      )
-      hasPreviousSection = true
+        </DropdownMenuItem>,
+      );
+      hasPreviousSection = true;
     }
 
     // Pin section
     if (props.tableLayout?.columnsPinnable && canPin) {
       if (hasPreviousSection) {
-        items.push(<DropdownMenuSeparator key="sep-pin" />)
+        items.push(<DropdownMenuSeparator key="sep-pin" />);
       }
       items.push(
         <DropdownMenuItem
@@ -174,25 +182,25 @@ function DataGridColumnHeaderInner<TData, TValue>({
           {isPinned === "right" && (
             <CheckIcon className="text-primary size-4 opacity-100!" />
           )}
-        </DropdownMenuItem>
-      )
-      hasPreviousSection = true
+        </DropdownMenuItem>,
+      );
+      hasPreviousSection = true;
     }
 
     // Move section
     if (props.tableLayout?.columnsMovable) {
       if (hasPreviousSection) {
-        items.push(<DropdownMenuSeparator key="sep-move" />)
+        items.push(<DropdownMenuSeparator key="sep-move" />);
       }
       items.push(
         <DropdownMenuItem
           key="move-left"
           onClick={() => {
             if (columnIndex > 0) {
-              const newOrder = [...columnOrder]
-              const [movedColumn] = newOrder.splice(columnIndex, 1)
-              newOrder.splice(columnIndex - 1, 0, movedColumn)
-              table.setColumnOrder(newOrder)
+              const newOrder = [...columnOrder];
+              const [movedColumn] = newOrder.splice(columnIndex, 1);
+              newOrder.splice(columnIndex - 1, 0, movedColumn);
+              table.setColumnOrder(newOrder);
             }
           }}
           disabled={!canMoveLeft || isPinned !== false}
@@ -204,25 +212,25 @@ function DataGridColumnHeaderInner<TData, TValue>({
           key="move-right"
           onClick={() => {
             if (columnIndex < columnOrder.length - 1) {
-              const newOrder = [...columnOrder]
-              const [movedColumn] = newOrder.splice(columnIndex, 1)
-              newOrder.splice(columnIndex + 1, 0, movedColumn)
-              table.setColumnOrder(newOrder)
+              const newOrder = [...columnOrder];
+              const [movedColumn] = newOrder.splice(columnIndex, 1);
+              newOrder.splice(columnIndex + 1, 0, movedColumn);
+              table.setColumnOrder(newOrder);
             }
           }}
           disabled={!canMoveRight || isPinned !== false}
         >
           <ArrowRightIcon className="size-3.5!" aria-hidden="true" />
           <span>Move to Right</span>
-        </DropdownMenuItem>
-      )
-      hasPreviousSection = true
+        </DropdownMenuItem>,
+      );
+      hasPreviousSection = true;
     }
 
     // Visibility section
     if (props.tableLayout?.columnsVisibility && visibility) {
       if (hasPreviousSection) {
-        items.push(<DropdownMenuSeparator key="sep-visibility" />)
+        items.push(<DropdownMenuSeparator key="sep-visibility" />);
       }
       items.push(
         <DropdownMenuSub key="visibility">
@@ -235,7 +243,7 @@ function DataGridColumnHeaderInner<TData, TValue>({
               .getAllColumns()
               .filter(
                 (col) =>
-                  typeof col.accessorFn !== "undefined" && col.getCanHide()
+                  typeof col.accessorFn !== "undefined" && col.getCanHide(),
               )
               .map((col) => (
                 <DropdownMenuCheckboxItem
@@ -249,11 +257,11 @@ function DataGridColumnHeaderInner<TData, TValue>({
                 </DropdownMenuCheckboxItem>
               ))}
           </DropdownMenuSubContent>
-        </DropdownMenuSub>
-      )
+        </DropdownMenuSub>,
+      );
     }
 
-    return items
+    return items;
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
     filter,
@@ -272,7 +280,7 @@ function DataGridColumnHeaderInner<TData, TValue>({
     columnIndex,
     columnOrder,
     columnVisibilityKey, // Needed to update checkbox states when visibility changes
-  ])
+  ]);
 
   if (hasControls) {
     return (
@@ -306,7 +314,7 @@ function DataGridColumnHeaderInner<TData, TValue>({
           </Button>
         )}
       </div>
-    )
+    );
   }
 
   if (canSort || (props.tableLayout?.columnsResizable && canResize)) {
@@ -323,7 +331,7 @@ function DataGridColumnHeaderInner<TData, TValue>({
           {sortIcon}
         </Button>
       </div>
-    )
+    );
   }
 
   return (
@@ -331,11 +339,11 @@ function DataGridColumnHeaderInner<TData, TValue>({
       {icon && icon}
       {title}
     </div>
-  )
+  );
 }
 
 const DataGridColumnHeader = memo(
-  DataGridColumnHeaderInner
-) as typeof DataGridColumnHeaderInner
+  DataGridColumnHeaderInner,
+) as typeof DataGridColumnHeaderInner;
 
-export { DataGridColumnHeader, type DataGridColumnHeaderProps }
+export { DataGridColumnHeader, type DataGridColumnHeaderProps };

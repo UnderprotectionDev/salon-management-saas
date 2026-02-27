@@ -133,4 +133,3 @@ export const listMyMoodBoard = authedQuery({
       .take(limit);
   },
 });
-

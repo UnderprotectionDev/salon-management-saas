@@ -16,13 +16,16 @@ export function StockIndicatorBar({
   const color =
     qty === 0
       ? "bg-destructive"
-      : lowStockThreshold !== undefined && lowStockThreshold > 0 && qty <= lowStockThreshold
+      : lowStockThreshold !== undefined &&
+          lowStockThreshold > 0 &&
+          qty <= lowStockThreshold
         ? "bg-amber-500"
         : "bg-emerald-500";
 
-  const safeThreshold = lowStockThreshold !== undefined && lowStockThreshold > 0
-    ? lowStockThreshold
-    : undefined;
+  const safeThreshold =
+    lowStockThreshold !== undefined && lowStockThreshold > 0
+      ? lowStockThreshold
+      : undefined;
 
   return (
     <div className={`h-[3px] w-full rounded-full bg-muted ${className ?? ""}`}>

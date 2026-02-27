@@ -29,6 +29,7 @@ export function canModifyAppointment(
   const hours = Math.floor(startTime / 60);
   const minutes = startTime % 60;
   const appointmentEpoch = Date.UTC(year, month - 1, day, hours, minutes);
-  const policyBefore = appointmentEpoch - cancellationPolicyHours * 60 * 60 * 1000;
+  const policyBefore =
+    appointmentEpoch - cancellationPolicyHours * 60 * 60 * 1000;
   return Date.now() < policyBefore;
 }

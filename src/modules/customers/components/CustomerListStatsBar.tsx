@@ -34,7 +34,9 @@ export function CustomerListStatsBar({
         <span>Total</span>
       </div>
 
-      <span className="text-muted-foreground/40 mx-2" aria-hidden="true">|</span>
+      <span className="text-muted-foreground/40 mx-2" aria-hidden="true">
+        |
+      </span>
 
       <div className="flex items-center gap-1.5 text-muted-foreground">
         <UserPlus className="size-3.5" />
@@ -44,7 +46,9 @@ export function CustomerListStatsBar({
         <span>New This Month</span>
       </div>
 
-      <span className="text-muted-foreground/40 mx-2" aria-hidden="true">|</span>
+      <span className="text-muted-foreground/40 mx-2" aria-hidden="true">
+        |
+      </span>
 
       <div className="flex items-center gap-1.5 text-muted-foreground">
         <Activity className="size-3.5" />
@@ -54,7 +58,9 @@ export function CustomerListStatsBar({
         <span>Active (90d)</span>
       </div>
 
-      <span className="text-muted-foreground/40 mx-2" aria-hidden="true">|</span>
+      <span className="text-muted-foreground/40 mx-2" aria-hidden="true">
+        |
+      </span>
 
       <div className="flex items-center gap-1.5 text-muted-foreground">
         <DollarSign className="size-3.5" />

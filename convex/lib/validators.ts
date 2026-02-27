@@ -1275,3 +1275,134 @@ export const setupProgressValidator = v.object({
   items: v.array(setupProgressItemValidator),
   dismissed: v.boolean(),
 });
+
+// =============================================================================
+// Financial Management Validators (M12)
+// =============================================================================
+
+/** Expense category */
+export const expenseCategoryValidator = literals(
+  "rent",
+  "utilities",
+  "salaries",
+  "supplies",
+  "equipment",
+  "marketing",
+  "insurance",
+  "maintenance",
+  "cleaning",
+  "software",
+  "training",
+  "taxes",
+  "other",
+);
+
+/** Payment method */
+export const paymentMethodValidator = literals(
+  "cash",
+  "credit",
+  "debit",
+  "transfer",
+  "mobile",
+  "gift_card",
+);
+
+/** Recurrence type */
+export const recurrenceValidator = literals(
+  "one_time",
+  "weekly",
+  "monthly",
+  "yearly",
+);
+
+/** Approval status */
+export const approvalStatusValidator = literals("pending", "approved");
+
+/** Additional revenue type */
+export const additionalRevenueTypeValidator = literals(
+  "product_sale",
+  "gift_card",
+  "tip",
+  "other",
+);
+
+/** Gift card status */
+export const giftCardStatusValidator = literals("active", "used", "expired");
+
+/** Commission model */
+export const commissionModelValidator = literals("fixed", "tiered");
+
+/** Commission tier */
+export const commissionTierValidator = v.object({
+  minRevenue: v.number(),
+  maxRevenue: v.optional(v.number()),
+  rate: v.number(),
+});
+
+// --- Document validators ---
+
+/** Expense document validator */
+export const expenseDocValidator = vv.doc("expenses");
+
+/** Additional revenue document validator */
+export const additionalRevenueDocValidator = vv.doc("additionalRevenue");
+
+/** Gift card document validator */
+export const giftCardDocValidator = vv.doc("giftCards");
+
+/** Daily closing document validator */
+export const dailyClosingDocValidator = vv.doc("dailyClosing");
+
+/** Daily closing virtual (non-persisted) record validator — _id is empty string */
+export const dailyClosingVirtualValidator = v.object({
+  _id: v.string(),
+  _creationTime: v.number(),
+  organizationId: v.id("organization"),
+  date: v.string(),
+  openingBalance: v.number(),
+  revenueCash: v.number(),
+  revenueCard: v.number(),
+  revenueTransfer: v.number(),
+  revenueMobile: v.number(),
+  revenueGiftCard: v.number(),
+  totalRevenue: v.number(),
+  totalExpenses: v.number(),
+  calculatedClosingBalance: v.number(),
+  actualCashCount: v.optional(v.number()),
+  variance: v.optional(v.number()),
+  isClosed: v.boolean(),
+  closedAt: v.optional(v.number()),
+  closedBy: v.optional(v.id("staff")),
+});
+
+/** Commission settings document validator */
+export const commissionSettingsDocValidator = vv.doc("commissionSettings");
+
+// --- Composite validators ---
+
+/** Commission payout (computed per staff) */
+export const commissionPayoutValidator = v.object({
+  staffId: v.id("staff"),
+  staffName: v.string(),
+  totalRevenue: v.number(),
+  commissionRate: v.number(),
+  commissionAmount: v.number(),
+  model: commissionModelValidator,
+});
+
+/** Financial dashboard stats */
+export const financialDashboardValidator = v.object({
+  totalRevenue: v.number(),
+  totalExpenses: v.number(),
+  netProfitLoss: v.number(),
+  profitMargin: v.number(),
+  dailyAvgRevenue: v.number(),
+  cashFlow: v.number(),
+  monthlyChart: v.array(
+    v.object({
+      month: v.string(),
+      revenue: v.number(),
+      expenses: v.number(),
+    }),
+  ),
+});

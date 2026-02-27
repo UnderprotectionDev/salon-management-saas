@@ -79,7 +79,10 @@ export function BulkCategoryDialog({
   };
 
   return (
-    <Dialog open={open} onOpenChange={(o) => !o && !isSubmitting && handleClose()}>
+    <Dialog
+      open={open}
+      onOpenChange={(o) => !o && !isSubmitting && handleClose()}
+    >
       <DialogContent className="sm:max-w-[380px]">
         <DialogHeader>
           <DialogTitle>
@@ -96,7 +99,11 @@ export function BulkCategoryDialog({
             disabled={categories === undefined}
           >
             <SelectTrigger aria-labelledby="bulk-category-label">
-              <SelectValue placeholder={categories === undefined ? "Loading..." : "Select category"} />
+              <SelectValue
+                placeholder={
+                  categories === undefined ? "Loading..." : "Select category"
+                }
+              />
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="none">Uncategorized</SelectItem>
@@ -110,7 +117,11 @@ export function BulkCategoryDialog({
         </div>
 
         <DialogFooter>
-          <Button variant="outline" onClick={handleClose} disabled={isSubmitting}>
+          <Button
+            variant="outline"
+            onClick={handleClose}
+            disabled={isSubmitting}
+          >
             Cancel
           </Button>
           <Button onClick={handleSubmit} disabled={isSubmitting}>

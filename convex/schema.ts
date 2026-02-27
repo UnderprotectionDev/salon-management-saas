@@ -518,7 +518,7 @@ export default defineSchema({
     customerNotes: v.optional(v.string()),
     staffNotes: v.optional(v.string()),
     notificationReminderSentAt: v.optional(v.number()), // 30-min in-app reminder
-    reminderSentAt: v.optional(v.number()), // Email/SMS reminder sent timestamp
+
     confirmationSentAt: v.optional(v.number()),
     // Reschedule tracking
     rescheduledAt: v.optional(v.number()),
@@ -1234,4 +1234,163 @@ export default defineSchema({
     .index("by_org_category", ["organizationId", "category"])
     .index("by_org_status", ["organizationId", "status"])
     .index("by_org_staff", ["organizationId", "createdByStaffId"]),
+
+  // =========================================================================
+  // Financial Management (M12)
+  // =========================================================================
+
+  // Expenses — salon operating expenses
+  expenses: defineTable({
+    organizationId: v.id("organization"),
+    date: v.string(), // "YYYY-MM-DD"
+    category: v.string(), // 13 predefined categories
+    subcategory: v.optional(v.string()),
+    amount: v.number(), // kuruş integers
+    paymentMethod: v.union(
+      v.literal("cash"),
+      v.literal("credit"),
+      v.literal("debit"),
+      v.literal("transfer"),
+      v.literal("mobile"),
+      v.literal("gift_card"),
+    ),
+    description: v.optional(v.string()),
+    recurrence: v.union(
+      v.literal("one_time"),
+      v.literal("weekly"),
+      v.literal("monthly"),
+      v.literal("yearly"),
+    ),
+    vendor: v.optional(v.string()),
+    invoiceNumber: v.optional(v.string()),
+    receiptStorageId: v.optional(v.id("_storage")),
+    taxIncluded: v.boolean(),
+    approvalStatus: v.union(v.literal("pending"), v.literal("approved")),
+    createdBy: v.id("staff"),
+    recurringParentId: v.optional(v.id("expenses")),
+  })
+    .index("by_org_date", ["organizationId", "date"])
+    .index("by_org_category", ["organizationId", "category"])
+    .index("by_org_approval", ["organizationId", "approvalStatus"])
+    .index("by_org_recurrence", ["organizationId", "recurrence"]),
+
+  // Additional Revenue — non-appointment income (tips, product sales, etc.)
+  additionalRevenue: defineTable({
+    organizationId: v.id("organization"),
+    date: v.string(), // "YYYY-MM-DD"
+    type: v.union(
+      v.literal("product_sale"),
+      v.literal("gift_card"),
+      v.literal("tip"),
+      v.literal("other"),
+    ),
+    amount: v.number(), // kuruş
+    paymentMethod: v.union(
+      v.literal("cash"),
+      v.literal("credit"),
+      v.literal("debit"),
+      v.literal("transfer"),
+      v.literal("mobile"),
+      v.literal("gift_card"),
+    ),
+    staffId: v.optional(v.id("staff")),
+    customerId: v.optional(v.id("customers")),
+    description: v.optional(v.string()),
+  })
+    .index("by_org_date", ["organizationId", "date"])
+    .index("by_org_type", ["organizationId", "type"])
+    .index("by_org_staff", ["organizationId", "staffId"]),
+
+  // Gift Cards — salon gift card management
+  giftCards: defineTable({
+    organizationId: v.id("organization"),
+    code: v.string(),
+    purchaseDate: v.string(), // "YYYY-MM-DD"
+    purchaserName: v.optional(v.string()),
+    amount: v.number(), // kuruş — original value
+    remainingBalance: v.number(), // kuruş
+    status: v.union(
+      v.literal("active"),
+      v.literal("used"),
+      v.literal("expired"),
+    ),
+    expiryDate: v.optional(v.string()), // "YYYY-MM-DD"
+    lastUsedDate: v.optional(v.string()),
+    notes: v.optional(v.string()),
+  })
+    .index("by_org", ["organizationId"])
+    .index("by_org_code", ["organizationId", "code"])
+    .index("by_org_status", ["organizationId", "status"])
+    .index("by_status", ["status"]),
+
+  // Daily Closing — end-of-day cash reconciliation
+  dailyClosing: defineTable({
+    organizationId: v.id("organization"),
+    date: v.string(), // "YYYY-MM-DD" — unique per org
+    openingBalance: v.number(), // kuruş — previous day's closing
+    revenueCash: v.number(),
+    revenueCard: v.number(),
+    revenueTransfer: v.number(),
+    revenueMobile: v.number(),
+    revenueGiftCard: v.number(),
+    totalRevenue: v.number(),
+    totalExpenses: v.number(),
+    calculatedClosingBalance: v.number(),
+    actualCashCount: v.optional(v.number()),
+    variance: v.optional(v.number()), // actual - calculated
+    isClosed: v.boolean(),
+    closedAt: v.optional(v.number()),
+    closedBy: v.optional(v.id("staff")),
+  })
+    .index("by_org_date", ["organizationId", "date"])
+    .index("by_org_closed", ["organizationId", "isClosed"]),
+
+  // Spreadsheet Sheets — user-created freeform sheets
+  spreadsheetSheets: defineTable({
+    organizationId: v.id("organization"),
+    name: v.string(),
+    order: v.number(),
+    columnCount: v.optional(v.number()),
+    rowCount: v.optional(v.number()),
+  }).index("by_org", ["organizationId"]),
+
+  // Spreadsheet Cells — cell data for freeform sheets
+  spreadsheetCells: defineTable({
+    organizationId: v.id("organization"),
+    sheetId: v.id("spreadsheetSheets"),
+    cellRef: v.string(), // "A1", "B2", etc.
+    value: v.string(),
+    bold: v.optional(v.boolean()),
+    italic: v.optional(v.boolean()),
+    underline: v.optional(v.boolean()),
+    align: v.optional(
+      v.union(v.literal("left"), v.literal("center"), v.literal("right")),
+    ),
+    fontSize: v.optional(v.string()),
+    fontFamily: v.optional(v.string()),
+    bgColor: v.optional(v.string()),
+    textColor: v.optional(v.string()),
+    numberFormat: v.optional(v.string()),
+  })
+    .index("by_sheet", ["sheetId"])
+    .index("by_org_sheet", ["organizationId", "sheetId"]),
+
+  // Commission Settings — per-staff commission configuration
+  commissionSettings: defineTable({
+    organizationId: v.id("organization"),
+    staffId: v.id("staff"),
+    model: v.union(v.literal("fixed"), v.literal("tiered")),
+    fixedRate: v.optional(v.number()), // Percentage (40 = 40%)
+    tiers: v.optional(
+      v.array(
+        v.object({
+          minRevenue: v.number(), // kuruş
+          maxRevenue: v.optional(v.number()),
+          rate: v.number(), // percentage
+        }),
+      ),
+    ),
+  })
+    .index("by_org", ["organizationId"])
+    .index("by_org_staff", ["organizationId", "staffId"]),
 });

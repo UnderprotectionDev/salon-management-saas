@@ -12,6 +12,9 @@
 - **Schedule resolution:** `convex/lib/scheduleResolver.ts` merges default schedule + overrides + overtime.
 - **Slot locks:** Temporary locks (2-min TTL, cleaned up by cron) prevent double-booking.
 - **Date ranges:** Use index range queries (`.gte()/.lte()`) instead of per-day loops.
+- **Financial amounts:** All in kuruş integers (same as pricing). Gift card codes: 8-char alphanumeric.
+- **Daily closing:** Once closed, expenses/revenue for that date become immutable. Virtual record computed until formally closed.
+- **Commission:** Computed read-only from completed appointments. Rates configured per-staff (fixed % or tiered).
 
 ## Scheduled Jobs (Crons)
 
@@ -27,6 +30,8 @@ Defined in `convex/crons.ts`:
 | Every 1 hour | `polarSync.syncProducts` | Sync products from Polar |
 | Every 1 hour | `invitations.expireOldInvitations` | Expire old pending invitations |
 | Every Monday 9 AM UTC | `aiCareSchedules.checkAndNotify` | Send care schedule reminder emails |
+| Daily 1 AM UTC | `expenses.generateRecurring` | Auto-generate recurring expense entries |
+| Daily 2 AM UTC | `giftCards.expireOld` | Mark expired gift cards |
 
 ## Email System
 
