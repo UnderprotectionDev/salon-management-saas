@@ -283,7 +283,11 @@ export function DayView({
         {activeAppt ? (
           <AppointmentBlockOverlay
             appointment={activeAppt}
-            staffColor={activeAppt.staffId ? staffColorMap?.get(activeAppt.staffId) : undefined}
+            staffColor={
+              activeAppt.staffId
+                ? staffColorMap?.get(activeAppt.staffId)
+                : undefined
+            }
           />
         ) : null}
       </DragOverlay>

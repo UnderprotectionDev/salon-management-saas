@@ -58,14 +58,17 @@ export function AddCategoryPopover({
         if (existing) {
           setName("");
           setOpen(false);
-          toast.info(`"${existing.name}" already exists — selected automatically`);
+          toast.info(
+            `"${existing.name}" already exists — selected automatically`,
+          );
           onCreated?.(existing._id);
           return;
         }
       }
       const message =
         error instanceof ConvexError
-          ? (error.data as { message?: string })?.message ?? "Failed to create category"
+          ? ((error.data as { message?: string })?.message ??
+            "Failed to create category")
           : error instanceof Error
             ? error.message
             : "Failed to create category";

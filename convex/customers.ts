@@ -182,7 +182,8 @@ export const getListStats = orgQuery({
       (sum, c) => sum + (c.totalSpent ?? 0),
       0,
     );
-    const averageSpend = totalCustomers > 0 ? Math.round(totalSpent / totalCustomers) : 0;
+    const averageSpend =
+      totalCustomers > 0 ? Math.round(totalSpent / totalCustomers) : 0;
 
     return { totalCustomers, newThisMonth, activeCustomers, averageSpend };
   },

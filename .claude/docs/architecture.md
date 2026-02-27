@@ -16,6 +16,12 @@ convex/                  # Backend functions and schema
 ├── admin.ts             # SuperAdmin platform management
 ├── reports.ts           # Revenue, staff performance, customer analytics
 ├── products.ts          # Product CRUD + adjustStock + countLowStock + listPublic
+├── expenses.ts          # Expense CRUD + bulkDelete + recurring generation
+├── additionalRevenue.ts # Non-appointment revenue CRUD
+├── giftCards.ts         # Gift card CRUD + redeem + auto-expire
+├── dailyClosing.ts      # Daily cash reconciliation + close day
+├── commissionSettings.ts # Per-staff commission configuration
+├── financials.ts        # Financial dashboard stats + commission report
 └── *.ts                 # Domain functions (organizations, staff, members, services, customers, etc.)
 
 src/
@@ -37,6 +43,7 @@ src/
     ├── billing/         # Subscription plans, grace period banner
     ├── products/        # Product catalog, inventory management
     ├── reports/         # Revenue, staff, customer reports
+    ├── financials/      # Expense/revenue spreadsheets, gift cards, commissions, daily closing
     ├── services/        # Service catalog, categories, pricing
     ├── customers/       # Customer database, search, merge
     ├── staff/           # Staff management
@@ -55,7 +62,7 @@ src/
 - `dashboard/` — Redirects to user's active organization dashboard
 - `/` — Salon directory (public listing)
 
-**Sidebar Navigation:** Dashboard, Calendar, Staff, Appointments, Services, Customers, Products, Reports, AI, Settings, Billing
+**Sidebar Navigation:** Dashboard, Calendar, Staff, Appointments, Services, Customers, Products, Reports, Financials, AI, Settings, Billing
 
 **User Flow:** Sign in → No orgs? → `/onboarding` → Create org → `/{slug}/dashboard`
 **Public Booking:** `/{slug}/book` → Select services → Pick time → Enter info → Confirmation code

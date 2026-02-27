@@ -25,6 +25,7 @@
     "@dnd-kit/utilities": "^3.2.2",
     "@hookform/resolvers": "^5.2.2",
     "@icons-pack/react-simple-icons": "^13.11.2",
+    "@ikhrustalev/convex-debouncer": "^0.1.0",
     "@react-email/components": "^1.0.7",
     "@tanstack/react-form": "^1.28.0",
     "@tanstack/react-table": "^8.21.3",

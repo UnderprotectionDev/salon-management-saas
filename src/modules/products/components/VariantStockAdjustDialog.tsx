@@ -88,11 +88,15 @@ export function VariantStockAdjustDialog({
 
     // Warn if reason doesn't match direction
     if (reason === "restock" && diff < 0) {
-      toast.error("Restock should increase stock. Use 'Report Damage' or 'Count Correction' instead.");
+      toast.error(
+        "Restock should increase stock. Use 'Report Damage' or 'Count Correction' instead.",
+      );
       return;
     }
     if (reason === "waste" && diff > 0) {
-      toast.error("Report Damage should decrease stock. Use 'Restock Inventory' instead.");
+      toast.error(
+        "Report Damage should decrease stock. Use 'Restock Inventory' instead.",
+      );
       return;
     }
 

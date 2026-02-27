@@ -88,6 +88,15 @@
   --info-foreground: var(--color-violet-900);
   --warning: var(--color-yellow-500);
   --warning-foreground: var(--color-yellow-900);
+  --sheet-header: #f3f3f3;
+  --sheet-grid: #d6d6d6;
+  --sheet-active-ring: #217346;
+  --sheet-selection: oklch(0.93 0.05 255);
+  --sheet-selection-anchor: oklch(0.96 0.03 255);
+  --sheet-header-active: #217346;
+  --sheet-row-hover: oklch(0.985 0 0);
+  --sheet-edit-shadow: 0 2px 8px rgba(0, 0, 0, 0.12);
+  --sheet-cell-bg: #ffffff;
   --invert: var(--color-zinc-900);
   --invert-foreground: var(--color-zinc-50);
 }
@@ -350,4 +359,17 @@ body {
   .onboarding-step-back {
     animation: none;
   }
+}
+
+/* Spreadsheet: force light mode regardless of dark theme */
+[data-spreadsheet-light] {
+  color-scheme: light;
+  --background: #ffffff;
+  --foreground: #09090b;
+  --muted-foreground: #71717a;
+  --border: #e4e4e7;
+  --accent: #f4f4f5;
+  --accent-foreground: #18181b;
+  --primary: #217346;
+  --destructive: #ef4444;
 }

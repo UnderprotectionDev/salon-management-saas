@@ -87,7 +87,10 @@ export function BulkPriceAdjustDialog({
   };
 
   return (
-    <Dialog open={open} onOpenChange={(o) => !o && !isSubmitting && handleClose()}>
+    <Dialog
+      open={open}
+      onOpenChange={(o) => !o && !isSubmitting && handleClose()}
+    >
       <DialogContent className="sm:max-w-[420px]">
         <DialogHeader>
           <DialogTitle>
@@ -165,7 +168,11 @@ export function BulkPriceAdjustDialog({
         </div>
 
         <DialogFooter>
-          <Button variant="outline" onClick={handleClose} disabled={isSubmitting}>
+          <Button
+            variant="outline"
+            onClick={handleClose}
+            disabled={isSubmitting}
+          >
             Cancel
           </Button>
           <Button

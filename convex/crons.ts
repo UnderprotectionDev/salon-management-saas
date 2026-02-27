@@ -59,4 +59,19 @@ crons.cron(
   {},
 );
 
+// Financial Management crons
+crons.cron(
+  "generate recurring expenses",
+  "0 1 * * *", // Daily at 01:00 UTC
+  internal.expenses.generateRecurring,
+  {},
+);
+
+crons.cron(
+  "expire old gift cards",
+  "0 2 * * *", // Daily at 02:00 UTC
+  internal.giftCards.expireOld,
+  {},
+);
+
 export default crons;

@@ -81,7 +81,9 @@ export function AgendaView({
                 const statusColors =
                   STATUS_COLORS[appt.status] ?? STATUS_COLORS.pending;
                 const duration = appt.endTime - appt.startTime;
-                const staffColor = appt.staffId ? staffColorMap?.get(appt.staffId) : undefined;
+                const staffColor = appt.staffId
+                  ? staffColorMap?.get(appt.staffId)
+                  : undefined;
 
                 return (
                   <button

@@ -38,7 +38,8 @@ export function optionsChanged(
   if (oldOptions.length !== newOptions.length) return true;
   for (let i = 0; i < oldOptions.length; i++) {
     if (oldOptions[i].name !== newOptions[i].name) return true;
-    if (oldOptions[i].values.length !== newOptions[i].values.length) return true;
+    if (oldOptions[i].values.length !== newOptions[i].values.length)
+      return true;
     for (let j = 0; j < oldOptions[i].values.length; j++) {
       if (oldOptions[i].values[j] !== newOptions[i].values[j]) return true;
     }
