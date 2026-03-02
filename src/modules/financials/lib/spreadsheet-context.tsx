@@ -2,7 +2,12 @@
 
 import { createContext, type ReactNode, useContext } from "react";
 import type { NumberFormat } from "./number-format";
-import type { CellData, CellMap } from "./spreadsheet-types";
+import type {
+  CellData,
+  CellMap,
+  ColumnWidths,
+  ContextMenuState,
+} from "./spreadsheet-types";
 
 export interface SpreadsheetContextValue {
   // Cell data
@@ -64,12 +69,11 @@ export interface SpreadsheetContextValue {
   cutSelection: () => void;
   pasteSelection: () => void;
 
-  // Read-only cells (for fixed backend tabs)
+  // Read-only cells
   readOnlyCells: Set<string>;
 
   // Column count
   columnCount: number;
-  isFixedTab: boolean;
   onAddColumn: () => void;
   onDeleteLastColumn: () => void;
 
@@ -81,6 +85,26 @@ export interface SpreadsheetContextValue {
   // Search
   searchOpen: boolean;
   setSearchOpen: (open: boolean) => void;
+
+  // Column widths
+  columnWidths: ColumnWidths;
+  setColumnWidth: (col: number, width: number) => void;
+
+  // Undo/Redo
+  undo: () => void;
+  redo: () => void;
+  canUndo: boolean;
+  canRedo: boolean;
+
+  // Context menu
+  contextMenu: ContextMenuState | null;
+  setContextMenu: (state: ContextMenuState | null) => void;
+
+  // Column filters
+  columnFilters: Record<number, Set<string>>;
+  setColumnFilter: (col: number, values: Set<string> | null) => void;
+  clearAllFilters: () => void;
+  filteredRowIndices: Set<number> | null;
 }
 
 const SpreadsheetContext = createContext<SpreadsheetContextValue | null>(null);

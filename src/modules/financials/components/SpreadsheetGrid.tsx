@@ -1,12 +1,16 @@
 "use client";
 
-import { Plus, X } from "lucide-react";
+import { ChevronDown, Plus, X } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { formatCellDisplay } from "../lib/number-format";
 import { useSpreadsheet } from "../lib/spreadsheet-context";
 import { evalFormula } from "../lib/spreadsheet-formula";
 import { GRID } from "../lib/spreadsheet-types";
 import { cellRef, colLabel } from "../lib/spreadsheet-utils";
+import { CellDropdown } from "./CellDropdown";
+import { ColumnFilterPopover } from "./ColumnFilterPopover";
+import { ColumnResizeHandle } from "./ColumnResizeHandle";
+import { GridContextMenu } from "./GridContextMenu";
 
 export function SpreadsheetGrid() {
   const {
@@ -24,12 +28,20 @@ export function SpreadsheetGrid() {
     pasteSelection,
     setSearchOpen,
     columnCount,
-    isFixedTab,
     onAddColumn,
     onDeleteLastColumn,
     rowCount,
     onAddRow,
     onDeleteLastRow,
+    columnWidths,
+    setColumnWidth,
+    undo,
+    redo,
+    contextMenu,
+    setContextMenu,
+    columnFilters,
+    setColumnFilter,
+    filteredRowIndices,
   } = useSpreadsheet();
 
   const [editingCell, setEditingCell] = useState<string | null>(null);
@@ -38,8 +50,21 @@ export function SpreadsheetGrid() {
     row: number;
     col: number;
   } | null>(null);
+  const [dropdownCell, setDropdownCell] = useState<string | null>(null);
   const editInputRef = useRef<HTMLInputElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
+
+  function getColWidth(c: number): number {
+    return columnWidths[c] ?? GRID.DEFAULT_COL_WIDTH;
+  }
+
+  function getTotalWidth(): number {
+    let total = GRID.ROW_HEADER_WIDTH;
+    for (let c = 0; c < columnCount; c++) {
+      total += getColWidth(c);
+    }
+    return total;
+  }
 
   function getSelectedCoords(): { row: number; col: number } {
     const m = selectedCell.match(/^([A-Z]+)(\d+)$/);
@@ -92,6 +117,12 @@ export function SpreadsheetGrid() {
 
   function startEditing(ref: string, initialValue?: string) {
     if (readOnlyCells.has(ref)) return;
+    // If dropdown cell, open dropdown instead
+    const cellData = cells[ref];
+    if (cellData?.cellType === "dropdown" && cellData.dropdownOptions) {
+      setDropdownCell(ref);
+      return;
+    }
     pendingInitialValue.current = initialValue;
     setEditingCell(ref);
     setEditingValue(initialValue ?? cells[ref]?.value ?? "");
@@ -100,6 +131,7 @@ export function SpreadsheetGrid() {
   function handleCellMouseDown(row: number, col: number) {
     const ref = cellRef(row, col);
     if (editingCell && editingCell !== ref) commitEdit();
+    setDropdownCell(null);
     setSelectedCell(ref);
     setDragStart({ row, col });
     setIsDragging(true);
@@ -109,7 +141,6 @@ export function SpreadsheetGrid() {
       endRow: row,
       endCol: col,
     });
-    // Bug A fix: re-focus container so keyboard nav keeps working
     containerRef.current?.focus();
   }
 
@@ -124,6 +155,19 @@ export function SpreadsheetGrid() {
     }
   }
 
+  function handleContextMenu(e: React.MouseEvent, row: number, col: number) {
+    e.preventDefault();
+    const ref = cellRef(row, col);
+    setSelectedCell(ref);
+    setContextMenu({
+      x: e.clientX,
+      y: e.clientY,
+      row,
+      col,
+      cellRef: ref,
+    });
+  }
+
   useEffect(() => {
     const up = () => setIsDragging(false);
     window.addEventListener("mouseup", up);
@@ -131,8 +175,21 @@ export function SpreadsheetGrid() {
   }, []);
 
   function handleKeyDown(e: React.KeyboardEvent) {
-    // Ctrl/Cmd shortcuts work even when editing
     const mod = e.ctrlKey || e.metaKey;
+
+    // Undo/Redo
+    if (mod && e.key === "z" && !e.shiftKey) {
+      e.preventDefault();
+      undo();
+      return;
+    }
+    if (mod && (e.key === "y" || (e.key === "z" && e.shiftKey))) {
+      e.preventDefault();
+      redo();
+      return;
+    }
+
+    // Clipboard
     if (mod && e.key === "c") {
       e.preventDefault();
       copySelection();
@@ -224,7 +281,7 @@ export function SpreadsheetGrid() {
       <div
         style={{
           position: "relative",
-          width: GRID.ROW_HEADER_WIDTH + columnCount * GRID.DEFAULT_COL_WIDTH,
+          width: getTotalWidth(),
         }}
       >
         {/* Column headers row (corner + column labels) */}
@@ -255,6 +312,7 @@ export function SpreadsheetGrid() {
           {Array.from({ length: columnCount }, (_, c) => {
             const isActive = c >= selMinCol && c <= selMaxCol;
             const isLastCol = c === columnCount - 1;
+            const colW = getColWidth(c);
             return (
               <div
                 // biome-ignore lint/suspicious/noArrayIndexKey: fixed column headers
@@ -272,7 +330,7 @@ export function SpreadsheetGrid() {
                   containerRef.current?.focus();
                 }}
                 style={{
-                  width: GRID.DEFAULT_COL_WIDTH,
+                  width: colW,
                   height: GRID.COL_HEADER_HEIGHT,
                   flexShrink: 0,
                   display: "flex",
@@ -292,7 +350,21 @@ export function SpreadsheetGrid() {
                 }}
               >
                 {colLabel(c)}
-                {!isFixedTab && isLastCol && columnCount > 1 && (
+                {/* Column filter icon */}
+                <ColumnFilterPopover
+                  col={c}
+                  cells={cells}
+                  rowCount={rowCount}
+                  activeFilter={columnFilters[c]}
+                  onFilterChange={setColumnFilter}
+                />
+                {/* Column resize handle */}
+                <ColumnResizeHandle
+                  col={c}
+                  currentWidth={colW}
+                  onResize={setColumnWidth}
+                />
+                {isLastCol && columnCount > 1 && (
                   <button
                     type="button"
                     onClick={(e) => {
@@ -308,7 +380,7 @@ export function SpreadsheetGrid() {
               </div>
             );
           })}
-          {!isFixedTab && columnCount < GRID.MAX_COLS && (
+          {columnCount < GRID.MAX_COLS && (
             <button
               type="button"
               onClick={onAddColumn}
@@ -327,6 +399,11 @@ export function SpreadsheetGrid() {
 
         {/* Rows */}
         {Array.from({ length: rowCount }, (_, r) => {
+          // Skip filtered rows (but always show header row 0)
+          if (r > 0 && filteredRowIndices && !filteredRowIndices.has(r)) {
+            return null;
+          }
+
           const isRowActive = r >= selMinRow && r <= selMaxRow;
           const isLastRow = r === rowCount - 1;
           return (
@@ -370,7 +447,7 @@ export function SpreadsheetGrid() {
                 }}
               >
                 {r + 1}
-                {!isFixedTab && isLastRow && rowCount > 1 && (
+                {isLastRow && rowCount > 1 && (
                   <button
                     type="button"
                     onClick={(e) => {
@@ -392,6 +469,8 @@ export function SpreadsheetGrid() {
                 const isSingleSelected = selectedCell === ref;
                 const isInRange = isCellInSelection(r, c);
                 const isEditing = editingCell === ref;
+                const isDropdown =
+                  cellData?.cellType === "dropdown" && dropdownCell === ref;
                 const rawDisplay = cellData?.value
                   ? cellData.value.startsWith("=")
                     ? evalFormula(cellData.value, cells)
@@ -402,6 +481,7 @@ export function SpreadsheetGrid() {
                   cellFormat !== "general"
                     ? formatCellDisplay(rawDisplay, cellFormat)
                     : rawDisplay;
+                const colW = getColWidth(c);
 
                 return (
                   // biome-ignore lint/a11y/noStaticElementInteractions: spreadsheet cells need mouse handlers
@@ -409,7 +489,7 @@ export function SpreadsheetGrid() {
                     // biome-ignore lint/suspicious/noArrayIndexKey: fixed column grid
                     key={c}
                     style={{
-                      width: GRID.DEFAULT_COL_WIDTH,
+                      width: colW,
                       height: GRID.ROW_HEIGHT,
                       flexShrink: 0,
                       position: "relative",
@@ -431,6 +511,7 @@ export function SpreadsheetGrid() {
                     onMouseDown={() => handleCellMouseDown(r, c)}
                     onMouseEnter={() => handleCellMouseEnter(r, c)}
                     onDoubleClick={() => startEditing(ref)}
+                    onContextMenu={(e) => handleContextMenu(e, r, c)}
                   >
                     {isEditing ? (
                       <input
@@ -498,6 +579,27 @@ export function SpreadsheetGrid() {
                             : "var(--foreground)",
                         }}
                       />
+                    ) : isDropdown ? (
+                      <CellDropdown
+                        options={cellData.dropdownOptions!}
+                        currentLabel={cellData.value}
+                        onSelect={(val) => {
+                          // Find label for the selected value
+                          const opt = cellData.dropdownOptions!.find(
+                            (o) => o.value === val,
+                          );
+                          const label = opt?.label ?? val;
+                          const existing = cells[ref] || { value: "" };
+                          onCellChange(ref, { ...existing, value: label });
+                          setDropdownCell(null);
+                          // Move to next cell
+                          setSelectedCell(
+                            cellRef(r, Math.min(c + 1, columnCount - 1)),
+                          );
+                        }}
+                        onClose={() => setDropdownCell(null)}
+                        style={{ top: GRID.ROW_HEIGHT, left: 0 }}
+                      />
                     ) : (
                       <span
                         style={{
@@ -519,6 +621,13 @@ export function SpreadsheetGrid() {
                         }}
                       >
                         {displayValue}
+                        {/* Dropdown indicator */}
+                        {cellData?.cellType === "dropdown" && (
+                          <ChevronDown
+                            className="inline-block ml-0.5 size-3 text-muted-foreground align-middle"
+                            style={{ marginTop: -2 }}
+                          />
+                        )}
                       </span>
                     )}
                   </div>
@@ -529,7 +638,7 @@ export function SpreadsheetGrid() {
         })}
 
         {/* Add row button */}
-        {!isFixedTab && rowCount < GRID.MAX_ROWS && (
+        {rowCount < GRID.MAX_ROWS && (
           <div style={{ display: "flex", height: GRID.ROW_HEIGHT }}>
             <button
               type="button"
@@ -548,6 +657,50 @@ export function SpreadsheetGrid() {
           </div>
         )}
       </div>
+
+      {/* Context menu */}
+      {contextMenu && (
+        <GridContextMenu
+          state={contextMenu}
+          onClose={() => setContextMenu(null)}
+          isReadOnlyTab={false}
+          isHeaderRow={contextMenu.row === 0}
+          isTotalRow={false}
+          canInsertRow={false}
+          canDeleteRow={false}
+          onCopy={copySelection}
+          onCut={cutSelection}
+          onPaste={pasteSelection}
+          onClearCell={() => {
+            if (!readOnlyCells.has(contextMenu.cellRef)) {
+              const existing = cells[contextMenu.cellRef] || { value: "" };
+              onCellChange(contextMenu.cellRef, { ...existing, value: "" });
+            }
+          }}
+          onInsertRowAbove={() => {}}
+          onInsertRowBelow={() => {}}
+          onDeleteRow={() => {}}
+          onSortAsc={() => {
+            setSelectedCell(cellRef(1, contextMenu.col));
+            setSelectionRange({
+              startRow: 1,
+              startCol: contextMenu.col,
+              endRow: rowCount - 1,
+              endCol: contextMenu.col,
+            });
+          }}
+          onSortDesc={() => {
+            setSelectedCell(cellRef(1, contextMenu.col));
+            setSelectionRange({
+              startRow: 1,
+              startCol: contextMenu.col,
+              endRow: rowCount - 1,
+              endCol: contextMenu.col,
+            });
+          }}
+          onFilterByColumn={() => {}}
+        />
+      )}
     </div>
   );
 }

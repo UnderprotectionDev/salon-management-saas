@@ -8,7 +8,6 @@
  * @module
  */
 
-import type * as additionalRevenue from "../additionalRevenue.js";
 import type * as admin from "../admin.js";
 import type * as aiActions from "../aiActions.js";
 import type * as aiAnalysis from "../aiAnalysis.js";
@@ -28,7 +27,6 @@ import type * as appointmentUser from "../appointmentUser.js";
 import type * as appointments from "../appointments.js";
 import type * as appointments_helpers from "../appointments_helpers.js";
 import type * as auth from "../auth.js";
-import type * as commissionSettings from "../commissionSettings.js";
 import type * as crons from "../crons.js";
 import type * as customerAuth from "../customerAuth.js";
 import type * as customerDashboard from "../customerDashboard.js";
@@ -36,15 +34,11 @@ import type * as customerMerge from "../customerMerge.js";
 import type * as customerReport from "../customerReport.js";
 import type * as customerSearch from "../customerSearch.js";
 import type * as customers from "../customers.js";
-import type * as dailyClosing from "../dailyClosing.js";
 import type * as designCatalog from "../designCatalog.js";
 import type * as email from "../email.js";
 import type * as email_helpers from "../email_helpers.js";
-import type * as expenses from "../expenses.js";
 import type * as favoriteSalons from "../favoriteSalons.js";
 import type * as files from "../files.js";
-import type * as financials from "../financials.js";
-import type * as giftCards from "../giftCards.js";
 import type * as http from "../http.js";
 import type * as inventoryTransactions from "../inventoryTransactions.js";
 import type * as invitations from "../invitations.js";
@@ -107,7 +101,6 @@ import type {
 } from "convex/server";
 
 declare const fullApi: ApiFromModules<{
-  additionalRevenue: typeof additionalRevenue;
   admin: typeof admin;
   aiActions: typeof aiActions;
   aiAnalysis: typeof aiAnalysis;
@@ -127,7 +120,6 @@ declare const fullApi: ApiFromModules<{
   appointments: typeof appointments;
   appointments_helpers: typeof appointments_helpers;
   auth: typeof auth;
-  commissionSettings: typeof commissionSettings;
   crons: typeof crons;
   customerAuth: typeof customerAuth;
   customerDashboard: typeof customerDashboard;
@@ -135,15 +127,11 @@ declare const fullApi: ApiFromModules<{
   customerReport: typeof customerReport;
   customerSearch: typeof customerSearch;
   customers: typeof customers;
-  dailyClosing: typeof dailyClosing;
   designCatalog: typeof designCatalog;
   email: typeof email;
   email_helpers: typeof email_helpers;
-  expenses: typeof expenses;
   favoriteSalons: typeof favoriteSalons;
   files: typeof files;
-  financials: typeof financials;
-  giftCards: typeof giftCards;
   http: typeof http;
   inventoryTransactions: typeof inventoryTransactions;
   invitations: typeof invitations;

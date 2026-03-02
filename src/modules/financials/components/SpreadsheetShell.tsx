@@ -3,8 +3,16 @@
 import { type ReactNode, useEffect, useRef, useState } from "react";
 import type { NumberFormat } from "../lib/number-format";
 import { SpreadsheetProvider } from "../lib/spreadsheet-context";
-import type { CellData, CellMap, SheetTab } from "../lib/spreadsheet-types";
+import type {
+  CellData,
+  CellMap,
+  ContextMenuState,
+  SheetTab,
+} from "../lib/spreadsheet-types";
 import { cellRef } from "../lib/spreadsheet-utils";
+import { useColumnFilters } from "../hooks/useColumnFilters";
+import { useColumnWidths } from "../hooks/useColumnWidths";
+import { useUndoHistory } from "../hooks/useUndoHistory";
 import { FormulaBar } from "./FormulaBar";
 import { Ribbon } from "./Ribbon";
 import { SearchOverlay } from "./SearchOverlay";
@@ -25,18 +33,16 @@ interface SpreadsheetShellProps {
 
   /** Column count for the active tab */
   columnCount: number;
-  /** Whether the active tab is a fixed (non-editable columns) tab */
-  isFixedTab: boolean;
-  /** Callback to add a column (freeform only) */
+  /** Callback to add a column */
   onAddColumn?: () => void;
-  /** Callback to remove the last column (freeform only) */
+  /** Callback to remove the last column */
   onDeleteLastColumn?: () => void;
 
   /** Row count for the active tab */
   rowCount: number;
-  /** Callback to add a row (freeform only) */
+  /** Callback to add a row */
   onAddRow?: () => void;
-  /** Callback to remove the last row (freeform only) */
+  /** Callback to remove the last row */
   onDeleteLastRow?: () => void;
 
   /** Tab management callbacks */
@@ -44,10 +50,8 @@ interface SpreadsheetShellProps {
   onRenameSheet?: (id: string, name: string) => void;
   onDeleteSheet?: (id: string) => void;
 
-  /** Ribbon actions slot (DateRangePicker, Add Expense, Export, etc.) */
+  /** Ribbon actions slot */
   ribbonActions?: ReactNode;
-  /** Dashboard slot (KPI cards) */
-  dashboard?: ReactNode;
 }
 
 export function SpreadsheetShell({
@@ -58,7 +62,6 @@ export function SpreadsheetShell({
   onCellChange,
   readOnlyCells = new Set(),
   columnCount,
-  isFixedTab,
   onAddColumn,
   onDeleteLastColumn,
   rowCount,
@@ -68,7 +71,6 @@ export function SpreadsheetShell({
   onRenameSheet,
   onDeleteSheet,
   ribbonActions,
-  dashboard,
 }: SpreadsheetShellProps) {
   const [selectedCell, setSelectedCell] = useState("A1");
   const [selectionRange, setSelectionRange] = useState<{
@@ -80,6 +82,24 @@ export function SpreadsheetShell({
   const [editingValue, setEditingValue] = useState(cells.A1?.value ?? "");
   const [zoom, setZoom] = useState(100);
   const [searchOpen, setSearchOpen] = useState(false);
+  const [contextMenu, setContextMenu] = useState<ContextMenuState | null>(null);
+
+  // New hooks
+  const undoHistory = useUndoHistory();
+  const { columnWidths, setColumnWidth, resetWidths } = useColumnWidths();
+  const {
+    columnFilters,
+    setColumnFilter,
+    clearAllFilters,
+    getFilteredRowIndices,
+  } = useColumnFilters();
+
+  // Compute filtered row indices
+  const filteredRowIndices = getFilteredRowIndices(
+    cells,
+    columnCount,
+    rowCount,
+  );
 
   // Clamp selected cell when column/row count decreases
   useEffect(() => {
@@ -128,18 +148,35 @@ export function SpreadsheetShell({
   } | null>(null);
 
   // Merge optimistic overlay on top of prop cells.
-  // This ensures SpreadsheetGrid sees the new value in the SAME render
-  // cycle as setEditingCell(null), without waiting for parent re-render.
   const mergedCells =
     Object.keys(optimisticCells).length > 0
       ? { ...cells, ...optimisticCells }
       : cells;
 
   function handleCellChange(ref: string, data: CellData) {
+    // Record undo history
+    const before = mergedCells[ref] ?? { value: "" };
+    undoHistory.pushChange(ref, before, data);
+
     // Write to local state so Grid sees the update immediately
     setOptimisticCells((prev) => ({ ...prev, [ref]: data }));
     // Forward to parent (triggers mutation + withOptimisticUpdate)
     onCellChange(ref, data);
+  }
+
+  // Undo/Redo
+  function handleUndo() {
+    const entry = undoHistory.undo();
+    if (!entry) return;
+    setOptimisticCells((prev) => ({ ...prev, [entry.ref]: entry.before }));
+    onCellChange(entry.ref, entry.before);
+  }
+
+  function handleRedo() {
+    const entry = undoHistory.redo();
+    if (!entry) return;
+    setOptimisticCells((prev) => ({ ...prev, [entry.ref]: entry.after }));
+    onCellChange(entry.ref, entry.after);
   }
 
   // Get all refs in the current selection range
@@ -202,6 +239,10 @@ export function SpreadsheetShell({
     setFontSize("12");
     setFontFamily("Inter");
     setNumberFormat("general");
+    setContextMenu(null);
+    clearAllFilters();
+    resetWidths();
+    undoHistory.clear();
     onTabChange(id);
   }
 
@@ -261,7 +302,6 @@ export function SpreadsheetShell({
     }
     clipboardRef.current = { cells: copied, cut: false };
 
-    // Also copy plain text to system clipboard
     const text = refs.map((r) => mergedCells[r]?.value ?? "").join("\t");
     navigator.clipboard.writeText(text).catch(() => {});
   }
@@ -274,7 +314,6 @@ export function SpreadsheetShell({
     }
     clipboardRef.current = { cells: copied, cut: true };
 
-    // Clear cut cells
     for (const ref of refs) {
       if (!readOnlyCells.has(ref) && mergedCells[ref]) {
         handleCellChange(ref, { ...mergedCells[ref], value: "" });
@@ -291,7 +330,6 @@ export function SpreadsheetShell({
     const sourceRefs = Object.keys(clipboardRef.current.cells);
     if (sourceRefs.length === 0) return;
 
-    // Find source origin
     let minRow = Number.MAX_SAFE_INTEGER;
     let minCol = Number.MAX_SAFE_INTEGER;
     for (const ref of sourceRefs) {
@@ -358,7 +396,6 @@ export function SpreadsheetShell({
         pasteSelection: handlePaste,
         readOnlyCells,
         columnCount,
-        isFixedTab,
         onAddColumn: onAddColumn ?? (() => {}),
         onDeleteLastColumn: onDeleteLastColumn ?? (() => {}),
         rowCount,
@@ -366,12 +403,22 @@ export function SpreadsheetShell({
         onDeleteLastRow: onDeleteLastRow ?? (() => {}),
         searchOpen,
         setSearchOpen,
+        // New context values
+        columnWidths,
+        setColumnWidth,
+        undo: handleUndo,
+        redo: handleRedo,
+        canUndo: undoHistory.canUndo,
+        canRedo: undoHistory.canRedo,
+        contextMenu,
+        setContextMenu,
+        columnFilters,
+        setColumnFilter,
+        clearAllFilters,
+        filteredRowIndices,
       }}
     >
       <div className="flex flex-col h-full">
-        {/* Dashboard slot */}
-        {dashboard && <div className="shrink-0 px-1 pb-2">{dashboard}</div>}
-
         {/* Excel frame */}
         <div
           className="flex flex-col flex-1 min-h-0"

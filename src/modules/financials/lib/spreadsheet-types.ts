@@ -20,6 +20,24 @@ export interface CellData {
   bgColor?: string;
   textColor?: string;
   numberFormat?: import("./number-format").NumberFormat;
+  /** Cell input type for specialized editing */
+  cellType?: "text" | "dropdown" | "date";
+  /** Options for dropdown cells */
+  dropdownOptions?: { value: string; label: string }[];
+  /** Convex document _id for this row's record (used for row CRUD) */
+  recordId?: string;
+}
+
+/** Column width overrides per column index */
+export type ColumnWidths = Record<number, number>;
+
+/** State for the right-click context menu */
+export interface ContextMenuState {
+  x: number;
+  y: number;
+  row: number;
+  col: number;
+  cellRef: string;
 }
 
 /** Map of cell references (e.g. "A1") to their data */
@@ -29,10 +47,6 @@ export type CellMap = Record<string, CellData>;
 export interface SheetTab {
   id: string;
   label: string;
-  /** Fixed tabs are backed by Convex data and cannot be deleted/renamed */
-  isFixed?: boolean;
-  /** Tab type for fixed tabs */
-  type?: "expenses" | "revenue" | "commissions" | "giftcards" | "closing";
   /** Number of columns to display for this tab */
   columnCount?: number;
   /** Number of rows to display for this tab */
@@ -50,35 +64,3 @@ export const GRID = {
   MAX_ROWS: 200,
   DEFAULT_FREEFORM_ROWS: 20,
 } as const;
-
-/** Compute the row count for a fixed tab from its cell data */
-export function getRowCountFromCells(cells: Record<string, unknown>): number {
-  let maxRow = 0;
-  for (const ref of Object.keys(cells)) {
-    const m = ref.match(/^[A-Z]+(\d+)$/);
-    if (m) {
-      const row = Number.parseInt(m[1], 10);
-      if (row > maxRow) maxRow = row;
-    }
-  }
-  // Add 1 buffer row after the last data row
-  return Math.max(maxRow + 1, 1);
-}
-
-/** Returns the exact column count for each fixed tab type */
-export function getFixedTabColCount(
-  type: "expenses" | "revenue" | "commissions" | "giftcards" | "closing",
-): number {
-  switch (type) {
-    case "expenses":
-      return 8;
-    case "revenue":
-      return 5;
-    case "giftcards":
-      return 8;
-    case "commissions":
-      return 5;
-    case "closing":
-      return 2;
-  }
-}

@@ -355,36 +355,6 @@ export const rateLimiter = new RateLimiter(components.rateLimiter, {
     rate: 10,
     period: MINUTE,
   },
-
-  // ==========================================================================
-  // Financial Management Limits
-  // ==========================================================================
-
-  createExpense: {
-    kind: "token bucket",
-    rate: 50,
-    period: DAY,
-    capacity: 60,
-  },
-
-  createAdditionalRevenue: {
-    kind: "token bucket",
-    rate: 30,
-    period: DAY,
-    capacity: 40,
-  },
-
-  createGiftCard: {
-    kind: "fixed window",
-    rate: 20,
-    period: DAY,
-  },
-
-  closeDay: {
-    kind: "fixed window",
-    rate: 5,
-    period: DAY,
-  },
 });
 
 // Re-export time constants for use elsewhere

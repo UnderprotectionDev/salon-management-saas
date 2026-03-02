@@ -1,6 +1,6 @@
 "use client";
 
-import { Lock, Plus, X, ZoomIn, ZoomOut } from "lucide-react";
+import { Plus, X, ZoomIn, ZoomOut } from "lucide-react";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Slider } from "@/components/ui/slider";
@@ -84,7 +84,6 @@ export function SheetTabs({
     : 1;
 
   function startRename(tab: SheetTab) {
-    if (tab.isFixed) return;
     setRenamingId(tab.id);
     setRenameValue(tab.label);
   }
@@ -119,9 +118,6 @@ export function SheetTabs({
                 {isActive && (
                   <span className="absolute inset-x-0 top-0 h-0.5 rounded-t-md bg-[var(--sheet-active-ring)]" />
                 )}
-                {tab.isFixed && (
-                  <Lock className="w-2.5 h-2.5 text-muted-foreground shrink-0" />
-                )}
                 {renamingId === tab.id ? (
                   <input
                     // biome-ignore lint/a11y/noAutofocus: needed for inline rename UX
@@ -139,8 +135,8 @@ export function SheetTabs({
                 ) : (
                   tab.label
                 )}
-                {/* Delete button for non-fixed tabs */}
-                {!tab.isFixed && isActive && onDeleteSheet && (
+                {/* Delete button */}
+                {isActive && onDeleteSheet && (
                   <span
                     role="button"
                     tabIndex={0}

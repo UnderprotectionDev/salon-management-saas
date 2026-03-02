@@ -11,14 +11,17 @@ import {
   Clipboard,
   ClipboardPaste,
   DollarSign,
+  FilterX,
   Italic,
   PaintBucket,
   Percent,
+  Redo2,
   Scissors,
   Search,
   Sigma,
   Type,
   Underline,
+  Undo2,
 } from "lucide-react";
 import { type ReactNode, useState } from "react";
 import { Button } from "@/components/ui/button";
@@ -126,9 +129,17 @@ export function Ribbon({ actions }: RibbonProps) {
     onCellChange,
     readOnlyCells,
     setEditingValue,
+    undo,
+    redo,
+    canUndo,
+    canRedo,
+    clearAllFilters,
+    columnFilters,
   } = useSpreadsheet();
 
   const [activeTab, setActiveTab] = useState("Home");
+
+  const hasActiveFilters = Object.keys(columnFilters).length > 0;
 
   // Strip currency/percent/locale formatting so we can detect numeric values
   function normalizeNumeric(val: string): number {
@@ -142,13 +153,11 @@ export function Ribbon({ actions }: RibbonProps) {
   // AutoSum helper
   function handleAutoSum(fn: string) {
     if (readOnlyCells.has(selectedCell)) return;
-    // Find column of selected cell
     const m = selectedCell.match(/^([A-Z]+)(\d+)$/);
     if (!m) return;
     const col = m[1];
     const row = Number.parseInt(m[2], 10);
 
-    // Look upward from current row to find range of numbers
     let startRow = row - 1;
     while (startRow >= 1) {
       const ref = `${col}${startRow}`;
@@ -156,18 +165,17 @@ export function Ribbon({ actions }: RibbonProps) {
       if (!val || Number.isNaN(normalizeNumeric(val))) break;
       startRow--;
     }
-    startRow++; // back to last valid number
+    startRow++;
 
     if (startRow < row) {
       const formula = `=${fn}(${col}${startRow}:${col}${row - 1})`;
       const existing = cells[selectedCell] ?? { value: "" };
       onCellChange(selectedCell, { ...existing, value: formula });
-      // Update formula bar so user sees the formula immediately
       setEditingValue(formula);
     }
   }
 
-  // Auto-detect contiguous data region from a cell (like Excel)
+  // Auto-detect contiguous data region from a cell
   function detectDataRegion(cellRefStr: string): {
     minR: number;
     maxR: number;
@@ -177,27 +185,27 @@ export function Ribbon({ actions }: RibbonProps) {
   } | null {
     const parsed = parseRef(cellRefStr);
     if (!parsed) return null;
-    const { row: selRow, col: selCol } = parsed; // 0-indexed
+    const { row: selRow, col: selCol } = parsed;
 
-    // Helper: check if cell at (r, c) has data (0-indexed coords)
     const hasData = (r: number, c: number) =>
       !!cells[cellRef(r, c)]?.value?.trim();
 
-    // Scan up/down in selected column to find contiguous rows
     let minR = selRow;
     while (minR > 0 && hasData(minR - 1, selCol)) minR--;
 
     let maxR = selRow;
     while (maxR < 999 && hasData(maxR + 1, selCol)) maxR++;
 
-    if (minR === maxR) return null; // only 1 row, nothing to sort
+    if (minR === maxR) return null;
 
-    // Expand columns left/right — check if any row has data in adjacent col
     let minC = selCol;
     while (minC > 0) {
       let found = false;
       for (let r = minR; r <= maxR; r++) {
-        if (hasData(r, minC - 1)) { found = true; break; }
+        if (hasData(r, minC - 1)) {
+          found = true;
+          break;
+        }
       }
       if (!found) break;
       minC--;
@@ -207,7 +215,10 @@ export function Ribbon({ actions }: RibbonProps) {
     while (maxC < 51) {
       let found = false;
       for (let r = minR; r <= maxR; r++) {
-        if (hasData(r, maxC + 1)) { found = true; break; }
+        if (hasData(r, maxC + 1)) {
+          found = true;
+          break;
+        }
       }
       if (!found) break;
       maxC++;
@@ -229,14 +240,12 @@ export function Ribbon({ actions }: RibbonProps) {
       Math.abs(selectionRange.startRow - selectionRange.endRow) > 0;
 
     if (hasMultiRowSelection) {
-      // Use explicit selection
       minR = Math.min(selectionRange.startRow, selectionRange.endRow);
       maxR = Math.max(selectionRange.startRow, selectionRange.endRow);
       minC = Math.min(selectionRange.startCol, selectionRange.endCol);
       maxC = Math.max(selectionRange.startCol, selectionRange.endCol);
-      sortColOffset = 0; // sort by first column of selection
+      sortColOffset = 0;
     } else {
-      // Auto-detect data region from selected cell
       if (!selectedCell) return;
       const region = detectDataRegion(selectedCell);
       if (!region) return;
@@ -247,7 +256,6 @@ export function Ribbon({ actions }: RibbonProps) {
       sortColOffset = region.sortColOffset;
     }
 
-    // Collect rows as arrays
     const rows: { row: number; cells: (CellData | undefined)[] }[] = [];
     for (let r = minR; r <= maxR; r++) {
       const rowCells: (CellData | undefined)[] = [];
@@ -258,7 +266,6 @@ export function Ribbon({ actions }: RibbonProps) {
       rows.push({ row: r, cells: rowCells });
     }
 
-    // Sort by the determined column
     rows.sort((a, b) => {
       const aVal = a.cells[sortColOffset]?.value ?? "";
       const bVal = b.cells[sortColOffset]?.value ?? "";
@@ -270,7 +277,6 @@ export function Ribbon({ actions }: RibbonProps) {
       return ascending ? aVal.localeCompare(bVal) : bVal.localeCompare(aVal);
     });
 
-    // Abort if any cell in the sort range is read-only
     for (let r = minR; r <= maxR; r++) {
       for (let c = minC; c <= maxC; c++) {
         const ref = `${colLabel(c)}${r + 1}`;
@@ -278,7 +284,6 @@ export function Ribbon({ actions }: RibbonProps) {
       }
     }
 
-    // Write sorted rows back
     for (let i = 0; i < rows.length; i++) {
       const r = minR + i;
       for (let c = minC; c <= maxC; c++) {
@@ -319,9 +324,21 @@ export function Ribbon({ actions }: RibbonProps) {
       <div className="flex items-center gap-1 px-2 h-10 overflow-x-auto bg-background">
         {activeTab === "Home" && (
           <>
-            {/* Clipboard section */}
+            {/* Clipboard + Undo/Redo section */}
             <div className="flex flex-col items-center gap-0 shrink-0">
               <div className="flex items-center gap-0.5">
+                <TBtn
+                  icon={<Undo2 className="w-3.5 h-3.5" />}
+                  label="Undo (Ctrl+Z)"
+                  onClick={undo}
+                  disabled={!canUndo}
+                />
+                <TBtn
+                  icon={<Redo2 className="w-3.5 h-3.5" />}
+                  label="Redo (Ctrl+Y)"
+                  onClick={redo}
+                  disabled={!canRedo}
+                />
                 <TBtn
                   icon={<Clipboard className="w-3.5 h-3.5" />}
                   label="Copy (Ctrl+C)"
@@ -341,9 +358,8 @@ export function Ribbon({ actions }: RibbonProps) {
               <SectionLabel>Clipboard</SectionLabel>
             </div>
 
-            <Separator orientation="vertical" className="h-8 mx-1 shrink-0" />
-
             {/* Font section */}
+            <Separator orientation="vertical" className="h-8 mx-1 shrink-0" />
             <div className="flex flex-col items-center gap-0 shrink-0">
               <div className="flex items-center gap-0.5">
                 <Select value={fontFamily} onValueChange={onFontFamilyChange}>
@@ -437,9 +453,8 @@ export function Ribbon({ actions }: RibbonProps) {
               <SectionLabel>Font</SectionLabel>
             </div>
 
+            {/* Alignment */}
             <Separator orientation="vertical" className="h-8 mx-1 shrink-0" />
-
-            {/* Alignment section */}
             <div className="flex flex-col items-center gap-0 shrink-0">
               <div className="flex items-center gap-0.5">
                 <TBtn
@@ -464,9 +479,8 @@ export function Ribbon({ actions }: RibbonProps) {
               <SectionLabel>Alignment</SectionLabel>
             </div>
 
-            <Separator orientation="vertical" className="h-8 mx-1 shrink-0" />
-
             {/* Number section */}
+            <Separator orientation="vertical" className="h-8 mx-1 shrink-0" />
             <div className="flex flex-col items-center gap-0 shrink-0">
               <div className="flex items-center gap-0.5">
                 <Select
@@ -492,13 +506,21 @@ export function Ribbon({ actions }: RibbonProps) {
                   icon={<DollarSign className="w-3.5 h-3.5" />}
                   label="Currency"
                   active={numberFormat === "currency"}
-                  onClick={() => onNumberFormatChange(numberFormat === "currency" ? "general" : "currency")}
+                  onClick={() =>
+                    onNumberFormatChange(
+                      numberFormat === "currency" ? "general" : "currency",
+                    )
+                  }
                 />
                 <TBtn
                   icon={<Percent className="w-3.5 h-3.5" />}
                   label="Percent"
                   active={numberFormat === "percent"}
-                  onClick={() => onNumberFormatChange(numberFormat === "percent" ? "general" : "percent")}
+                  onClick={() =>
+                    onNumberFormatChange(
+                      numberFormat === "percent" ? "general" : "percent",
+                    )
+                  }
                 />
               </div>
               <SectionLabel>Number</SectionLabel>
@@ -553,6 +575,13 @@ export function Ribbon({ actions }: RibbonProps) {
                   label="Find (Ctrl+F)"
                   onClick={() => setSearchOpen(true)}
                 />
+                {hasActiveFilters && (
+                  <TBtn
+                    icon={<FilterX className="w-3.5 h-3.5" />}
+                    label="Clear All Filters"
+                    onClick={clearAllFilters}
+                  />
+                )}
               </div>
               <SectionLabel>Editing</SectionLabel>
             </div>
