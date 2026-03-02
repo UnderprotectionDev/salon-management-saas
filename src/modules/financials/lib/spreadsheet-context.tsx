@@ -1,6 +1,7 @@
 "use client";
 
 import { createContext, type ReactNode, useContext } from "react";
+import type { MergedRegion } from "./merge-utils";
 import type { NumberFormat } from "./number-format";
 import type {
   CellData,
@@ -105,6 +106,48 @@ export interface SpreadsheetContextValue {
   setColumnFilter: (col: number, values: Set<string> | null) => void;
   clearAllFilters: () => void;
   filteredRowIndices: Set<number> | null;
+
+  // --- Phase 1: Formula mode ---
+  isFormulaMode: boolean;
+  formulaCursorPos: number;
+  setFormulaCursorPos: (pos: number) => void;
+  insertCellRefInFormula: (ref: string) => void;
+  insertRangeRefInFormula: (startRef: string, endRef: string) => void;
+  /** Map of cell ref -> highlight color for formula references */
+  formulaRefHighlights: Map<string, string>;
+
+  // --- Phase 1D: Row/Column insert/delete ---
+  insertRowAbove: (row: number) => void;
+  insertRowBelow: (row: number) => void;
+  deleteRow: (row: number) => void;
+  insertColumnLeft: (col: number) => void;
+  insertColumnRight: (col: number) => void;
+  deleteColumn: (col: number) => void;
+
+  // --- Phase 2A: Fill handle ---
+  fillHandleActive: boolean;
+  fillHandleRange: {
+    startRow: number;
+    startCol: number;
+    endRow: number;
+    endCol: number;
+  } | null;
+  onFillHandleStart: () => void;
+  onFillHandleDrag: (row: number, col: number) => void;
+  onFillHandleEnd: () => void;
+
+  // --- Phase 2D: Paste special ---
+  pasteSpecial: (mode: "all" | "values" | "format") => void;
+
+  // --- Phase 3A: Freeze panes ---
+  freezeRow: number;
+  freezeCol: number;
+  setFreeze: (row: number, col: number) => void;
+
+  // --- Phase 3B: Merged cells ---
+  mergedRegions: MergedRegion[];
+  mergeCells: () => void;
+  unmergeCells: () => void;
 }
 
 const SpreadsheetContext = createContext<SpreadsheetContextValue | null>(null);

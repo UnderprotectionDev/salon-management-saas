@@ -11,6 +11,8 @@ import { GRID, type CellData, type CellMap } from "../lib/spreadsheet-types";
 interface UseFreeformCellsResult {
   cells: CellMap;
   onCellChange: (ref: string, data: CellData) => void;
+  /** Replace the entire CellMap atomically (used for row/col insert/delete) */
+  onBulkReplace: (newCells: CellMap) => void;
   loading: boolean;
   columnCount: number;
   onAddColumn: () => void;
@@ -184,9 +186,50 @@ export function useFreeformCells(
     }, 800);
   }
 
+  const replaceAllMut = useMutation(api.spreadsheetCells.replaceAllCells);
+
+  function onBulkReplace(newCells: CellMap) {
+    if (!activeOrganization || !sheetId) return;
+
+    // Clear any pending changes since we're replacing everything
+    pendingChanges.current = {};
+    if (flushTimer.current) {
+      clearTimeout(flushTimer.current);
+      flushTimer.current = null;
+    }
+
+    // Set all new cells as pending for optimistic UI
+    for (const [ref, data] of Object.entries(newCells)) {
+      pendingChanges.current[ref] = data;
+    }
+
+    const cellsToSend = Object.entries(newCells).map(([ref, data]) => ({
+      cellRef: ref,
+      value: data.value,
+      bold: data.bold,
+      italic: data.italic,
+      underline: data.underline,
+      align: data.align,
+      fontSize: data.fontSize,
+      fontFamily: data.fontFamily,
+      bgColor: data.bgColor,
+      textColor: data.textColor,
+      numberFormat: data.numberFormat,
+    }));
+
+    replaceAllMut({
+      organizationId: activeOrganization._id,
+      sheetId,
+      cells: cellsToSend,
+    }).catch(() => {
+      // On failure the next DB sync will overwrite
+    });
+  }
+
   return {
     cells,
     onCellChange,
+    onBulkReplace,
     loading: !dbCells,
     columnCount,
     onAddColumn,

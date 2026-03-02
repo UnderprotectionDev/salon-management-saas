@@ -44,9 +44,7 @@ export function ColumnFilterPopover({
   uniqueValues.sort();
 
   const filteredValues = search
-    ? uniqueValues.filter((v) =>
-        v.toLowerCase().includes(search.toLowerCase()),
-      )
+    ? uniqueValues.filter((v) => v.toLowerCase().includes(search.toLowerCase()))
     : uniqueValues;
 
   // Initialize selected from active filter when opening
@@ -151,7 +149,11 @@ export function ColumnFilterPopover({
           ))}
         </div>
         <div className="p-2 border-t border-border">
-          <Button size="sm" className="w-full h-7 text-xs" onClick={handleApply}>
+          <Button
+            size="sm"
+            className="w-full h-7 text-xs"
+            onClick={handleApply}
+          >
             Apply
           </Button>
         </div>

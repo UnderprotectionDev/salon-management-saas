@@ -14,7 +14,8 @@ interface SearchOverlayProps {
 }
 
 export function SearchOverlay({ open, onClose }: SearchOverlayProps) {
-  const { cells, setSelectedCell, setSelectionRange, columnCount, rowCount } = useSpreadsheet();
+  const { cells, setSelectedCell, setSelectionRange, columnCount, rowCount } =
+    useSpreadsheet();
   const [query, setQuery] = useState("");
   const [matches, setMatches] = useState<string[]>([]);
   const [currentIndex, setCurrentIndex] = useState(0);

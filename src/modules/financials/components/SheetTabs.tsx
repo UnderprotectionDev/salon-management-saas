@@ -2,6 +2,7 @@
 
 import { Plus, X, ZoomIn, ZoomOut } from "lucide-react";
 import { useState } from "react";
+import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Slider } from "@/components/ui/slider";
 import {
@@ -11,6 +12,11 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
+import {
+  buildSelectionFormula,
+  copyFormulaToClipboard,
+  type FormulaFn,
+} from "../lib/formula-helpers";
 import { useSpreadsheet } from "../lib/spreadsheet-context";
 import { evalFormula } from "../lib/spreadsheet-formula";
 import type { SheetTab } from "../lib/spreadsheet-types";
@@ -82,6 +88,15 @@ export function SheetTabs({
     ? (Math.abs(selectionRange.endRow - selectionRange.startRow) + 1) *
       (Math.abs(selectionRange.endCol - selectionRange.startCol) + 1)
     : 1;
+  const min = selectedValues.length > 0 ? Math.min(...selectedValues) : 0;
+  const max = selectedValues.length > 0 ? Math.max(...selectedValues) : 0;
+
+  async function handleStatClick(fn: FormulaFn) {
+    const formula = buildSelectionFormula(fn, selectionRange);
+    if (!formula) return;
+    const ok = await copyFormulaToClipboard(formula);
+    if (ok) toast.success(`Copied ${formula}`);
+  }
 
   function startRename(tab: SheetTab) {
     setRenamingId(tab.id);
@@ -189,24 +204,93 @@ export function SheetTabs({
             Ready
           </span>
           {selectedValues.length > 1 && (
-            <>
-              <span className="text-[11px] text-muted-foreground">
-                Avg:{" "}
-                <span className="text-foreground font-medium">
-                  {avg.toLocaleString(undefined, { maximumFractionDigits: 2 })}
-                </span>
-              </span>
-              <span className="text-[11px] text-muted-foreground">
-                Count:{" "}
-                <span className="text-foreground font-medium">{count}</span>
-              </span>
-              <span className="text-[11px] text-muted-foreground">
-                Sum:{" "}
-                <span className="text-foreground font-medium">
-                  {sum.toLocaleString()}
-                </span>
-              </span>
-            </>
+            <TooltipProvider delayDuration={300}>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <button
+                    type="button"
+                    onClick={() => handleStatClick("AVERAGE")}
+                    className="text-[11px] text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
+                  >
+                    Avg:{" "}
+                    <span className="text-foreground font-medium">
+                      {avg.toLocaleString(undefined, {
+                        maximumFractionDigits: 2,
+                      })}
+                    </span>
+                  </button>
+                </TooltipTrigger>
+                <TooltipContent side="top" className="text-xs">
+                  Click to copy =AVERAGE() formula
+                </TooltipContent>
+              </Tooltip>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <button
+                    type="button"
+                    onClick={() => handleStatClick("COUNT")}
+                    className="text-[11px] text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
+                  >
+                    Count:{" "}
+                    <span className="text-foreground font-medium">{count}</span>
+                  </button>
+                </TooltipTrigger>
+                <TooltipContent side="top" className="text-xs">
+                  Click to copy =COUNT() formula
+                </TooltipContent>
+              </Tooltip>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <button
+                    type="button"
+                    onClick={() => handleStatClick("SUM")}
+                    className="text-[11px] text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
+                  >
+                    Sum:{" "}
+                    <span className="text-foreground font-medium">
+                      {sum.toLocaleString()}
+                    </span>
+                  </button>
+                </TooltipTrigger>
+                <TooltipContent side="top" className="text-xs">
+                  Click to copy =SUM() formula
+                </TooltipContent>
+              </Tooltip>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <button
+                    type="button"
+                    onClick={() => handleStatClick("MIN")}
+                    className="text-[11px] text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
+                  >
+                    Min:{" "}
+                    <span className="text-foreground font-medium">
+                      {min.toLocaleString()}
+                    </span>
+                  </button>
+                </TooltipTrigger>
+                <TooltipContent side="top" className="text-xs">
+                  Click to copy =MIN() formula
+                </TooltipContent>
+              </Tooltip>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <button
+                    type="button"
+                    onClick={() => handleStatClick("MAX")}
+                    className="text-[11px] text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
+                  >
+                    Max:{" "}
+                    <span className="text-foreground font-medium">
+                      {max.toLocaleString()}
+                    </span>
+                  </button>
+                </TooltipTrigger>
+                <TooltipContent side="top" className="text-xs">
+                  Click to copy =MAX() formula
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
           )}
         </div>
 

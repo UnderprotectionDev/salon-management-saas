@@ -2,15 +2,37 @@
 
 import { ChevronDown, Plus, X } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
+import { toast } from "sonner";
+import { adjustFormulaRefs } from "../lib/fill-series";
+import {
+  buildSelectionFormula,
+  copyFormulaToClipboard,
+  type FormulaFn,
+} from "../lib/formula-helpers";
+import { isMergeHiddenCell, isMergePrimaryCell } from "../lib/merge-utils";
 import { formatCellDisplay } from "../lib/number-format";
 import { useSpreadsheet } from "../lib/spreadsheet-context";
 import { evalFormula } from "../lib/spreadsheet-formula";
 import { GRID } from "../lib/spreadsheet-types";
 import { cellRef, colLabel } from "../lib/spreadsheet-utils";
+import { CellAutocomplete, useAutocompleteKeyboard } from "./CellAutocomplete";
 import { CellDropdown } from "./CellDropdown";
 import { ColumnFilterPopover } from "./ColumnFilterPopover";
 import { ColumnResizeHandle } from "./ColumnResizeHandle";
+import { FormulaQuickBar } from "./FormulaQuickBar";
 import { GridContextMenu } from "./GridContextMenu";
+import { PasteSpecialMenu } from "./PasteSpecialMenu";
+
+const FORMULA_FUNCTIONS = [
+  "SUM",
+  "AVERAGE",
+  "AVG",
+  "COUNT",
+  "COUNTA",
+  "MIN",
+  "MAX",
+  "IF",
+];
 
 export function SpreadsheetGrid() {
   const {
@@ -42,6 +64,32 @@ export function SpreadsheetGrid() {
     columnFilters,
     setColumnFilter,
     filteredRowIndices,
+    // Formula mode
+    isFormulaMode,
+    insertCellRefInFormula,
+    insertRangeRefInFormula,
+    formulaRefHighlights,
+    setFormulaCursorPos,
+    // Row/Column operations
+    insertRowAbove,
+    insertRowBelow,
+    deleteRow,
+    insertColumnLeft,
+    insertColumnRight,
+    deleteColumn,
+    // Fill handle
+    fillHandleActive,
+    fillHandleRange,
+    onFillHandleStart,
+    onFillHandleDrag,
+    onFillHandleEnd,
+    // Paste special
+    pasteSpecial,
+    // Freeze
+    freezeRow,
+    freezeCol,
+    // Merge
+    mergedRegions,
   } = useSpreadsheet();
 
   const [editingCell, setEditingCell] = useState<string | null>(null);
@@ -51,8 +99,46 @@ export function SpreadsheetGrid() {
     col: number;
   } | null>(null);
   const [dropdownCell, setDropdownCell] = useState<string | null>(null);
+  const [pasteSpecialPos, setPasteSpecialPos] = useState<{
+    x: number;
+    y: number;
+  } | null>(null);
+  // Track if we're in formula-mode drag (for range ref insertion)
+  const [formulaDragStart, setFormulaDragStart] = useState<{
+    row: number;
+    col: number;
+  } | null>(null);
+
   const editInputRef = useRef<HTMLInputElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
+
+  // Formula autocomplete
+  function getFormulaPrefix(): string {
+    if (!editingValue.startsWith("=")) return "";
+    // Get the last token after ( or , or operator
+    const expr = editingValue.slice(1);
+    const lastTokenMatch = expr.match(/([A-Z]+)$/i);
+    return lastTokenMatch ? lastTokenMatch[1].toUpperCase() : "";
+  }
+
+  const formulaPrefix = getFormulaPrefix();
+
+  const autocomplete = useAutocompleteKeyboard(
+    FORMULA_FUNCTIONS,
+    formulaPrefix,
+    (selected) => {
+      // Replace the partial token with the function name + (
+      const expr = editingValue;
+      const lastTokenMatch = expr.match(/([A-Z]+)$/i);
+      if (lastTokenMatch) {
+        const newVal =
+          expr.slice(0, expr.length - lastTokenMatch[1].length) +
+          selected +
+          "(";
+        setEditingValue(newVal);
+      }
+    },
+  );
 
   function getColWidth(c: number): number {
     return columnWidths[c] ?? GRID.DEFAULT_COL_WIDTH;
@@ -77,6 +163,17 @@ export function SpreadsheetGrid() {
   function isCellInSelection(row: number, col: number): boolean {
     if (!selectionRange) return false;
     const { startRow, startCol, endRow, endCol } = selectionRange;
+    return (
+      row >= Math.min(startRow, endRow) &&
+      row <= Math.max(startRow, endRow) &&
+      col >= Math.min(startCol, endCol) &&
+      col <= Math.max(startCol, endCol)
+    );
+  }
+
+  function isCellInFillRange(row: number, col: number): boolean {
+    if (!fillHandleRange || !fillHandleActive) return false;
+    const { startRow, startCol, endRow, endCol } = fillHandleRange;
     return (
       row >= Math.min(startRow, endRow) &&
       row <= Math.max(startRow, endRow) &&
@@ -117,7 +214,6 @@ export function SpreadsheetGrid() {
 
   function startEditing(ref: string, initialValue?: string) {
     if (readOnlyCells.has(ref)) return;
-    // If dropdown cell, open dropdown instead
     const cellData = cells[ref];
     if (cellData?.cellType === "dropdown" && cellData.dropdownOptions) {
       setDropdownCell(ref);
@@ -128,10 +224,33 @@ export function SpreadsheetGrid() {
     setEditingValue(initialValue ?? cells[ref]?.value ?? "");
   }
 
-  function handleCellMouseDown(row: number, col: number) {
+  function handleCellMouseDown(row: number, col: number, e?: React.MouseEvent) {
     const ref = cellRef(row, col);
+
+    // Formula mode: insert reference instead of selecting
+    if (isFormulaMode && editingCell) {
+      e?.preventDefault();
+      insertCellRefInFormula(ref);
+      setFormulaDragStart({ row, col });
+      return;
+    }
+
     if (editingCell && editingCell !== ref) commitEdit();
     setDropdownCell(null);
+
+    // Shift+Click: extend selection
+    if (e?.shiftKey) {
+      const { row: selRow, col: selCol } = getSelectedCoords();
+      setSelectionRange({
+        startRow: selRow,
+        startCol: selCol,
+        endRow: row,
+        endCol: col,
+      });
+      containerRef.current?.focus();
+      return;
+    }
+
     setSelectedCell(ref);
     setDragStart({ row, col });
     setIsDragging(true);
@@ -145,6 +264,22 @@ export function SpreadsheetGrid() {
   }
 
   function handleCellMouseEnter(row: number, col: number) {
+    // Fill handle dragging
+    if (fillHandleActive) {
+      onFillHandleDrag(row, col);
+      return;
+    }
+
+    // Formula mode dragging for range ref
+    if (isFormulaMode && formulaDragStart) {
+      const startRef = cellRef(formulaDragStart.row, formulaDragStart.col);
+      const endRef = cellRef(row, col);
+      if (startRef !== endRef) {
+        insertRangeRefInFormula(startRef, endRef);
+      }
+      return;
+    }
+
     if (isDragging && dragStart) {
       setSelectionRange({
         startRow: dragStart.row,
@@ -169,10 +304,16 @@ export function SpreadsheetGrid() {
   }
 
   useEffect(() => {
-    const up = () => setIsDragging(false);
+    const up = () => {
+      setIsDragging(false);
+      setFormulaDragStart(null);
+      if (fillHandleActive) {
+        onFillHandleEnd();
+      }
+    };
     window.addEventListener("mouseup", up);
     return () => window.removeEventListener("mouseup", up);
-  }, []);
+  }, [fillHandleActive, onFillHandleEnd]);
 
   function handleKeyDown(e: React.KeyboardEvent) {
     const mod = e.ctrlKey || e.metaKey;
@@ -200,9 +341,19 @@ export function SpreadsheetGrid() {
       cutSelection();
       return;
     }
-    if (mod && e.key === "v") {
+    if (mod && e.key === "v" && !e.shiftKey) {
       e.preventDefault();
       pasteSelection();
+      return;
+    }
+    // Paste Special: Ctrl+Shift+V
+    if (mod && e.key === "v" && e.shiftKey) {
+      e.preventDefault();
+      const rect = containerRef.current?.getBoundingClientRect();
+      setPasteSpecialPos({
+        x: (rect?.left ?? 200) + 100,
+        y: (rect?.top ?? 100) + 50,
+      });
       return;
     }
     if (mod && e.key === "f") {
@@ -211,8 +362,53 @@ export function SpreadsheetGrid() {
       return;
     }
 
-    if (editingCell) return;
+    // Ctrl+D: Fill Down
+    if (mod && e.key === "d" && !e.shiftKey) {
+      e.preventDefault();
+      handleFillDown();
+      return;
+    }
+    // Ctrl+R: Fill Right
+    if (mod && e.key === "r" && !e.shiftKey) {
+      e.preventDefault();
+      handleFillRight();
+      return;
+    }
+
+    if (editingCell) {
+      // If autocomplete is open, let it handle keys first
+      if (autocomplete.handleKeyDown(e)) return;
+      return;
+    }
+
     const { row, col } = getSelectedCoords();
+
+    // Shift+Arrow: extend selection range
+    if (e.shiftKey && e.key.startsWith("Arrow")) {
+      e.preventDefault();
+      const sr = selectionRange ?? {
+        startRow: row,
+        startCol: col,
+        endRow: row,
+        endCol: col,
+      };
+      if (e.key === "ArrowRight") {
+        setSelectionRange({
+          ...sr,
+          endCol: Math.min(sr.endCol + 1, columnCount - 1),
+        });
+      } else if (e.key === "ArrowLeft") {
+        setSelectionRange({ ...sr, endCol: Math.max(sr.endCol - 1, 0) });
+      } else if (e.key === "ArrowDown") {
+        setSelectionRange({
+          ...sr,
+          endRow: Math.min(sr.endRow + 1, rowCount - 1),
+        });
+      } else if (e.key === "ArrowUp") {
+        setSelectionRange({ ...sr, endRow: Math.max(sr.endRow - 1, 0) });
+      }
+      return;
+    }
 
     if (e.key === "ArrowRight") {
       e.preventDefault();
@@ -250,7 +446,56 @@ export function SpreadsheetGrid() {
       e.key === "=" ||
       (e.key.length === 1 && !e.ctrlKey && !e.metaKey && !e.altKey)
     ) {
+      e.preventDefault();
       startEditing(selectedCell, e.key);
+    }
+  }
+
+  // Fill Down: copy top row of selection to all rows below
+  function handleFillDown() {
+    if (!selectionRange) return;
+    const minR = Math.min(selectionRange.startRow, selectionRange.endRow);
+    const maxR = Math.max(selectionRange.startRow, selectionRange.endRow);
+    const minC = Math.min(selectionRange.startCol, selectionRange.endCol);
+    const maxC = Math.max(selectionRange.startCol, selectionRange.endCol);
+    if (minR === maxR) return;
+
+    for (let c = minC; c <= maxC; c++) {
+      const sourceRef = cellRef(minR, c);
+      const sourceVal = cells[sourceRef]?.value ?? "";
+      const sourceData = cells[sourceRef] ?? { value: "" };
+      for (let r = minR + 1; r <= maxR; r++) {
+        const ref = cellRef(r, c);
+        if (readOnlyCells.has(ref)) continue;
+        const newVal = sourceVal.startsWith("=")
+          ? adjustFormulaRefs(sourceVal, r - minR, 0)
+          : sourceVal;
+        onCellChange(ref, { ...sourceData, value: newVal });
+      }
+    }
+  }
+
+  // Fill Right: copy left column of selection to all columns right
+  function handleFillRight() {
+    if (!selectionRange) return;
+    const minR = Math.min(selectionRange.startRow, selectionRange.endRow);
+    const maxR = Math.max(selectionRange.startRow, selectionRange.endRow);
+    const minC = Math.min(selectionRange.startCol, selectionRange.endCol);
+    const maxC = Math.max(selectionRange.startCol, selectionRange.endCol);
+    if (minC === maxC) return;
+
+    for (let r = minR; r <= maxR; r++) {
+      const sourceRef = cellRef(r, minC);
+      const sourceVal = cells[sourceRef]?.value ?? "";
+      const sourceData = cells[sourceRef] ?? { value: "" };
+      for (let c = minC + 1; c <= maxC; c++) {
+        const ref = cellRef(r, c);
+        if (readOnlyCells.has(ref)) continue;
+        const newVal = sourceVal.startsWith("=")
+          ? adjustFormulaRefs(sourceVal, 0, c - minC)
+          : sourceVal;
+        onCellChange(ref, { ...sourceData, value: newVal });
+      }
     }
   }
 
@@ -267,6 +512,15 @@ export function SpreadsheetGrid() {
   const selMaxCol = selectionRange
     ? Math.max(selectionRange.startCol, selectionRange.endCol)
     : selCol;
+
+  // Compute cumulative column offsets for freeze panes
+  function getColLeft(c: number): number {
+    let left = 0;
+    for (let i = 0; i < c; i++) left += getColWidth(i);
+    return left;
+  }
+
+  // Compute cumulative column offsets for freeze panes (used above in getColLeft)
 
   return (
     // biome-ignore lint/a11y/noStaticElementInteractions: spreadsheet grid needs keyboard/mouse interaction
@@ -313,6 +567,7 @@ export function SpreadsheetGrid() {
             const isActive = c >= selMinCol && c <= selMaxCol;
             const isLastCol = c === columnCount - 1;
             const colW = getColWidth(c);
+            const isFrozenCol = c < freezeCol;
             return (
               <div
                 // biome-ignore lint/suspicious/noArrayIndexKey: fixed column headers
@@ -329,6 +584,16 @@ export function SpreadsheetGrid() {
                   });
                   containerRef.current?.focus();
                 }}
+                onContextMenu={(e) => {
+                  e.preventDefault();
+                  setContextMenu({
+                    x: e.clientX,
+                    y: e.clientY,
+                    row: -1, // -1 indicates column header
+                    col: c,
+                    cellRef: colLabel(c),
+                  });
+                }}
                 style={{
                   width: colW,
                   height: GRID.COL_HEADER_HEIGHT,
@@ -342,10 +607,17 @@ export function SpreadsheetGrid() {
                     ? "var(--sheet-header-active)"
                     : "var(--sheet-header)",
                   color: isActive ? "white" : "var(--muted-foreground)",
-                  borderRight: "1px solid var(--sheet-grid)",
+                  borderRight:
+                    c === freezeCol - 1
+                      ? "2px solid var(--sheet-active-ring)"
+                      : "1px solid var(--sheet-grid)",
                   userSelect: "none",
                   letterSpacing: "0.05em",
-                  position: "relative",
+                  position: isFrozenCol ? "sticky" : "relative",
+                  left: isFrozenCol
+                    ? GRID.ROW_HEADER_WIDTH + getColLeft(c)
+                    : undefined,
+                  zIndex: isFrozenCol ? 25 : undefined,
                   cursor: "pointer",
                 }}
               >
@@ -406,9 +678,23 @@ export function SpreadsheetGrid() {
 
           const isRowActive = r >= selMinRow && r <= selMaxRow;
           const isLastRow = r === rowCount - 1;
+          const isFrozenRow = r < freezeRow;
           return (
             // biome-ignore lint/suspicious/noArrayIndexKey: fixed row grid
-            <div key={r} style={{ display: "flex", height: GRID.ROW_HEIGHT }}>
+            <div
+              key={r}
+              style={{
+                display: "flex",
+                height: GRID.ROW_HEIGHT,
+                ...(isFrozenRow
+                  ? {
+                      position: "sticky",
+                      top: GRID.COL_HEADER_HEIGHT + r * GRID.ROW_HEIGHT,
+                      zIndex: 15,
+                    }
+                  : {}),
+              }}
+            >
               {/* Row number header */}
               <div
                 className="group/rowhdr"
@@ -440,8 +726,11 @@ export function SpreadsheetGrid() {
                     : "var(--sheet-header)",
                   color: isRowActive ? "white" : "var(--muted-foreground)",
                   borderRight: "1px solid var(--sheet-grid)",
-                  borderBottom: "1px solid var(--sheet-grid)",
-                  zIndex: 10,
+                  borderBottom:
+                    r === freezeRow - 1
+                      ? "2px solid var(--sheet-active-ring)"
+                      : "1px solid var(--sheet-grid)",
+                  zIndex: isFrozenRow ? 16 : 10,
                   userSelect: "none",
                   cursor: "pointer",
                 }}
@@ -464,6 +753,9 @@ export function SpreadsheetGrid() {
 
               {/* Cells */}
               {Array.from({ length: columnCount }, (_, c) => {
+                // Skip hidden merged cells
+                if (isMergeHiddenCell(r, c, mergedRegions)) return null;
+
                 const ref = cellRef(r, c);
                 const cellData = cells[ref];
                 const isSingleSelected = selectedCell === ref;
@@ -483,108 +775,192 @@ export function SpreadsheetGrid() {
                     : rawDisplay;
                 const colW = getColWidth(c);
 
+                // Check if this is a merge primary cell
+                const mergeRegion = isMergePrimaryCell(r, c, mergedRegions);
+                let mergeWidth = colW;
+                let mergeHeight = GRID.ROW_HEIGHT;
+                if (mergeRegion) {
+                  mergeWidth = 0;
+                  for (
+                    let mc = mergeRegion.startCol;
+                    mc <= mergeRegion.endCol;
+                    mc++
+                  ) {
+                    mergeWidth += getColWidth(mc);
+                  }
+                  mergeHeight =
+                    (mergeRegion.endRow - mergeRegion.startRow + 1) *
+                    GRID.ROW_HEIGHT;
+                }
+
+                // Formula ref highlight
+                const refHighlight = formulaRefHighlights.get(ref);
+
+                // Fill handle preview border
+                const inFillRange = isCellInFillRange(r, c) && !isInRange;
+
+                // Frozen cell styling
+                const isFrozenCol = c < freezeCol;
+                const isFrozenCell = isFrozenRow || isFrozenCol;
+
+                // Fill handle indicator: show on bottom-right of selection
+                const showFillHandle =
+                  !editingCell &&
+                  r === selMaxRow &&
+                  c === selMaxCol &&
+                  !fillHandleActive;
+
                 return (
                   // biome-ignore lint/a11y/noStaticElementInteractions: spreadsheet cells need mouse handlers
                   <div
                     // biome-ignore lint/suspicious/noArrayIndexKey: fixed column grid
                     key={c}
                     style={{
-                      width: colW,
-                      height: GRID.ROW_HEIGHT,
+                      width: mergeRegion ? mergeWidth : colW,
+                      height: mergeRegion ? mergeHeight : GRID.ROW_HEIGHT,
                       flexShrink: 0,
-                      position: "relative",
-                      background:
-                        isInRange && !isSingleSelected
+                      position: isFrozenCell ? "sticky" : "relative",
+                      left: isFrozenCol
+                        ? GRID.ROW_HEADER_WIDTH + getColLeft(c)
+                        : undefined,
+                      zIndex: isSingleSelected ? 5 : isFrozenCell ? 12 : 0,
+                      background: inFillRange
+                        ? "var(--sheet-selection)"
+                        : isInRange && !isSingleSelected
                           ? "var(--sheet-selection)"
                           : (cellData?.bgColor ?? "var(--sheet-cell-bg)"),
-                      borderRight: "1px solid var(--sheet-grid)",
-                      borderBottom: "1px solid var(--sheet-grid)",
+                      borderRight:
+                        c === freezeCol - 1
+                          ? "2px solid var(--sheet-active-ring)"
+                          : "1px solid var(--sheet-grid)",
+                      borderBottom:
+                        r === freezeRow - 1
+                          ? "2px solid var(--sheet-active-ring)"
+                          : "1px solid var(--sheet-grid)",
                       outline: isSingleSelected
                         ? "2px solid var(--sheet-active-ring)"
                         : "none",
                       outlineOffset: "-2px",
-                      zIndex: isSingleSelected ? 5 : 0,
-                      cursor: "cell",
+                      cursor:
+                        isFormulaMode && editingCell ? "crosshair" : "cell",
                       overflow: "hidden",
                       userSelect: "none",
+                      boxShadow: refHighlight
+                        ? `inset 0 0 0 2px ${refHighlight}`
+                        : inFillRange
+                          ? "inset 0 0 0 1px var(--sheet-active-ring)"
+                          : undefined,
                     }}
-                    onMouseDown={() => handleCellMouseDown(r, c)}
+                    onMouseDown={(e) => handleCellMouseDown(r, c, e)}
                     onMouseEnter={() => handleCellMouseEnter(r, c)}
                     onDoubleClick={() => startEditing(ref)}
                     onContextMenu={(e) => handleContextMenu(e, r, c)}
                   >
                     {isEditing ? (
-                      <input
-                        ref={editInputRef}
-                        value={editingValue}
-                        onChange={(e) => setEditingValue(e.target.value)}
-                        onKeyDown={(e) => {
-                          if (e.key === "Enter") {
-                            e.preventDefault();
+                      <>
+                        <input
+                          ref={editInputRef}
+                          value={editingValue}
+                          onChange={(e) => setEditingValue(e.target.value)}
+                          onSelect={(e) => {
+                            const input = e.target as HTMLInputElement;
+                            setFormulaCursorPos(
+                              input.selectionStart ?? editingValue.length,
+                            );
+                          }}
+                          onKeyDown={(e) => {
+                            // Autocomplete first
+                            if (autocomplete.handleKeyDown(e)) return;
+                            if (e.key === "Enter") {
+                              e.preventDefault();
+                              const existing = cells[ref] || { value: "" };
+                              onCellChange(ref, {
+                                ...existing,
+                                value: editingValue,
+                              });
+                              setEditingCell(null);
+                              setSelectedCell(
+                                cellRef(Math.min(r + 1, rowCount - 1), c),
+                              );
+                            } else if (e.key === "Escape") {
+                              e.preventDefault();
+                              cancelEdit();
+                            } else if (e.key === "Tab") {
+                              e.preventDefault();
+                              const existing = cells[ref] || { value: "" };
+                              onCellChange(ref, {
+                                ...existing,
+                                value: editingValue,
+                              });
+                              setEditingCell(null);
+                              setSelectedCell(
+                                cellRef(r, Math.min(c + 1, columnCount - 1)),
+                              );
+                            }
+                          }}
+                          onBlur={() => {
+                            if (editingCell !== ref) return;
                             const existing = cells[ref] || { value: "" };
                             onCellChange(ref, {
                               ...existing,
                               value: editingValue,
                             });
                             setEditingCell(null);
-                            setSelectedCell(
-                              cellRef(Math.min(r + 1, rowCount - 1), c),
-                            );
-                          } else if (e.key === "Escape") {
-                            e.preventDefault();
-                            cancelEdit();
-                          } else if (e.key === "Tab") {
-                            e.preventDefault();
-                            const existing = cells[ref] || { value: "" };
-                            onCellChange(ref, {
-                              ...existing,
-                              value: editingValue,
-                            });
-                            setEditingCell(null);
-                            setSelectedCell(
-                              cellRef(r, Math.min(c + 1, columnCount - 1)),
-                            );
-                          }
-                        }}
-                        onBlur={() => {
-                          if (editingCell !== ref) return;
-                          const existing = cells[ref] || { value: "" };
-                          onCellChange(ref, {
-                            ...existing,
-                            value: editingValue,
-                          });
-                          setEditingCell(null);
-                        }}
-                        style={{
-                          position: "absolute",
-                          inset: 0,
-                          width: "100%",
-                          height: "100%",
-                          padding: "0 4px",
-                          fontSize: `${cellData?.fontSize ?? 12}px`,
-                          fontFamily: cellData?.fontFamily ?? "inherit",
-                          fontWeight: cellData?.bold ? 600 : 400,
-                          fontStyle: cellData?.italic ? "italic" : "normal",
-                          textDecoration: cellData?.underline
-                            ? "underline"
-                            : "none",
-                          textAlign: cellData?.align ?? "left",
-                          outline: "none",
-                          border: "none",
-                          background: "var(--sheet-cell-bg)",
-                          zIndex: 20,
-                          boxShadow: "var(--sheet-edit-shadow)",
-                          color: editingValue.startsWith("=")
-                            ? "var(--primary)"
-                            : "var(--foreground)",
-                        }}
-                      />
+                          }}
+                          style={{
+                            position: "absolute",
+                            inset: 0,
+                            width: "100%",
+                            height: "100%",
+                            padding: "0 4px",
+                            fontSize: `${cellData?.fontSize ?? 12}px`,
+                            fontFamily: cellData?.fontFamily ?? "inherit",
+                            fontWeight: cellData?.bold ? 600 : 400,
+                            fontStyle: cellData?.italic ? "italic" : "normal",
+                            textDecoration: cellData?.underline
+                              ? "underline"
+                              : "none",
+                            textAlign: cellData?.align ?? "left",
+                            outline: "none",
+                            border: "none",
+                            background: "var(--sheet-cell-bg)",
+                            zIndex: 20,
+                            boxShadow: "var(--sheet-edit-shadow)",
+                            color: editingValue.startsWith("=")
+                              ? "var(--primary)"
+                              : "var(--foreground)",
+                          }}
+                        />
+                        {/* Formula autocomplete dropdown */}
+                        {autocomplete.isOpen &&
+                          editingValue.startsWith("=") && (
+                            <CellAutocomplete
+                              suggestions={FORMULA_FUNCTIONS}
+                              inputValue={formulaPrefix}
+                              onSelect={(selected) => {
+                                const expr = editingValue;
+                                const lastTokenMatch = expr.match(/([A-Z]+)$/i);
+                                if (lastTokenMatch) {
+                                  const newVal =
+                                    expr.slice(
+                                      0,
+                                      expr.length - lastTokenMatch[1].length,
+                                    ) +
+                                    selected +
+                                    "(";
+                                  setEditingValue(newVal);
+                                }
+                              }}
+                              onClose={() => {}}
+                              style={{ top: GRID.ROW_HEIGHT, left: 0 }}
+                            />
+                          )}
+                      </>
                     ) : isDropdown ? (
                       <CellDropdown
                         options={cellData.dropdownOptions!}
                         currentLabel={cellData.value}
                         onSelect={(val) => {
-                          // Find label for the selected value
                           const opt = cellData.dropdownOptions!.find(
                             (o) => o.value === val,
                           );
@@ -592,7 +968,6 @@ export function SpreadsheetGrid() {
                           const existing = cells[ref] || { value: "" };
                           onCellChange(ref, { ...existing, value: label });
                           setDropdownCell(null);
-                          // Move to next cell
                           setSelectedCell(
                             cellRef(r, Math.min(c + 1, columnCount - 1)),
                           );
@@ -605,7 +980,9 @@ export function SpreadsheetGrid() {
                         style={{
                           display: "block",
                           padding: "0 4px",
-                          lineHeight: `${GRID.ROW_HEIGHT}px`,
+                          lineHeight: mergeRegion
+                            ? `${mergeHeight}px`
+                            : `${GRID.ROW_HEIGHT}px`,
                           fontSize: `${cellData?.fontSize ?? 12}px`,
                           fontFamily: cellData?.fontFamily ?? "inherit",
                           fontWeight: cellData?.bold ? 600 : 400,
@@ -621,7 +998,6 @@ export function SpreadsheetGrid() {
                         }}
                       >
                         {displayValue}
-                        {/* Dropdown indicator */}
                         {cellData?.cellType === "dropdown" && (
                           <ChevronDown
                             className="inline-block ml-0.5 size-3 text-muted-foreground align-middle"
@@ -629,6 +1005,28 @@ export function SpreadsheetGrid() {
                           />
                         )}
                       </span>
+                    )}
+
+                    {/* Fill handle (blue square at bottom-right of selection) */}
+                    {showFillHandle && (
+                      // biome-ignore lint/a11y/noStaticElementInteractions: fill handle drag
+                      <div
+                        onMouseDown={(e) => {
+                          e.stopPropagation();
+                          e.preventDefault();
+                          onFillHandleStart();
+                        }}
+                        style={{
+                          position: "absolute",
+                          right: -3,
+                          bottom: -3,
+                          width: 6,
+                          height: 6,
+                          background: "var(--sheet-active-ring)",
+                          cursor: "crosshair",
+                          zIndex: 30,
+                        }}
+                      />
                     )}
                   </div>
                 );
@@ -656,6 +1054,12 @@ export function SpreadsheetGrid() {
             </button>
           </div>
         )}
+
+        {/* Formula Quick Bar — floating toolbar near selection */}
+        <FormulaQuickBar
+          selectionRange={selectionRange}
+          columnWidths={columnWidths}
+        />
       </div>
 
       {/* Context menu */}
@@ -666,8 +1070,10 @@ export function SpreadsheetGrid() {
           isReadOnlyTab={false}
           isHeaderRow={contextMenu.row === 0}
           isTotalRow={false}
-          canInsertRow={false}
-          canDeleteRow={false}
+          canInsertRow={rowCount < GRID.MAX_ROWS}
+          canDeleteRow={rowCount > 1}
+          canInsertColumn={columnCount < GRID.MAX_COLS}
+          canDeleteColumn={columnCount > 1}
           onCopy={copySelection}
           onCut={cutSelection}
           onPaste={pasteSelection}
@@ -677,9 +1083,12 @@ export function SpreadsheetGrid() {
               onCellChange(contextMenu.cellRef, { ...existing, value: "" });
             }
           }}
-          onInsertRowAbove={() => {}}
-          onInsertRowBelow={() => {}}
-          onDeleteRow={() => {}}
+          onInsertRowAbove={() => insertRowAbove(contextMenu.row)}
+          onInsertRowBelow={() => insertRowBelow(contextMenu.row)}
+          onDeleteRow={() => deleteRow(contextMenu.row)}
+          onInsertColumnLeft={() => insertColumnLeft(contextMenu.col)}
+          onInsertColumnRight={() => insertColumnRight(contextMenu.col)}
+          onDeleteColumn={() => deleteColumn(contextMenu.col)}
           onSortAsc={() => {
             setSelectedCell(cellRef(1, contextMenu.col));
             setSelectionRange({
@@ -699,6 +1108,30 @@ export function SpreadsheetGrid() {
             });
           }}
           onFilterByColumn={() => {}}
+          hasMultiCellSelection={
+            !!selectionRange &&
+            (Math.abs(selectionRange.startRow - selectionRange.endRow) > 0 ||
+              Math.abs(selectionRange.startCol - selectionRange.endCol) > 0)
+          }
+          onCopyFormula={async (fn: FormulaFn) => {
+            const formula = buildSelectionFormula(fn, selectionRange);
+            if (!formula) return;
+            const ok = await copyFormulaToClipboard(formula);
+            if (ok) toast.success(`Copied ${formula}`);
+          }}
+        />
+      )}
+
+      {/* Paste Special menu */}
+      {pasteSpecialPos && (
+        <PasteSpecialMenu
+          x={pasteSpecialPos.x}
+          y={pasteSpecialPos.y}
+          onSelect={(mode) => {
+            pasteSpecial(mode);
+            setPasteSpecialPos(null);
+          }}
+          onClose={() => setPasteSpecialPos(null)}
         />
       )}
     </div>

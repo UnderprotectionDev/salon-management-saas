@@ -1246,6 +1246,18 @@ export default defineSchema({
     order: v.number(),
     columnCount: v.optional(v.number()),
     rowCount: v.optional(v.number()),
+    freezeRow: v.optional(v.number()),
+    freezeCol: v.optional(v.number()),
+    mergedRegions: v.optional(
+      v.array(
+        v.object({
+          startRow: v.number(),
+          startCol: v.number(),
+          endRow: v.number(),
+          endCol: v.number(),
+        }),
+      ),
+    ),
   }).index("by_org", ["organizationId"]),
 
   // Spreadsheet Cells — cell data for freeform sheets

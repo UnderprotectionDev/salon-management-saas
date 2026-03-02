@@ -122,6 +122,49 @@ export const bulkUpsert = ownerMutation({
   },
 });
 
+/** Replace ALL cells for a sheet atomically (delete all, then insert new) */
+export const replaceAllCells = ownerMutation({
+  args: {
+    sheetId: v.id("spreadsheetSheets"),
+    cells: v.array(
+      v.object({
+        cellRef: v.string(),
+        value: v.string(),
+        ...cellFormatFields,
+      }),
+    ),
+  },
+  returns: v.null(),
+  handler: async (ctx, args) => {
+    // Delete all existing cells for this sheet
+    const existingCells = await ctx.db
+      .query("spreadsheetCells")
+      .withIndex("by_org_sheet", (q) =>
+        q.eq("organizationId", ctx.organizationId).eq("sheetId", args.sheetId),
+      )
+      .collect();
+
+    for (const cell of existingCells) {
+      await ctx.db.delete(cell._id);
+    }
+
+    // Insert new cells
+    for (const cell of args.cells) {
+      const { cellRef, value, ...format } = cell;
+      if (value || Object.values(format).some((v) => v !== undefined)) {
+        await ctx.db.insert("spreadsheetCells", {
+          organizationId: ctx.organizationId,
+          sheetId: args.sheetId,
+          cellRef,
+          value,
+          ...format,
+        });
+      }
+    }
+    return null;
+  },
+});
+
 /** Delete all cells for a sheet (used before sheet deletion) */
 export const deleteBySheet = ownerMutation({
   args: { sheetId: v.id("spreadsheetSheets") },

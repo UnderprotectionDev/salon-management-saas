@@ -3,6 +3,8 @@
 import { Check, ChevronDown, X } from "lucide-react";
 import { useRef } from "react";
 import { Button } from "@/components/ui/button";
+import { FORMULA_REF_COLORS } from "../lib/formula-refs";
+import { extractFormulaRefs } from "../lib/formula-refs";
 import { useSpreadsheet } from "../lib/spreadsheet-context";
 
 export function FormulaBar() {
@@ -13,6 +15,7 @@ export function FormulaBar() {
     cells,
     onCellChange,
     readOnlyCells,
+    setFormulaCursorPos,
   } = useSpreadsheet();
 
   const inputRef = useRef<HTMLInputElement>(null);
@@ -34,6 +37,20 @@ export function FormulaBar() {
       handleCommit();
     } else if (e.key === "Escape") {
       handleCancel();
+    }
+  }
+
+  // Build colored ref spans for formula display
+  const formulaRefs = isFormula ? extractFormulaRefs(editingValue) : [];
+  const usedColors = new Map<string, string>();
+  let colorIdx = 0;
+  for (const ref of formulaRefs) {
+    if (!usedColors.has(ref.text)) {
+      usedColors.set(
+        ref.text,
+        FORMULA_REF_COLORS[colorIdx % FORMULA_REF_COLORS.length],
+      );
+      colorIdx++;
     }
   }
 
@@ -78,18 +95,24 @@ export function FormulaBar() {
       </div>
 
       {/* Input */}
-      <input
-        ref={inputRef}
-        value={editingValue}
-        onChange={(e) => setEditingValue(e.target.value)}
-        onKeyDown={handleKeyDown}
-        className="flex-1 h-full px-3 text-xs bg-background outline-none font-mono focus:bg-accent/20"
-        style={{ color: isFormula ? "var(--primary)" : undefined }}
-        spellCheck={false}
-        autoComplete="off"
-        readOnly={isReadOnly}
-        placeholder={isReadOnly ? "Read-only cell" : "Select a cell..."}
-      />
+      <div className="flex-1 h-full relative">
+        <input
+          ref={inputRef}
+          value={editingValue}
+          onChange={(e) => setEditingValue(e.target.value)}
+          onSelect={(e) => {
+            const input = e.target as HTMLInputElement;
+            setFormulaCursorPos(input.selectionStart ?? editingValue.length);
+          }}
+          onKeyDown={handleKeyDown}
+          className="w-full h-full px-3 text-xs bg-background outline-none font-mono focus:bg-accent/20"
+          style={{ color: isFormula ? "var(--primary)" : undefined }}
+          spellCheck={false}
+          autoComplete="off"
+          readOnly={isReadOnly}
+          placeholder={isReadOnly ? "Read-only cell" : "Select a cell..."}
+        />
+      </div>
     </div>
   );
 }

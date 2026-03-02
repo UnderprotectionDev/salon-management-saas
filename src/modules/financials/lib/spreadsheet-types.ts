@@ -51,6 +51,12 @@ export interface SheetTab {
   columnCount?: number;
   /** Number of rows to display for this tab */
   rowCount?: number;
+  /** Freeze pane: number of rows frozen from top */
+  freezeRow?: number;
+  /** Freeze pane: number of columns frozen from left */
+  freezeCol?: number;
+  /** Merged cell regions */
+  mergedRegions?: import("./merge-utils").MergedRegion[];
 }
 
 export const GRID = {

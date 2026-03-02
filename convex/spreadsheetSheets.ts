@@ -1,6 +1,13 @@
 import { ConvexError, v } from "convex/values";
 import { ErrorCode, ownerMutation, ownerQuery } from "./lib/functions";
 
+const mergedRegionValidator = v.object({
+  startRow: v.number(),
+  startCol: v.number(),
+  endRow: v.number(),
+  endCol: v.number(),
+});
+
 /** List all freeform sheets for the organization, ordered by `order` */
 export const list = ownerQuery({
   args: {},
@@ -13,6 +20,9 @@ export const list = ownerQuery({
       order: v.number(),
       columnCount: v.optional(v.number()),
       rowCount: v.optional(v.number()),
+      freezeRow: v.optional(v.number()),
+      freezeCol: v.optional(v.number()),
+      mergedRegions: v.optional(v.array(mergedRegionValidator)),
     }),
   ),
   handler: async (ctx) => {
@@ -53,10 +63,16 @@ export const rename = ownerMutation({
   handler: async (ctx, args) => {
     const sheet = await ctx.db.get(args.id);
     if (!sheet) {
-      throw new ConvexError({ code: ErrorCode.NOT_FOUND, message: "Sheet not found" });
+      throw new ConvexError({
+        code: ErrorCode.NOT_FOUND,
+        message: "Sheet not found",
+      });
     }
     if (sheet.organizationId !== ctx.organizationId) {
-      throw new ConvexError({ code: ErrorCode.FORBIDDEN, message: "Unauthorized" });
+      throw new ConvexError({
+        code: ErrorCode.FORBIDDEN,
+        message: "Unauthorized",
+      });
     }
     await ctx.db.patch(args.id, { name: args.name });
     return null;
@@ -70,10 +86,16 @@ export const remove = ownerMutation({
   handler: async (ctx, args) => {
     const sheet = await ctx.db.get(args.id);
     if (!sheet) {
-      throw new ConvexError({ code: ErrorCode.NOT_FOUND, message: "Sheet not found" });
+      throw new ConvexError({
+        code: ErrorCode.NOT_FOUND,
+        message: "Sheet not found",
+      });
     }
     if (sheet.organizationId !== ctx.organizationId) {
-      throw new ConvexError({ code: ErrorCode.FORBIDDEN, message: "Unauthorized" });
+      throw new ConvexError({
+        code: ErrorCode.FORBIDDEN,
+        message: "Unauthorized",
+      });
     }
 
     // Delete all cells in this sheet (use org-scoped index)
@@ -129,6 +151,40 @@ export const reorder = ownerMutation({
         await ctx.db.patch(args.orderedIds[i], { order: i });
       }
     }
+    return null;
+  },
+});
+
+/** Set freeze pane rows/columns */
+export const setFreeze = ownerMutation({
+  args: {
+    id: v.id("spreadsheetSheets"),
+    freezeRow: v.number(),
+    freezeCol: v.number(),
+  },
+  returns: v.null(),
+  handler: async (ctx, args) => {
+    const sheet = await ctx.db.get(args.id);
+    if (!sheet || sheet.organizationId !== ctx.organizationId) return null;
+    await ctx.db.patch(args.id, {
+      freezeRow: Math.max(0, args.freezeRow),
+      freezeCol: Math.max(0, args.freezeCol),
+    });
+    return null;
+  },
+});
+
+/** Set merged regions for a sheet */
+export const setMergedRegions = ownerMutation({
+  args: {
+    id: v.id("spreadsheetSheets"),
+    mergedRegions: v.array(mergedRegionValidator),
+  },
+  returns: v.null(),
+  handler: async (ctx, args) => {
+    const sheet = await ctx.db.get(args.id);
+    if (!sheet || sheet.organizationId !== ctx.organizationId) return null;
+    await ctx.db.patch(args.id, { mergedRegions: args.mergedRegions });
     return null;
   },
 });

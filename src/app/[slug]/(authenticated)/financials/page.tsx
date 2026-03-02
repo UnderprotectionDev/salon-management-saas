@@ -5,6 +5,7 @@ import { useMutation, useQuery } from "convex/react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useOrganization } from "@/modules/organization";
 import { SpreadsheetShell } from "@/modules/financials/components/SpreadsheetShell";
+import type { MergedRegion } from "@/modules/financials/lib/merge-utils";
 import {
   GRID,
   type SheetTab,
@@ -46,6 +47,9 @@ export default function FinancialsPage() {
     label: s.name,
     columnCount: s.columnCount ?? GRID.DEFAULT_FREEFORM_COLS,
     rowCount: s.rowCount ?? GRID.DEFAULT_FREEFORM_ROWS,
+    freezeRow: s.freezeRow ?? 0,
+    freezeCol: s.freezeCol ?? 0,
+    mergedRegions: s.mergedRegions as MergedRegion[] | undefined,
   }));
 
   if (!currentRole) {
@@ -138,12 +142,18 @@ function FinancialsContent({
   onRenameSheet: (id: string, name: string) => void;
   onDeleteSheet: (id: string) => void;
 }) {
+  const { activeOrganization } = useOrganization();
   const activeTabObj = tabs.find((t) => t.id === activeTab);
 
   const freeform = useFreeformCells(
     activeFreeformId,
     activeTabObj?.columnCount,
     activeTabObj?.rowCount,
+  );
+
+  const setFreezeMut = useMutation(api.spreadsheetSheets.setFreeze);
+  const setMergedRegionsMut = useMutation(
+    api.spreadsheetSheets.setMergedRegions,
   );
 
   const cells: CellMap = activeFreeformId ? freeform.cells : {};
@@ -157,6 +167,7 @@ function FinancialsContent({
       onTabChange={onTabChange}
       cells={cells}
       onCellChange={cellChangeHandler}
+      onBulkReplace={activeFreeformId ? freeform.onBulkReplace : undefined}
       columnCount={freeform.columnCount}
       onAddColumn={freeform.onAddColumn}
       onDeleteLastColumn={freeform.onDeleteLastColumn}
@@ -166,6 +177,23 @@ function FinancialsContent({
       onAddSheet={onAddSheet}
       onRenameSheet={onRenameSheet}
       onDeleteSheet={onDeleteSheet}
+      onSetFreeze={(row, col) => {
+        if (!activeOrganization || !activeFreeformId) return;
+        setFreezeMut({
+          organizationId: activeOrganization._id,
+          id: activeFreeformId,
+          freezeRow: row,
+          freezeCol: col,
+        }).catch(() => {});
+      }}
+      onSetMergedRegions={(regions) => {
+        if (!activeOrganization || !activeFreeformId) return;
+        setMergedRegionsMut({
+          organizationId: activeOrganization._id,
+          id: activeFreeformId,
+          mergedRegions: regions,
+        }).catch(() => {});
+      }}
     />
   );
 }

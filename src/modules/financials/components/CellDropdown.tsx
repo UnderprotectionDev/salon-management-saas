@@ -77,7 +77,9 @@ export function CellDropdown({
       onKeyDown={handleKeyDown}
       onMouseDown={(e) => e.stopPropagation()}
     >
-      <div style={{ padding: "4px 6px", borderBottom: "1px solid var(--border)" }}>
+      <div
+        style={{ padding: "4px 6px", borderBottom: "1px solid var(--border)" }}
+      >
         <input
           ref={inputRef}
           value={search}
@@ -124,7 +126,9 @@ export function CellDropdown({
               {opt.label === currentLabel && (
                 <Check className="size-3 text-primary shrink-0" />
               )}
-              {opt.label !== currentLabel && <span className="size-3 shrink-0" />}
+              {opt.label !== currentLabel && (
+                <span className="size-3 shrink-0" />
+              )}
               {opt.label}
             </button>
           ))

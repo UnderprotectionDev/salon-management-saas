@@ -13,6 +13,8 @@ import {
   DollarSign,
   FilterX,
   Italic,
+  Lock,
+  Merge,
   PaintBucket,
   Percent,
   Redo2,
@@ -22,8 +24,10 @@ import {
   Type,
   Underline,
   Undo2,
+  Unlock,
 } from "lucide-react";
 import { type ReactNode, useState } from "react";
+import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -46,10 +50,15 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
+import {
+  buildSelectionFormula,
+  copyFormulaToClipboard,
+  type FormulaFn,
+} from "../lib/formula-helpers";
 import { NUMBER_FORMATS, type NumberFormat } from "../lib/number-format";
 import { useSpreadsheet } from "../lib/spreadsheet-context";
-import type { CellData } from "../lib/spreadsheet-types";
 import { parseRef } from "../lib/spreadsheet-formula";
+import type { CellData } from "../lib/spreadsheet-types";
 import { cellRef, colLabel } from "../lib/spreadsheet-utils";
 import { ColorPicker } from "./ColorPicker";
 
@@ -95,7 +104,7 @@ function SectionLabel({ children }: { children: ReactNode }) {
   );
 }
 
-const RIBBON_TABS = ["Home"];
+const RIBBON_TABS = ["Home", "View"];
 
 interface RibbonProps {
   actions?: ReactNode;
@@ -135,11 +144,25 @@ export function Ribbon({ actions }: RibbonProps) {
     canRedo,
     clearAllFilters,
     columnFilters,
+    // Freeze
+    freezeRow,
+    freezeCol,
+    setFreeze,
+    // Merge
+    mergeCells,
+    unmergeCells,
   } = useSpreadsheet();
 
   const [activeTab, setActiveTab] = useState("Home");
 
   const hasActiveFilters = Object.keys(columnFilters).length > 0;
+  const hasFrozen = freezeRow > 0 || freezeCol > 0;
+
+  // Check if selection has a merge
+  const hasSelectionRange =
+    selectionRange &&
+    (Math.abs(selectionRange.startRow - selectionRange.endRow) > 0 ||
+      Math.abs(selectionRange.startCol - selectionRange.endCol) > 0);
 
   // Strip currency/percent/locale formatting so we can detect numeric values
   function normalizeNumeric(val: string): number {
@@ -150,8 +173,20 @@ export function Ribbon({ actions }: RibbonProps) {
     return Number(cleaned);
   }
 
-  // AutoSum helper
-  function handleAutoSum(fn: string) {
+  // AutoSum helper — if multi-cell selection, copy formula to clipboard;
+  // otherwise fall back to inserting into the active cell
+  async function handleAutoSum(fn: string) {
+    // Multi-cell selection → copy formula to clipboard
+    if (hasSelectionRange && selectionRange) {
+      const formula = buildSelectionFormula(fn as FormulaFn, selectionRange);
+      if (formula) {
+        const ok = await copyFormulaToClipboard(formula);
+        if (ok) toast.success(`Copied ${formula}`);
+      }
+      return;
+    }
+
+    // Single cell — scan upward for contiguous numbers
     if (readOnlyCells.has(selectedCell)) return;
     const m = selectedCell.match(/^([A-Z]+)(\d+)$/);
     if (!m) return;
@@ -475,6 +510,30 @@ export function Ribbon({ actions }: RibbonProps) {
                   active={align === "right"}
                   onClick={() => onAlignChange("right")}
                 />
+                {/* Merge & Center */}
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="h-7 px-1.5 gap-0.5 text-xs text-foreground"
+                    >
+                      <Merge className="w-3.5 h-3.5" />
+                      <ChevronDown className="w-2.5 h-2.5" />
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="start">
+                    <DropdownMenuItem
+                      onSelect={() => mergeCells()}
+                      disabled={!hasSelectionRange}
+                    >
+                      Merge & Center
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onSelect={() => unmergeCells()}>
+                      Unmerge Cells
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
               </div>
               <SectionLabel>Alignment</SectionLabel>
             </div>
@@ -584,6 +643,61 @@ export function Ribbon({ actions }: RibbonProps) {
                 )}
               </div>
               <SectionLabel>Editing</SectionLabel>
+            </div>
+          </>
+        )}
+
+        {activeTab === "View" && (
+          <>
+            {/* Freeze section */}
+            <div className="flex flex-col items-center gap-0 shrink-0">
+              <div className="flex items-center gap-0.5">
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className={cn(
+                        "h-7 px-1.5 gap-0.5 text-xs text-foreground",
+                        hasFrozen && "bg-accent text-accent-foreground",
+                      )}
+                    >
+                      <Lock className="w-3.5 h-3.5" />
+                      <span className="text-xs">Freeze</span>
+                      <ChevronDown className="w-2.5 h-2.5" />
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="start">
+                    <DropdownMenuItem onSelect={() => setFreeze(1, 0)}>
+                      Freeze Top Row
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onSelect={() => setFreeze(0, 1)}>
+                      Freeze First Column
+                    </DropdownMenuItem>
+                    <DropdownMenuItem
+                      onSelect={() => {
+                        const parsed = selectedCell.match(/^([A-Z]+)(\d+)$/);
+                        if (!parsed) return;
+                        let col = 0;
+                        for (const ch of parsed[1])
+                          col = col * 26 + ch.charCodeAt(0) - 64;
+                        const row = Number.parseInt(parsed[2], 10) - 1;
+                        setFreeze(row, col - 1);
+                      }}
+                    >
+                      Freeze Panes (at selection)
+                    </DropdownMenuItem>
+                    <DropdownMenuItem
+                      onSelect={() => setFreeze(0, 0)}
+                      disabled={!hasFrozen}
+                    >
+                      <Unlock className="w-3.5 h-3.5 mr-1" />
+                      Unfreeze All
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              </div>
+              <SectionLabel>Freeze Panes</SectionLabel>
             </div>
           </>
         )}

@@ -59,7 +59,10 @@ export function evalFormula(raw: string, cells: CellMap, depth = 0): string {
     // Recursively evaluate if the referenced cell is also a formula
     const resolved = v.startsWith("=") ? evalFormula(v, cells, depth + 1) : v;
     // Strip currency symbols, percent signs, whitespace, and locale formatting
-    const cleaned = resolved.replace(/[₺$€%\s]/g, "").replace(/\./g, "").replace(/,/g, ".");
+    const cleaned = resolved
+      .replace(/[₺$€%\s]/g, "")
+      .replace(/\./g, "")
+      .replace(/,/g, ".");
     const n = Number.parseFloat(cleaned || resolved);
     return Number.isNaN(n) ? 0 : n;
   };
@@ -110,12 +113,16 @@ export function evalFormula(raw: string, cells: CellMap, depth = 0): string {
         if (a.includes(":")) {
           for (const r of expandRange(a)) {
             const val = cells[r]?.value ?? "";
-            const resolved = val.startsWith("=") ? evalFormula(val, cells, depth + 1) : val;
+            const resolved = val.startsWith("=")
+              ? evalFormula(val, cells, depth + 1)
+              : val;
             if (resolved && !Number.isNaN(Number(resolved))) count++;
           }
         } else if (parseRef(a)) {
           const val = cells[a]?.value ?? "";
-          const resolved = val.startsWith("=") ? evalFormula(val, cells, depth + 1) : val;
+          const resolved = val.startsWith("=")
+            ? evalFormula(val, cells, depth + 1)
+            : val;
           if (resolved && !Number.isNaN(Number(resolved))) count++;
         }
       }
@@ -131,12 +138,16 @@ export function evalFormula(raw: string, cells: CellMap, depth = 0): string {
         if (a.includes(":")) {
           for (const r of expandRange(a)) {
             const val = cells[r]?.value ?? "";
-            const resolved = val.startsWith("=") ? evalFormula(val, cells, depth + 1) : val;
+            const resolved = val.startsWith("=")
+              ? evalFormula(val, cells, depth + 1)
+              : val;
             if (resolved) count++;
           }
         } else if (parseRef(a)) {
           const val = cells[a]?.value ?? "";
-          const resolved = val.startsWith("=") ? evalFormula(val, cells, depth + 1) : val;
+          const resolved = val.startsWith("=")
+            ? evalFormula(val, cells, depth + 1)
+            : val;
           if (resolved) count++;
         }
       }
@@ -174,25 +185,26 @@ export function evalFormula(raw: string, cells: CellMap, depth = 0): string {
       }
       parts.push(inner.slice(start));
       if (parts.length === 3) {
-      const cond = parts[0].trim();
-      const trueVal = parts[1].trim();
-      const falseVal = parts[2].trim();
-      const condM = cond.match(/^(.+?)(>=|<=|<>|>|<|=)(.+)$/);
-      if (condM) {
-        const leftRef = condM[1].trim();
-        const left = Number.parseFloat(cells[leftRef]?.value ?? leftRef) || 0;
-        const right = Number.parseFloat(condM[3].trim()) || 0;
-        let result = false;
-        if (condM[2] === ">") result = left > right;
-        else if (condM[2] === "<") result = left < right;
-        else if (condM[2] === ">=") result = left >= right;
-        else if (condM[2] === "<=") result = left <= right;
-        else if (condM[2] === "=" || condM[2] === "==") result = left === right;
-        else if (condM[2] === "<>") result = left !== right;
-        return result
-          ? trueVal.replace(/^"(.*)"$/, "$1")
-          : falseVal.replace(/^"(.*)"$/, "$1");
-      }
+        const cond = parts[0].trim();
+        const trueVal = parts[1].trim();
+        const falseVal = parts[2].trim();
+        const condM = cond.match(/^(.+?)(>=|<=|<>|>|<|=)(.+)$/);
+        if (condM) {
+          const leftRef = condM[1].trim();
+          const left = Number.parseFloat(cells[leftRef]?.value ?? leftRef) || 0;
+          const right = Number.parseFloat(condM[3].trim()) || 0;
+          let result = false;
+          if (condM[2] === ">") result = left > right;
+          else if (condM[2] === "<") result = left < right;
+          else if (condM[2] === ">=") result = left >= right;
+          else if (condM[2] === "<=") result = left <= right;
+          else if (condM[2] === "=" || condM[2] === "==")
+            result = left === right;
+          else if (condM[2] === "<>") result = left !== right;
+          return result
+            ? trueVal.replace(/^"(.*)"$/, "$1")
+            : falseVal.replace(/^"(.*)"$/, "$1");
+        }
       }
     }
 

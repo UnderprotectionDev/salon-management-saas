@@ -1,6 +1,30 @@
 "use client";
 
 import { type ReactNode, useEffect, useRef, useState } from "react";
+import { useColumnFilters } from "../hooks/useColumnFilters";
+import { useColumnWidths } from "../hooks/useColumnWidths";
+import type { UndoEntry } from "../hooks/useUndoHistory";
+import { useUndoHistory } from "../hooks/useUndoHistory";
+import {
+  shiftColsLeft,
+  shiftColsRight,
+  shiftRowsDown,
+  shiftRowsUp,
+} from "../lib/cell-shift";
+import {
+  adjustFormulaRefs,
+  detectSeries,
+  generateFillValue,
+} from "../lib/fill-series";
+import { assignRefColors, extractFormulaRefs } from "../lib/formula-refs";
+import type { MergedRegion } from "../lib/merge-utils";
+import {
+  addMerge,
+  adjustMergesOnColShift,
+  adjustMergesOnRowShift,
+  findMergeForCell,
+  removeMerge,
+} from "../lib/merge-utils";
 import type { NumberFormat } from "../lib/number-format";
 import { SpreadsheetProvider } from "../lib/spreadsheet-context";
 import type {
@@ -9,10 +33,8 @@ import type {
   ContextMenuState,
   SheetTab,
 } from "../lib/spreadsheet-types";
+import { GRID } from "../lib/spreadsheet-types";
 import { cellRef } from "../lib/spreadsheet-utils";
-import { useColumnFilters } from "../hooks/useColumnFilters";
-import { useColumnWidths } from "../hooks/useColumnWidths";
-import { useUndoHistory } from "../hooks/useUndoHistory";
 import { FormulaBar } from "./FormulaBar";
 import { Ribbon } from "./Ribbon";
 import { SearchOverlay } from "./SearchOverlay";
@@ -28,6 +50,8 @@ interface SpreadsheetShellProps {
   cells: CellMap;
   /** Callback when a cell is changed */
   onCellChange: (ref: string, data: CellData) => void;
+  /** Replace all cells atomically (for row/col insert/delete) */
+  onBulkReplace?: (cells: CellMap) => void;
   /** Set of cell refs that cannot be edited */
   readOnlyCells?: Set<string>;
 
@@ -52,6 +76,11 @@ interface SpreadsheetShellProps {
 
   /** Ribbon actions slot */
   ribbonActions?: ReactNode;
+
+  /** Freeze pane callbacks */
+  onSetFreeze?: (row: number, col: number) => void;
+  /** Merged regions callback */
+  onSetMergedRegions?: (regions: MergedRegion[]) => void;
 }
 
 export function SpreadsheetShell({
@@ -60,6 +89,7 @@ export function SpreadsheetShell({
   onTabChange,
   cells,
   onCellChange,
+  onBulkReplace,
   readOnlyCells = new Set(),
   columnCount,
   onAddColumn,
@@ -71,6 +101,8 @@ export function SpreadsheetShell({
   onRenameSheet,
   onDeleteSheet,
   ribbonActions,
+  onSetFreeze,
+  onSetMergedRegions,
 }: SpreadsheetShellProps) {
   const [selectedCell, setSelectedCell] = useState("A1");
   const [selectionRange, setSelectionRange] = useState<{
@@ -120,8 +152,7 @@ export function SpreadsheetShell({
     }
   }, [columnCount, rowCount, selectedCell]);
 
-  // Optimistic cell overlay: provides instant UI feedback in the same render
-  // cycle as setEditingCell(null). Cleared when props.cells changes (DB caught up).
+  // Optimistic cell overlay
   const [optimisticCells, setOptimisticCells] = useState<CellMap>({});
   const prevCellsRef = useRef(cells);
 
@@ -147,36 +178,62 @@ export function SpreadsheetShell({
     cut: boolean;
   } | null>(null);
 
+  // Formula mode state
+  const [formulaCursorPos, setFormulaCursorPos] = useState(0);
+
+  // Fill handle state
+  const [fillHandleActive, setFillHandleActive] = useState(false);
+  const [fillHandleRange, setFillHandleRange] = useState<{
+    startRow: number;
+    startCol: number;
+    endRow: number;
+    endCol: number;
+  } | null>(null);
+
+  // Get active tab data
+  const activeTabData = tabs.find((t) => t.id === activeTab);
+  const freezeRow = activeTabData?.freezeRow ?? 0;
+  const freezeCol = activeTabData?.freezeCol ?? 0;
+  const mergedRegions: MergedRegion[] = activeTabData?.mergedRegions ?? [];
+
   // Merge optimistic overlay on top of prop cells.
   const mergedCells =
     Object.keys(optimisticCells).length > 0
       ? { ...cells, ...optimisticCells }
       : cells;
 
+  // Formula mode detection
+  const isFormulaMode = editingValue.startsWith("=");
+
+  // Formula reference highlights
+  const formulaRefHighlights = isFormulaMode
+    ? assignRefColors(extractFormulaRefs(editingValue))
+    : new Map<string, string>();
+
   function handleCellChange(ref: string, data: CellData) {
-    // Record undo history
     const before = mergedCells[ref] ?? { value: "" };
     undoHistory.pushChange(ref, before, data);
-
-    // Write to local state so Grid sees the update immediately
     setOptimisticCells((prev) => ({ ...prev, [ref]: data }));
-    // Forward to parent (triggers mutation + withOptimisticUpdate)
     onCellChange(ref, data);
   }
 
-  // Undo/Redo
+  // Undo/Redo (now supports batch)
   function handleUndo() {
-    const entry = undoHistory.undo();
-    if (!entry) return;
-    setOptimisticCells((prev) => ({ ...prev, [entry.ref]: entry.before }));
-    onCellChange(entry.ref, entry.before);
+    const entries = undoHistory.undo();
+    if (!entries) return;
+    for (const entry of entries) {
+      setOptimisticCells((prev) => ({ ...prev, [entry.ref]: entry.before }));
+      onCellChange(entry.ref, entry.before);
+    }
   }
 
   function handleRedo() {
-    const entry = undoHistory.redo();
-    if (!entry) return;
-    setOptimisticCells((prev) => ({ ...prev, [entry.ref]: entry.after }));
-    onCellChange(entry.ref, entry.after);
+    const entries = undoHistory.redo();
+    if (!entries) return;
+    for (const entry of entries) {
+      setOptimisticCells((prev) => ({ ...prev, [entry.ref]: entry.after }));
+      onCellChange(entry.ref, entry.after);
+    }
   }
 
   // Get all refs in the current selection range
@@ -324,7 +381,28 @@ export function SpreadsheetShell({
     navigator.clipboard.writeText(text).catch(() => {});
   }
 
-  function handlePaste() {
+  async function handlePaste() {
+    // If internal clipboard has data, use it (preserves formatting)
+    if (clipboardRef.current) {
+      doPaste("all");
+      return;
+    }
+
+    // Fallback: read plain text from system clipboard (e.g. copied formula)
+    try {
+      const text = await navigator.clipboard.readText();
+      if (!text) return;
+      const { row: targetRow, col: targetCol } = getSelectedCoords();
+      const targetRef = cellRef(targetRow, targetCol);
+      if (readOnlyCells.has(targetRef)) return;
+      const existing = mergedCells[targetRef] ?? { value: "" };
+      handleCellChange(targetRef, { ...existing, value: text });
+    } catch {
+      // clipboard read denied — ignore
+    }
+  }
+
+  function doPaste(mode: "all" | "values" | "format") {
     if (!clipboardRef.current) return;
     const { row: targetRow, col: targetCol } = getSelectedCoords();
     const sourceRefs = Object.keys(clipboardRef.current.cells);
@@ -353,13 +431,403 @@ export function SpreadsheetShell({
       const newRef = cellRef(newRow, newCol);
 
       if (!readOnlyCells.has(newRef)) {
-        handleCellChange(newRef, { ...data });
+        const existing = mergedCells[newRef] ?? { value: "" };
+        if (mode === "all") {
+          handleCellChange(newRef, { ...data });
+        } else if (mode === "values") {
+          handleCellChange(newRef, { ...existing, value: data.value });
+        } else if (mode === "format") {
+          const { value: _v, ...format } = data;
+          handleCellChange(newRef, { ...existing, ...format });
+        }
       }
     }
 
     if (clipboardRef.current.cut) {
       clipboardRef.current = null;
     }
+  }
+
+  // ---- Formula mode: click-to-insert references ----
+  function insertCellRefInFormula(ref: string) {
+    if (!isFormulaMode) return;
+    const before = editingValue.slice(0, formulaCursorPos);
+    const after = editingValue.slice(formulaCursorPos);
+    const newVal = before + ref + after;
+    setEditingValue(newVal);
+    setFormulaCursorPos(before.length + ref.length);
+  }
+
+  function insertRangeRefInFormula(startRef: string, endRef: string) {
+    if (!isFormulaMode) return;
+    const rangeStr = `${startRef}:${endRef}`;
+    const before = editingValue.slice(0, formulaCursorPos);
+    const after = editingValue.slice(formulaCursorPos);
+    const newVal = before + rangeStr + after;
+    setEditingValue(newVal);
+    setFormulaCursorPos(before.length + rangeStr.length);
+  }
+
+  // ---- Row/Column insert/delete ----
+  function handleInsertRowAbove(row: number) {
+    if (rowCount >= GRID.MAX_ROWS || !onBulkReplace || !onAddRow) return;
+    const undoEntries: UndoEntry[] = [];
+    const newCells = shiftRowsDown(mergedCells, row, rowCount);
+    // Record undo: save before/after for all affected cells
+    const allRefs = new Set([
+      ...Object.keys(mergedCells),
+      ...Object.keys(newCells),
+    ]);
+    for (const ref of allRefs) {
+      const before = mergedCells[ref] ?? { value: "" };
+      const after = newCells[ref] ?? { value: "" };
+      if (
+        before.value !== after.value ||
+        JSON.stringify(before) !== JSON.stringify(after)
+      ) {
+        undoEntries.push({ ref, before, after });
+      }
+    }
+    undoHistory.pushBatch(undoEntries);
+    setOptimisticCells(newCells);
+    onBulkReplace(newCells);
+    onAddRow();
+    // Update merged regions
+    if (onSetMergedRegions && mergedRegions.length > 0) {
+      onSetMergedRegions(adjustMergesOnRowShift(mergedRegions, row, 1));
+    }
+  }
+
+  function handleInsertRowBelow(row: number) {
+    handleInsertRowAbove(row + 1);
+  }
+
+  function handleDeleteRow(row: number) {
+    if (rowCount <= 1 || !onBulkReplace || !onDeleteLastRow) return;
+    const undoEntries: UndoEntry[] = [];
+    const newCells = shiftRowsUp(mergedCells, row);
+    const allRefs = new Set([
+      ...Object.keys(mergedCells),
+      ...Object.keys(newCells),
+    ]);
+    for (const ref of allRefs) {
+      const before = mergedCells[ref] ?? { value: "" };
+      const after = newCells[ref] ?? { value: "" };
+      if (
+        before.value !== after.value ||
+        JSON.stringify(before) !== JSON.stringify(after)
+      ) {
+        undoEntries.push({ ref, before, after });
+      }
+    }
+    undoHistory.pushBatch(undoEntries);
+    setOptimisticCells(newCells);
+    onBulkReplace(newCells);
+    onDeleteLastRow();
+    if (onSetMergedRegions && mergedRegions.length > 0) {
+      onSetMergedRegions(adjustMergesOnRowShift(mergedRegions, row, -1));
+    }
+  }
+
+  function handleInsertColumnLeft(col: number) {
+    if (columnCount >= GRID.MAX_COLS || !onBulkReplace || !onAddColumn) return;
+    const undoEntries: UndoEntry[] = [];
+    const newCells = shiftColsRight(mergedCells, col, columnCount);
+    const allRefs = new Set([
+      ...Object.keys(mergedCells),
+      ...Object.keys(newCells),
+    ]);
+    for (const ref of allRefs) {
+      const before = mergedCells[ref] ?? { value: "" };
+      const after = newCells[ref] ?? { value: "" };
+      if (
+        before.value !== after.value ||
+        JSON.stringify(before) !== JSON.stringify(after)
+      ) {
+        undoEntries.push({ ref, before, after });
+      }
+    }
+    undoHistory.pushBatch(undoEntries);
+    setOptimisticCells(newCells);
+    onBulkReplace(newCells);
+    onAddColumn();
+    if (onSetMergedRegions && mergedRegions.length > 0) {
+      onSetMergedRegions(adjustMergesOnColShift(mergedRegions, col, 1));
+    }
+  }
+
+  function handleInsertColumnRight(col: number) {
+    handleInsertColumnLeft(col + 1);
+  }
+
+  function handleDeleteColumn(col: number) {
+    if (columnCount <= 1 || !onBulkReplace || !onDeleteLastColumn) return;
+    const undoEntries: UndoEntry[] = [];
+    const newCells = shiftColsLeft(mergedCells, col);
+    const allRefs = new Set([
+      ...Object.keys(mergedCells),
+      ...Object.keys(newCells),
+    ]);
+    for (const ref of allRefs) {
+      const before = mergedCells[ref] ?? { value: "" };
+      const after = newCells[ref] ?? { value: "" };
+      if (
+        before.value !== after.value ||
+        JSON.stringify(before) !== JSON.stringify(after)
+      ) {
+        undoEntries.push({ ref, before, after });
+      }
+    }
+    undoHistory.pushBatch(undoEntries);
+    setOptimisticCells(newCells);
+    onBulkReplace(newCells);
+    onDeleteLastColumn();
+    if (onSetMergedRegions && mergedRegions.length > 0) {
+      onSetMergedRegions(adjustMergesOnColShift(mergedRegions, col, -1));
+    }
+  }
+
+  // ---- Fill handle ----
+  function handleFillHandleStart() {
+    setFillHandleActive(true);
+    // Initialize fill range to current selection
+    if (selectionRange) {
+      setFillHandleRange({ ...selectionRange });
+    } else {
+      const { row, col } = getSelectedCoords();
+      setFillHandleRange({
+        startRow: row,
+        startCol: col,
+        endRow: row,
+        endCol: col,
+      });
+    }
+  }
+
+  function handleFillHandleDrag(row: number, col: number) {
+    if (!fillHandleActive) return;
+    const sr =
+      selectionRange ??
+      (() => {
+        const { row: r, col: c } = getSelectedCoords();
+        return { startRow: r, startCol: c, endRow: r, endCol: c };
+      })();
+    const minR = Math.min(sr.startRow, sr.endRow);
+    const maxR = Math.max(sr.startRow, sr.endRow);
+    const minC = Math.min(sr.startCol, sr.endCol);
+    const maxC = Math.max(sr.startCol, sr.endCol);
+
+    // Lock to single axis: choose the dominant direction
+    const rowDist = Math.abs(row - maxR) + Math.abs(row - minR);
+    const colDist = Math.abs(col - maxC) + Math.abs(col - minC);
+
+    if (rowDist >= colDist) {
+      // Vertical fill
+      setFillHandleRange({
+        startRow: minR,
+        startCol: minC,
+        endRow: row,
+        endCol: maxC,
+      });
+    } else {
+      // Horizontal fill
+      setFillHandleRange({
+        startRow: minR,
+        startCol: minC,
+        endRow: maxR,
+        endCol: col,
+      });
+    }
+  }
+
+  function handleFillHandleEnd() {
+    if (!fillHandleActive || !fillHandleRange) {
+      setFillHandleActive(false);
+      setFillHandleRange(null);
+      return;
+    }
+
+    const sr =
+      selectionRange ??
+      (() => {
+        const { row: r, col: c } = getSelectedCoords();
+        return { startRow: r, startCol: c, endRow: r, endCol: c };
+      })();
+    const srcMinR = Math.min(sr.startRow, sr.endRow);
+    const srcMaxR = Math.max(sr.startRow, sr.endRow);
+    const srcMinC = Math.min(sr.startCol, sr.endCol);
+    const srcMaxC = Math.max(sr.startCol, sr.endCol);
+
+    const fillMinR = Math.min(fillHandleRange.startRow, fillHandleRange.endRow);
+    const fillMaxR = Math.max(fillHandleRange.startRow, fillHandleRange.endRow);
+    const fillMinC = Math.min(fillHandleRange.startCol, fillHandleRange.endCol);
+    const fillMaxC = Math.max(fillHandleRange.startCol, fillHandleRange.endCol);
+
+    const undoEntries: UndoEntry[] = [];
+
+    // Determine fill direction
+    if (fillMaxR > srcMaxR) {
+      // Fill down
+      for (let c = srcMinC; c <= srcMaxC; c++) {
+        const sourceVals: string[] = [];
+        for (let r = srcMinR; r <= srcMaxR; r++) {
+          sourceVals.push(mergedCells[cellRef(r, c)]?.value ?? "");
+        }
+        const series = detectSeries(sourceVals);
+        for (let r = srcMaxR + 1; r <= fillMaxR; r++) {
+          const ref = cellRef(r, c);
+          if (readOnlyCells.has(ref)) continue;
+          const before = mergedCells[ref] ?? { value: "" };
+          let newValue: string;
+          if (series.type === "formula") {
+            const srcFormula =
+              sourceVals[(r - srcMaxR - 1) % sourceVals.length];
+            newValue = adjustFormulaRefs(
+              srcFormula,
+              r - srcMinR - ((r - srcMaxR - 1) % sourceVals.length),
+              0,
+            );
+          } else {
+            newValue = generateFillValue(sourceVals, r - srcMaxR - 1);
+          }
+          const after = { ...before, value: newValue };
+          undoEntries.push({ ref, before, after });
+          setOptimisticCells((prev) => ({ ...prev, [ref]: after }));
+          onCellChange(ref, after);
+        }
+      }
+    } else if (fillMinR < srcMinR) {
+      // Fill up
+      for (let c = srcMinC; c <= srcMaxC; c++) {
+        const sourceVals: string[] = [];
+        for (let r = srcMaxR; r >= srcMinR; r--) {
+          sourceVals.push(mergedCells[cellRef(r, c)]?.value ?? "");
+        }
+        for (let r = srcMinR - 1; r >= fillMinR; r--) {
+          const ref = cellRef(r, c);
+          if (readOnlyCells.has(ref)) continue;
+          const before = mergedCells[ref] ?? { value: "" };
+          const newValue = generateFillValue(sourceVals, srcMinR - 1 - r);
+          const after = { ...before, value: newValue };
+          undoEntries.push({ ref, before, after });
+          setOptimisticCells((prev) => ({ ...prev, [ref]: after }));
+          onCellChange(ref, after);
+        }
+      }
+    } else if (fillMaxC > srcMaxC) {
+      // Fill right
+      for (let r = srcMinR; r <= srcMaxR; r++) {
+        const sourceVals: string[] = [];
+        for (let c = srcMinC; c <= srcMaxC; c++) {
+          sourceVals.push(mergedCells[cellRef(r, c)]?.value ?? "");
+        }
+        const series = detectSeries(sourceVals);
+        for (let c = srcMaxC + 1; c <= fillMaxC; c++) {
+          const ref = cellRef(r, c);
+          if (readOnlyCells.has(ref)) continue;
+          const before = mergedCells[ref] ?? { value: "" };
+          let newValue: string;
+          if (series.type === "formula") {
+            const srcFormula =
+              sourceVals[(c - srcMaxC - 1) % sourceVals.length];
+            newValue = adjustFormulaRefs(
+              srcFormula,
+              0,
+              c - srcMinC - ((c - srcMaxC - 1) % sourceVals.length),
+            );
+          } else {
+            newValue = generateFillValue(sourceVals, c - srcMaxC - 1);
+          }
+          const after = { ...before, value: newValue };
+          undoEntries.push({ ref, before, after });
+          setOptimisticCells((prev) => ({ ...prev, [ref]: after }));
+          onCellChange(ref, after);
+        }
+      }
+    } else if (fillMinC < srcMinC) {
+      // Fill left
+      for (let r = srcMinR; r <= srcMaxR; r++) {
+        const sourceVals: string[] = [];
+        for (let c = srcMaxC; c >= srcMinC; c--) {
+          sourceVals.push(mergedCells[cellRef(r, c)]?.value ?? "");
+        }
+        for (let c = srcMinC - 1; c >= fillMinC; c--) {
+          const ref = cellRef(r, c);
+          if (readOnlyCells.has(ref)) continue;
+          const before = mergedCells[ref] ?? { value: "" };
+          const newValue = generateFillValue(sourceVals, srcMinC - 1 - c);
+          const after = { ...before, value: newValue };
+          undoEntries.push({ ref, before, after });
+          setOptimisticCells((prev) => ({ ...prev, [ref]: after }));
+          onCellChange(ref, after);
+        }
+      }
+    }
+
+    if (undoEntries.length > 0) {
+      undoHistory.pushBatch(undoEntries);
+    }
+
+    // Update selection to include filled area
+    setSelectionRange({
+      startRow: fillMinR,
+      startCol: fillMinC,
+      endRow: fillMaxR,
+      endCol: fillMaxC,
+    });
+
+    setFillHandleActive(false);
+    setFillHandleRange(null);
+  }
+
+  // ---- Freeze panes ----
+  function handleSetFreeze(row: number, col: number) {
+    onSetFreeze?.(row, col);
+  }
+
+  // ---- Merge cells ----
+  function handleMergeCells() {
+    if (!selectionRange || !onSetMergedRegions) return;
+    const minR = Math.min(selectionRange.startRow, selectionRange.endRow);
+    const maxR = Math.max(selectionRange.startRow, selectionRange.endRow);
+    const minC = Math.min(selectionRange.startCol, selectionRange.endCol);
+    const maxC = Math.max(selectionRange.startCol, selectionRange.endCol);
+    if (minR === maxR && minC === maxC) return; // single cell, nothing to merge
+
+    const newRegion: MergedRegion = {
+      startRow: minR,
+      startCol: minC,
+      endRow: maxR,
+      endCol: maxC,
+    };
+    const updated = addMerge(newRegion, mergedRegions);
+    onSetMergedRegions(updated);
+
+    // Move all content to primary cell, clear others
+    const primaryRef = cellRef(minR, minC);
+    for (let r = minR; r <= maxR; r++) {
+      for (let c = minC; c <= maxC; c++) {
+        if (r === minR && c === minC) continue;
+        const ref = cellRef(r, c);
+        if (mergedCells[ref]?.value) {
+          handleCellChange(ref, { ...mergedCells[ref], value: "" });
+        }
+      }
+    }
+    // Center the primary cell
+    const existing = mergedCells[primaryRef] ?? { value: "" };
+    if (existing.align !== "center") {
+      handleCellChange(primaryRef, { ...existing, align: "center" });
+    }
+  }
+
+  function handleUnmergeCells() {
+    if (!onSetMergedRegions) return;
+    const { row, col } = getSelectedCoords();
+    const region = findMergeForCell(row, col, mergedRegions);
+    if (!region) return;
+    const updated = removeMerge(row, col, mergedRegions);
+    onSetMergedRegions(updated);
   }
 
   return (
@@ -403,7 +871,6 @@ export function SpreadsheetShell({
         onDeleteLastRow: onDeleteLastRow ?? (() => {}),
         searchOpen,
         setSearchOpen,
-        // New context values
         columnWidths,
         setColumnWidth,
         undo: handleUndo,
@@ -416,6 +883,36 @@ export function SpreadsheetShell({
         setColumnFilter,
         clearAllFilters,
         filteredRowIndices,
+        // Formula mode
+        isFormulaMode,
+        formulaCursorPos,
+        setFormulaCursorPos,
+        insertCellRefInFormula,
+        insertRangeRefInFormula,
+        formulaRefHighlights,
+        // Row/Column operations
+        insertRowAbove: handleInsertRowAbove,
+        insertRowBelow: handleInsertRowBelow,
+        deleteRow: handleDeleteRow,
+        insertColumnLeft: handleInsertColumnLeft,
+        insertColumnRight: handleInsertColumnRight,
+        deleteColumn: handleDeleteColumn,
+        // Fill handle
+        fillHandleActive,
+        fillHandleRange,
+        onFillHandleStart: handleFillHandleStart,
+        onFillHandleDrag: handleFillHandleDrag,
+        onFillHandleEnd: handleFillHandleEnd,
+        // Paste special
+        pasteSpecial: doPaste,
+        // Freeze
+        freezeRow,
+        freezeCol,
+        setFreeze: handleSetFreeze,
+        // Merge
+        mergedRegions,
+        mergeCells: handleMergeCells,
+        unmergeCells: handleUnmergeCells,
       }}
     >
       <div className="flex flex-col h-full">

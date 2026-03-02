@@ -3,14 +3,18 @@
 import {
   ArrowDownAZ,
   ArrowUpZA,
+  ChevronRight,
   ClipboardPaste,
   Copy,
   Filter,
   Plus,
   Scissors,
+  Sigma,
   Trash2,
   XCircle,
 } from "lucide-react";
+import { useState } from "react";
+import type { FormulaFn } from "../lib/formula-helpers";
 import type { ContextMenuState } from "../lib/spreadsheet-types";
 
 interface GridContextMenuProps {
@@ -21,6 +25,8 @@ interface GridContextMenuProps {
   isTotalRow: boolean;
   canInsertRow: boolean;
   canDeleteRow: boolean;
+  canInsertColumn?: boolean;
+  canDeleteColumn?: boolean;
   onCopy: () => void;
   onCut: () => void;
   onPaste: () => void;
@@ -28,9 +34,14 @@ interface GridContextMenuProps {
   onInsertRowAbove: () => void;
   onInsertRowBelow: () => void;
   onDeleteRow: () => void;
+  onInsertColumnLeft?: () => void;
+  onInsertColumnRight?: () => void;
+  onDeleteColumn?: () => void;
   onSortAsc: () => void;
   onSortDesc: () => void;
   onFilterByColumn: () => void;
+  hasMultiCellSelection?: boolean;
+  onCopyFormula?: (fn: FormulaFn) => void;
 }
 
 interface MenuItemProps {
@@ -76,6 +87,51 @@ function MenuSeparator() {
   return <div className="h-px bg-border my-1" />;
 }
 
+interface SubMenuProps {
+  icon: React.ReactNode;
+  label: string;
+  children: React.ReactNode;
+}
+
+function SubMenu({ icon, label, children }: SubMenuProps) {
+  const [open, setOpen] = useState(false);
+
+  return (
+    // biome-ignore lint/a11y/noStaticElementInteractions: submenu hover behavior
+    <div
+      className="relative"
+      onMouseEnter={() => setOpen(true)}
+      onMouseLeave={() => setOpen(false)}
+    >
+      <div className="w-full flex items-center gap-2 px-2.5 py-1.5 text-xs transition-colors hover:bg-accent cursor-default">
+        <span className="size-3.5 shrink-0 flex items-center justify-center">
+          {icon}
+        </span>
+        <span className="flex-1 text-left">{label}</span>
+        <ChevronRight className="size-3 text-muted-foreground" />
+      </div>
+      {open && (
+        <div
+          style={{
+            position: "absolute",
+            left: "100%",
+            top: 0,
+            minWidth: 180,
+            background: "var(--popover)",
+            border: "1px solid var(--border)",
+            borderRadius: 6,
+            boxShadow: "0 4px 12px rgba(0,0,0,0.15)",
+            padding: "4px 0",
+            zIndex: 101,
+          }}
+        >
+          {children}
+        </div>
+      )}
+    </div>
+  );
+}
+
 export function GridContextMenu({
   state,
   onClose,
@@ -84,6 +140,8 @@ export function GridContextMenu({
   isTotalRow,
   canInsertRow,
   canDeleteRow,
+  canInsertColumn,
+  canDeleteColumn,
   onCopy,
   onCut,
   onPaste,
@@ -91,11 +149,17 @@ export function GridContextMenu({
   onInsertRowAbove,
   onInsertRowBelow,
   onDeleteRow,
+  onInsertColumnLeft,
+  onInsertColumnRight,
+  onDeleteColumn,
   onSortAsc,
   onSortDesc,
   onFilterByColumn,
+  hasMultiCellSelection,
+  onCopyFormula,
 }: GridContextMenuProps) {
   const rowDisabled = isReadOnlyTab || isHeaderRow || isTotalRow;
+  const isColumnHeader = state.row === -1;
 
   function handleClick(fn: () => void) {
     fn();
@@ -129,27 +193,56 @@ export function GridContextMenu({
         }}
       >
         {/* Row operations */}
-        <MenuItem
-          icon={<Plus className="size-3.5" />}
-          label="Insert Row Above"
-          onClick={() => handleClick(onInsertRowAbove)}
-          disabled={rowDisabled || !canInsertRow}
-        />
-        <MenuItem
-          icon={<Plus className="size-3.5" />}
-          label="Insert Row Below"
-          onClick={() => handleClick(onInsertRowBelow)}
-          disabled={rowDisabled || !canInsertRow}
-        />
-        <MenuItem
-          icon={<Trash2 className="size-3.5" />}
-          label="Delete Row"
-          onClick={() => handleClick(onDeleteRow)}
-          disabled={rowDisabled || !canDeleteRow}
-          destructive
-        />
+        {!isColumnHeader && (
+          <>
+            <MenuItem
+              icon={<Plus className="size-3.5" />}
+              label="Insert Row Above"
+              onClick={() => handleClick(onInsertRowAbove)}
+              disabled={rowDisabled || !canInsertRow}
+            />
+            <MenuItem
+              icon={<Plus className="size-3.5" />}
+              label="Insert Row Below"
+              onClick={() => handleClick(onInsertRowBelow)}
+              disabled={rowDisabled || !canInsertRow}
+            />
+            <MenuItem
+              icon={<Trash2 className="size-3.5" />}
+              label="Delete Row"
+              onClick={() => handleClick(onDeleteRow)}
+              disabled={rowDisabled || !canDeleteRow}
+              destructive
+            />
+            <MenuSeparator />
+          </>
+        )}
 
-        <MenuSeparator />
+        {/* Column operations */}
+        {onInsertColumnLeft && onInsertColumnRight && onDeleteColumn && (
+          <>
+            <MenuItem
+              icon={<Plus className="size-3.5" />}
+              label="Insert Column Left"
+              onClick={() => handleClick(onInsertColumnLeft)}
+              disabled={isReadOnlyTab || !canInsertColumn}
+            />
+            <MenuItem
+              icon={<Plus className="size-3.5" />}
+              label="Insert Column Right"
+              onClick={() => handleClick(onInsertColumnRight)}
+              disabled={isReadOnlyTab || !canInsertColumn}
+            />
+            <MenuItem
+              icon={<Trash2 className="size-3.5" />}
+              label="Delete Column"
+              onClick={() => handleClick(onDeleteColumn)}
+              disabled={isReadOnlyTab || !canDeleteColumn}
+              destructive
+            />
+            <MenuSeparator />
+          </>
+        )}
 
         {/* Clipboard */}
         <MenuItem
@@ -178,6 +271,43 @@ export function GridContextMenu({
           onClick={() => handleClick(onClearCell)}
           disabled={isReadOnlyTab || isHeaderRow}
         />
+
+        {/* Insert Function submenu — only for multi-cell selection */}
+        {hasMultiCellSelection && onCopyFormula && (
+          <>
+            <MenuSeparator />
+            <SubMenu
+              icon={<Sigma className="size-3.5" />}
+              label="Insert Function"
+            >
+              <MenuItem
+                icon={<Sigma className="size-3.5" />}
+                label="Copy SUM formula"
+                onClick={() => handleClick(() => onCopyFormula("SUM"))}
+              />
+              <MenuItem
+                icon={<Sigma className="size-3.5" />}
+                label="Copy AVERAGE formula"
+                onClick={() => handleClick(() => onCopyFormula("AVERAGE"))}
+              />
+              <MenuItem
+                icon={<Sigma className="size-3.5" />}
+                label="Copy COUNT formula"
+                onClick={() => handleClick(() => onCopyFormula("COUNT"))}
+              />
+              <MenuItem
+                icon={<Sigma className="size-3.5" />}
+                label="Copy MAX formula"
+                onClick={() => handleClick(() => onCopyFormula("MAX"))}
+              />
+              <MenuItem
+                icon={<Sigma className="size-3.5" />}
+                label="Copy MIN formula"
+                onClick={() => handleClick(() => onCopyFormula("MIN"))}
+              />
+            </SubMenu>
+          </>
+        )}
 
         <MenuSeparator />
 
