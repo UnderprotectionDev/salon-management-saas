@@ -16,10 +16,12 @@ import {
   Lock,
   Merge,
   PaintBucket,
+  Palette,
   Percent,
   Redo2,
   Scissors,
   Search,
+  ShieldCheck,
   Sigma,
   Type,
   Underline,
@@ -31,8 +33,13 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
+  DropdownMenuCheckboxItem,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuSub,
+  DropdownMenuSubContent,
+  DropdownMenuSubTrigger,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import {
@@ -104,7 +111,7 @@ function SectionLabel({ children }: { children: ReactNode }) {
   );
 }
 
-const RIBBON_TABS = ["Home", "View"];
+const RIBBON_TABS = ["Home", "View", "Data"];
 
 interface RibbonProps {
   actions?: ReactNode;
@@ -148,15 +155,28 @@ export function Ribbon({ actions }: RibbonProps) {
     freezeRow,
     freezeCol,
     setFreeze,
+    rowCount,
+    columnCount,
     // Merge
     mergeCells,
     unmergeCells,
+    // Validation
+    openValidationDialog,
+    // Conditional formatting
+    openConditionalFormatDialog,
   } = useSpreadsheet();
 
   const [activeTab, setActiveTab] = useState("Home");
 
   const hasActiveFilters = Object.keys(columnFilters).length > 0;
   const hasFrozen = freezeRow > 0 || freezeCol > 0;
+
+  // Parsed selected cell for freeze menus
+  const selectedRef = parseRef(selectedCell);
+  const selectedRowIdx = selectedRef?.row ?? 0; // 0-indexed
+  const selectedColIdx = selectedRef?.col ?? 0; // 0-indexed
+  const selectedColLetter = colLabel(selectedColIdx);
+  const selectedRowNum = selectedRowIdx + 1; // 1-indexed display
 
   // Check if selection has a merge
   const hasSelectionRange =
@@ -647,6 +667,37 @@ export function Ribbon({ actions }: RibbonProps) {
           </>
         )}
 
+        {activeTab === "Data" && (
+          <>
+            {/* Data Validation */}
+            <div className="flex flex-col items-center gap-0 shrink-0">
+              <div className="flex items-center gap-0.5">
+                <TBtn
+                  icon={<ShieldCheck className="w-3.5 h-3.5" />}
+                  label="Data Validation"
+                  onClick={() => openValidationDialog(selectedCell)}
+                />
+              </div>
+              <SectionLabel>Validation</SectionLabel>
+            </div>
+
+            <Separator orientation="vertical" className="h-8 mx-1 shrink-0" />
+
+            {/* Conditional Formatting */}
+            <div className="flex flex-col items-center gap-0 shrink-0">
+              <div className="flex items-center gap-0.5">
+                <TBtn
+                  icon={<Palette className="w-3.5 h-3.5" />}
+                  label="Conditional Formatting"
+                  onClick={openConditionalFormatDialog}
+                />
+              </div>
+              <SectionLabel>Conditional Format</SectionLabel>
+            </div>
+
+          </>
+        )}
+
         {activeTab === "View" && (
           <>
             {/* Freeze section */}
@@ -667,31 +718,110 @@ export function Ribbon({ actions }: RibbonProps) {
                       <ChevronDown className="w-2.5 h-2.5" />
                     </Button>
                   </DropdownMenuTrigger>
-                  <DropdownMenuContent align="start">
-                    <DropdownMenuItem onSelect={() => setFreeze(1, 0)}>
-                      Freeze Top Row
-                    </DropdownMenuItem>
-                    <DropdownMenuItem onSelect={() => setFreeze(0, 1)}>
-                      Freeze First Column
-                    </DropdownMenuItem>
+                  <DropdownMenuContent align="start" className="w-56">
+                    {/* Freeze Rows submenu */}
+                    <DropdownMenuSub>
+                      <DropdownMenuSubTrigger>
+                        Freeze Rows
+                      </DropdownMenuSubTrigger>
+                      <DropdownMenuSubContent>
+                        <DropdownMenuCheckboxItem
+                          checked={freezeRow === 0}
+                          onSelect={() => setFreeze(0, freezeCol)}
+                        >
+                          No rows
+                        </DropdownMenuCheckboxItem>
+                        <DropdownMenuCheckboxItem
+                          checked={freezeRow === 1}
+                          onSelect={() => setFreeze(1, freezeCol)}
+                        >
+                          1 row
+                        </DropdownMenuCheckboxItem>
+                        <DropdownMenuCheckboxItem
+                          checked={freezeRow === 2}
+                          onSelect={() => setFreeze(2, freezeCol)}
+                        >
+                          2 rows
+                        </DropdownMenuCheckboxItem>
+                        <DropdownMenuSeparator />
+                        <DropdownMenuCheckboxItem
+                          checked={
+                            freezeRow === selectedRowIdx + 1 &&
+                            selectedRowIdx > 0
+                          }
+                          disabled={selectedRowIdx === 0}
+                          onSelect={() =>
+                            setFreeze(selectedRowIdx + 1, freezeCol)
+                          }
+                        >
+                          Up to row {selectedRowNum} ({selectedRowIdx + 1}{" "}
+                          {selectedRowIdx + 1 === 1 ? "row" : "rows"})
+                        </DropdownMenuCheckboxItem>
+                      </DropdownMenuSubContent>
+                    </DropdownMenuSub>
+
+                    {/* Freeze Columns submenu */}
+                    <DropdownMenuSub>
+                      <DropdownMenuSubTrigger>
+                        Freeze Columns
+                      </DropdownMenuSubTrigger>
+                      <DropdownMenuSubContent>
+                        <DropdownMenuCheckboxItem
+                          checked={freezeCol === 0}
+                          onSelect={() => setFreeze(freezeRow, 0)}
+                        >
+                          No columns
+                        </DropdownMenuCheckboxItem>
+                        <DropdownMenuCheckboxItem
+                          checked={freezeCol === 1}
+                          onSelect={() => setFreeze(freezeRow, 1)}
+                        >
+                          1 column
+                        </DropdownMenuCheckboxItem>
+                        <DropdownMenuCheckboxItem
+                          checked={freezeCol === 2}
+                          onSelect={() => setFreeze(freezeRow, 2)}
+                        >
+                          2 columns
+                        </DropdownMenuCheckboxItem>
+                        <DropdownMenuSeparator />
+                        <DropdownMenuCheckboxItem
+                          checked={
+                            freezeCol === selectedColIdx + 1 &&
+                            selectedColIdx > 0
+                          }
+                          disabled={selectedColIdx === 0}
+                          onSelect={() =>
+                            setFreeze(freezeRow, selectedColIdx + 1)
+                          }
+                        >
+                          Up to column {selectedColLetter} ({selectedColIdx + 1}{" "}
+                          {selectedColIdx + 1 === 1 ? "column" : "columns"})
+                        </DropdownMenuCheckboxItem>
+                      </DropdownMenuSubContent>
+                    </DropdownMenuSub>
+
+                    <DropdownMenuSeparator />
+
+                    {/* Freeze at selection */}
                     <DropdownMenuItem
-                      onSelect={() => {
-                        const parsed = selectedCell.match(/^([A-Z]+)(\d+)$/);
-                        if (!parsed) return;
-                        let col = 0;
-                        for (const ch of parsed[1])
-                          col = col * 26 + ch.charCodeAt(0) - 64;
-                        const row = Number.parseInt(parsed[2], 10) - 1;
-                        setFreeze(row, col - 1);
-                      }}
+                      onSelect={() =>
+                        setFreeze(selectedRowIdx + 1, selectedColIdx + 1)
+                      }
+                      disabled={selectedRowIdx === 0 && selectedColIdx === 0}
                     >
-                      Freeze Panes (at selection)
+                      <Lock className="w-3.5 h-3.5" />
+                      Freeze at {selectedCell}
                     </DropdownMenuItem>
+
+                    <DropdownMenuSeparator />
+
+                    {/* Unfreeze All */}
                     <DropdownMenuItem
                       onSelect={() => setFreeze(0, 0)}
                       disabled={!hasFrozen}
                     >
-                      <Unlock className="w-3.5 h-3.5 mr-1" />
+                      <Unlock className="w-3.5 h-3.5" />
                       Unfreeze All
                     </DropdownMenuItem>
                   </DropdownMenuContent>

@@ -1,20 +1,24 @@
 "use client";
 
+import { useVirtualizer } from "@tanstack/react-virtual";
 import { ChevronDown, Plus, X } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
+import { evaluateConditionalFormats } from "../lib/conditional-format-engine";
 import { adjustFormulaRefs } from "../lib/fill-series";
 import {
   buildSelectionFormula,
   copyFormulaToClipboard,
   type FormulaFn,
 } from "../lib/formula-helpers";
+import { getAllFormulaNames } from "../lib/formulas";
 import { isMergeHiddenCell, isMergePrimaryCell } from "../lib/merge-utils";
 import { formatCellDisplay } from "../lib/number-format";
 import { useSpreadsheet } from "../lib/spreadsheet-context";
 import { evalFormula } from "../lib/spreadsheet-formula";
 import { GRID } from "../lib/spreadsheet-types";
 import { cellRef, colLabel } from "../lib/spreadsheet-utils";
+import { validateCell } from "../lib/validation-engine";
 import { CellAutocomplete, useAutocompleteKeyboard } from "./CellAutocomplete";
 import { CellDropdown } from "./CellDropdown";
 import { ColumnFilterPopover } from "./ColumnFilterPopover";
@@ -23,16 +27,7 @@ import { FormulaQuickBar } from "./FormulaQuickBar";
 import { GridContextMenu } from "./GridContextMenu";
 import { PasteSpecialMenu } from "./PasteSpecialMenu";
 
-const FORMULA_FUNCTIONS = [
-  "SUM",
-  "AVERAGE",
-  "AVG",
-  "COUNT",
-  "COUNTA",
-  "MIN",
-  "MAX",
-  "IF",
-];
+const FORMULA_FUNCTIONS = getAllFormulaNames();
 
 export function SpreadsheetGrid() {
   const {
@@ -90,6 +85,10 @@ export function SpreadsheetGrid() {
     freezeCol,
     // Merge
     mergedRegions,
+    // Validation
+    openValidationDialog,
+    // Conditional formatting
+    conditionalFormats,
   } = useSpreadsheet();
 
   const [editingCell, setEditingCell] = useState<string | null>(null);
@@ -522,6 +521,61 @@ export function SpreadsheetGrid() {
 
   // Compute cumulative column offsets for freeze panes (used above in getColLeft)
 
+  // Row virtualization — build visible row indices (excluding frozen rows)
+  const visibleRowIndices: number[] = [];
+  for (let r = freezeRow; r < rowCount; r++) {
+    if (r > 0 && filteredRowIndices && !filteredRowIndices.has(r)) continue;
+    visibleRowIndices.push(r);
+  }
+
+  const rowVirtualizer = useVirtualizer({
+    count: visibleRowIndices.length,
+    getScrollElement: () => containerRef.current,
+    estimateSize: () => GRID.ROW_HEIGHT,
+    overscan: 10,
+  });
+
+  const frozenRowsHeight = freezeRow * GRID.ROW_HEIGHT;
+
+  // Pre-compute rows to render: frozen (sticky) + virtual (absolute)
+  const rowsToRender: { r: number; style: React.CSSProperties }[] = [];
+  for (let r = 0; r < freezeRow; r++) {
+    if (r > 0 && filteredRowIndices && !filteredRowIndices.has(r)) continue;
+    rowsToRender.push({
+      r,
+      style: {
+        display: "flex",
+        height: GRID.ROW_HEIGHT,
+        width: getTotalWidth(),
+        position: "sticky",
+        top: GRID.COL_HEADER_HEIGHT + r * GRID.ROW_HEIGHT,
+        zIndex: 15,
+        overflow: "visible",
+      },
+    });
+  }
+  for (const virtualRow of rowVirtualizer.getVirtualItems()) {
+    const r = visibleRowIndices[virtualRow.index];
+    rowsToRender.push({
+      r,
+      style: {
+        position: "absolute",
+        top: GRID.COL_HEADER_HEIGHT + frozenRowsHeight + virtualRow.start,
+        left: 0,
+        display: "flex",
+        height: GRID.ROW_HEIGHT,
+        width: getTotalWidth(),
+        overflow: "visible",
+      },
+    });
+  }
+
+  const totalHeight =
+    GRID.COL_HEADER_HEIGHT +
+    frozenRowsHeight +
+    rowVirtualizer.getTotalSize() +
+    (rowCount < GRID.MAX_ROWS ? GRID.ROW_HEIGHT : 0);
+
   return (
     // biome-ignore lint/a11y/noStaticElementInteractions: spreadsheet grid needs keyboard/mouse interaction
     <div
@@ -536,6 +590,7 @@ export function SpreadsheetGrid() {
         style={{
           position: "relative",
           width: getTotalWidth(),
+          height: totalHeight,
         }}
       >
         {/* Column headers row (corner + column labels) */}
@@ -669,32 +724,13 @@ export function SpreadsheetGrid() {
           )}
         </div>
 
-        {/* Rows */}
-        {Array.from({ length: rowCount }, (_, r) => {
-          // Skip filtered rows (but always show header row 0)
-          if (r > 0 && filteredRowIndices && !filteredRowIndices.has(r)) {
-            return null;
-          }
-
+        {/* Rows (frozen + virtualized) */}
+        {rowsToRender.map(({ r, style: rowStyle }) => {
           const isRowActive = r >= selMinRow && r <= selMaxRow;
           const isLastRow = r === rowCount - 1;
           const isFrozenRow = r < freezeRow;
           return (
-            // biome-ignore lint/suspicious/noArrayIndexKey: fixed row grid
-            <div
-              key={r}
-              style={{
-                display: "flex",
-                height: GRID.ROW_HEIGHT,
-                ...(isFrozenRow
-                  ? {
-                      position: "sticky",
-                      top: GRID.COL_HEADER_HEIGHT + r * GRID.ROW_HEIGHT,
-                      zIndex: 15,
-                    }
-                  : {}),
-              }}
-            >
+            <div key={r} style={rowStyle}>
               {/* Row number header */}
               <div
                 className="group/rowhdr"
@@ -753,8 +789,23 @@ export function SpreadsheetGrid() {
 
               {/* Cells */}
               {Array.from({ length: columnCount }, (_, c) => {
-                // Skip hidden merged cells
-                if (isMergeHiddenCell(r, c, mergedRegions)) return null;
+                // Hidden merged cells → invisible placeholder to preserve flex layout
+                if (isMergeHiddenCell(r, c, mergedRegions)) {
+                  return (
+                    <div
+                      // biome-ignore lint/suspicious/noArrayIndexKey: fixed column grid
+                      key={c}
+                      style={{
+                        width: getColWidth(c),
+                        height: GRID.ROW_HEIGHT,
+                        flexShrink: 0,
+                        borderRight: "none",
+                        borderBottom: "none",
+                        visibility: "hidden",
+                      }}
+                    />
+                  );
+                }
 
                 const ref = cellRef(r, c);
                 const cellData = cells[ref];
@@ -799,6 +850,27 @@ export function SpreadsheetGrid() {
                 // Fill handle preview border
                 const inFillRange = isCellInFillRange(r, c) && !isInRange;
 
+                // Validation
+                const validationResult = cellData?.validationRule
+                  ? validateCell(
+                      rawDisplay,
+                      cellData.validationRule,
+                      cells,
+                      ref,
+                    )
+                  : { valid: true };
+
+                // Conditional formatting
+                const condStyle =
+                  conditionalFormats.length > 0
+                    ? evaluateConditionalFormats(
+                        ref,
+                        cellData?.value ?? "",
+                        conditionalFormats,
+                        cells,
+                      )
+                    : null;
+
                 // Frozen cell styling
                 const isFrozenCol = c < freezeCol;
                 const isFrozenCell = isFrozenRow || isFrozenCol;
@@ -819,16 +891,26 @@ export function SpreadsheetGrid() {
                       width: mergeRegion ? mergeWidth : colW,
                       height: mergeRegion ? mergeHeight : GRID.ROW_HEIGHT,
                       flexShrink: 0,
-                      position: isFrozenCell ? "sticky" : "relative",
+                      position: isFrozenCol ? "sticky" : "relative",
                       left: isFrozenCol
                         ? GRID.ROW_HEADER_WIDTH + getColLeft(c)
                         : undefined,
-                      zIndex: isSingleSelected ? 5 : isFrozenCell ? 12 : 0,
+                      zIndex: mergeRegion
+                        ? isFrozenCol
+                          ? 12
+                          : 10
+                        : isSingleSelected
+                          ? 5
+                          : isFrozenCol
+                            ? 12
+                            : 0,
                       background: inFillRange
                         ? "var(--sheet-selection)"
                         : isInRange && !isSingleSelected
                           ? "var(--sheet-selection)"
-                          : (cellData?.bgColor ?? "var(--sheet-cell-bg)"),
+                          : (condStyle?.bgColor ??
+                            cellData?.bgColor ??
+                            "var(--sheet-cell-bg)"),
                       borderRight:
                         c === freezeCol - 1
                           ? "2px solid var(--sheet-active-ring)"
@@ -849,12 +931,19 @@ export function SpreadsheetGrid() {
                         ? `inset 0 0 0 2px ${refHighlight}`
                         : inFillRange
                           ? "inset 0 0 0 1px var(--sheet-active-ring)"
-                          : undefined,
+                          : !validationResult.valid
+                            ? `inset 0 0 0 2px ${validationResult.warningOnly ? "#f59e0b" : "#ef4444"}`
+                            : undefined,
                     }}
                     onMouseDown={(e) => handleCellMouseDown(r, c, e)}
                     onMouseEnter={() => handleCellMouseEnter(r, c)}
                     onDoubleClick={() => startEditing(ref)}
                     onContextMenu={(e) => handleContextMenu(e, r, c)}
+                    title={
+                      !validationResult.valid
+                        ? validationResult.message
+                        : undefined
+                    }
                   >
                     {isEditing ? (
                       <>
@@ -985,18 +1074,42 @@ export function SpreadsheetGrid() {
                             : `${GRID.ROW_HEIGHT}px`,
                           fontSize: `${cellData?.fontSize ?? 12}px`,
                           fontFamily: cellData?.fontFamily ?? "inherit",
-                          fontWeight: cellData?.bold ? 600 : 400,
-                          fontStyle: cellData?.italic ? "italic" : "normal",
+                          fontWeight:
+                            condStyle?.bold || cellData?.bold ? 600 : 400,
+                          fontStyle:
+                            condStyle?.italic || cellData?.italic
+                              ? "italic"
+                              : "normal",
                           textDecoration: cellData?.underline
                             ? "underline"
                             : "none",
                           textAlign: cellData?.align ?? "left",
-                          color: cellData?.textColor ?? "var(--foreground)",
+                          color:
+                            condStyle?.textColor ??
+                            cellData?.textColor ??
+                            "var(--foreground)",
                           whiteSpace: "nowrap",
                           overflow: "hidden",
                           textOverflow: "ellipsis",
+                          position: "relative",
                         }}
                       >
+                        {/* Data bar background */}
+                        {condStyle?.dataBarPercent !== undefined && (
+                          <span
+                            style={{
+                              position: "absolute",
+                              left: 0,
+                              top: 0,
+                              bottom: 0,
+                              width: `${condStyle.dataBarPercent}%`,
+                              backgroundColor:
+                                condStyle.dataBarColor ?? "#3b82f6",
+                              opacity: 0.25,
+                              pointerEvents: "none",
+                            }}
+                          />
+                        )}
                         {displayValue}
                         {cellData?.cellType === "dropdown" && (
                           <ChevronDown
@@ -1005,6 +1118,22 @@ export function SpreadsheetGrid() {
                           />
                         )}
                       </span>
+                    )}
+
+                    {/* Validation error indicator (red/yellow triangle) */}
+                    {!validationResult.valid && !isEditing && (
+                      <div
+                        style={{
+                          position: "absolute",
+                          top: 0,
+                          right: 0,
+                          width: 0,
+                          height: 0,
+                          borderLeft: "6px solid transparent",
+                          borderTop: `6px solid ${validationResult.warningOnly ? "#f59e0b" : "#ef4444"}`,
+                          zIndex: 5,
+                        }}
+                      />
                     )}
 
                     {/* Fill handle (blue square at bottom-right of selection) */}
@@ -1119,6 +1248,7 @@ export function SpreadsheetGrid() {
             const ok = await copyFormulaToClipboard(formula);
             if (ok) toast.success(`Copied ${formula}`);
           }}
+          onDataValidation={() => openValidationDialog(contextMenu.cellRef)}
         />
       )}
 

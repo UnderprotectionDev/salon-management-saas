@@ -31,6 +31,8 @@ erDiagram
     customers ||--o{ aiAnalyses : uploads
     customers ||--o{ aiSimulations : requests
     customers ||--o{ aiMoodBoard : saves
+    organization ||--o{ spreadsheetSheets : owns
+    spreadsheetSheets ||--o{ spreadsheetCells : contains
 ```
 
 ## User Profile Table
@@ -156,6 +158,36 @@ Cross-organization profile for registered users. One document per user (not per 
 ### `bannedUsers`
 - `userId, bannedBy, reason?, bannedAt` — Index: `by_user_id`
 
+## Spreadsheet Tables
+
+### `spreadsheetSheets`
+Freeform spreadsheet tabs per organization.
+
+- `organizationId: Id<"organization">`
+- `name: string` — Sheet display name
+- `order: number` — Tab display order
+- `columnCount?: number` — Default 10, max 52
+- `rowCount?: number` — Default 20, max 5000
+- `freezeRow?: number` — Rows frozen from top
+- `freezeCol?: number` — Columns frozen from left
+- `mergedRegions?: {startRow, startCol, endRow, endCol}[]`
+- `conditionalFormats?: string` — JSON-serialized `CondFormatRule[]`
+- Indexes: `by_org`
+
+### `spreadsheetCells`
+Sparse cell storage — only non-empty cells are persisted.
+
+- `organizationId: Id<"organization">`
+- `sheetId: Id<"spreadsheetSheets">`
+- `cellRef: string` — A1-notation (e.g. `"B3"`)
+- `value: string` — Raw value or formula string (prefixed `=`)
+- `bold?, italic?, underline?: boolean`
+- `align?: "left" | "center" | "right"`
+- `fontSize?, fontFamily?, bgColor?, textColor?: string`
+- `numberFormat?: string` — Format key (e.g. `"currency"`, `"percent"`)
+- `validationRule?: string` — JSON-serialized `ValidationRule`
+- Indexes: `by_sheet`, `by_org_sheet`
+
 ## AI Tables
 
 ### `aiCredits`
@@ -204,3 +236,5 @@ Cross-organization profile for registered users. One document per user (not per 
 | Products by category | `products.by_org_category` |
 | Active products (public) | `products.by_org_status` |
 | Inventory history | `inventoryTransactions.by_product` |
+| Sheets in org | `spreadsheetSheets.by_org` |
+| Cells in sheet | `spreadsheetCells.by_org_sheet` |

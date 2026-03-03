@@ -1,6 +1,8 @@
 "use client";
 
+import { FileDown } from "lucide-react";
 import { type ReactNode, useEffect, useRef, useState } from "react";
+import { Button } from "@/components/ui/button";
 import { useColumnFilters } from "../hooks/useColumnFilters";
 import { useColumnWidths } from "../hooks/useColumnWidths";
 import type { UndoEntry } from "../hooks/useUndoHistory";
@@ -11,6 +13,7 @@ import {
   shiftRowsDown,
   shiftRowsUp,
 } from "../lib/cell-shift";
+import type { CondFormatRule } from "../lib/conditional-format-types";
 import {
   adjustFormulaRefs,
   detectSeries,
@@ -26,6 +29,7 @@ import {
   removeMerge,
 } from "../lib/merge-utils";
 import type { NumberFormat } from "../lib/number-format";
+import { exportToPdf } from "../lib/pdf-export";
 import { SpreadsheetProvider } from "../lib/spreadsheet-context";
 import type {
   CellData,
@@ -35,11 +39,15 @@ import type {
 } from "../lib/spreadsheet-types";
 import { GRID } from "../lib/spreadsheet-types";
 import { cellRef } from "../lib/spreadsheet-utils";
+import type { ValidationRule } from "../lib/validation-types";
+import { ConditionalFormatDialog } from "./ConditionalFormatDialog";
 import { FormulaBar } from "./FormulaBar";
+import { PdfExportDialog } from "./PdfExportDialog";
 import { Ribbon } from "./Ribbon";
 import { SearchOverlay } from "./SearchOverlay";
 import { SheetTabs } from "./SheetTabs";
 import { SpreadsheetGrid } from "./SpreadsheetGrid";
+import { ValidationRuleDialog } from "./ValidationRuleDialog";
 
 interface SpreadsheetShellProps {
   tabs: SheetTab[];
@@ -81,6 +89,8 @@ interface SpreadsheetShellProps {
   onSetFreeze?: (row: number, col: number) => void;
   /** Merged regions callback */
   onSetMergedRegions?: (regions: MergedRegion[]) => void;
+  /** Conditional format rules callback */
+  onSetConditionalFormats?: (rules: CondFormatRule[]) => void;
 }
 
 export function SpreadsheetShell({
@@ -103,6 +113,7 @@ export function SpreadsheetShell({
   ribbonActions,
   onSetFreeze,
   onSetMergedRegions,
+  onSetConditionalFormats,
 }: SpreadsheetShellProps) {
   const [selectedCell, setSelectedCell] = useState("A1");
   const [selectionRange, setSelectionRange] = useState<{
@@ -190,11 +201,26 @@ export function SpreadsheetShell({
     endCol: number;
   } | null>(null);
 
+  // Validation dialog state
+  const [validationDialogOpen, setValidationDialogOpen] = useState(false);
+  const [validationDialogRef, setValidationDialogRef] = useState("A1");
+
+  // Conditional formatting dialog state
+  const [condFormatDialogOpen, setCondFormatDialogOpen] = useState(false);
+
+  // PDF export dialog state
+  const [pdfExportDialogOpen, setPdfExportDialogOpen] = useState(false);
+
   // Get active tab data
   const activeTabData = tabs.find((t) => t.id === activeTab);
   const freezeRow = activeTabData?.freezeRow ?? 0;
   const freezeCol = activeTabData?.freezeCol ?? 0;
   const mergedRegions: MergedRegion[] = activeTabData?.mergedRegions ?? [];
+  const conditionalFormats: CondFormatRule[] = activeTabData?.conditionalFormats
+    ? typeof activeTabData.conditionalFormats === "string"
+      ? JSON.parse(activeTabData.conditionalFormats as string)
+      : activeTabData.conditionalFormats
+    : [];
 
   // Merge optimistic overlay on top of prop cells.
   const mergedCells =
@@ -830,6 +856,69 @@ export function SpreadsheetShell({
     onSetMergedRegions(updated);
   }
 
+  // ---- Validation ----
+  function handleOpenValidationDialog(ref: string) {
+    setValidationDialogRef(ref);
+    setValidationDialogOpen(true);
+  }
+
+  function handleSaveValidation(rule: ValidationRule | undefined) {
+    const existing = mergedCells[validationDialogRef] ?? { value: "" };
+    handleCellChange(validationDialogRef, {
+      ...existing,
+      validationRule: rule,
+    });
+  }
+
+  // ---- Conditional Formatting ----
+  function handleOpenCondFormatDialog() {
+    setCondFormatDialogOpen(true);
+  }
+
+  function handleSaveConditionalFormats(rules: CondFormatRule[]) {
+    onSetConditionalFormats?.(rules);
+  }
+
+  // ---- PDF Export ----
+  function handleOpenPdfExportDialog() {
+    setPdfExportDialogOpen(true);
+  }
+
+  function handlePdfExport(opts: {
+    pageSize: "A4" | "LETTER";
+    orientation: "portrait" | "landscape";
+    exportRange: "all" | "selection";
+    includeHeader: boolean;
+    margins: "normal" | "narrow" | "wide";
+    fileName: string;
+  }) {
+    const range =
+      opts.exportRange === "selection" && selectionRange
+        ? {
+            startRow: Math.min(selectionRange.startRow, selectionRange.endRow),
+            startCol: Math.min(selectionRange.startCol, selectionRange.endCol),
+            endRow: Math.max(selectionRange.startRow, selectionRange.endRow),
+            endCol: Math.max(selectionRange.startCol, selectionRange.endCol),
+          }
+        : undefined;
+
+    exportToPdf({
+      cells: mergedCells,
+      columnCount,
+      rowCount,
+      mergedRegions,
+      conditionalFormats,
+      sheetName: activeTabData?.label ?? "Sheet",
+      pageSize: opts.pageSize,
+      orientation: opts.orientation,
+      columnWidths,
+      range,
+      includeHeader: opts.includeHeader,
+      margins: opts.margins,
+      fileName: opts.fileName,
+    });
+  }
+
   return (
     <SpreadsheetProvider
       value={{
@@ -913,6 +1002,13 @@ export function SpreadsheetShell({
         mergedRegions,
         mergeCells: handleMergeCells,
         unmergeCells: handleUnmergeCells,
+        // Validation
+        openValidationDialog: handleOpenValidationDialog,
+        // Conditional formatting
+        conditionalFormats,
+        openConditionalFormatDialog: handleOpenCondFormatDialog,
+        // PDF export
+        openPdfExportDialog: handleOpenPdfExportDialog,
       }}
     >
       <div className="flex flex-col h-full">
@@ -922,7 +1018,22 @@ export function SpreadsheetShell({
           data-spreadsheet-light=""
           style={{ border: "1px solid var(--sheet-grid)" }}
         >
-          <Ribbon actions={ribbonActions} />
+          <Ribbon
+            actions={
+              <>
+                {ribbonActions}
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="h-7 gap-1.5 text-xs"
+                  onClick={handleOpenPdfExportDialog}
+                >
+                  <FileDown className="size-3.5" />
+                  Export PDF
+                </Button>
+              </>
+            }
+          />
           <FormulaBar />
 
           {/* Grid area with zoom */}
@@ -955,6 +1066,34 @@ export function SpreadsheetShell({
             onDeleteSheet={onDeleteSheet}
           />
         </div>
+
+        {/* Validation Rule Dialog */}
+        <ValidationRuleDialog
+          open={validationDialogOpen}
+          onOpenChange={setValidationDialogOpen}
+          currentRule={mergedCells[validationDialogRef]?.validationRule}
+          onSave={handleSaveValidation}
+          cellRef={validationDialogRef}
+        />
+
+        {/* Conditional Format Dialog */}
+        <ConditionalFormatDialog
+          open={condFormatDialogOpen}
+          onOpenChange={setCondFormatDialogOpen}
+          rules={conditionalFormats}
+          onSave={handleSaveConditionalFormats}
+          selectionRange={selectionRange}
+          selectedCell={selectedCell}
+        />
+
+        {/* PDF Export Dialog */}
+        <PdfExportDialog
+          open={pdfExportDialogOpen}
+          onOpenChange={setPdfExportDialogOpen}
+          onExport={handlePdfExport}
+          selectionRange={selectionRange}
+          sheetName={activeTabData?.label ?? "Sheet"}
+        />
       </div>
     </SpreadsheetProvider>
   );

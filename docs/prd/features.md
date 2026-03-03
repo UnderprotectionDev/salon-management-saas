@@ -13,6 +13,8 @@
 | Dashboard Appointment Management | P1 | ✅ Implemented (M9) |
 | AI Features | P2 | 📋 Planned (M10A/B/C) |
 | Products & Inventory | P2 | ✅ Implemented (M11) |
+| Financial Management | P1 | ✅ Implemented (M12) |
+| Freeform Financial Spreadsheet | P1 | ✅ Implemented (M13) |
 
 ---
 
@@ -139,6 +141,20 @@ Date range: URL-persisted, presets (Today, 7d, 30d, This/Last month), max 1 year
 **Capabilities:** Platform stats, org management (suspend/unsuspend/delete with cascading), user management (ban/unban at auth layer), manual subscription override, full action log audit trail.
 
 **Security:** Synthetic owner member for org access, ban check in `getAuthUser`, rate limits (suspend 10/hr, delete 5/day, ban 10/hr), impersonation banner.
+
+---
+
+## Freeform Financial Spreadsheet
+
+> See [Milestone 13](../milestones/milestone-13-freeform-spreadsheet.md) for full specifications.
+
+Owner-only Excel-like spreadsheet at `/{slug}/financials`. Multi-sheet with full formula engine (50+ functions), rich formatting, conditional formatting, cell validation, merge/freeze panes, row/column management, fill series, undo/redo, search, PDF export, and real-time Convex persistence.
+
+**Persistence:** Sparse cell storage (`spreadsheetCells`) — only non-empty cells stored. 300ms debounce auto-save; bulk replace for structural mutations (row/col insert/delete).
+
+**Formula engine:** Client-side evaluation. Math, text, date, logical, financial, conditional, and lookup function categories.
+
+**Limits:** 52 columns (A–AZ) × 5,000 rows per sheet. Column widths/filters are local state only.
 
 ---
 

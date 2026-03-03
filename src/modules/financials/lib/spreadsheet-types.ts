@@ -26,6 +26,8 @@ export interface CellData {
   dropdownOptions?: { value: string; label: string }[];
   /** Convex document _id for this row's record (used for row CRUD) */
   recordId?: string;
+  /** Validation rule (JSON-serialized to/from Convex) */
+  validationRule?: import("./validation-types").ValidationRule;
 }
 
 /** Column width overrides per column index */
@@ -57,6 +59,10 @@ export interface SheetTab {
   freezeCol?: number;
   /** Merged cell regions */
   mergedRegions?: import("./merge-utils").MergedRegion[];
+  /** Conditional formatting rules (JSON string or parsed) */
+  conditionalFormats?:
+    | import("./conditional-format-types").CondFormatRule[]
+    | string;
 }
 
 export const GRID = {
@@ -67,6 +73,6 @@ export const GRID = {
   MIN_COL_WIDTH: 40,
   MAX_COLS: 52,
   DEFAULT_FREEFORM_COLS: 10,
-  MAX_ROWS: 200,
+  MAX_ROWS: 5000,
   DEFAULT_FREEFORM_ROWS: 20,
 } as const;
