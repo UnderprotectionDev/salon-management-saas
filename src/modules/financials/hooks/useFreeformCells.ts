@@ -7,6 +7,7 @@ import { api } from "../../../../convex/_generated/api";
 import type { Id } from "../../../../convex/_generated/dataModel";
 import type { NumberFormat } from "../lib/number-format";
 import { GRID, type CellData, type CellMap } from "../lib/spreadsheet-types";
+import type { ValidationRule } from "../lib/validation-types";
 
 interface UseFreeformCellsResult {
   cells: CellMap;
@@ -119,6 +120,15 @@ export function useFreeformCells(
         bgColor: cell.bgColor ?? undefined,
         textColor: cell.textColor ?? undefined,
         numberFormat: (cell.numberFormat as NumberFormat) ?? undefined,
+        validationRule: cell.validationRule
+          ? (() => {
+              try {
+                return JSON.parse(cell.validationRule) as ValidationRule;
+              } catch {
+                return undefined;
+              }
+            })()
+          : undefined,
       };
     }
   }
@@ -144,6 +154,9 @@ export function useFreeformCells(
       bgColor: data.bgColor,
       textColor: data.textColor,
       numberFormat: data.numberFormat,
+      validationRule: data.validationRule
+        ? JSON.stringify(data.validationRule)
+        : undefined,
     }));
 
     const toSend = { ...pendingChanges.current };
@@ -215,6 +228,9 @@ export function useFreeformCells(
       bgColor: data.bgColor,
       textColor: data.textColor,
       numberFormat: data.numberFormat,
+      validationRule: data.validationRule
+        ? JSON.stringify(data.validationRule)
+        : undefined,
     }));
 
     replaceAllMut({

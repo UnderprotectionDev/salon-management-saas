@@ -23,6 +23,7 @@ export const list = ownerQuery({
       freezeRow: v.optional(v.number()),
       freezeCol: v.optional(v.number()),
       mergedRegions: v.optional(v.array(mergedRegionValidator)),
+      conditionalFormats: v.optional(v.string()),
     }),
   ),
   handler: async (ctx) => {
@@ -134,7 +135,7 @@ export const setRowCount = ownerMutation({
   handler: async (ctx, args) => {
     const sheet = await ctx.db.get(args.id);
     if (!sheet || sheet.organizationId !== ctx.organizationId) return null;
-    const clamped = Math.max(1, Math.min(200, Math.round(args.rowCount)));
+    const clamped = Math.max(1, Math.min(5000, Math.round(args.rowCount)));
     await ctx.db.patch(args.id, { rowCount: clamped });
     return null;
   },
@@ -169,6 +170,23 @@ export const setFreeze = ownerMutation({
     await ctx.db.patch(args.id, {
       freezeRow: Math.max(0, args.freezeRow),
       freezeCol: Math.max(0, args.freezeCol),
+    });
+    return null;
+  },
+});
+
+/** Set conditional format rules for a sheet (JSON-serialized) */
+export const setConditionalFormats = ownerMutation({
+  args: {
+    id: v.id("spreadsheetSheets"),
+    conditionalFormats: v.string(),
+  },
+  returns: v.null(),
+  handler: async (ctx, args) => {
+    const sheet = await ctx.db.get(args.id);
+    if (!sheet || sheet.organizationId !== ctx.organizationId) return null;
+    await ctx.db.patch(args.id, {
+      conditionalFormats: args.conditionalFormats,
     });
     return null;
   },

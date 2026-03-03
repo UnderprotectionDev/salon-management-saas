@@ -9,6 +9,7 @@ import {
   Filter,
   Plus,
   Scissors,
+  ShieldCheck,
   Sigma,
   Trash2,
   XCircle,
@@ -42,6 +43,7 @@ interface GridContextMenuProps {
   onFilterByColumn: () => void;
   hasMultiCellSelection?: boolean;
   onCopyFormula?: (fn: FormulaFn) => void;
+  onDataValidation?: () => void;
 }
 
 interface MenuItemProps {
@@ -157,6 +159,7 @@ export function GridContextMenu({
   onFilterByColumn,
   hasMultiCellSelection,
   onCopyFormula,
+  onDataValidation,
 }: GridContextMenuProps) {
   const rowDisabled = isReadOnlyTab || isHeaderRow || isTotalRow;
   const isColumnHeader = state.row === -1;
@@ -306,6 +309,19 @@ export function GridContextMenu({
                 onClick={() => handleClick(() => onCopyFormula("MIN"))}
               />
             </SubMenu>
+          </>
+        )}
+
+        {/* Data Validation */}
+        {onDataValidation && !isColumnHeader && (
+          <>
+            <MenuSeparator />
+            <MenuItem
+              icon={<ShieldCheck className="size-3.5" />}
+              label="Data Validation..."
+              onClick={() => handleClick(onDataValidation)}
+              disabled={isReadOnlyTab}
+            />
           </>
         )}
 
