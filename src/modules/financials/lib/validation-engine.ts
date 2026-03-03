@@ -6,6 +6,8 @@ import type {
   ValidationRule,
 } from "./validation-types";
 
+const EPSILON = 1e-10;
+
 /** Compare two numbers using an operator */
 function compareNumbers(
   value: number,
@@ -15,13 +17,13 @@ function compareNumbers(
 ): boolean {
   switch (operator) {
     case "between":
-      return val2 !== undefined && value >= val1 && value <= val2;
+      return val2 !== undefined && value >= val1 - EPSILON && value <= val2 + EPSILON;
     case "notBetween":
-      return val2 !== undefined && (value < val1 || value > val2);
+      return val2 !== undefined && (value < val1 - EPSILON || value > val2 + EPSILON);
     case "equal":
-      return value === val1;
+      return Math.abs(value - val1) < EPSILON;
     case "notEqual":
-      return value !== val1;
+      return Math.abs(value - val1) >= EPSILON;
     case "greaterThan":
       return value > val1;
     case "lessThan":
@@ -65,7 +67,7 @@ export function validateCell(
       const num = Number.parseFloat(value);
       if (Number.isNaN(num)) return makeResult(false);
       if (rule.integerOnly && !Number.isInteger(num)) return makeResult(false);
-      if (rule.positiveOnly && num < 0) return makeResult(false);
+      if (rule.positiveOnly && num <= 0) return makeResult(false);
 
       if (rule.operator && rule.value1 !== undefined) {
         const v1 = Number.parseFloat(rule.value1);
@@ -111,7 +113,7 @@ export function validateCell(
     case "custom": {
       if (!rule.formula) return { valid: true };
       const result = evalFormula(`=${rule.formula}`, cells);
-      return makeResult(result === "TRUE" || result === "1");
+      return makeResult(result.toUpperCase() === "TRUE" || result === "1");
     }
 
     default:

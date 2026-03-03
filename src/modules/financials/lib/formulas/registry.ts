@@ -46,21 +46,30 @@ export function getRawValue(ref: string, ctx: FormulaContext): string {
   return v.startsWith("=") ? ctx.evalFormula(v, ctx.cells, ctx.depth + 1) : v;
 }
 
+/** Check if an arg is a quoted string literal */
+function isQuotedString(arg: string): boolean {
+  const trimmed = arg.trim();
+  return trimmed.startsWith('"') && trimmed.endsWith('"');
+}
+
 /** Resolve a list of arguments (ranges, refs, literals) into numbers */
 export function resolveArgs(argsStr: string, ctx: FormulaContext): number[] {
   const nums: number[] = [];
   const args = splitTopLevelArgs(argsStr);
   for (const arg of args) {
-    if (arg.includes(":")) {
-      for (const r of expandRange(arg)) {
+    const trimmed = arg.trim();
+    // Skip quoted strings — they're not numeric
+    if (isQuotedString(trimmed)) continue;
+    if (trimmed.includes(":") && parseRef(trimmed.split(":")[0])) {
+      for (const r of expandRange(trimmed)) {
         nums.push(getNum(r, ctx));
       }
     } else {
-      const coord = parseRef(arg);
+      const coord = parseRef(trimmed);
       if (coord) {
-        nums.push(getNum(arg, ctx));
+        nums.push(getNum(trimmed, ctx));
       } else {
-        const n = Number.parseFloat(arg);
+        const n = Number.parseFloat(trimmed);
         if (!Number.isNaN(n)) nums.push(n);
       }
     }
@@ -73,17 +82,20 @@ export function resolveRawArgs(argsStr: string, ctx: FormulaContext): string[] {
   const values: string[] = [];
   const args = splitTopLevelArgs(argsStr);
   for (const arg of args) {
-    if (arg.includes(":")) {
-      for (const r of expandRange(arg)) {
+    const trimmed = arg.trim();
+    // Handle quoted strings first (may contain colons)
+    if (isQuotedString(trimmed)) {
+      values.push(trimmed.slice(1, -1));
+    } else if (trimmed.includes(":") && parseRef(trimmed.split(":")[0])) {
+      for (const r of expandRange(trimmed)) {
         values.push(getRawValue(r, ctx));
       }
     } else {
-      const coord = parseRef(arg);
+      const coord = parseRef(trimmed);
       if (coord) {
-        values.push(getRawValue(arg, ctx));
+        values.push(getRawValue(trimmed, ctx));
       } else {
-        // Strip quotes for string literals
-        values.push(arg.replace(/^"(.*)"$/, "$1"));
+        values.push(trimmed.replace(/^"(.*)"$/, "$1"));
       }
     }
   }

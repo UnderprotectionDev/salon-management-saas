@@ -121,7 +121,13 @@ export function useFreeformCells(
         textColor: cell.textColor ?? undefined,
         numberFormat: (cell.numberFormat as NumberFormat) ?? undefined,
         validationRule: cell.validationRule
-          ? (JSON.parse(cell.validationRule) as ValidationRule)
+          ? (() => {
+              try {
+                return JSON.parse(cell.validationRule) as ValidationRule;
+              } catch {
+                return undefined;
+              }
+            })()
           : undefined,
       };
     }

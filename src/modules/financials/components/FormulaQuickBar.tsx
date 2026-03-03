@@ -30,8 +30,8 @@ const BUTTONS: { fn: FormulaFn; symbol: string; label: string }[] = [
   { fn: "COUNT", symbol: "#", label: "COUNT" },
   { fn: "MAX", symbol: "↑", label: "MAX" },
   { fn: "MIN", symbol: "↓", label: "MIN" },
-  { fn: "SUMIF" as FormulaFn, symbol: "Σ?", label: "SUMIF" },
-  { fn: "COUNTIF" as FormulaFn, symbol: "#?", label: "COUNTIF" },
+  { fn: "SUMIF", symbol: "Σ?", label: "SUMIF" },
+  { fn: "COUNTIF", symbol: "#?", label: "COUNTIF" },
 ];
 
 export function FormulaQuickBar({

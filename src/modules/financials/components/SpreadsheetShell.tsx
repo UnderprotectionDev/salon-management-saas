@@ -218,7 +218,13 @@ export function SpreadsheetShell({
   const mergedRegions: MergedRegion[] = activeTabData?.mergedRegions ?? [];
   const conditionalFormats: CondFormatRule[] = activeTabData?.conditionalFormats
     ? typeof activeTabData.conditionalFormats === "string"
-      ? JSON.parse(activeTabData.conditionalFormats as string)
+      ? (() => {
+          try {
+            return JSON.parse(activeTabData.conditionalFormats as string);
+          } catch {
+            return [];
+          }
+        })()
       : activeTabData.conditionalFormats
     : [];
 

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Plus, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -96,11 +96,12 @@ export function ConditionalFormatDialog({
   const [editingIndex, setEditingIndex] = useState<number | null>(null);
 
   // Sync when dialog opens
-  const prevOpen = useState(open)[0];
-  if (open && !prevOpen) {
-    setEditingRules([...rules]);
-    setEditingIndex(null);
-  }
+  useEffect(() => {
+    if (open) {
+      setEditingRules([...rules]);
+      setEditingIndex(null);
+    }
+  }, [open, rules]);
 
   function addRule() {
     const newRule: CondFormatRule = {
@@ -119,7 +120,12 @@ export function ConditionalFormatDialog({
   function removeRule(index: number) {
     const updated = editingRules.filter((_, i) => i !== index);
     setEditingRules(updated);
-    if (editingIndex === index) setEditingIndex(null);
+    if (editingIndex === null) return;
+    if (editingIndex === index) {
+      setEditingIndex(null);
+    } else if (editingIndex > index) {
+      setEditingIndex(editingIndex - 1);
+    }
   }
 
   function updateRule(index: number, partial: Partial<CondFormatRule>) {
@@ -159,7 +165,14 @@ export function ConditionalFormatDialog({
                     : "hover:bg-accent/50"
                 }`}
                 onClick={() => setEditingIndex(i)}
-                onKeyDown={() => {}}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" || e.key === " ") {
+                    e.preventDefault();
+                    setEditingIndex(i);
+                  }
+                }}
+                role="button"
+                tabIndex={0}
               >
                 <div
                   className="w-4 h-4 rounded border shrink-0"

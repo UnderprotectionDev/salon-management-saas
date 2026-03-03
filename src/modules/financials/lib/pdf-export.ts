@@ -36,9 +36,10 @@ function resolveDisplayValue(
   cells: CellMap,
 ): string {
   if (!cellData?.value) return "";
-  const raw = cellData.value.startsWith("=")
-    ? evalFormula(cellData.value, cells)
-    : cellData.value;
+  const rawValue = String(cellData.value);
+  const raw = rawValue.startsWith("=")
+    ? evalFormula(rawValue, cells)
+    : rawValue;
   const fmt = cellData.numberFormat ?? "general";
   return fmt !== "general" ? formatCellDisplay(raw, fmt) : raw;
 }
@@ -66,7 +67,7 @@ function detectUsedRange(
     if (col < minC) minC = col;
     if (col > maxC) maxC = col;
   }
-  if (minR > maxR) return { startRow: 0, startCol: 0, endRow: 0, endCol: 0 };
+  if (minR > maxR) return { startRow: 0, startCol: 0, endRow: -1, endCol: -1 };
   return { startRow: minR, startCol: minC, endRow: maxR, endCol: maxC };
 }
 

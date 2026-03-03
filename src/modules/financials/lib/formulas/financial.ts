@@ -100,19 +100,21 @@ registerFormula("IRR", (argsStr, ctx) => {
   const args = splitTopLevelArgs(argsStr);
   if (args.length < 1) return "#ERROR";
 
-  // Collect cash flow values
+  // Collect cash flow values from first arg (range or individual values)
   const values: number[] = [];
   const firstArg = args[0].trim();
-  if (firstArg.includes(":")) {
-    const { expandRange } = require("../spreadsheet-formula");
+  if (firstArg.includes(":") && parseRef(firstArg.split(":")[0])) {
     for (const ref of expandRange(firstArg)) {
       values.push(getNum(ref, ctx));
     }
   } else {
-    // Multiple individual values
-    for (const a of args) {
+    // Multiple individual values — all args except optional guess
+    const valueArgs = args.length > 1 && !args[args.length - 1].trim().includes(":") && !parseRef(args[args.length - 1].trim())
+      ? args.slice(0, -1)
+      : args;
+    for (const a of valueArgs) {
       const trimmed = a.trim();
-      if (trimmed.includes(":")) {
+      if (trimmed.includes(":") && parseRef(trimmed.split(":")[0])) {
         for (const ref of expandRange(trimmed)) {
           values.push(getNum(ref, ctx));
         }
@@ -124,9 +126,15 @@ registerFormula("IRR", (argsStr, ctx) => {
 
   if (values.length < 2) return "#ERROR";
 
-  // Newton-Raphson iteration
-  let rate =
-    args.length > 1 && !args[1].includes(":") ? resolveArg(args[1], ctx) : 0.1;
+  // Newton-Raphson iteration — guess is the last non-range arg (default 0.1)
+  let rate = 0.1;
+  if (args.length > 1) {
+    const lastArg = args[args.length - 1].trim();
+    if (!lastArg.includes(":") && !parseRef(lastArg)) {
+      const guessVal = Number.parseFloat(lastArg);
+      if (!Number.isNaN(guessVal)) rate = guessVal;
+    }
+  }
   const maxIter = 100;
   const tolerance = 1e-7;
 

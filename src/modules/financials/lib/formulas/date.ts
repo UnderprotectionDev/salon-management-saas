@@ -184,7 +184,13 @@ registerFormula("EDATE", (argsStr, ctx) => {
   const months = resolveNumArg(args[1], ctx);
   const d = new Date(dateStr);
   if (Number.isNaN(d.getTime())) return "#ERROR";
+  // Preserve end-of-month: if start is last day of month, result should be last day too
+  const originalDay = d.getDate();
   d.setMonth(d.getMonth() + months);
+  // If day changed (e.g. Jan 31 + 1 month → Mar 3), clamp to last day of target month
+  if (d.getDate() !== originalDay) {
+    d.setDate(0); // Set to last day of previous month (the target month)
+  }
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 });
 

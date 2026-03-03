@@ -176,7 +176,9 @@ registerFormula("POWER", (argsStr, ctx) => {
     ? getNum(args[1], ctx)
     : Number.parseFloat(args[1]);
   if (Number.isNaN(base) || Number.isNaN(exp)) return "#ERROR";
-  return String(base ** exp);
+  const result = base ** exp;
+  if (!Number.isFinite(result)) return "#ERROR";
+  return String(result);
 });
 
 // SQRT
@@ -190,7 +192,7 @@ registerFormula("SQRT", (argsStr, ctx) => {
   return String(Math.sqrt(num));
 });
 
-// INT (truncate to integer)
+// INT (round down to nearest integer — Math.floor matches Excel behavior for negatives)
 registerFormula("INT", (argsStr, ctx) => {
   const args = splitTopLevelArgs(argsStr);
   if (args.length < 1) return "#ERROR";
@@ -212,6 +214,8 @@ registerFormula("CEILING", (argsStr, ctx) => {
     ? getNum(args[1], ctx)
     : Number.parseFloat(args[1]);
   if (Number.isNaN(num) || Number.isNaN(sig) || sig === 0) return "#ERROR";
+  // Excel: error if signs differ (num positive, sig negative or vice versa)
+  if ((num > 0 && sig < 0) || (num < 0 && sig > 0)) return "#ERROR";
   return String(Math.ceil(num / sig) * sig);
 });
 
@@ -226,5 +230,7 @@ registerFormula("FLOOR", (argsStr, ctx) => {
     ? getNum(args[1], ctx)
     : Number.parseFloat(args[1]);
   if (Number.isNaN(num) || Number.isNaN(sig) || sig === 0) return "#ERROR";
+  // Excel: error if signs differ
+  if ((num > 0 && sig < 0) || (num < 0 && sig > 0)) return "#ERROR";
   return String(Math.floor(num / sig) * sig);
 });

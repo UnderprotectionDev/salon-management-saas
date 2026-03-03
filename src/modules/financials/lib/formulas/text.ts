@@ -54,6 +54,7 @@ registerFormula("RIGHT", (argsStr, ctx) => {
         )
       : 1;
   if (Number.isNaN(count) || count < 0) return "#ERROR";
+  if (count === 0) return "";
   return text.slice(-count);
 });
 
@@ -201,7 +202,7 @@ registerFormula("REPLACE", (argsStr, ctx) => {
       : Number.parseFloat(args[2]),
   );
   const newText = resolveTextArg(args[3], ctx);
-  if (Number.isNaN(start) || Number.isNaN(count) || start < 1) return "#ERROR";
+  if (Number.isNaN(start) || Number.isNaN(count) || start < 1 || count < 0) return "#ERROR";
   return text.slice(0, start - 1) + newText + text.slice(start - 1 + count);
 });
 
@@ -215,7 +216,7 @@ registerFormula("REPT", (argsStr, ctx) => {
       ? getNum(args[1].trim(), ctx)
       : Number.parseFloat(args[1]),
   );
-  if (Number.isNaN(times) || times < 0) return "#ERROR";
+  if (Number.isNaN(times) || times < 0 || times > 10000) return "#ERROR";
   return text.repeat(times);
 });
 

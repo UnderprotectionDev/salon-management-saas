@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -83,6 +83,22 @@ export function ValidationRuleDialog({
   const [warningOnly, setWarningOnly] = useState(
     currentRule?.warningOnly ?? false,
   );
+
+  // Sync state when dialog opens with a different rule
+  useEffect(() => {
+    if (open) {
+      setRuleType(currentRule?.type ?? "number");
+      setOperator(currentRule?.operator ?? "between");
+      setValue1(currentRule?.value1 ?? "");
+      setValue2(currentRule?.value2 ?? "");
+      setDropdownValues(currentRule?.dropdownValues ?? "");
+      setIntegerOnly(currentRule?.integerOnly ?? false);
+      setPositiveOnly(currentRule?.positiveOnly ?? false);
+      setFormula(currentRule?.formula ?? "");
+      setErrorMessage(currentRule?.errorMessage ?? "");
+      setWarningOnly(currentRule?.warningOnly ?? false);
+    }
+  }, [open, currentRule]);
 
   const needsOperator =
     ruleType === "number" || ruleType === "date" || ruleType === "textLength";

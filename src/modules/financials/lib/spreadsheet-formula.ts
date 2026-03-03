@@ -24,9 +24,9 @@ export function evalFormula(raw: string, cells: CellMap, depth = 0): string {
       const funcName = funcMatch[1];
       const handler = FORMULA_REGISTRY.get(funcName);
       if (handler) {
-        // Use original case for args (preserves string literals)
+        // Use original case for args (preserves string literals and cell refs)
         const argsStr = expr.slice(funcName.length + 1, -1);
-        return handler(argsStr.toUpperCase(), {
+        return handler(argsStr, {
           cells,
           depth,
           evalFormula,

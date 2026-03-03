@@ -32,7 +32,7 @@ interface PdfExportDialogProps {
     includeHeader: boolean;
     margins: "normal" | "narrow" | "wide";
     fileName: string;
-  }) => void;
+  }) => void | Promise<void>;
   selectionRange?: {
     startRow: number;
     startCol: number;
@@ -79,7 +79,7 @@ export function PdfExportDialog({
   async function handleExport() {
     setExporting(true);
     try {
-      onExport({
+      await onExport({
         pageSize,
         orientation,
         exportRange,

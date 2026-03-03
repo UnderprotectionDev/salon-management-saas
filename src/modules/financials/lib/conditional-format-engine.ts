@@ -59,11 +59,11 @@ function matchesValueCondition(
       return !Number.isNaN(num) && !Number.isNaN(v1) && num < v1;
     case "equal":
       return !Number.isNaN(num) && !Number.isNaN(v1)
-        ? num === v1
+        ? Math.abs(num - v1) < 1e-10
         : cellValue === (rule.value1 ?? "");
     case "notEqual":
       return !Number.isNaN(num) && !Number.isNaN(v1)
-        ? num !== v1
+        ? Math.abs(num - v1) >= 1e-10
         : cellValue !== (rule.value1 ?? "");
     case "greaterThanOrEqual":
       return !Number.isNaN(num) && !Number.isNaN(v1) && num >= v1;
@@ -232,6 +232,7 @@ export function evaluateConditionalFormats(
         if (Number.isNaN(num)) break;
 
         const values = getRangeValues(rule.range, cells);
+        if (values.length === 0) break;
         const n = rule.topBottomValue ?? 10;
         const sorted = [...values].sort((a, b) => b - a);
         const count = rule.topBottomPercent
@@ -256,7 +257,6 @@ export function evaluateConditionalFormats(
       }
     }
 
-    if (rule.stopIfTrue) break;
   }
 
   return null;

@@ -73,6 +73,7 @@ registerFormula("VLOOKUP", (argsStr, ctx) => {
       ? getNum(args[2].trim(), ctx)
       : Number.parseFloat(args[2]),
   );
+  if (Number.isNaN(colIndex)) return "#ERROR";
   const rangeLookup =
     args.length > 3
       ? resolveValue(args[3], ctx).toUpperCase() !== "FALSE" &&
@@ -131,6 +132,7 @@ registerFormula("HLOOKUP", (argsStr, ctx) => {
       ? getNum(args[2].trim(), ctx)
       : Number.parseFloat(args[2]),
   );
+  if (Number.isNaN(rowIndex)) return "#ERROR";
   const rangeLookup =
     args.length > 3
       ? resolveValue(args[3], ctx).toUpperCase() !== "FALSE" &&
@@ -195,6 +197,7 @@ registerFormula("INDEX", (argsStr, ctx) => {
         )
       : 1;
 
+  if (Number.isNaN(rowNum) || Number.isNaN(colNum)) return "#ERROR";
   const table = getRangeDimensions(rangeStr);
   if (!table) return "#ERROR";
   if (rowNum < 1 || rowNum > table.rows || colNum < 1 || colNum > table.cols)

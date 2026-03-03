@@ -50,10 +50,10 @@ function matchesCriteria(
 
   // Wildcard support (* and ?)
   if (crit.includes("*") || crit.includes("?")) {
-    const regex = new RegExp(
-      `^${crit.replace(/\*/g, ".*").replace(/\?/g, ".")}$`,
-      "i",
-    );
+    // Escape regex metacharacters first, then convert wildcards
+    const escaped = crit.replace(/[.*+^${}()|[\]\\]/g, "\\$&");
+    const pattern = escaped.replace(/\\\*/g, ".*").replace(/\\\?/g, ".");
+    const regex = new RegExp(`^${pattern}$`, "i");
     return regex.test(cellValue);
   }
 
@@ -116,8 +116,8 @@ registerFormula("AVERAGEIF", (argsStr, ctx) => {
   let count = 0;
   for (let i = 0; i < criteriaRange.length; i++) {
     const cellVal = getRawValue(criteriaRange[i], ctx);
-    if (matchesCriteria(cellVal, criteria, ctx)) {
-      sum += i < avgRange.length ? getNum(avgRange[i], ctx) : 0;
+    if (matchesCriteria(cellVal, criteria, ctx) && i < avgRange.length) {
+      sum += getNum(avgRange[i], ctx);
       count++;
     }
   }
