@@ -3,11 +3,76 @@
  */
 import { colLabel } from "./spreadsheet-utils";
 
-type SeriesType = "number" | "copy" | "formula";
+type SeriesType = "number" | "copy" | "formula" | "date" | "dayName" | "monthName";
 
 interface DetectedSeries {
   type: SeriesType;
-  step: number; // for number series
+  step: number; // for number/date series (date step in days)
+}
+
+const DAY_NAMES_SHORT = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
+const DAY_NAMES_FULL = [
+  "Monday",
+  "Tuesday",
+  "Wednesday",
+  "Thursday",
+  "Friday",
+  "Saturday",
+  "Sunday",
+];
+const MONTH_NAMES_SHORT = [
+  "Jan", "Feb", "Mar", "Apr", "May", "Jun",
+  "Jul", "Aug", "Sep", "Oct", "Nov", "Dec",
+];
+const MONTH_NAMES_FULL = [
+  "January", "February", "March", "April", "May", "June",
+  "July", "August", "September", "October", "November", "December",
+];
+
+/** Try to find a value's index in a cyclic name list (case-insensitive) */
+function findNameIndex(
+  value: string,
+  lists: string[][],
+): { listIndex: number; index: number } | null {
+  const lower = value.trim().toLowerCase();
+  for (let li = 0; li < lists.length; li++) {
+    const idx = lists[li].findIndex((n) => n.toLowerCase() === lower);
+    if (idx !== -1) return { listIndex: li, index: idx };
+  }
+  return null;
+}
+
+/** Try to parse an ISO date (YYYY-MM-DD) */
+function tryParseISODate(value: string): Date | null {
+  const match = value.trim().match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if (!match) return null;
+  const d = new Date(Number(match[1]), Number(match[2]) - 1, Number(match[3]));
+  return Number.isNaN(d.getTime()) ? null : d;
+}
+
+/** Try to parse a Turkish date (DD.MM.YYYY) */
+function tryParseTRDate(value: string): Date | null {
+  const match = value.trim().match(/^(\d{2})\.(\d{2})\.(\d{4})$/);
+  if (!match) return null;
+  const d = new Date(Number(match[3]), Number(match[2]) - 1, Number(match[1]));
+  return Number.isNaN(d.getTime()) ? null : d;
+}
+
+type DateFormat = "iso" | "tr";
+
+function tryParseDate(value: string): { date: Date; format: DateFormat } | null {
+  const iso = tryParseISODate(value);
+  if (iso) return { date: iso, format: "iso" };
+  const tr = tryParseTRDate(value);
+  if (tr) return { date: tr, format: "tr" };
+  return null;
+}
+
+function formatDate(d: Date, fmt: DateFormat): string {
+  const yyyy = d.getFullYear();
+  const mm = String(d.getMonth() + 1).padStart(2, "0");
+  const dd = String(d.getDate()).padStart(2, "0");
+  return fmt === "iso" ? `${yyyy}-${mm}-${dd}` : `${dd}.${mm}.${yyyy}`;
 }
 
 /**
@@ -19,6 +84,41 @@ export function detectSeries(values: string[]): DetectedSeries {
   // Check if all values are formulas
   if (values.every((v) => v.startsWith("="))) {
     return { type: "formula", step: 0 };
+  }
+
+  // Check day-of-week names (Mon, Tue... or Monday, Tuesday...)
+  const dayLists = [DAY_NAMES_SHORT, DAY_NAMES_FULL];
+  const dayIndices = values.map((v) => findNameIndex(v, dayLists));
+  if (dayIndices.every((d) => d !== null)) {
+    return { type: "dayName", step: 1 };
+  }
+
+  // Check month names (Jan, Feb... or January, February...)
+  const monthLists = [MONTH_NAMES_SHORT, MONTH_NAMES_FULL];
+  const monthIndices = values.map((v) => findNameIndex(v, monthLists));
+  if (monthIndices.every((m) => m !== null)) {
+    return { type: "monthName", step: 1 };
+  }
+
+  // Check date values (ISO or Turkish format)
+  const dates = values.map((v) => tryParseDate(v));
+  if (dates.every((d) => d !== null) && dates.length >= 1) {
+    if (dates.length >= 2) {
+      const dayMs = 24 * 60 * 60 * 1000;
+      const step = Math.round(
+        (dates[1].date.getTime() - dates[0].date.getTime()) / dayMs,
+      );
+      // Check constant step
+      const isConstant = dates.every(
+        (d, i) =>
+          i === 0 ||
+          Math.round(
+            (d.date.getTime() - dates[i - 1].date.getTime()) / dayMs,
+          ) === step,
+      );
+      if (isConstant) return { type: "date", step };
+    }
+    return { type: "date", step: 1 };
   }
 
   // Check if all values are numbers
@@ -59,6 +159,41 @@ export function generateFillValue(
   if (sourceValues.length === 0) return "";
 
   const series = detectSeries(sourceValues);
+
+  if (series.type === "dayName") {
+    const dayLists = [DAY_NAMES_SHORT, DAY_NAMES_FULL];
+    const lastInfo = findNameIndex(
+      sourceValues[sourceValues.length - 1],
+      dayLists,
+    );
+    if (lastInfo) {
+      const list = dayLists[lastInfo.listIndex];
+      const nextIdx = (lastInfo.index + targetIndex + 1) % list.length;
+      return list[nextIdx];
+    }
+  }
+
+  if (series.type === "monthName") {
+    const monthLists = [MONTH_NAMES_SHORT, MONTH_NAMES_FULL];
+    const lastInfo = findNameIndex(
+      sourceValues[sourceValues.length - 1],
+      monthLists,
+    );
+    if (lastInfo) {
+      const list = monthLists[lastInfo.listIndex];
+      const nextIdx = (lastInfo.index + targetIndex + 1) % list.length;
+      return list[nextIdx];
+    }
+  }
+
+  if (series.type === "date") {
+    const lastParsed = tryParseDate(sourceValues[sourceValues.length - 1]);
+    if (lastParsed) {
+      const result = new Date(lastParsed.date);
+      result.setDate(result.getDate() + series.step * (targetIndex + 1));
+      return formatDate(result, lastParsed.format);
+    }
+  }
 
   if (series.type === "number") {
     const nums = sourceValues.map((v) => {

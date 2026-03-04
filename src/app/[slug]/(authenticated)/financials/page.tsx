@@ -29,6 +29,7 @@ export default function FinancialsPage() {
   const createSheet = useMutation(api.spreadsheetSheets.create);
   const renameSheet = useMutation(api.spreadsheetSheets.rename);
   const removeSheet = useMutation(api.spreadsheetSheets.remove);
+  const reorderSheets = useMutation(api.spreadsheetSheets.reorder);
 
   // Custom formulas
   const customFormulasDocs = useQuery(
@@ -137,6 +138,17 @@ export default function FinancialsPage() {
             // mutation failed
           }
         }}
+        onReorderSheets={async (orderedIds) => {
+          if (!activeOrganization) return;
+          try {
+            await reorderSheets({
+              organizationId: activeOrganization._id,
+              orderedIds: orderedIds as Id<"spreadsheetSheets">[],
+            });
+          } catch {
+            // mutation failed
+          }
+        }}
       />
     </div>
   );
@@ -153,6 +165,7 @@ function FinancialsContent({
   onAddSheet,
   onRenameSheet,
   onDeleteSheet,
+  onReorderSheets,
 }: {
   tabs: SheetTab[];
   activeTab: string;
@@ -168,6 +181,7 @@ function FinancialsContent({
   onAddSheet: () => void;
   onRenameSheet: (id: string, name: string) => void;
   onDeleteSheet: (id: string) => void;
+  onReorderSheets: (orderedIds: string[]) => void;
 }) {
   const { activeOrganization } = useOrganization();
   const activeTabObj = tabs.find((t) => t.id === activeTab);
@@ -207,6 +221,7 @@ function FinancialsContent({
       onAddSheet={onAddSheet}
       onRenameSheet={onRenameSheet}
       onDeleteSheet={onDeleteSheet}
+      onReorderSheets={onReorderSheets}
       customFormulas={customFormulas}
       customFormulasDocs={customFormulasDocs}
       onSetFreeze={(row, col) => {

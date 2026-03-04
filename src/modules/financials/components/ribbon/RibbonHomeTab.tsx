@@ -129,8 +129,8 @@ export function RibbonHomeTab({
   return (
     <>
       {/* Clipboard + Undo/Redo section */}
-      <div className="flex flex-col items-center gap-0 shrink-0">
-        <div className="flex items-center gap-0.5">
+      <div className="flex flex-col items-center gap-0.5 shrink-0">
+        <div className="flex items-center gap-0">
           <TBtn
             icon={<Undo2 className="w-3.5 h-3.5" />}
             label="Undo"
@@ -145,6 +145,7 @@ export function RibbonHomeTab({
             onClick={redo}
             disabled={!canRedo}
           />
+          <div className="w-px h-4 bg-border/50 mx-0.5" />
           <TBtn
             icon={<Clipboard className="w-3.5 h-3.5" />}
             label="Copy"
@@ -168,109 +169,115 @@ export function RibbonHomeTab({
       </div>
 
       {/* Font section */}
-      <Separator orientation="vertical" className="h-8 mx-1 shrink-0" />
-      <div className="flex flex-col items-center gap-0 shrink-0">
-        <div className="flex items-center gap-0.5">
-          <Select value={fontFamily} onValueChange={onFontFamilyChange}>
-            <SelectTrigger className="h-7 text-xs w-[100px]">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              {[
-                "Inter",
-                "Arial",
-                "Georgia",
-                "Verdana",
-                "Courier New",
-                "Times New Roman",
-              ].map((f) => (
-                <SelectItem key={f} value={f} className="text-xs">
-                  {f}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-          <Select value={fontSize} onValueChange={onFontSizeChange}>
-            <SelectTrigger className="h-7 text-xs w-16">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              {[
-                "8",
-                "9",
-                "10",
-                "11",
-                "12",
-                "14",
-                "16",
-                "18",
-                "20",
-                "24",
-                "28",
-                "36",
-                "48",
-              ].map((s) => (
-                <SelectItem key={s} value={s} className="text-xs">
-                  {s}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-          <TBtn
-            icon={<Bold className="w-3.5 h-3.5" />}
-            label="Bold"
-            shortcut="Ctrl+B"
-            active={bold}
-            onClick={onBold}
-          />
-          <TBtn
-            icon={<Italic className="w-3.5 h-3.5" />}
-            label="Italic"
-            shortcut="Ctrl+I"
-            active={italic}
-            onClick={onItalic}
-          />
-          <TBtn
-            icon={<Underline className="w-3.5 h-3.5" />}
-            label="Underline"
-            shortcut="Ctrl+U"
-            active={underline}
-            onClick={onUnderline}
-          />
-          <ColorPicker
-            trigger={
-              <Button
-                variant="ghost"
-                size="sm"
-                className="h-7 w-7 p-0 rounded text-foreground"
-                aria-label="Fill Color"
-              >
-                <PaintBucket className="w-3.5 h-3.5" />
-              </Button>
-            }
-            onColorSelect={onFillColor}
-          />
-          <ColorPicker
-            trigger={
-              <Button
-                variant="ghost"
-                size="sm"
-                className="h-7 w-7 p-0 rounded text-foreground"
-                aria-label="Text Color"
-              >
-                <Type className="w-3.5 h-3.5" />
-              </Button>
-            }
-            onColorSelect={onTextColor}
-          />
+      <Separator orientation="vertical" className="h-9 mx-1.5 shrink-0" />
+      <div className="flex flex-col items-center shrink-0">
+        <div className="flex flex-col gap-0.5">
+          {/* Row 1: Font family + size */}
+          <div className="flex items-center gap-0.5">
+            <Select value={fontFamily} onValueChange={onFontFamilyChange}>
+              <SelectTrigger className="h-6 text-xs w-[130px] gap-1">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {[
+                  "Inter",
+                  "Arial",
+                  "Georgia",
+                  "Verdana",
+                  "Courier New",
+                  "Times New Roman",
+                ].map((f) => (
+                  <SelectItem key={f} value={f} className="text-xs">
+                    {f}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <Select value={fontSize} onValueChange={onFontSizeChange}>
+              <SelectTrigger className="h-6 text-xs w-[52px] gap-0.5">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {[
+                  "8",
+                  "9",
+                  "10",
+                  "11",
+                  "12",
+                  "14",
+                  "16",
+                  "18",
+                  "20",
+                  "24",
+                  "28",
+                  "36",
+                  "48",
+                ].map((s) => (
+                  <SelectItem key={s} value={s} className="text-xs">
+                    {s}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          {/* Row 2: B, I, U, fill, text color */}
+          <div className="flex items-center gap-0">
+            <TBtn
+              icon={<Bold className="w-3.5 h-3.5" />}
+              label="Bold"
+              shortcut="Ctrl+B"
+              active={bold}
+              onClick={onBold}
+            />
+            <TBtn
+              icon={<Italic className="w-3.5 h-3.5" />}
+              label="Italic"
+              shortcut="Ctrl+I"
+              active={italic}
+              onClick={onItalic}
+            />
+            <TBtn
+              icon={<Underline className="w-3.5 h-3.5" />}
+              label="Underline"
+              shortcut="Ctrl+U"
+              active={underline}
+              onClick={onUnderline}
+            />
+            <div className="w-px h-4 bg-border/50 mx-0.5" />
+            <ColorPicker
+              trigger={
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-6 w-6 p-0 rounded text-foreground"
+                  aria-label="Fill Color"
+                >
+                  <PaintBucket className="w-3 h-3" />
+                </Button>
+              }
+              onColorSelect={onFillColor}
+            />
+            <ColorPicker
+              trigger={
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-6 w-6 p-0 rounded text-foreground"
+                  aria-label="Text Color"
+                >
+                  <Type className="w-3 h-3" />
+                </Button>
+              }
+              onColorSelect={onTextColor}
+            />
+          </div>
         </div>
-        <SectionLabel>Font</SectionLabel>
       </div>
 
       {/* Alignment */}
-      <Separator orientation="vertical" className="h-8 mx-1 shrink-0" />
-      <div className="flex flex-col items-center gap-0 shrink-0">
-        <div className="flex items-center gap-0.5">
+      <Separator orientation="vertical" className="h-9 mx-1.5 shrink-0" />
+      <div className="flex flex-col items-center gap-0.5 shrink-0">
+        <div className="flex items-center gap-0">
           <TBtn
             icon={<AlignLeft className="w-3.5 h-3.5" />}
             label="Align Left"
@@ -289,6 +296,7 @@ export function RibbonHomeTab({
             active={align === "right"}
             onClick={() => onAlignChange("right")}
           />
+          <div className="w-px h-4 bg-border/50 mx-0.5" />
           {/* Merge & Center */}
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
@@ -318,14 +326,14 @@ export function RibbonHomeTab({
       </div>
 
       {/* Number section */}
-      <Separator orientation="vertical" className="h-8 mx-1 shrink-0" />
-      <div className="flex flex-col items-center gap-0 shrink-0">
+      <Separator orientation="vertical" className="h-9 mx-1.5 shrink-0" />
+      <div className="flex flex-col items-center gap-0.5 shrink-0">
         <div className="flex items-center gap-0.5">
           <Select
             value={numberFormat}
             onValueChange={(v) => onNumberFormatChange(v as NumberFormat)}
           >
-            <SelectTrigger className="h-7 text-xs w-[100px]">
+            <SelectTrigger className="h-7 text-xs w-[140px] gap-1">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
@@ -360,11 +368,11 @@ export function RibbonHomeTab({
         <SectionLabel>Number</SectionLabel>
       </div>
 
-      <Separator orientation="vertical" className="h-8 mx-1 shrink-0" />
+      <Separator orientation="vertical" className="h-9 mx-1.5 shrink-0" />
 
       {/* Editing section */}
-      <div className="flex flex-col items-center gap-0 shrink-0">
-        <div className="flex items-center gap-0.5">
+      <div className="flex flex-col items-center gap-0.5 shrink-0">
+        <div className="flex items-center gap-0">
           {/* AutoSum split-button: direct SUM + dropdown */}
           <div className="flex items-center">
             <TooltipProvider delayDuration={200}>
@@ -446,8 +454,8 @@ export function RibbonHomeTab({
       {/* Formulas sidebar toggle */}
       {onToggleFormulaSidebar && (
         <>
-          <Separator orientation="vertical" className="h-8 mx-1 shrink-0" />
-          <div className="flex flex-col items-center gap-0 shrink-0">
+          <Separator orientation="vertical" className="h-9 mx-1.5 shrink-0" />
+          <div className="flex flex-col items-center gap-0.5 shrink-0">
             <TBtn
               icon={<FunctionSquare className="w-3.5 h-3.5" />}
               label="Formulas"

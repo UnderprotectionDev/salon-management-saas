@@ -196,7 +196,7 @@ export function useFreeformCells(
     flushTimer.current = setTimeout(() => {
       flush();
       flushTimer.current = null;
-    }, 800);
+    }, 300);
   }
 
   const replaceAllMut = useMutation(api.spreadsheetCells.replaceAllCells);

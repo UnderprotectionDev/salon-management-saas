@@ -1,8 +1,35 @@
 "use client";
 
-import { Plus, X, ZoomIn, ZoomOut } from "lucide-react";
+import {
+  closestCenter,
+  DndContext,
+  type DragEndEvent,
+  KeyboardSensor,
+  PointerSensor,
+  useSensor,
+  useSensors,
+} from "@dnd-kit/core";
+import {
+  arrayMove,
+  horizontalListSortingStrategy,
+  SortableContext,
+  sortableKeyboardCoordinates,
+  useSortable,
+} from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
+import { GripVertical, Plus, X, ZoomIn, ZoomOut } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
 import { Slider } from "@/components/ui/slider";
 import {
@@ -29,6 +56,7 @@ interface SheetTabsProps {
   onAddSheet?: () => void;
   onRenameSheet?: (id: string, name: string) => void;
   onDeleteSheet?: (id: string) => void;
+  onReorderSheets?: (orderedIds: string[]) => void;
 }
 
 export function SheetTabs({
@@ -38,12 +66,32 @@ export function SheetTabs({
   onAddSheet,
   onRenameSheet,
   onDeleteSheet,
+  onReorderSheets,
 }: SheetTabsProps) {
   const { cells, selectedCell, selectionRange, zoom, setZoom } =
     useSpreadsheet();
 
   const [renamingId, setRenamingId] = useState<string | null>(null);
   const [renameValue, setRenameValue] = useState("");
+  const [deleteTarget, setDeleteTarget] = useState<SheetTab | null>(null);
+
+  // Drag-to-reorder sensors
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
+    useSensor(KeyboardSensor, {
+      coordinateGetter: sortableKeyboardCoordinates,
+    }),
+  );
+
+  function handleDragEnd(event: DragEndEvent) {
+    const { active, over } = event;
+    if (!over || active.id === over.id) return;
+    const oldIndex = tabs.findIndex((t) => t.id === active.id);
+    const newIndex = tabs.findIndex((t) => t.id === over.id);
+    if (oldIndex === -1 || newIndex === -1) return;
+    const reordered = arrayMove(tabs, oldIndex, newIndex);
+    onReorderSheets?.(reordered.map((t) => t.id));
+  }
 
   // Compute stats for selected range
   const selectedValues: number[] = [];
@@ -115,64 +163,36 @@ export function SheetTabs({
       {/* Sheet tabs row */}
       <div className="flex items-stretch h-9 border-b border-border">
         <div className="flex items-end flex-1 overflow-x-auto px-2 gap-0.5 pt-1.5">
-          {tabs.map((tab) => {
-            const isActive = tab.id === activeTab;
-            return (
-              <button
-                key={tab.id}
-                type="button"
-                onClick={() => onTabChange(tab.id)}
-                onDoubleClick={() => startRename(tab)}
-                className={cn(
-                  "relative px-3.5 h-full text-xs rounded-t-md border border-b-0 transition-colors cursor-default whitespace-nowrap select-none flex items-center gap-1",
-                  isActive
-                    ? "bg-background border-border text-foreground font-medium z-10 -mb-px"
-                    : "bg-muted/50 border-transparent text-muted-foreground hover:text-foreground hover:bg-muted",
-                )}
-              >
-                {isActive && (
-                  <span className="absolute inset-x-0 top-0 h-0.5 rounded-t-md bg-[var(--sheet-active-ring)]" />
-                )}
-                {renamingId === tab.id ? (
-                  <input
-                    // biome-ignore lint/a11y/noAutofocus: needed for inline rename UX
-                    autoFocus
-                    value={renameValue}
-                    onChange={(e) => setRenameValue(e.target.value)}
-                    onBlur={commitRename}
-                    onKeyDown={(e) => {
-                      if (e.key === "Enter") commitRename();
-                      if (e.key === "Escape") setRenamingId(null);
-                    }}
-                    className="text-xs outline-none bg-transparent w-20"
-                    onClick={(e) => e.stopPropagation()}
-                  />
-                ) : (
-                  tab.label
-                )}
-                {/* Delete button */}
-                {isActive && onDeleteSheet && (
-                  <span
-                    role="button"
-                    tabIndex={0}
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      onDeleteSheet(tab.id);
-                    }}
-                    onKeyDown={(e) => {
-                      if (e.key === "Enter" || e.key === " ") {
-                        e.stopPropagation();
-                        onDeleteSheet(tab.id);
-                      }
-                    }}
-                    className="ml-1 hover:text-destructive cursor-pointer"
-                  >
-                    <X className="w-3 h-3" />
-                  </span>
-                )}
-              </button>
-            );
-          })}
+          <DndContext
+            sensors={sensors}
+            collisionDetection={closestCenter}
+            onDragEnd={handleDragEnd}
+          >
+            <SortableContext
+              items={tabs.map((t) => t.id)}
+              strategy={horizontalListSortingStrategy}
+            >
+              {tabs.map((tab) => (
+                <SortableTab
+                  key={tab.id}
+                  tab={tab}
+                  isActive={tab.id === activeTab}
+                  renamingId={renamingId}
+                  renameValue={renameValue}
+                  onTabChange={onTabChange}
+                  onStartRename={startRename}
+                  onSetRenameValue={setRenameValue}
+                  onCommitRename={commitRename}
+                  onCancelRename={() => setRenamingId(null)}
+                  onDeleteSheet={
+                    onDeleteSheet
+                      ? () => setDeleteTarget(tab)
+                      : undefined
+                  }
+                />
+              ))}
+            </SortableContext>
+          </DndContext>
 
           {onAddSheet && (
             <TooltipProvider delayDuration={400}>
@@ -195,6 +215,36 @@ export function SheetTabs({
           )}
         </div>
       </div>
+
+      {/* Delete confirmation dialog */}
+      <AlertDialog
+        open={!!deleteTarget}
+        onOpenChange={(open) => !open && setDeleteTarget(null)}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Sheet</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to delete &quot;{deleteTarget?.label}&quot;?
+              All data in this sheet will be permanently removed.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              onClick={() => {
+                if (deleteTarget) {
+                  onDeleteSheet?.(deleteTarget.id);
+                  setDeleteTarget(null);
+                }
+              }}
+            >
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       {/* Status bar */}
       <div className="flex items-center justify-between px-3 h-7 bg-muted/30">
@@ -332,5 +382,111 @@ export function SheetTabs({
         </div>
       </div>
     </div>
+  );
+}
+
+/** Sortable tab item for drag-to-reorder */
+function SortableTab({
+  tab,
+  isActive,
+  renamingId,
+  renameValue,
+  onTabChange,
+  onStartRename,
+  onSetRenameValue,
+  onCommitRename,
+  onCancelRename,
+  onDeleteSheet,
+}: {
+  tab: SheetTab;
+  isActive: boolean;
+  renamingId: string | null;
+  renameValue: string;
+  onTabChange: (id: string) => void;
+  onStartRename: (tab: SheetTab) => void;
+  onSetRenameValue: (v: string) => void;
+  onCommitRename: () => void;
+  onCancelRename: () => void;
+  onDeleteSheet?: () => void;
+}) {
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({ id: tab.id });
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    zIndex: isDragging ? 50 : isActive ? 10 : undefined,
+    opacity: isDragging ? 0.8 : 1,
+  };
+
+  return (
+    <button
+      ref={setNodeRef}
+      style={style}
+      type="button"
+      onClick={() => onTabChange(tab.id)}
+      onDoubleClick={() => onStartRename(tab)}
+      className={cn(
+        "relative px-3.5 h-full text-xs rounded-t-md border border-b-0 transition-colors cursor-default whitespace-nowrap select-none flex items-center gap-1",
+        isActive
+          ? "bg-background border-border text-foreground font-medium -mb-px"
+          : "bg-muted/50 border-transparent text-muted-foreground hover:text-foreground hover:bg-muted",
+      )}
+    >
+      {/* Drag handle */}
+      <span
+        {...attributes}
+        {...listeners}
+        className="cursor-grab active:cursor-grabbing text-muted-foreground/50 hover:text-muted-foreground -ml-1"
+      >
+        <GripVertical className="w-3 h-3" />
+      </span>
+      {isActive && (
+        <span className="absolute inset-x-0 top-0 h-0.5 rounded-t-md bg-[var(--sheet-active-ring)]" />
+      )}
+      {renamingId === tab.id ? (
+        <input
+          // biome-ignore lint/a11y/noAutofocus: needed for inline rename UX
+          autoFocus
+          value={renameValue}
+          onChange={(e) => onSetRenameValue(e.target.value)}
+          onBlur={onCommitRename}
+          onKeyDown={(e) => {
+            if (e.key === "Enter") onCommitRename();
+            if (e.key === "Escape") onCancelRename();
+          }}
+          className="text-xs outline-none bg-transparent w-20"
+          onClick={(e) => e.stopPropagation()}
+        />
+      ) : (
+        tab.label
+      )}
+      {/* Delete button */}
+      {isActive && onDeleteSheet && (
+        <span
+          role="button"
+          tabIndex={0}
+          onClick={(e) => {
+            e.stopPropagation();
+            onDeleteSheet();
+          }}
+          onKeyDown={(e) => {
+            if (e.key === "Enter" || e.key === " ") {
+              e.stopPropagation();
+              onDeleteSheet();
+            }
+          }}
+          className="ml-1 hover:text-destructive cursor-pointer"
+        >
+          <X className="w-3 h-3" />
+        </span>
+      )}
+    </button>
   );
 }

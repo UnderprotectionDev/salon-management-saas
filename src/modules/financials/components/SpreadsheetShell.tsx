@@ -54,6 +54,7 @@ interface SpreadsheetShellProps {
   onAddSheet?: () => void;
   onRenameSheet?: (id: string, name: string) => void;
   onDeleteSheet?: (id: string) => void;
+  onReorderSheets?: (orderedIds: string[]) => void;
   ribbonActions?: ReactNode;
   onSetFreeze?: (row: number, col: number) => void;
   onSetMergedRegions?: (regions: MergedRegion[]) => void;
@@ -85,6 +86,7 @@ export function SpreadsheetShell({
   onAddSheet,
   onRenameSheet,
   onDeleteSheet,
+  onReorderSheets,
   ribbonActions,
   onSetFreeze,
   onSetMergedRegions,
@@ -588,6 +590,7 @@ export function SpreadsheetShell({
             onAddSheet={onAddSheet}
             onRenameSheet={onRenameSheet}
             onDeleteSheet={onDeleteSheet}
+            onReorderSheets={onReorderSheets}
           />
         </div>
 

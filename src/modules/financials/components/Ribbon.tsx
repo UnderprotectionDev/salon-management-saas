@@ -144,7 +144,7 @@ export function Ribbon({
       </div>
 
       {/* Toolbar */}
-      <div className="flex items-center gap-1 px-2 h-10 overflow-hidden bg-background">
+      <div className="flex items-center gap-0.5 px-2 py-1 min-h-[44px] overflow-hidden bg-background">
         {activeTab === "Home" && (
           <RibbonHomeTab
             bold={bold}
@@ -197,7 +197,7 @@ export function Ribbon({
               <SectionLabel>Validation</SectionLabel>
             </div>
 
-            <Separator orientation="vertical" className="h-8 mx-1 shrink-0" />
+            <Separator orientation="vertical" className="h-9 mx-1.5 shrink-0" />
 
             {/* Conditional Formatting */}
             <div className="flex flex-col items-center gap-0 shrink-0">

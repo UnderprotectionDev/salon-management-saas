@@ -60,20 +60,23 @@ export const upsertCell = ownerMutation({
       .first();
 
     const { sheetId, cellRef, value, ...format } = args;
+    const hasContent =
+      value || Object.values(format).some((v) => v !== undefined);
 
     if (existing) {
-      await ctx.db.patch(existing._id, { value, ...format });
-    } else {
-      // Only insert if there's actually content
-      if (value || Object.values(format).some((v) => v !== undefined)) {
-        await ctx.db.insert("spreadsheetCells", {
-          organizationId: ctx.organizationId,
-          sheetId,
-          cellRef,
-          value,
-          ...format,
-        });
+      if (!hasContent) {
+        await ctx.db.delete(existing._id);
+      } else {
+        await ctx.db.patch(existing._id, { value, ...format });
       }
+    } else if (hasContent) {
+      await ctx.db.insert("spreadsheetCells", {
+        organizationId: ctx.organizationId,
+        sheetId,
+        cellRef,
+        value,
+        ...format,
+      });
     }
     return null;
   },
@@ -106,10 +109,17 @@ export const bulkUpsert = ownerMutation({
     for (const cell of args.cells) {
       const existing = cellMap.get(cell.cellRef);
       const { cellRef, value, ...format } = cell;
+      const hasContent =
+        value || Object.values(format).some((v) => v !== undefined);
 
       if (existing) {
-        await ctx.db.patch(existing._id, { value, ...format });
-      } else if (value || Object.values(format).some((v) => v !== undefined)) {
+        if (!hasContent) {
+          // Delete empty cells from DB to keep storage clean
+          await ctx.db.delete(existing._id);
+        } else {
+          await ctx.db.patch(existing._id, { value, ...format });
+        }
+      } else if (hasContent) {
         await ctx.db.insert("spreadsheetCells", {
           organizationId: ctx.organizationId,
           sheetId: args.sheetId,

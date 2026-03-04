@@ -58,7 +58,7 @@ export function TBtn({
 
 export function SectionLabel({ children }: { children: ReactNode }) {
   return (
-    <span className="text-[9px] text-muted-foreground/60 uppercase tracking-wider leading-none select-none">
+    <span className="text-[9px] text-muted-foreground/50 uppercase tracking-widest leading-none select-none font-medium">
       {children}
     </span>
   );
