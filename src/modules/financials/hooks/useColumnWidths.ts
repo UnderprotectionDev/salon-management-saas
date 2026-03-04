@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { GRID, type ColumnWidths } from "../lib/spreadsheet-types";
+import { type ColumnWidths, GRID } from "../lib/spreadsheet-types";
 
 export function useColumnWidths() {
   const [columnWidths, setColumnWidths] = useState<ColumnWidths>({});

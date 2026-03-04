@@ -1280,4 +1280,17 @@ export default defineSchema({
   })
     .index("by_sheet", ["sheetId"])
     .index("by_org_sheet", ["organizationId", "sheetId"]),
+
+  // Custom Formulas — user-defined formulas per organization
+  customFormulas: defineTable({
+    organizationId: v.id("organization"),
+    name: v.string(), // UPPERCASE, e.g. "MY_FORMULA"
+    body: v.string(), // starts with "=", e.g. "=A1*0.18"
+    description: v.optional(v.string()),
+    createdBy: v.id("user"),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_org", ["organizationId"])
+    .index("by_org_name", ["organizationId", "name"]),
 });

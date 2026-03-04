@@ -1,7 +1,7 @@
 "use client";
 
-import { useEffect, useState } from "react";
 import { Filter } from "lucide-react";
+import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import {
   Popover,
@@ -53,7 +53,7 @@ export function ColumnFilterPopover({
       setSelected(activeFilter ? new Set(activeFilter) : new Set(uniqueValues));
       setSearch("");
     }
-  }, [open]);
+  }, [open, activeFilter]);
 
   function handleToggle(val: string) {
     setSelected((prev) => {

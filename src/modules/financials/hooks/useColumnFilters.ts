@@ -28,7 +28,7 @@ export function useColumnFilters() {
   /** Returns the set of visible row indices (1-based data rows), or null if no filters are active */
   function getFilteredRowIndices(
     cells: CellMap,
-    columnCount: number,
+    _columnCount: number,
     rowCount: number,
   ): Set<number> | null {
     const activeCols = Object.keys(columnFilters).map(Number);

@@ -148,6 +148,16 @@ export interface SpreadsheetContextValue {
   mergedRegions: MergedRegion[];
   mergeCells: () => void;
   unmergeCells: () => void;
+
+  // --- Formula sidebar ---
+  formulaSidebarOpen: boolean;
+  setFormulaSidebarOpen: (open: boolean) => void;
+
+  // --- Custom formulas ---
+  customFormulas: Record<string, string>;
+
+  // --- Keyboard shortcuts ---
+  onOpenShortcuts: () => void;
 }
 
 const SpreadsheetContext = createContext<SpreadsheetContextValue | null>(null);

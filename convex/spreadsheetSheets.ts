@@ -85,17 +85,9 @@ export const remove = ownerMutation({
   returns: v.null(),
   handler: async (ctx, args) => {
     const sheet = await ctx.db.get(args.id);
-    if (!sheet) {
-      throw new ConvexError({
-        code: ErrorCode.NOT_FOUND,
-        message: "Sheet not found",
-      });
-    }
-    if (sheet.organizationId !== ctx.organizationId) {
-      throw new ConvexError({
-        code: ErrorCode.FORBIDDEN,
-        message: "Unauthorized",
-      });
+    if (!sheet || sheet.organizationId !== ctx.organizationId) {
+      // Already deleted or doesn't belong to this org — idempotent no-op
+      return null;
     }
 
     // Delete all cells in this sheet (use org-scoped index)

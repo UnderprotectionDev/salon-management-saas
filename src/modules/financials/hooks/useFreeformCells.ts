@@ -6,7 +6,7 @@ import { useOrganization } from "@/modules/organization";
 import { api } from "../../../../convex/_generated/api";
 import type { Id } from "../../../../convex/_generated/dataModel";
 import type { NumberFormat } from "../lib/number-format";
-import { GRID, type CellData, type CellMap } from "../lib/spreadsheet-types";
+import { type CellData, type CellMap, GRID } from "../lib/spreadsheet-types";
 
 interface UseFreeformCellsResult {
   cells: CellMap;
@@ -50,7 +50,7 @@ export function useFreeformCells(
   );
   useEffect(() => {
     setColumnCount(initialColumnCount ?? GRID.DEFAULT_FREEFORM_COLS);
-  }, [initialColumnCount, sheetId]);
+  }, [initialColumnCount]);
 
   // Local row count state — syncs from prop, allows optimistic updates
   const [rowCount, setRowCount] = useState(
@@ -58,7 +58,7 @@ export function useFreeformCells(
   );
   useEffect(() => {
     setRowCount(initialRowCount ?? GRID.DEFAULT_FREEFORM_ROWS);
-  }, [initialRowCount, sheetId]);
+  }, [initialRowCount]);
 
   function onAddColumn() {
     if (!activeOrganization || !sheetId) return;

@@ -2,6 +2,13 @@
 
 import { useEffect, useRef, useState } from "react";
 import { cn } from "@/lib/utils";
+import { FORMULA_CATALOG } from "../lib/formula-catalog";
+
+/** Build a lookup map from name → syntax for fast display */
+const SYNTAX_MAP = new Map(FORMULA_CATALOG.map((f) => [f.name, f.syntax]));
+
+const SUGGESTION_LIMIT = 8;
+
 /** Filter and rank suggestions by prefix/substring match */
 function filterSuggestions(
   suggestions: string[],
@@ -32,17 +39,18 @@ export function CellAutocomplete({
   suggestions,
   inputValue,
   onSelect,
-  onClose,
   style,
 }: CellAutocompleteProps) {
   const [highlightIndex, setHighlightIndex] = useState(0);
   const listRef = useRef<HTMLDivElement>(null);
+  const prevInputRef = useRef(inputValue);
 
-  const filtered = filterSuggestions(suggestions, inputValue, 5);
+  const filtered = filterSuggestions(suggestions, inputValue, SUGGESTION_LIMIT);
 
-  useEffect(() => {
+  if (prevInputRef.current !== inputValue) {
+    prevInputRef.current = inputValue;
     setHighlightIndex(0);
-  }, [inputValue]);
+  }
 
   useEffect(() => {
     if (highlightIndex >= 0 && listRef.current) {
@@ -59,8 +67,8 @@ export function CellAutocomplete({
       style={{
         position: "absolute",
         zIndex: 50,
-        minWidth: 140,
-        maxHeight: 150,
+        minWidth: 200,
+        maxHeight: 180,
         overflowY: "auto",
         background: "var(--popover)",
         border: "1px solid var(--border)",
@@ -79,11 +87,14 @@ export function CellAutocomplete({
           onClick={() => onSelect(item)}
           onMouseEnter={() => setHighlightIndex(idx)}
           className={cn(
-            "w-full text-left px-2.5 py-1 text-xs transition-colors",
+            "w-full text-left px-2.5 py-1 text-xs transition-colors flex items-center gap-2",
             idx === highlightIndex && "bg-accent",
           )}
         >
-          {item}
+          <span className="font-semibold shrink-0">{item}</span>
+          <span className="text-muted-foreground truncate text-[10px] font-mono">
+            {SYNTAX_MAP.get(item) ?? ""}
+          </span>
         </button>
       ))}
     </div>
@@ -97,7 +108,7 @@ export function useAutocompleteKeyboard(
   onSelect: (value: string) => void,
 ) {
   const [highlightIndex, setHighlightIndex] = useState(0);
-  const filtered = filterSuggestions(suggestions, inputValue, 5);
+  const filtered = filterSuggestions(suggestions, inputValue, SUGGESTION_LIMIT);
   const isOpen = filtered.length > 0;
 
   function handleKeyDown(e: React.KeyboardEvent): boolean {

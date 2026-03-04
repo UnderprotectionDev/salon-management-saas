@@ -355,6 +355,16 @@ export const rateLimiter = new RateLimiter(components.rateLimiter, {
     rate: 10,
     period: MINUTE,
   },
+
+  // ==========================================================================
+  // Custom Formula Limits
+  // ==========================================================================
+
+  createCustomFormula: {
+    kind: "token bucket",
+    rate: 30,
+    period: DAY,
+  },
 });
 
 // Re-export time constants for use elsewhere
