@@ -22,6 +22,8 @@ convex/                  # Backend functions and schema
 ├── dailyClosing.ts      # Daily cash reconciliation + close day
 ├── commissionSettings.ts # Per-staff commission configuration
 ├── financials.ts        # Financial dashboard stats + commission report
+├── spreadsheetSheets.ts # Freeform sheet CRUD + setFreeze + setMergedRegions + setConditionalFormats
+├── spreadsheetCells.ts  # Cell upsert + bulkUpsert + replaceAllCells (sparse storage)
 └── *.ts                 # Domain functions (organizations, staff, members, services, customers, etc.)
 
 src/
@@ -43,7 +45,8 @@ src/
     ├── billing/         # Subscription plans, grace period banner
     ├── products/        # Product catalog, inventory management
     ├── reports/         # Revenue, staff, customer reports
-    ├── financials/      # Expense/revenue spreadsheets, gift cards, commissions, daily closing
+    ├── financials/      # M12: expense/revenue/gift cards/commissions/daily closing
+    │                    # M13: Excel-like freeform spreadsheet (50+ formulas, cond. formatting, merge/freeze, PDF export)
     ├── services/        # Service catalog, categories, pricing
     ├── customers/       # Customer database, search, merge
     ├── staff/           # Staff management

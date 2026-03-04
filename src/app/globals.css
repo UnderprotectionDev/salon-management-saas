@@ -372,4 +372,105 @@ body {
   --accent-foreground: #18181b;
   --primary: #217346;
   --destructive: #ef4444;
+  --popover: #ffffff;
+  --popover-foreground: #09090b;
+}
+
+/* Spreadsheet cell base classes */
+.sheet-cell {
+  position: relative;
+  flex-shrink: 0;
+  overflow: hidden;
+  user-select: none;
+  border-right: 1px solid var(--sheet-grid);
+  border-bottom: 1px solid var(--sheet-grid);
+  background: var(--sheet-cell-bg);
+}
+
+.sheet-cell--selected {
+  outline: 2px solid var(--sheet-active-ring);
+  outline-offset: -2px;
+  z-index: 5;
+}
+
+.sheet-cell--in-range {
+  background: var(--sheet-selection);
+}
+
+.sheet-cell--frozen {
+  position: sticky;
+  z-index: 12;
+}
+
+.sheet-cell--editing input {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  padding: 0 4px;
+  outline: none;
+  border: none;
+  background: var(--sheet-cell-bg);
+  z-index: 20;
+  box-shadow: var(--sheet-edit-shadow);
+}
+
+.sheet-cell__display {
+  display: block;
+  padding: 0 4px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.sheet-fill-handle {
+  position: absolute;
+  right: -3px;
+  bottom: -3px;
+  width: 6px;
+  height: 6px;
+  background: var(--sheet-active-ring);
+  cursor: crosshair;
+  z-index: 30;
+}
+
+.sheet-row-header {
+  position: sticky;
+  left: 0;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  padding-right: 8px;
+  font-size: 11px;
+  background: var(--sheet-header);
+  border-right: 1px solid var(--sheet-grid);
+  border-bottom: 1px solid var(--sheet-grid);
+  user-select: none;
+  cursor: pointer;
+}
+
+.sheet-row-header--active {
+  font-weight: 600;
+  background: var(--sheet-header-active);
+  color: white;
+}
+
+.sheet-col-header {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 11px;
+  background: var(--sheet-header);
+  border-right: 1px solid var(--sheet-grid);
+  user-select: none;
+  letter-spacing: 0.05em;
+  cursor: pointer;
+}
+
+.sheet-col-header--active {
+  font-weight: 600;
+  background: var(--sheet-header-active);
+  color: white;
 }

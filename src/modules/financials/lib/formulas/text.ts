@@ -1,10 +1,10 @@
+import { parseRef } from "../cell-refs";
 import {
   getNum,
   getRawValue,
   registerFormula,
   splitTopLevelArgs,
 } from "./registry";
-import { parseRef } from "../cell-refs";
 
 function resolveTextArg(
   arg: string,
@@ -202,7 +202,8 @@ registerFormula("REPLACE", (argsStr, ctx) => {
       : Number.parseFloat(args[2]),
   );
   const newText = resolveTextArg(args[3], ctx);
-  if (Number.isNaN(start) || Number.isNaN(count) || start < 1 || count < 0) return "#ERROR";
+  if (Number.isNaN(start) || Number.isNaN(count) || start < 1 || count < 0)
+    return "#ERROR";
   return text.slice(0, start - 1) + newText + text.slice(start - 1 + count);
 });
 

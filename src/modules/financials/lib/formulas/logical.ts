@@ -1,3 +1,4 @@
+import { parseRef } from "../cell-refs";
 import {
   type FormulaContext,
   getNum,
@@ -5,7 +6,6 @@ import {
   registerFormula,
   splitTopLevelArgs,
 } from "./registry";
-import { parseRef } from "../cell-refs";
 
 /** Evaluate a condition string like "A1>5" */
 function evalCondition(cond: string, ctx: FormulaContext): boolean {

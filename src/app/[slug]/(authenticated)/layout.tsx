@@ -245,7 +245,7 @@ function AuthenticatedLayoutContent({
   };
 
   return (
-    <SidebarProvider>
+    <SidebarProvider className="!h-svh !min-h-0">
       <Sidebar>
         <SidebarHeader className="border-b p-4">
           <OrganizationSwitcher />
@@ -319,8 +319,8 @@ function AuthenticatedLayoutContent({
           </SidebarMenu>
         </SidebarFooter>
       </Sidebar>
-      <SidebarInset>
-        <header className="flex h-14 items-center gap-4 border-b px-4 lg:px-6">
+      <SidebarInset className="min-w-0 overflow-hidden">
+        <header className="flex h-14 shrink-0 items-center gap-4 border-b px-4 lg:px-6">
           <SidebarTrigger />
           <Separator orientation="vertical" className="h-6" />
           <div className="flex-1" />
@@ -343,7 +343,7 @@ function AuthenticatedLayoutContent({
           </div>
         )}
         <GracePeriodBanner />
-        <main className="flex-1 p-4 lg:p-6">{children}</main>
+        <main className="flex-1 p-4 lg:p-6 overflow-hidden">{children}</main>
         <SuspendedOverlay />
       </SidebarInset>
     </SidebarProvider>

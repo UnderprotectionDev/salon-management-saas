@@ -1,5 +1,5 @@
-import type { CellMap } from "../spreadsheet-types";
 import { expandRange, parseRef } from "../cell-refs";
+import type { CellMap } from "../spreadsheet-types";
 
 /** Context passed to every formula handler */
 export interface FormulaContext {

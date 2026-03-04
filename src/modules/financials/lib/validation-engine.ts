@@ -1,5 +1,5 @@
-import type { CellMap } from "./spreadsheet-types";
 import { evalFormula } from "./spreadsheet-formula";
+import type { CellMap } from "./spreadsheet-types";
 import type {
   ValidationOperator,
   ValidationResult,
@@ -17,9 +17,13 @@ function compareNumbers(
 ): boolean {
   switch (operator) {
     case "between":
-      return val2 !== undefined && value >= val1 - EPSILON && value <= val2 + EPSILON;
+      return (
+        val2 !== undefined && value >= val1 - EPSILON && value <= val2 + EPSILON
+      );
     case "notBetween":
-      return val2 !== undefined && (value < val1 - EPSILON || value > val2 + EPSILON);
+      return (
+        val2 !== undefined && (value < val1 - EPSILON || value > val2 + EPSILON)
+      );
     case "equal":
       return Math.abs(value - val1) < EPSILON;
     case "notEqual":

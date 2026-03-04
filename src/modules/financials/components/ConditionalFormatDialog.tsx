@@ -1,7 +1,7 @@
 "use client";
 
-import { useEffect, useState } from "react";
 import { Plus, Trash2 } from "lucide-react";
+import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -25,7 +25,7 @@ import type {
   CondFormatRuleType,
   CondFormatStyle,
 } from "../lib/conditional-format-types";
-import { cellRef, colLabel } from "../lib/spreadsheet-utils";
+import { cellRef } from "../lib/spreadsheet-utils";
 
 interface ConditionalFormatDialogProps {
   open: boolean;

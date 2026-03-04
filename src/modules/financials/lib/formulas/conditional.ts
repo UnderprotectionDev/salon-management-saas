@@ -1,3 +1,4 @@
+import { expandRange, parseRef } from "../cell-refs";
 import {
   type FormulaContext,
   getNum,
@@ -5,7 +6,6 @@ import {
   registerFormula,
   splitTopLevelArgs,
 } from "./registry";
-import { expandRange, parseRef } from "../cell-refs";
 
 /** Match a cell value against a criteria string (e.g., ">5", "Apple", "<>0") */
 function matchesCriteria(

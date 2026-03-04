@@ -2,7 +2,7 @@
 
 ## Project Overview
 
-Multi-tenant salon management platform with real-time booking, staff scheduling, client management, product inventory, billing, email notifications, analytics reporting, and AI-powered features (photo analysis, virtual try-on, care schedules, design catalog).
+Multi-tenant salon management platform with real-time booking, staff scheduling, client management, product inventory, billing, email notifications, analytics reporting, Excel-like financial spreadsheet, and AI-powered features (photo analysis, virtual try-on, care schedules, design catalog).
 
 ## Commands
 

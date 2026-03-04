@@ -5,7 +5,6 @@ import { useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useSpreadsheet } from "../lib/spreadsheet-context";
-import { GRID } from "../lib/spreadsheet-types";
 import { cellRef } from "../lib/spreadsheet-utils";
 
 interface SearchOverlayProps {

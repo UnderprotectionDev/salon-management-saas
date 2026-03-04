@@ -1,5 +1,5 @@
-import { getNum, registerFormula, splitTopLevelArgs } from "./registry";
 import { expandRange, parseRef } from "../cell-refs";
+import { getNum, registerFormula, splitTopLevelArgs } from "./registry";
 
 function resolveArg(
   arg: string,
@@ -109,9 +109,12 @@ registerFormula("IRR", (argsStr, ctx) => {
     }
   } else {
     // Multiple individual values — all args except optional guess
-    const valueArgs = args.length > 1 && !args[args.length - 1].trim().includes(":") && !parseRef(args[args.length - 1].trim())
-      ? args.slice(0, -1)
-      : args;
+    const valueArgs =
+      args.length > 1 &&
+      !args[args.length - 1].trim().includes(":") &&
+      !parseRef(args[args.length - 1].trim())
+        ? args.slice(0, -1)
+        : args;
     for (const a of valueArgs) {
       const trimmed = a.trim();
       if (trimmed.includes(":") && parseRef(trimmed.split(":")[0])) {

@@ -7,6 +7,6 @@ import "./lookup";
 import "./conditional";
 import "./date";
 
+export type { FormulaContext, FormulaHandler } from "./registry";
 // Re-export registry
 export { FORMULA_REGISTRY, getAllFormulaNames } from "./registry";
-export type { FormulaHandler, FormulaContext } from "./registry";

@@ -3,8 +3,7 @@
 import { Check, ChevronDown, X } from "lucide-react";
 import { useRef } from "react";
 import { Button } from "@/components/ui/button";
-import { FORMULA_REF_COLORS } from "../lib/formula-refs";
-import { extractFormulaRefs } from "../lib/formula-refs";
+import { extractFormulaRefs, FORMULA_REF_COLORS } from "../lib/formula-refs";
 import { useSpreadsheet } from "../lib/spreadsheet-context";
 
 export function FormulaBar() {

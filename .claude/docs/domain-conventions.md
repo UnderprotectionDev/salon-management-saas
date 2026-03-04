@@ -15,6 +15,10 @@
 - **Financial amounts:** All in kuruş integers (same as pricing). Gift card codes: 8-char alphanumeric.
 - **Daily closing:** Once closed, expenses/revenue for that date become immutable. Virtual record computed until formally closed.
 - **Commission:** Computed read-only from completed appointments. Rates configured per-staff (fixed % or tiered).
+- **Freeform spreadsheet cells:** Sparse storage — only non-empty cells are persisted in `spreadsheetCells`. Empty cells are deleted on clear.
+- **Spreadsheet sub-fields:** `conditionalFormats` (on sheet) and `validationRule` (on cell) are JSON-serialized strings, not nested objects.
+- **Formula evaluation:** Client-side only — no server computation. Formulas evaluated from `CellMap` on render.
+- **Structural cell mutations:** Row/column insert/delete calls `replaceAllCells` (atomic delete + re-insert) to keep all refs consistent.
 
 ## Scheduled Jobs (Crons)
 

@@ -1,19 +1,19 @@
 "use client";
 
-import { useState } from "react";
 import { useMutation, useQuery } from "convex/react";
+import { useState } from "react";
 import { Skeleton } from "@/components/ui/skeleton";
-import { useOrganization } from "@/modules/organization";
 import { SpreadsheetShell } from "@/modules/financials/components/SpreadsheetShell";
+import { useFreeformCells } from "@/modules/financials/hooks/useFreeformCells";
 import type { MergedRegion } from "@/modules/financials/lib/merge-utils";
 import type { CondFormatRule } from "@/modules/financials/lib/conditional-format-types";
 import {
-  GRID,
-  type SheetTab,
   type CellData,
   type CellMap,
+  GRID,
+  type SheetTab,
 } from "@/modules/financials/lib/spreadsheet-types";
-import { useFreeformCells } from "@/modules/financials/hooks/useFreeformCells";
+import { useOrganization } from "@/modules/organization";
 import { api } from "../../../../../convex/_generated/api";
 import type { Id } from "../../../../../convex/_generated/dataModel";
 
@@ -29,6 +29,20 @@ export default function FinancialsPage() {
   const createSheet = useMutation(api.spreadsheetSheets.create);
   const renameSheet = useMutation(api.spreadsheetSheets.rename);
   const removeSheet = useMutation(api.spreadsheetSheets.remove);
+
+  // Custom formulas
+  const customFormulasDocs = useQuery(
+    api.customFormulas.list,
+    activeOrganization ? { organizationId: activeOrganization._id } : "skip",
+  );
+
+  // Build custom formulas map for evaluator
+  const customFormulasMap: Record<string, string> = {};
+  if (customFormulasDocs) {
+    for (const f of customFormulasDocs) {
+      customFormulasMap[f.name] = f.body;
+    }
+  }
 
   // Auto-select first sheet when loaded
   const resolvedActiveTab = freeformSheets?.find((s) => s._id === activeTab)
@@ -76,12 +90,14 @@ export default function FinancialsPage() {
   }
 
   return (
-    <div className="flex flex-col h-[calc(100vh-64px)]">
+    <div className="flex flex-col h-full -m-4 lg:-m-6">
       <FinancialsContent
         tabs={tabs}
         activeTab={resolvedActiveTab}
         onTabChange={setActiveTab}
         activeFreeformId={activeFreeformId}
+        customFormulas={customFormulasMap}
+        customFormulasDocs={customFormulasDocs ?? []}
         onAddSheet={async () => {
           if (!activeOrganization) return;
           try {
@@ -132,6 +148,8 @@ function FinancialsContent({
   activeTab,
   onTabChange,
   activeFreeformId,
+  customFormulas,
+  customFormulasDocs,
   onAddSheet,
   onRenameSheet,
   onDeleteSheet,
@@ -140,6 +158,13 @@ function FinancialsContent({
   activeTab: string;
   onTabChange: (id: string) => void;
   activeFreeformId: Id<"spreadsheetSheets"> | null;
+  customFormulas: Record<string, string>;
+  customFormulasDocs: Array<{
+    _id: Id<"customFormulas">;
+    name: string;
+    body: string;
+    description?: string;
+  }>;
   onAddSheet: () => void;
   onRenameSheet: (id: string, name: string) => void;
   onDeleteSheet: (id: string) => void;
@@ -182,6 +207,8 @@ function FinancialsContent({
       onAddSheet={onAddSheet}
       onRenameSheet={onRenameSheet}
       onDeleteSheet={onDeleteSheet}
+      customFormulas={customFormulas}
+      customFormulasDocs={customFormulasDocs}
       onSetFreeze={(row, col) => {
         if (!activeOrganization || !activeFreeformId) return;
         setFreezeMut({

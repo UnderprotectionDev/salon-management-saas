@@ -1,10 +1,10 @@
+import { parseRef } from "../cell-refs";
 import {
   getNum,
   getRawValue,
   registerFormula,
   splitTopLevelArgs,
 } from "./registry";
-import { parseRef } from "../cell-refs";
 
 function resolveNumArg(
   arg: string,

@@ -1,10 +1,10 @@
-import type { CellMap } from "./spreadsheet-types";
+import { expandRange } from "./cell-refs";
 import type {
   CellConditionalStyle,
   CondFormatRule,
 } from "./conditional-format-types";
-import { expandRange, parseRef } from "./cell-refs";
 import { evalFormula } from "./spreadsheet-formula";
+import type { CellMap } from "./spreadsheet-types";
 
 /** Interpolate between two hex colors */
 function interpolateColor(
@@ -256,7 +256,6 @@ export function evaluateConditionalFormats(
         break;
       }
     }
-
   }
 
   return null;

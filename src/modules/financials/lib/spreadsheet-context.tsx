@@ -150,6 +150,16 @@ export interface SpreadsheetContextValue {
   mergeCells: () => void;
   unmergeCells: () => void;
 
+  // --- Formula sidebar ---
+  formulaSidebarOpen: boolean;
+  setFormulaSidebarOpen: (open: boolean) => void;
+
+  // --- Custom formulas ---
+  customFormulas: Record<string, string>;
+
+  // --- Keyboard shortcuts ---
+  onOpenShortcuts: () => void;
+
   // --- Data Validation ---
   openValidationDialog: (cellRef: string) => void;
 

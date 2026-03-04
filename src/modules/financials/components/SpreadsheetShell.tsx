@@ -3,32 +3,18 @@
 import { FileDown } from "lucide-react";
 import { type ReactNode, useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
+import type { Id } from "../../../../convex/_generated/dataModel";
+import { useClipboard } from "../hooks/useClipboard";
 import { useColumnFilters } from "../hooks/useColumnFilters";
 import { useColumnWidths } from "../hooks/useColumnWidths";
-import type { UndoEntry } from "../hooks/useUndoHistory";
+import { useFillHandle } from "../hooks/useFillHandle";
+import { useFormattingState } from "../hooks/useFormattingState";
+import { useRowColOps } from "../hooks/useRowColOps";
 import { useUndoHistory } from "../hooks/useUndoHistory";
-import {
-  shiftColsLeft,
-  shiftColsRight,
-  shiftRowsDown,
-  shiftRowsUp,
-} from "../lib/cell-shift";
 import type { CondFormatRule } from "../lib/conditional-format-types";
-import {
-  adjustFormulaRefs,
-  detectSeries,
-  generateFillValue,
-} from "../lib/fill-series";
 import { assignRefColors, extractFormulaRefs } from "../lib/formula-refs";
 import type { MergedRegion } from "../lib/merge-utils";
-import {
-  addMerge,
-  adjustMergesOnColShift,
-  adjustMergesOnRowShift,
-  findMergeForCell,
-  removeMerge,
-} from "../lib/merge-utils";
-import type { NumberFormat } from "../lib/number-format";
+import { addMerge, findMergeForCell, removeMerge } from "../lib/merge-utils";
 import { exportToPdf } from "../lib/pdf-export";
 import { SpreadsheetProvider } from "../lib/spreadsheet-context";
 import type {
@@ -37,58 +23,47 @@ import type {
   ContextMenuState,
   SheetTab,
 } from "../lib/spreadsheet-types";
-import { GRID } from "../lib/spreadsheet-types";
 import { cellRef } from "../lib/spreadsheet-utils";
 import type { ValidationRule } from "../lib/validation-types";
 import { ConditionalFormatDialog } from "./ConditionalFormatDialog";
 import { FormulaBar } from "./FormulaBar";
+import { FormulaSidebar } from "./FormulaSidebar";
+import { KeyboardShortcutsDialog } from "./KeyboardShortcutsDialog";
 import { PdfExportDialog } from "./PdfExportDialog";
 import { Ribbon } from "./Ribbon";
 import { SearchOverlay } from "./SearchOverlay";
 import { SheetTabs } from "./SheetTabs";
 import { SpreadsheetGrid } from "./SpreadsheetGrid";
 import { ValidationRuleDialog } from "./ValidationRuleDialog";
+import { WelcomeOverlay } from "./WelcomeOverlay";
 
 interface SpreadsheetShellProps {
   tabs: SheetTab[];
   activeTab: string;
   onTabChange: (id: string) => void;
-
-  /** Cell data for the active tab */
   cells: CellMap;
-  /** Callback when a cell is changed */
   onCellChange: (ref: string, data: CellData) => void;
-  /** Replace all cells atomically (for row/col insert/delete) */
   onBulkReplace?: (cells: CellMap) => void;
-  /** Set of cell refs that cannot be edited */
   readOnlyCells?: Set<string>;
-
-  /** Column count for the active tab */
   columnCount: number;
-  /** Callback to add a column */
   onAddColumn?: () => void;
-  /** Callback to remove the last column */
   onDeleteLastColumn?: () => void;
-
-  /** Row count for the active tab */
   rowCount: number;
-  /** Callback to add a row */
   onAddRow?: () => void;
-  /** Callback to remove the last row */
   onDeleteLastRow?: () => void;
-
-  /** Tab management callbacks */
   onAddSheet?: () => void;
   onRenameSheet?: (id: string, name: string) => void;
   onDeleteSheet?: (id: string) => void;
-
-  /** Ribbon actions slot */
   ribbonActions?: ReactNode;
-
-  /** Freeze pane callbacks */
   onSetFreeze?: (row: number, col: number) => void;
-  /** Merged regions callback */
   onSetMergedRegions?: (regions: MergedRegion[]) => void;
+  customFormulas?: Record<string, string>;
+  customFormulasDocs?: Array<{
+    _id: Id<"customFormulas">;
+    name: string;
+    body: string;
+    description?: string;
+  }>;
   /** Conditional format rules callback */
   onSetConditionalFormats?: (rules: CondFormatRule[]) => void;
 }
@@ -113,6 +88,8 @@ export function SpreadsheetShell({
   ribbonActions,
   onSetFreeze,
   onSetMergedRegions,
+  customFormulas = {},
+  customFormulasDocs = [],
   onSetConditionalFormats,
 }: SpreadsheetShellProps) {
   const [selectedCell, setSelectedCell] = useState("A1");
@@ -126,8 +103,9 @@ export function SpreadsheetShell({
   const [zoom, setZoom] = useState(100);
   const [searchOpen, setSearchOpen] = useState(false);
   const [contextMenu, setContextMenu] = useState<ContextMenuState | null>(null);
+  const [formulaSidebarOpen, setFormulaSidebarOpen] = useState(false);
+  const [shortcutsOpen, setShortcutsOpen] = useState(false);
 
-  // New hooks
   const undoHistory = useUndoHistory();
   const { columnWidths, setColumnWidth, resetWidths } = useColumnWidths();
   const {
@@ -137,7 +115,6 @@ export function SpreadsheetShell({
     getFilteredRowIndices,
   } = useColumnFilters();
 
-  // Compute filtered row indices
   const filteredRowIndices = getFilteredRowIndices(
     cells,
     columnCount,
@@ -174,32 +151,8 @@ export function SpreadsheetShell({
     }
   }, [cells]);
 
-  // Formatting state
-  const [bold, setBold] = useState(false);
-  const [italic, setItalic] = useState(false);
-  const [underline, setUnderline] = useState(false);
-  const [align, setAlign] = useState<"left" | "center" | "right">("left");
-  const [fontSize, setFontSize] = useState("12");
-  const [fontFamily, setFontFamily] = useState("Inter");
-  const [numberFormat, setNumberFormat] = useState<NumberFormat>("general");
-
-  // Clipboard buffer
-  const clipboardRef = useRef<{
-    cells: Record<string, CellData>;
-    cut: boolean;
-  } | null>(null);
-
   // Formula mode state
   const [formulaCursorPos, setFormulaCursorPos] = useState(0);
-
-  // Fill handle state
-  const [fillHandleActive, setFillHandleActive] = useState(false);
-  const [fillHandleRange, setFillHandleRange] = useState<{
-    startRow: number;
-    startCol: number;
-    endRow: number;
-    endCol: number;
-  } | null>(null);
 
   // Validation dialog state
   const [validationDialogOpen, setValidationDialogOpen] = useState(false);
@@ -228,16 +181,12 @@ export function SpreadsheetShell({
       : activeTabData.conditionalFormats
     : [];
 
-  // Merge optimistic overlay on top of prop cells.
   const mergedCells =
     Object.keys(optimisticCells).length > 0
       ? { ...cells, ...optimisticCells }
       : cells;
 
-  // Formula mode detection
   const isFormulaMode = editingValue.startsWith("=");
-
-  // Formula reference highlights
   const formulaRefHighlights = isFormulaMode
     ? assignRefColors(extractFormulaRefs(editingValue))
     : new Map<string, string>();
@@ -249,7 +198,6 @@ export function SpreadsheetShell({
     onCellChange(ref, data);
   }
 
-  // Undo/Redo (now supports batch)
   function handleUndo() {
     const entries = undoHistory.undo();
     if (!entries) return;
@@ -268,7 +216,6 @@ export function SpreadsheetShell({
     }
   }
 
-  // Get all refs in the current selection range
   function getSelectionRefs(): string[] {
     if (!selectionRange) return [selectedCell];
     const minR = Math.min(selectionRange.startRow, selectionRange.endRow);
@@ -292,42 +239,62 @@ export function SpreadsheetShell({
     return { row: Number.parseInt(m[2], 10) - 1, col: col - 1 };
   }
 
-  // Apply a format key/value to all selected cells
-  function applyFormatToSelection(key: keyof CellData, value: unknown) {
-    const refs = getSelectionRefs();
-    for (const ref of refs) {
-      if (readOnlyCells.has(ref)) continue;
-      const existing = mergedCells[ref] ?? { value: "" };
-      handleCellChange(ref, { ...existing, [key]: value });
-    }
-  }
+  // ---- Extracted Hooks ----
+  const formatting = useFormattingState({
+    getSelectionRefs,
+    mergedCells,
+    readOnlyCells,
+    handleCellChange,
+  });
+
+  const clipboard = useClipboard({
+    getSelectionRefs,
+    getSelectedCoords,
+    mergedCells,
+    readOnlyCells,
+    handleCellChange,
+  });
+
+  const rowColOps = useRowColOps({
+    mergedCells,
+    rowCount,
+    columnCount,
+    mergedRegions,
+    onBulkReplace,
+    onAddRow,
+    onDeleteLastRow,
+    onAddColumn,
+    onDeleteLastColumn,
+    onSetMergedRegions,
+    undoHistory,
+    setOptimisticCells,
+  });
+
+  const fillHandle = useFillHandle({
+    selectionRange,
+    getSelectedCoords,
+    mergedCells,
+    readOnlyCells,
+    onCellChange,
+    undoHistory,
+    setOptimisticCells,
+    setSelectionRange,
+  });
 
   // Handle selecting a cell - sync formatting state
   function handleSetSelectedCell(ref: string) {
     setSelectedCell(ref);
     const cellData = mergedCells[ref];
     setEditingValue(cellData?.value ?? "");
-    setBold(cellData?.bold ?? false);
-    setItalic(cellData?.italic ?? false);
-    setUnderline(cellData?.underline ?? false);
-    setAlign(cellData?.align ?? "left");
-    setFontSize(cellData?.fontSize ?? "12");
-    setFontFamily(cellData?.fontFamily ?? "Inter");
-    setNumberFormat(cellData?.numberFormat ?? "general");
+    formatting.syncFormattingFromCell(cellData);
   }
 
-  // Handle tab change - reset selection state
+  // Handle tab change - reset all state
   function handleTabChange(id: string) {
     setSelectedCell("A1");
     setSelectionRange(null);
     setEditingValue("");
-    setBold(false);
-    setItalic(false);
-    setUnderline(false);
-    setAlign("left");
-    setFontSize("12");
-    setFontFamily("Inter");
-    setNumberFormat("general");
+    formatting.resetFormatting();
     setContextMenu(null);
     clearAllFilters();
     resetWidths();
@@ -335,152 +302,7 @@ export function SpreadsheetShell({
     onTabChange(id);
   }
 
-  // Formatting callbacks
-  function handleBold() {
-    const next = !bold;
-    setBold(next);
-    applyFormatToSelection("bold", next);
-  }
-
-  function handleItalic() {
-    const next = !italic;
-    setItalic(next);
-    applyFormatToSelection("italic", next);
-  }
-
-  function handleUnderline() {
-    const next = !underline;
-    setUnderline(next);
-    applyFormatToSelection("underline", next);
-  }
-
-  function handleAlignChange(a: "left" | "center" | "right") {
-    setAlign(a);
-    applyFormatToSelection("align", a);
-  }
-
-  function handleFontSizeChange(s: string) {
-    setFontSize(s);
-    applyFormatToSelection("fontSize", s);
-  }
-
-  function handleFontFamilyChange(f: string) {
-    setFontFamily(f);
-    applyFormatToSelection("fontFamily", f);
-  }
-
-  function handleFillColor(color: string | null) {
-    applyFormatToSelection("bgColor", color ?? undefined);
-  }
-
-  function handleTextColor(color: string | null) {
-    applyFormatToSelection("textColor", color ?? undefined);
-  }
-
-  function handleNumberFormatChange(format: NumberFormat) {
-    setNumberFormat(format);
-    applyFormatToSelection("numberFormat", format);
-  }
-
-  // Clipboard operations
-  function handleCopy() {
-    const refs = getSelectionRefs();
-    const copied: Record<string, CellData> = {};
-    for (const ref of refs) {
-      if (mergedCells[ref]) copied[ref] = { ...mergedCells[ref] };
-    }
-    clipboardRef.current = { cells: copied, cut: false };
-
-    const text = refs.map((r) => mergedCells[r]?.value ?? "").join("\t");
-    navigator.clipboard.writeText(text).catch(() => {});
-  }
-
-  function handleCut() {
-    const refs = getSelectionRefs();
-    const copied: Record<string, CellData> = {};
-    for (const ref of refs) {
-      if (mergedCells[ref]) copied[ref] = { ...mergedCells[ref] };
-    }
-    clipboardRef.current = { cells: copied, cut: true };
-
-    for (const ref of refs) {
-      if (!readOnlyCells.has(ref) && mergedCells[ref]) {
-        handleCellChange(ref, { ...mergedCells[ref], value: "" });
-      }
-    }
-
-    const text = refs.map((r) => mergedCells[r]?.value ?? "").join("\t");
-    navigator.clipboard.writeText(text).catch(() => {});
-  }
-
-  async function handlePaste() {
-    // If internal clipboard has data, use it (preserves formatting)
-    if (clipboardRef.current) {
-      doPaste("all");
-      return;
-    }
-
-    // Fallback: read plain text from system clipboard (e.g. copied formula)
-    try {
-      const text = await navigator.clipboard.readText();
-      if (!text) return;
-      const { row: targetRow, col: targetCol } = getSelectedCoords();
-      const targetRef = cellRef(targetRow, targetCol);
-      if (readOnlyCells.has(targetRef)) return;
-      const existing = mergedCells[targetRef] ?? { value: "" };
-      handleCellChange(targetRef, { ...existing, value: text });
-    } catch {
-      // clipboard read denied — ignore
-    }
-  }
-
-  function doPaste(mode: "all" | "values" | "format") {
-    if (!clipboardRef.current) return;
-    const { row: targetRow, col: targetCol } = getSelectedCoords();
-    const sourceRefs = Object.keys(clipboardRef.current.cells);
-    if (sourceRefs.length === 0) return;
-
-    let minRow = Number.MAX_SAFE_INTEGER;
-    let minCol = Number.MAX_SAFE_INTEGER;
-    for (const ref of sourceRefs) {
-      const m = ref.match(/^([A-Z]+)(\d+)$/);
-      if (!m) continue;
-      let c = 0;
-      for (const ch of m[1]) c = c * 26 + ch.charCodeAt(0) - 64;
-      minRow = Math.min(minRow, Number.parseInt(m[2], 10) - 1);
-      minCol = Math.min(minCol, c - 1);
-    }
-
-    for (const [ref, data] of Object.entries(clipboardRef.current.cells)) {
-      const m = ref.match(/^([A-Z]+)(\d+)$/);
-      if (!m) continue;
-      let c = 0;
-      for (const ch of m[1]) c = c * 26 + ch.charCodeAt(0) - 64;
-      const r = Number.parseInt(m[2], 10) - 1;
-
-      const newRow = targetRow + (r - minRow);
-      const newCol = targetCol + (c - 1 - minCol);
-      const newRef = cellRef(newRow, newCol);
-
-      if (!readOnlyCells.has(newRef)) {
-        const existing = mergedCells[newRef] ?? { value: "" };
-        if (mode === "all") {
-          handleCellChange(newRef, { ...data });
-        } else if (mode === "values") {
-          handleCellChange(newRef, { ...existing, value: data.value });
-        } else if (mode === "format") {
-          const { value: _v, ...format } = data;
-          handleCellChange(newRef, { ...existing, ...format });
-        }
-      }
-    }
-
-    if (clipboardRef.current.cut) {
-      clipboardRef.current = null;
-    }
-  }
-
-  // ---- Formula mode: click-to-insert references ----
+  // Formula mode: click-to-insert references
   function insertCellRefInFormula(ref: string) {
     if (!isFormulaMode) return;
     const before = editingValue.slice(0, formulaCursorPos);
@@ -500,331 +322,19 @@ export function SpreadsheetShell({
     setFormulaCursorPos(before.length + rangeStr.length);
   }
 
-  // ---- Row/Column insert/delete ----
-  function handleInsertRowAbove(row: number) {
-    if (rowCount >= GRID.MAX_ROWS || !onBulkReplace || !onAddRow) return;
-    const undoEntries: UndoEntry[] = [];
-    const newCells = shiftRowsDown(mergedCells, row, rowCount);
-    // Record undo: save before/after for all affected cells
-    const allRefs = new Set([
-      ...Object.keys(mergedCells),
-      ...Object.keys(newCells),
-    ]);
-    for (const ref of allRefs) {
-      const before = mergedCells[ref] ?? { value: "" };
-      const after = newCells[ref] ?? { value: "" };
-      if (
-        before.value !== after.value ||
-        JSON.stringify(before) !== JSON.stringify(after)
-      ) {
-        undoEntries.push({ ref, before, after });
-      }
-    }
-    undoHistory.pushBatch(undoEntries);
-    setOptimisticCells(newCells);
-    onBulkReplace(newCells);
-    onAddRow();
-    // Update merged regions
-    if (onSetMergedRegions && mergedRegions.length > 0) {
-      onSetMergedRegions(adjustMergesOnRowShift(mergedRegions, row, 1));
-    }
-  }
-
-  function handleInsertRowBelow(row: number) {
-    handleInsertRowAbove(row + 1);
-  }
-
-  function handleDeleteRow(row: number) {
-    if (rowCount <= 1 || !onBulkReplace || !onDeleteLastRow) return;
-    const undoEntries: UndoEntry[] = [];
-    const newCells = shiftRowsUp(mergedCells, row);
-    const allRefs = new Set([
-      ...Object.keys(mergedCells),
-      ...Object.keys(newCells),
-    ]);
-    for (const ref of allRefs) {
-      const before = mergedCells[ref] ?? { value: "" };
-      const after = newCells[ref] ?? { value: "" };
-      if (
-        before.value !== after.value ||
-        JSON.stringify(before) !== JSON.stringify(after)
-      ) {
-        undoEntries.push({ ref, before, after });
-      }
-    }
-    undoHistory.pushBatch(undoEntries);
-    setOptimisticCells(newCells);
-    onBulkReplace(newCells);
-    onDeleteLastRow();
-    if (onSetMergedRegions && mergedRegions.length > 0) {
-      onSetMergedRegions(adjustMergesOnRowShift(mergedRegions, row, -1));
-    }
-  }
-
-  function handleInsertColumnLeft(col: number) {
-    if (columnCount >= GRID.MAX_COLS || !onBulkReplace || !onAddColumn) return;
-    const undoEntries: UndoEntry[] = [];
-    const newCells = shiftColsRight(mergedCells, col, columnCount);
-    const allRefs = new Set([
-      ...Object.keys(mergedCells),
-      ...Object.keys(newCells),
-    ]);
-    for (const ref of allRefs) {
-      const before = mergedCells[ref] ?? { value: "" };
-      const after = newCells[ref] ?? { value: "" };
-      if (
-        before.value !== after.value ||
-        JSON.stringify(before) !== JSON.stringify(after)
-      ) {
-        undoEntries.push({ ref, before, after });
-      }
-    }
-    undoHistory.pushBatch(undoEntries);
-    setOptimisticCells(newCells);
-    onBulkReplace(newCells);
-    onAddColumn();
-    if (onSetMergedRegions && mergedRegions.length > 0) {
-      onSetMergedRegions(adjustMergesOnColShift(mergedRegions, col, 1));
-    }
-  }
-
-  function handleInsertColumnRight(col: number) {
-    handleInsertColumnLeft(col + 1);
-  }
-
-  function handleDeleteColumn(col: number) {
-    if (columnCount <= 1 || !onBulkReplace || !onDeleteLastColumn) return;
-    const undoEntries: UndoEntry[] = [];
-    const newCells = shiftColsLeft(mergedCells, col);
-    const allRefs = new Set([
-      ...Object.keys(mergedCells),
-      ...Object.keys(newCells),
-    ]);
-    for (const ref of allRefs) {
-      const before = mergedCells[ref] ?? { value: "" };
-      const after = newCells[ref] ?? { value: "" };
-      if (
-        before.value !== after.value ||
-        JSON.stringify(before) !== JSON.stringify(after)
-      ) {
-        undoEntries.push({ ref, before, after });
-      }
-    }
-    undoHistory.pushBatch(undoEntries);
-    setOptimisticCells(newCells);
-    onBulkReplace(newCells);
-    onDeleteLastColumn();
-    if (onSetMergedRegions && mergedRegions.length > 0) {
-      onSetMergedRegions(adjustMergesOnColShift(mergedRegions, col, -1));
-    }
-  }
-
-  // ---- Fill handle ----
-  function handleFillHandleStart() {
-    setFillHandleActive(true);
-    // Initialize fill range to current selection
-    if (selectionRange) {
-      setFillHandleRange({ ...selectionRange });
-    } else {
-      const { row, col } = getSelectedCoords();
-      setFillHandleRange({
-        startRow: row,
-        startCol: col,
-        endRow: row,
-        endCol: col,
-      });
-    }
-  }
-
-  function handleFillHandleDrag(row: number, col: number) {
-    if (!fillHandleActive) return;
-    const sr =
-      selectionRange ??
-      (() => {
-        const { row: r, col: c } = getSelectedCoords();
-        return { startRow: r, startCol: c, endRow: r, endCol: c };
-      })();
-    const minR = Math.min(sr.startRow, sr.endRow);
-    const maxR = Math.max(sr.startRow, sr.endRow);
-    const minC = Math.min(sr.startCol, sr.endCol);
-    const maxC = Math.max(sr.startCol, sr.endCol);
-
-    // Lock to single axis: choose the dominant direction
-    const rowDist = Math.abs(row - maxR) + Math.abs(row - minR);
-    const colDist = Math.abs(col - maxC) + Math.abs(col - minC);
-
-    if (rowDist >= colDist) {
-      // Vertical fill
-      setFillHandleRange({
-        startRow: minR,
-        startCol: minC,
-        endRow: row,
-        endCol: maxC,
-      });
-    } else {
-      // Horizontal fill
-      setFillHandleRange({
-        startRow: minR,
-        startCol: minC,
-        endRow: maxR,
-        endCol: col,
-      });
-    }
-  }
-
-  function handleFillHandleEnd() {
-    if (!fillHandleActive || !fillHandleRange) {
-      setFillHandleActive(false);
-      setFillHandleRange(null);
-      return;
-    }
-
-    const sr =
-      selectionRange ??
-      (() => {
-        const { row: r, col: c } = getSelectedCoords();
-        return { startRow: r, startCol: c, endRow: r, endCol: c };
-      })();
-    const srcMinR = Math.min(sr.startRow, sr.endRow);
-    const srcMaxR = Math.max(sr.startRow, sr.endRow);
-    const srcMinC = Math.min(sr.startCol, sr.endCol);
-    const srcMaxC = Math.max(sr.startCol, sr.endCol);
-
-    const fillMinR = Math.min(fillHandleRange.startRow, fillHandleRange.endRow);
-    const fillMaxR = Math.max(fillHandleRange.startRow, fillHandleRange.endRow);
-    const fillMinC = Math.min(fillHandleRange.startCol, fillHandleRange.endCol);
-    const fillMaxC = Math.max(fillHandleRange.startCol, fillHandleRange.endCol);
-
-    const undoEntries: UndoEntry[] = [];
-
-    // Determine fill direction
-    if (fillMaxR > srcMaxR) {
-      // Fill down
-      for (let c = srcMinC; c <= srcMaxC; c++) {
-        const sourceVals: string[] = [];
-        for (let r = srcMinR; r <= srcMaxR; r++) {
-          sourceVals.push(mergedCells[cellRef(r, c)]?.value ?? "");
-        }
-        const series = detectSeries(sourceVals);
-        for (let r = srcMaxR + 1; r <= fillMaxR; r++) {
-          const ref = cellRef(r, c);
-          if (readOnlyCells.has(ref)) continue;
-          const before = mergedCells[ref] ?? { value: "" };
-          let newValue: string;
-          if (series.type === "formula") {
-            const srcFormula =
-              sourceVals[(r - srcMaxR - 1) % sourceVals.length];
-            newValue = adjustFormulaRefs(
-              srcFormula,
-              r - srcMinR - ((r - srcMaxR - 1) % sourceVals.length),
-              0,
-            );
-          } else {
-            newValue = generateFillValue(sourceVals, r - srcMaxR - 1);
-          }
-          const after = { ...before, value: newValue };
-          undoEntries.push({ ref, before, after });
-          setOptimisticCells((prev) => ({ ...prev, [ref]: after }));
-          onCellChange(ref, after);
-        }
-      }
-    } else if (fillMinR < srcMinR) {
-      // Fill up
-      for (let c = srcMinC; c <= srcMaxC; c++) {
-        const sourceVals: string[] = [];
-        for (let r = srcMaxR; r >= srcMinR; r--) {
-          sourceVals.push(mergedCells[cellRef(r, c)]?.value ?? "");
-        }
-        for (let r = srcMinR - 1; r >= fillMinR; r--) {
-          const ref = cellRef(r, c);
-          if (readOnlyCells.has(ref)) continue;
-          const before = mergedCells[ref] ?? { value: "" };
-          const newValue = generateFillValue(sourceVals, srcMinR - 1 - r);
-          const after = { ...before, value: newValue };
-          undoEntries.push({ ref, before, after });
-          setOptimisticCells((prev) => ({ ...prev, [ref]: after }));
-          onCellChange(ref, after);
-        }
-      }
-    } else if (fillMaxC > srcMaxC) {
-      // Fill right
-      for (let r = srcMinR; r <= srcMaxR; r++) {
-        const sourceVals: string[] = [];
-        for (let c = srcMinC; c <= srcMaxC; c++) {
-          sourceVals.push(mergedCells[cellRef(r, c)]?.value ?? "");
-        }
-        const series = detectSeries(sourceVals);
-        for (let c = srcMaxC + 1; c <= fillMaxC; c++) {
-          const ref = cellRef(r, c);
-          if (readOnlyCells.has(ref)) continue;
-          const before = mergedCells[ref] ?? { value: "" };
-          let newValue: string;
-          if (series.type === "formula") {
-            const srcFormula =
-              sourceVals[(c - srcMaxC - 1) % sourceVals.length];
-            newValue = adjustFormulaRefs(
-              srcFormula,
-              0,
-              c - srcMinC - ((c - srcMaxC - 1) % sourceVals.length),
-            );
-          } else {
-            newValue = generateFillValue(sourceVals, c - srcMaxC - 1);
-          }
-          const after = { ...before, value: newValue };
-          undoEntries.push({ ref, before, after });
-          setOptimisticCells((prev) => ({ ...prev, [ref]: after }));
-          onCellChange(ref, after);
-        }
-      }
-    } else if (fillMinC < srcMinC) {
-      // Fill left
-      for (let r = srcMinR; r <= srcMaxR; r++) {
-        const sourceVals: string[] = [];
-        for (let c = srcMaxC; c >= srcMinC; c--) {
-          sourceVals.push(mergedCells[cellRef(r, c)]?.value ?? "");
-        }
-        for (let c = srcMinC - 1; c >= fillMinC; c--) {
-          const ref = cellRef(r, c);
-          if (readOnlyCells.has(ref)) continue;
-          const before = mergedCells[ref] ?? { value: "" };
-          const newValue = generateFillValue(sourceVals, srcMinC - 1 - c);
-          const after = { ...before, value: newValue };
-          undoEntries.push({ ref, before, after });
-          setOptimisticCells((prev) => ({ ...prev, [ref]: after }));
-          onCellChange(ref, after);
-        }
-      }
-    }
-
-    if (undoEntries.length > 0) {
-      undoHistory.pushBatch(undoEntries);
-    }
-
-    // Update selection to include filled area
-    setSelectionRange({
-      startRow: fillMinR,
-      startCol: fillMinC,
-      endRow: fillMaxR,
-      endCol: fillMaxC,
-    });
-
-    setFillHandleActive(false);
-    setFillHandleRange(null);
-  }
-
-  // ---- Freeze panes ----
+  // Freeze panes
   function handleSetFreeze(row: number, col: number) {
     onSetFreeze?.(row, col);
   }
 
-  // ---- Merge cells ----
+  // Merge cells
   function handleMergeCells() {
     if (!selectionRange || !onSetMergedRegions) return;
     const minR = Math.min(selectionRange.startRow, selectionRange.endRow);
     const maxR = Math.max(selectionRange.startRow, selectionRange.endRow);
     const minC = Math.min(selectionRange.startCol, selectionRange.endCol);
     const maxC = Math.max(selectionRange.startCol, selectionRange.endCol);
-    if (minR === maxR && minC === maxC) return; // single cell, nothing to merge
+    if (minR === maxR && minC === maxC) return;
 
     const newRegion: MergedRegion = {
       startRow: minR,
@@ -835,7 +345,6 @@ export function SpreadsheetShell({
     const updated = addMerge(newRegion, mergedRegions);
     onSetMergedRegions(updated);
 
-    // Move all content to primary cell, clear others
     const primaryRef = cellRef(minR, minC);
     for (let r = minR; r <= maxR; r++) {
       for (let c = minC; c <= maxC; c++) {
@@ -846,7 +355,6 @@ export function SpreadsheetShell({
         }
       }
     }
-    // Center the primary cell
     const existing = mergedCells[primaryRef] ?? { value: "" };
     if (existing.align !== "center") {
       handleCellChange(primaryRef, { ...existing, align: "center" });
@@ -938,25 +446,25 @@ export function SpreadsheetShell({
         setEditingValue,
         zoom,
         setZoom,
-        bold,
-        italic,
-        underline,
-        align,
-        fontSize,
-        fontFamily,
-        onBold: handleBold,
-        onItalic: handleItalic,
-        onUnderline: handleUnderline,
-        onAlignChange: handleAlignChange,
-        onFontSizeChange: handleFontSizeChange,
-        onFontFamilyChange: handleFontFamilyChange,
-        onFillColor: handleFillColor,
-        onTextColor: handleTextColor,
-        numberFormat,
-        onNumberFormatChange: handleNumberFormatChange,
-        copySelection: handleCopy,
-        cutSelection: handleCut,
-        pasteSelection: handlePaste,
+        bold: formatting.bold,
+        italic: formatting.italic,
+        underline: formatting.underline,
+        align: formatting.align,
+        fontSize: formatting.fontSize,
+        fontFamily: formatting.fontFamily,
+        onBold: formatting.handleBold,
+        onItalic: formatting.handleItalic,
+        onUnderline: formatting.handleUnderline,
+        onAlignChange: formatting.handleAlignChange,
+        onFontSizeChange: formatting.handleFontSizeChange,
+        onFontFamilyChange: formatting.handleFontFamilyChange,
+        onFillColor: formatting.handleFillColor,
+        onTextColor: formatting.handleTextColor,
+        numberFormat: formatting.numberFormat,
+        onNumberFormatChange: formatting.handleNumberFormatChange,
+        copySelection: clipboard.handleCopy,
+        cutSelection: clipboard.handleCut,
+        pasteSelection: clipboard.handlePaste,
         readOnlyCells,
         columnCount,
         onAddColumn: onAddColumn ?? (() => {}),
@@ -978,36 +486,34 @@ export function SpreadsheetShell({
         setColumnFilter,
         clearAllFilters,
         filteredRowIndices,
-        // Formula mode
         isFormulaMode,
         formulaCursorPos,
         setFormulaCursorPos,
         insertCellRefInFormula,
         insertRangeRefInFormula,
         formulaRefHighlights,
-        // Row/Column operations
-        insertRowAbove: handleInsertRowAbove,
-        insertRowBelow: handleInsertRowBelow,
-        deleteRow: handleDeleteRow,
-        insertColumnLeft: handleInsertColumnLeft,
-        insertColumnRight: handleInsertColumnRight,
-        deleteColumn: handleDeleteColumn,
-        // Fill handle
-        fillHandleActive,
-        fillHandleRange,
-        onFillHandleStart: handleFillHandleStart,
-        onFillHandleDrag: handleFillHandleDrag,
-        onFillHandleEnd: handleFillHandleEnd,
-        // Paste special
-        pasteSpecial: doPaste,
-        // Freeze
+        insertRowAbove: rowColOps.handleInsertRowAbove,
+        insertRowBelow: rowColOps.handleInsertRowBelow,
+        deleteRow: rowColOps.handleDeleteRow,
+        insertColumnLeft: rowColOps.handleInsertColumnLeft,
+        insertColumnRight: rowColOps.handleInsertColumnRight,
+        deleteColumn: rowColOps.handleDeleteColumn,
+        fillHandleActive: fillHandle.fillHandleActive,
+        fillHandleRange: fillHandle.fillHandleRange,
+        onFillHandleStart: fillHandle.handleFillHandleStart,
+        onFillHandleDrag: fillHandle.handleFillHandleDrag,
+        onFillHandleEnd: fillHandle.handleFillHandleEnd,
+        pasteSpecial: clipboard.doPaste,
         freezeRow,
         freezeCol,
         setFreeze: handleSetFreeze,
-        // Merge
         mergedRegions,
         mergeCells: handleMergeCells,
         unmergeCells: handleUnmergeCells,
+        formulaSidebarOpen,
+        setFormulaSidebarOpen,
+        customFormulas,
+        onOpenShortcuts: () => setShortcutsOpen(true),
         // Validation
         openValidationDialog: handleOpenValidationDialog,
         // Conditional formatting
@@ -1018,7 +524,6 @@ export function SpreadsheetShell({
       }}
     >
       <div className="flex flex-col h-full">
-        {/* Excel frame */}
         <div
           className="flex flex-col flex-1 min-h-0"
           data-spreadsheet-light=""
@@ -1039,28 +544,41 @@ export function SpreadsheetShell({
                 </Button>
               </>
             }
+            onToggleFormulaSidebar={() => setFormulaSidebarOpen((v) => !v)}
+            formulaSidebarOpen={formulaSidebarOpen}
+            onOpenShortcuts={() => setShortcutsOpen(true)}
           />
           <FormulaBar />
 
-          {/* Grid area with zoom */}
-          <div
-            className="flex-1 overflow-hidden relative"
-            style={
-              zoom !== 100
-                ? {
-                    transform: `scale(${zoom / 100})`,
-                    transformOrigin: "top left",
-                    width: `${10000 / zoom}%`,
-                    height: `${10000 / zoom}%`,
-                  }
-                : undefined
-            }
-          >
-            <SpreadsheetGrid />
-            <SearchOverlay
-              open={searchOpen}
-              onClose={() => setSearchOpen(false)}
-            />
+          <div className="flex flex-1 min-h-0 overflow-hidden">
+            <div className="flex-1 min-w-0 overflow-hidden relative">
+              <div
+                style={
+                  zoom !== 100
+                    ? {
+                        transform: `scale(${zoom / 100})`,
+                        transformOrigin: "top left",
+                        width: `${10000 / zoom}%`,
+                        height: `${10000 / zoom}%`,
+                      }
+                    : { width: "100%", height: "100%" }
+                }
+              >
+                <SpreadsheetGrid />
+              </div>
+              <SearchOverlay
+                open={searchOpen}
+                onClose={() => setSearchOpen(false)}
+              />
+              <WelcomeOverlay cellCount={Object.keys(mergedCells).length} />
+            </div>
+
+            {formulaSidebarOpen && (
+              <FormulaSidebar
+                onClose={() => setFormulaSidebarOpen(false)}
+                customFormulasDocs={customFormulasDocs}
+              />
+            )}
           </div>
 
           <SheetTabs
@@ -1072,6 +590,11 @@ export function SpreadsheetShell({
             onDeleteSheet={onDeleteSheet}
           />
         </div>
+
+        <KeyboardShortcutsDialog
+          open={shortcutsOpen}
+          onOpenChange={setShortcutsOpen}
+        />
 
         {/* Validation Rule Dialog */}
         <ValidationRuleDialog

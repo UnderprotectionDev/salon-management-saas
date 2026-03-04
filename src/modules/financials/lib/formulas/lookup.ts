@@ -1,3 +1,4 @@
+import { expandRange, parseRef } from "../cell-refs";
 import {
   type FormulaContext,
   getNum,
@@ -5,7 +6,6 @@ import {
   registerFormula,
   splitTopLevelArgs,
 } from "./registry";
-import { expandRange, parseRef } from "../cell-refs";
 
 function resolveValue(arg: string, ctx: FormulaContext): string {
   const trimmed = arg.trim();

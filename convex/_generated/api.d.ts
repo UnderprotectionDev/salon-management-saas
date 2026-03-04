@@ -28,6 +28,7 @@ import type * as appointments from "../appointments.js";
 import type * as appointments_helpers from "../appointments_helpers.js";
 import type * as auth from "../auth.js";
 import type * as crons from "../crons.js";
+import type * as customFormulas from "../customFormulas.js";
 import type * as customerAuth from "../customerAuth.js";
 import type * as customerDashboard from "../customerDashboard.js";
 import type * as customerMerge from "../customerMerge.js";
@@ -121,6 +122,7 @@ declare const fullApi: ApiFromModules<{
   appointments_helpers: typeof appointments_helpers;
   auth: typeof auth;
   crons: typeof crons;
+  customFormulas: typeof customFormulas;
   customerAuth: typeof customerAuth;
   customerDashboard: typeof customerDashboard;
   customerMerge: typeof customerMerge;

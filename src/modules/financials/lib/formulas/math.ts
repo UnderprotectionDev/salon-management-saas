@@ -1,3 +1,4 @@
+import { expandRange, parseRef } from "../cell-refs";
 import {
   type FormulaContext,
   getNum,
@@ -5,7 +6,6 @@ import {
   resolveArgs,
   splitTopLevelArgs,
 } from "./registry";
-import { expandRange, parseRef } from "../cell-refs";
 
 // SUM
 registerFormula("SUM", (argsStr, ctx) => {
