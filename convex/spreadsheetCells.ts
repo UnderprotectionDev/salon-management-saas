@@ -13,6 +13,7 @@ const cellFormatFields = {
   bgColor: v.optional(v.string()),
   textColor: v.optional(v.string()),
   numberFormat: v.optional(v.string()),
+  validationRule: v.optional(v.string()),
 };
 
 /** List all cells for a given sheet */

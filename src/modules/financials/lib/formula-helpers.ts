@@ -1,6 +1,13 @@
 import { colLabel } from "./spreadsheet-utils";
 
-export type FormulaFn = "SUM" | "AVERAGE" | "COUNT" | "MAX" | "MIN";
+export type FormulaFn =
+  | "SUM"
+  | "AVERAGE"
+  | "COUNT"
+  | "MAX"
+  | "MIN"
+  | "SUMIF"
+  | "COUNTIF";
 
 /**
  * Build a formula string like "=SUM(A1:D5)" from a selection range.

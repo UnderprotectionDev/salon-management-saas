@@ -1,6 +1,7 @@
 "use client";
 
 import { createContext, type ReactNode, useContext } from "react";
+import type { CondFormatRule } from "./conditional-format-types";
 import type { MergedRegion } from "./merge-utils";
 import type { NumberFormat } from "./number-format";
 import type {
@@ -158,6 +159,16 @@ export interface SpreadsheetContextValue {
 
   // --- Keyboard shortcuts ---
   onOpenShortcuts: () => void;
+
+  // --- Data Validation ---
+  openValidationDialog: (cellRef: string) => void;
+
+  // --- Conditional Formatting ---
+  conditionalFormats: CondFormatRule[];
+  openConditionalFormatDialog: () => void;
+
+  // --- PDF Export ---
+  openPdfExportDialog: () => void;
 }
 
 const SpreadsheetContext = createContext<SpreadsheetContextValue | null>(null);

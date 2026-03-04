@@ -1,8 +1,10 @@
 "use client";
 
+import { useVirtualizer } from "@tanstack/react-virtual";
 import { Plus, X } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
+import { evaluateConditionalFormats } from "../lib/conditional-format-engine";
 import { FORMULA_NAMES } from "../lib/formula-catalog";
 import {
   buildSelectionFormula,
@@ -12,16 +14,16 @@ import {
 import { handleGridKeyDown } from "../lib/grid-keyboard";
 import { isMergeHiddenCell, isMergePrimaryCell } from "../lib/merge-utils";
 import { useSpreadsheet } from "../lib/spreadsheet-context";
+import { evalFormula } from "../lib/spreadsheet-formula";
 import { GRID } from "../lib/spreadsheet-types";
 import { cellRef } from "../lib/spreadsheet-utils";
+import { validateCell } from "../lib/validation-engine";
 import { useAutocompleteKeyboard } from "./CellAutocomplete";
 import { FormulaQuickBar } from "./FormulaQuickBar";
 import { GridColumnHeaders } from "./GridColumnHeaders";
 import { GridContextMenu } from "./GridContextMenu";
 import { PasteSpecialMenu } from "./PasteSpecialMenu";
 import { SpreadsheetCell } from "./SpreadsheetCell";
-
-const VIRTUALIZATION_BUFFER = 5;
 
 export function SpreadsheetGrid() {
   const {
@@ -75,6 +77,10 @@ export function SpreadsheetGrid() {
     mergedRegions,
     onOpenShortcuts,
     customFormulas,
+    // Validation
+    openValidationDialog,
+    // Conditional formatting
+    conditionalFormats,
   } = useSpreadsheet();
 
   const [editingCell, setEditingCell] = useState<string | null>(null);
@@ -92,8 +98,8 @@ export function SpreadsheetGrid() {
     row: number;
     col: number;
   } | null>(null);
-  const [scrollTop, setScrollTop] = useState(0);
-  const [containerHeight, setContainerHeight] = useState(600);
+  const [_scrollTop, setScrollTop] = useState(0);
+  const [_containerHeight, setContainerHeight] = useState(600);
 
   const editInputRef = useRef<HTMLInputElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -354,22 +360,6 @@ export function SpreadsheetGrid() {
     return left;
   }
 
-  // Virtualization
-  const frozenRowHeight = freezeRow * GRID.ROW_HEIGHT;
-  const adjustedScrollTop = Math.max(
-    0,
-    scrollTop - GRID.COL_HEADER_HEIGHT - frozenRowHeight,
-  );
-  const visibleRowCount = Math.ceil(containerHeight / GRID.ROW_HEIGHT);
-  const virtualStartRow = Math.max(
-    freezeRow,
-    Math.floor(adjustedScrollTop / GRID.ROW_HEIGHT) - VIRTUALIZATION_BUFFER,
-  );
-  const virtualEndRow = Math.min(
-    rowCount - 1,
-    virtualStartRow + visibleRowCount + VIRTUALIZATION_BUFFER * 2,
-  );
-
   function handleAutocompleteSelect(selected: string) {
     const expr = editingValue;
     const lastTokenMatch = expr.match(/([A-Z]+)$/i);
@@ -382,6 +372,61 @@ export function SpreadsheetGrid() {
   function handleCommitEdit(_ref: string) {
     commitEdit();
   }
+
+  // Row virtualization — build visible row indices (excluding frozen rows)
+  const visibleRowIndices: number[] = [];
+  for (let r = freezeRow; r < rowCount; r++) {
+    if (r > 0 && filteredRowIndices && !filteredRowIndices.has(r)) continue;
+    visibleRowIndices.push(r);
+  }
+
+  const rowVirtualizer = useVirtualizer({
+    count: visibleRowIndices.length,
+    getScrollElement: () => containerRef.current,
+    estimateSize: () => GRID.ROW_HEIGHT,
+    overscan: 10,
+  });
+
+  const frozenRowsHeight = freezeRow * GRID.ROW_HEIGHT;
+
+  // Pre-compute rows to render: frozen (sticky) + virtual (absolute)
+  const rowsToRender: { r: number; style: React.CSSProperties }[] = [];
+  for (let r = 0; r < freezeRow; r++) {
+    if (r > 0 && filteredRowIndices && !filteredRowIndices.has(r)) continue;
+    rowsToRender.push({
+      r,
+      style: {
+        display: "flex",
+        height: GRID.ROW_HEIGHT,
+        width: getTotalWidth(),
+        position: "sticky",
+        top: GRID.COL_HEADER_HEIGHT + r * GRID.ROW_HEIGHT,
+        zIndex: 15,
+        overflow: "visible",
+      },
+    });
+  }
+  for (const virtualRow of rowVirtualizer.getVirtualItems()) {
+    const r = visibleRowIndices[virtualRow.index];
+    rowsToRender.push({
+      r,
+      style: {
+        position: "absolute",
+        top: GRID.COL_HEADER_HEIGHT + frozenRowsHeight + virtualRow.start,
+        left: 0,
+        display: "flex",
+        height: GRID.ROW_HEIGHT,
+        width: getTotalWidth(),
+        overflow: "visible",
+      },
+    });
+  }
+
+  const totalHeight =
+    GRID.COL_HEADER_HEIGHT +
+    frozenRowsHeight +
+    rowVirtualizer.getTotalSize() +
+    (rowCount < GRID.MAX_ROWS ? GRID.ROW_HEIGHT : 0);
 
   return (
     // biome-ignore lint/a11y/noStaticElementInteractions: spreadsheet grid needs keyboard/mouse interaction
@@ -398,10 +443,7 @@ export function SpreadsheetGrid() {
         style={{
           position: "relative",
           width: getTotalWidth(),
-          height:
-            GRID.COL_HEADER_HEIGHT +
-            rowCount * GRID.ROW_HEIGHT +
-            (rowCount < GRID.MAX_ROWS ? GRID.ROW_HEIGHT : 0),
+          height: totalHeight,
         }}
       >
         {/* Column headers */}
@@ -427,70 +469,18 @@ export function SpreadsheetGrid() {
           containerRef={containerRef}
         />
 
-        {/* Frozen rows */}
-        {Array.from({ length: freezeRow }, (_, r) => {
-          if (r > 0 && filteredRowIndices && !filteredRowIndices.has(r))
-            return null;
+        {/* Rows (frozen + virtualized) */}
+        {rowsToRender.map(({ r, style: rowStyle }) => {
           const isRowActive = r >= selMinRow && r <= selMaxRow;
           const isLastRow = r === rowCount - 1;
+          const isFrozenRow = r < freezeRow;
           return (
-            <div
-              key={`frozen-row-${r}`}
-              style={{
-                display: "flex",
-                height: GRID.ROW_HEIGHT,
-                position: "sticky",
-                top: GRID.COL_HEADER_HEIGHT + r * GRID.ROW_HEIGHT,
-                zIndex: 15,
-              }}
-            >
-              {renderRowHeader(r, isRowActive, isLastRow, true)}
-              {renderRowCells(r, true)}
+            <div key={r} style={rowStyle}>
+              {renderRowHeader(r, isRowActive, isLastRow, isFrozenRow)}
+              {renderRowCells(r, isFrozenRow)}
             </div>
           );
         })}
-
-        {/* Virtual spacer */}
-        {virtualStartRow > freezeRow && (
-          <div
-            style={{
-              height: (virtualStartRow - freezeRow) * GRID.ROW_HEIGHT,
-              position: "absolute",
-              top: GRID.COL_HEADER_HEIGHT + virtualStartRow * GRID.ROW_HEIGHT,
-              width: 1,
-            }}
-          />
-        )}
-
-        {/* Visible rows */}
-        {Array.from(
-          { length: Math.max(0, virtualEndRow - virtualStartRow + 1) },
-          (_, i) => {
-            const r = virtualStartRow + i;
-            if (r < freezeRow) return null;
-            if (r >= rowCount) return null;
-            if (r > 0 && filteredRowIndices && !filteredRowIndices.has(r))
-              return null;
-            const isRowActive = r >= selMinRow && r <= selMaxRow;
-            const isLastRow = r === rowCount - 1;
-            return (
-              <div
-                key={`row-${r}`}
-                style={{
-                  display: "flex",
-                  height: GRID.ROW_HEIGHT,
-                  position: "absolute",
-                  top: GRID.COL_HEADER_HEIGHT + r * GRID.ROW_HEIGHT,
-                  left: 0,
-                  width: "100%",
-                }}
-              >
-                {renderRowHeader(r, isRowActive, isLastRow, false)}
-                {renderRowCells(r, false)}
-              </div>
-            );
-          },
-        )}
 
         {/* Add row button */}
         {rowCount < GRID.MAX_ROWS && (
@@ -499,7 +489,10 @@ export function SpreadsheetGrid() {
               display: "flex",
               height: GRID.ROW_HEIGHT,
               position: "absolute",
-              top: GRID.COL_HEADER_HEIGHT + rowCount * GRID.ROW_HEIGHT,
+              top:
+                GRID.COL_HEADER_HEIGHT +
+                frozenRowsHeight +
+                rowVirtualizer.getTotalSize(),
               left: 0,
             }}
           >
@@ -582,6 +575,7 @@ export function SpreadsheetGrid() {
             const ok = await copyFormulaToClipboard(formula);
             if (ok) toast.success(`Copied ${formula}`);
           }}
+          onDataValidation={() => openValidationDialog(contextMenu.cellRef)}
         />
       )}
 
@@ -698,6 +692,27 @@ export function SpreadsheetGrid() {
       const showFillHandle =
         !editingCell && r === selMaxRow && c === selMaxCol && !fillHandleActive;
 
+      // Validation
+      const rawDisplay = cellData?.value
+        ? cellData.value.startsWith("=")
+          ? evalFormula(cellData.value, cells, 0, customFormulas)
+          : cellData.value
+        : "";
+      const validationResult = cellData?.validationRule
+        ? validateCell(rawDisplay, cellData.validationRule, cells, ref)
+        : { valid: true };
+
+      // Conditional formatting
+      const condStyle =
+        conditionalFormats.length > 0
+          ? evaluateConditionalFormats(
+              ref,
+              cellData?.value ?? "",
+              conditionalFormats,
+              cells,
+            )
+          : null;
+
       return (
         <SpreadsheetCell
           // biome-ignore lint/suspicious/noArrayIndexKey: fixed column grid
@@ -754,6 +769,8 @@ export function SpreadsheetGrid() {
           rowCount={rowCount}
           columnCount={columnCount}
           customFormulas={customFormulas}
+          validationResult={validationResult}
+          condStyle={condStyle}
         />
       );
     });

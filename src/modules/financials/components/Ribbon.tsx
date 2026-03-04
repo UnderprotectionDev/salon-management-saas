@@ -1,6 +1,8 @@
 "use client";
 
+import { Palette, ShieldCheck } from "lucide-react";
 import { type ReactNode, useState } from "react";
+import { Separator } from "@/components/ui/separator";
 import { cn } from "@/lib/utils";
 import {
   buildSelectionFormula,
@@ -16,8 +18,9 @@ import {
 import { useSpreadsheet } from "../lib/spreadsheet-context";
 import { RibbonHomeTab } from "./ribbon/RibbonHomeTab";
 import { RibbonViewTab } from "./ribbon/RibbonViewTab";
+import { SectionLabel, TBtn } from "./ribbon/TBtn";
 
-const RIBBON_TABS = ["Home", "View"];
+const RIBBON_TABS = ["Home", "View", "Data"];
 
 interface RibbonProps {
   actions?: ReactNode;
@@ -69,18 +72,22 @@ export function Ribbon({
     freezeRow,
     freezeCol,
     setFreeze,
+    rowCount,
+    columnCount,
     // Merge
     mergeCells,
     unmergeCells,
-    // Grid size (for export)
-    rowCount,
-    columnCount,
+    // Validation
+    openValidationDialog,
+    // Conditional formatting
+    openConditionalFormatDialog,
   } = useSpreadsheet();
 
   const [activeTab, setActiveTab] = useState("Home");
 
   const hasActiveFilters = Object.keys(columnFilters).length > 0;
   const hasFrozen = freezeRow > 0 || freezeCol > 0;
+
   const hasSelectionRange =
     selectionRange != null &&
     (Math.abs(selectionRange.startRow - selectionRange.endRow) > 0 ||
@@ -176,10 +183,42 @@ export function Ribbon({
           />
         )}
 
+        {activeTab === "Data" && (
+          <>
+            {/* Data Validation */}
+            <div className="flex flex-col items-center gap-0 shrink-0">
+              <div className="flex items-center gap-0.5">
+                <TBtn
+                  icon={<ShieldCheck className="w-3.5 h-3.5" />}
+                  label="Data Validation"
+                  onClick={() => openValidationDialog(selectedCell)}
+                />
+              </div>
+              <SectionLabel>Validation</SectionLabel>
+            </div>
+
+            <Separator orientation="vertical" className="h-8 mx-1 shrink-0" />
+
+            {/* Conditional Formatting */}
+            <div className="flex flex-col items-center gap-0 shrink-0">
+              <div className="flex items-center gap-0.5">
+                <TBtn
+                  icon={<Palette className="w-3.5 h-3.5" />}
+                  label="Conditional Formatting"
+                  onClick={openConditionalFormatDialog}
+                />
+              </div>
+              <SectionLabel>Conditional Format</SectionLabel>
+            </div>
+          </>
+        )}
+
         {activeTab === "View" && (
           <RibbonViewTab
             selectedCell={selectedCell}
             hasFrozen={hasFrozen}
+            freezeRow={freezeRow}
+            freezeCol={freezeCol}
             setFreeze={setFreeze}
             handleExportCsv={() =>
               handleExportCsv(cells, rowCount, columnCount)

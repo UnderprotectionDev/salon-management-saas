@@ -58,6 +58,19 @@ interface SpreadsheetCellProps {
   rowCount: number;
   columnCount: number;
   customFormulas?: Record<string, string>;
+  // Validation
+  validationResult?: {
+    valid: boolean;
+    message?: string;
+    warningOnly?: boolean;
+  };
+  // Conditional formatting
+  condStyle?: {
+    bgColor?: string;
+    textColor?: string;
+    bold?: boolean;
+    italic?: boolean;
+  } | null;
 }
 
 export function SpreadsheetCell({
@@ -106,6 +119,8 @@ export function SpreadsheetCell({
   rowCount,
   columnCount,
   customFormulas,
+  validationResult = { valid: true },
+  condStyle,
 }: SpreadsheetCellProps) {
   const rawDisplay = cellData?.value
     ? cellData.value.startsWith("=")
@@ -134,7 +149,9 @@ export function SpreadsheetCell({
           ? "var(--sheet-selection)"
           : isInRange && !isSelected
             ? "var(--sheet-selection)"
-            : (cellData?.bgColor ?? "var(--sheet-cell-bg)"),
+            : (condStyle?.bgColor ??
+              cellData?.bgColor ??
+              "var(--sheet-cell-bg)"),
         borderRight:
           col === freezeCol - 1
             ? "2px solid var(--sheet-active-ring)"
@@ -152,12 +169,15 @@ export function SpreadsheetCell({
           ? `inset 0 0 0 2px ${refHighlight}`
           : inFillRange
             ? "inset 0 0 0 1px var(--sheet-active-ring)"
-            : undefined,
+            : !validationResult.valid
+              ? `inset 0 0 0 2px ${validationResult.warningOnly ? "#f59e0b" : "#ef4444"}`
+              : undefined,
       }}
       onMouseDown={onMouseDown}
       onMouseEnter={onMouseEnter}
       onDoubleClick={onDoubleClick}
       onContextMenu={onContextMenu}
+      title={!validationResult.valid ? validationResult.message : undefined}
     >
       {isEditing ? (
         <>
@@ -244,11 +264,18 @@ export function SpreadsheetCell({
               : `${GRID.ROW_HEIGHT}px`,
             fontSize: `${cellData?.fontSize ?? 12}px`,
             fontFamily: cellData?.fontFamily ?? "inherit",
-            fontWeight: cellData?.bold ? 600 : 400,
-            fontStyle: cellData?.italic ? "italic" : "normal",
+            fontWeight: condStyle?.bold ? 600 : cellData?.bold ? 600 : 400,
+            fontStyle: condStyle?.italic
+              ? "italic"
+              : cellData?.italic
+                ? "italic"
+                : "normal",
             textDecoration: cellData?.underline ? "underline" : "none",
             textAlign: cellData?.align ?? "left",
-            color: cellData?.textColor ?? "var(--foreground)",
+            color:
+              condStyle?.textColor ??
+              cellData?.textColor ??
+              "var(--foreground)",
             whiteSpace: "nowrap",
             overflow: "hidden",
             textOverflow: "ellipsis",
@@ -262,6 +289,22 @@ export function SpreadsheetCell({
             />
           )}
         </span>
+      )}
+
+      {/* Validation indicator triangle */}
+      {!validationResult.valid && !isEditing && (
+        <div
+          style={{
+            position: "absolute",
+            top: 0,
+            right: 0,
+            width: 0,
+            height: 0,
+            borderLeft: "6px solid transparent",
+            borderTop: `6px solid ${validationResult.warningOnly ? "#f59e0b" : "#ef4444"}`,
+            zIndex: 5,
+          }}
+        />
       )}
 
       {showFillHandle && (

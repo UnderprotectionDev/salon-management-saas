@@ -6,6 +6,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { SpreadsheetShell } from "@/modules/financials/components/SpreadsheetShell";
 import { useFreeformCells } from "@/modules/financials/hooks/useFreeformCells";
 import type { MergedRegion } from "@/modules/financials/lib/merge-utils";
+import type { CondFormatRule } from "@/modules/financials/lib/conditional-format-types";
 import {
   type CellData,
   type CellMap,
@@ -64,6 +65,7 @@ export default function FinancialsPage() {
     freezeRow: s.freezeRow ?? 0,
     freezeCol: s.freezeCol ?? 0,
     mergedRegions: s.mergedRegions as MergedRegion[] | undefined,
+    conditionalFormats: s.conditionalFormats as string | undefined,
   }));
 
   if (!currentRole) {
@@ -180,6 +182,9 @@ function FinancialsContent({
   const setMergedRegionsMut = useMutation(
     api.spreadsheetSheets.setMergedRegions,
   );
+  const setCondFormatsMut = useMutation(
+    api.spreadsheetSheets.setConditionalFormats,
+  );
 
   const cells: CellMap = activeFreeformId ? freeform.cells : {};
   const cellChangeHandler: (ref: string, data: CellData) => void =
@@ -219,6 +224,14 @@ function FinancialsContent({
           organizationId: activeOrganization._id,
           id: activeFreeformId,
           mergedRegions: regions,
+        }).catch(() => {});
+      }}
+      onSetConditionalFormats={(rules) => {
+        if (!activeOrganization || !activeFreeformId) return;
+        setCondFormatsMut({
+          organizationId: activeOrganization._id,
+          id: activeFreeformId,
+          conditionalFormats: JSON.stringify(rules),
         }).catch(() => {});
       }}
     />

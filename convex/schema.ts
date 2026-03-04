@@ -1258,6 +1258,7 @@ export default defineSchema({
         }),
       ),
     ),
+    conditionalFormats: v.optional(v.string()), // JSON-serialized CondFormatRule[]
   }).index("by_org", ["organizationId"]),
 
   // Spreadsheet Cells — cell data for freeform sheets
@@ -1277,6 +1278,7 @@ export default defineSchema({
     bgColor: v.optional(v.string()),
     textColor: v.optional(v.string()),
     numberFormat: v.optional(v.string()),
+    validationRule: v.optional(v.string()), // JSON-serialized ValidationRule
   })
     .index("by_sheet", ["sheetId"])
     .index("by_org_sheet", ["organizationId", "sheetId"]),
