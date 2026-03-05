@@ -1,26 +1,25 @@
 "use client";
 
-import { CheckSquare, Plus } from "lucide-react";
+import { CheckSquare } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { useOrganization } from "@/modules/organization";
-import { CategorySidebar } from "@/modules/products/components/CategorySidebar";
-import { ProductWizardDialog } from "@/modules/products/components/ProductWizardDialog";
+import { AddProductSheet } from "@/modules/products/components/AddProductSheet";
 import { InventoryStatsBar } from "@/modules/products/components/InventoryStatsBar";
 import { LowStockBanner } from "@/modules/products/components/LowStockBanner";
-import { ProductFiltersBar } from "@/modules/products/components/ProductFilters";
+import { ProductCategoryFilterChips } from "@/modules/products/components/ProductCategoryFilterChips";
 import {
   type ProductFilters,
+  ProductFiltersBar,
   type StockFilter,
-  ProductGrid,
-} from "@/modules/products/components/ProductGrid";
+} from "@/modules/products/components/ProductFilters";
+import { ProductsList } from "@/modules/products/components/ProductsList";
 import type { Id } from "../../../../../convex/_generated/dataModel";
 
 export default function ProductsPage() {
   const { activeOrganization, currentRole, isLoading } = useOrganization();
   const router = useRouter();
-  const [addOpen, setAddOpen] = useState(false);
   const [selectionMode, setSelectionMode] = useState(false);
   const [selectedCategoryId, setSelectedCategoryId] = useState<string | null>(
     null,
@@ -29,7 +28,7 @@ export default function ProductsPage() {
     search: "",
     status: "all",
     stockLevel: "all",
-    sort: "name_asc",
+    sort: "default",
   });
 
   const isOwner = currentRole === "owner";
@@ -67,10 +66,14 @@ export default function ProductsPage() {
             <CheckSquare className="mr-1.5 size-4" />
             {selectionMode ? "Done" : "Select"}
           </Button>
-          <Button size="sm" onClick={() => setAddOpen(true)}>
-            <Plus className="mr-2 size-4" />
-            Add Product
-          </Button>
+          <AddProductSheet
+            organizationId={activeOrganization._id}
+            defaultCategoryId={
+              selectedCategoryId
+                ? (selectedCategoryId as Id<"productCategories">)
+                : undefined
+            }
+          />
         </div>
       </div>
 
@@ -89,39 +92,20 @@ export default function ProductsPage() {
       {/* Search & Filters */}
       <ProductFiltersBar filters={filters} onFiltersChange={setFilters} />
 
-      {/* Content: Category Sidebar + Products Grid */}
-      <div className="flex flex-col gap-6 md:flex-row">
-        {/* Category Sidebar */}
-        <div className="w-full md:w-56 shrink-0">
-          <CategorySidebar
-            organizationId={activeOrganization._id}
-            selectedCategoryId={selectedCategoryId}
-            onSelectCategory={setSelectedCategoryId}
-          />
-        </div>
-
-        {/* Products Grid */}
-        <div className="flex-1 min-w-0">
-          <ProductGrid
-            organizationId={activeOrganization._id}
-            categoryId={selectedCategoryId}
-            filters={filters}
-            selectionMode={selectionMode}
-          />
-        </div>
-      </div>
-
-      {/* Add Product Wizard */}
-      <ProductWizardDialog
-        mode="add"
-        open={addOpen}
-        onOpenChange={setAddOpen}
+      {/* Category Filter Chips */}
+      <ProductCategoryFilterChips
         organizationId={activeOrganization._id}
-        defaultCategoryId={
-          selectedCategoryId
-            ? (selectedCategoryId as Id<"productCategories">)
-            : undefined
-        }
+        selectedCategoryId={selectedCategoryId}
+        onSelectCategory={setSelectedCategoryId}
+        isOwner={isOwner}
+      />
+
+      {/* Products List */}
+      <ProductsList
+        organizationId={activeOrganization._id}
+        categoryId={selectedCategoryId}
+        filters={filters}
+        selectionMode={selectionMode}
       />
     </div>
   );

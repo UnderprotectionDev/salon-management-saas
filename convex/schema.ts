@@ -613,6 +613,7 @@ export default defineSchema({
         notes: v.optional(v.string()),
       }),
     ),
+    sortOrder: v.optional(v.number()),
     // Variants
     hasVariants: v.optional(v.boolean()),
     // Inventory

@@ -185,9 +185,7 @@ export function SheetTabs({
                   onCommitRename={commitRename}
                   onCancelRename={() => setRenamingId(null)}
                   onDeleteSheet={
-                    onDeleteSheet
-                      ? () => setDeleteTarget(tab)
-                      : undefined
+                    onDeleteSheet ? () => setDeleteTarget(tab) : undefined
                   }
                 />
               ))}

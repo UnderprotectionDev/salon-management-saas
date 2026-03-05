@@ -343,7 +343,7 @@ function AuthenticatedLayoutContent({
           </div>
         )}
         <GracePeriodBanner />
-        <main className="flex-1 p-4 lg:p-6 overflow-hidden">{children}</main>
+        <main className="flex-1 p-4 lg:p-6 overflow-y-auto">{children}</main>
         <SuspendedOverlay />
       </SidebarInset>
     </SidebarProvider>

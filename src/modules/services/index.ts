@@ -1,7 +1,8 @@
-export { AddServiceDialog } from "./components/AddServiceDialog";
-export { CategorySidebar } from "./components/CategorySidebar";
+export { AddServiceSheet } from "./components/AddServiceSheet";
+export { CategoryFilterChips } from "./components/CategoryFilterChips";
+export { CategoryManageDialog } from "./components/CategoryManageDialog";
 export { DeleteServiceDialog } from "./components/DeleteServiceDialog";
-export { EditServiceDialog } from "./components/EditServiceDialog";
+export { EditServiceSheet } from "./components/EditServiceSheet";
 export { PriceDisplay } from "./components/PriceDisplay";
 export { ServicesList } from "./components/ServicesList";
 export { StaffAssignmentSelect } from "./components/StaffAssignmentSelect";

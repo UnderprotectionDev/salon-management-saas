@@ -3,8 +3,8 @@
 import { useState } from "react";
 import { useOrganization } from "@/modules/organization";
 import {
-  AddServiceDialog,
-  CategorySidebar,
+  AddServiceSheet,
+  CategoryFilterChips,
   ServicesList,
 } from "@/modules/services";
 import type { Id } from "../../../../../convex/_generated/dataModel";
@@ -30,7 +30,7 @@ export default function ServicesPage() {
           </p>
         </div>
         {isOwner && (
-          <AddServiceDialog
+          <AddServiceSheet
             organizationId={activeOrganization._id}
             defaultCategoryId={
               selectedCategoryId
@@ -41,27 +41,20 @@ export default function ServicesPage() {
         )}
       </div>
 
-      {/* Content: Category Sidebar + Services Table */}
-      <div className="flex flex-col gap-6 md:flex-row">
-        {/* Category Sidebar */}
-        <div className="w-full md:w-56 shrink-0">
-          <CategorySidebar
-            organizationId={activeOrganization._id}
-            selectedCategoryId={selectedCategoryId}
-            onSelectCategory={setSelectedCategoryId}
-            isOwner={isOwner}
-          />
-        </div>
+      {/* Category Filter Chips */}
+      <CategoryFilterChips
+        organizationId={activeOrganization._id}
+        selectedCategoryId={selectedCategoryId}
+        onSelectCategory={setSelectedCategoryId}
+        isOwner={isOwner}
+      />
 
-        {/* Services Table */}
-        <div className="flex-1 min-w-0">
-          <ServicesList
-            organizationId={activeOrganization._id}
-            categoryId={selectedCategoryId}
-            isOwner={isOwner}
-          />
-        </div>
-      </div>
+      {/* Services List */}
+      <ServicesList
+        organizationId={activeOrganization._id}
+        categoryId={selectedCategoryId}
+        isOwner={isOwner}
+      />
     </div>
   );
 }

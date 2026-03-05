@@ -3,7 +3,13 @@
  */
 import { colLabel } from "./spreadsheet-utils";
 
-type SeriesType = "number" | "copy" | "formula" | "date" | "dayName" | "monthName";
+type SeriesType =
+  | "number"
+  | "copy"
+  | "formula"
+  | "date"
+  | "dayName"
+  | "monthName";
 
 interface DetectedSeries {
   type: SeriesType;
@@ -21,12 +27,32 @@ const DAY_NAMES_FULL = [
   "Sunday",
 ];
 const MONTH_NAMES_SHORT = [
-  "Jan", "Feb", "Mar", "Apr", "May", "Jun",
-  "Jul", "Aug", "Sep", "Oct", "Nov", "Dec",
+  "Jan",
+  "Feb",
+  "Mar",
+  "Apr",
+  "May",
+  "Jun",
+  "Jul",
+  "Aug",
+  "Sep",
+  "Oct",
+  "Nov",
+  "Dec",
 ];
 const MONTH_NAMES_FULL = [
-  "January", "February", "March", "April", "May", "June",
-  "July", "August", "September", "October", "November", "December",
+  "January",
+  "February",
+  "March",
+  "April",
+  "May",
+  "June",
+  "July",
+  "August",
+  "September",
+  "October",
+  "November",
+  "December",
 ];
 
 /** Try to find a value's index in a cyclic name list (case-insensitive) */
@@ -60,7 +86,9 @@ function tryParseTRDate(value: string): Date | null {
 
 type DateFormat = "iso" | "tr";
 
-function tryParseDate(value: string): { date: Date; format: DateFormat } | null {
+function tryParseDate(
+  value: string,
+): { date: Date; format: DateFormat } | null {
   const iso = tryParseISODate(value);
   if (iso) return { date: iso, format: "iso" };
   const tr = tryParseTRDate(value);

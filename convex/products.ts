@@ -132,7 +132,7 @@ export const list = ownerQuery({
           firstOptionValues: variantInfo?.firstOptionValues,
         };
       })
-      .sort((a, b) => a.name.localeCompare(b.name, "tr"));
+      .sort((a, b) => (a.sortOrder ?? 999999) - (b.sortOrder ?? 999999));
   },
 });
 
@@ -372,7 +372,7 @@ export const listPublic = publicQuery({
         imageUrls: product.imageUrls,
         status: product.status,
       }))
-      .sort((a, b) => a.name.localeCompare(b.name, "tr"));
+      .sort((a, b) => (a.sortOrder ?? 999999) - (b.sortOrder ?? 999999));
   },
 });
 
@@ -469,6 +469,16 @@ export const create = ownerMutation({
       imageUrls = urls.filter((u): u is string => u !== null);
     }
 
+    // Compute next sortOrder
+    const existingProducts = await ctx.db
+      .query("products")
+      .withIndex("by_org", (q) => q.eq("organizationId", ctx.organizationId))
+      .collect();
+    const maxSortOrder = existingProducts.reduce(
+      (max, p) => Math.max(max, p.sortOrder ?? 0),
+      0,
+    );
+
     const productId = await ctx.db.insert("products", {
       organizationId: ctx.organizationId,
       categoryId: args.categoryId,
@@ -483,6 +493,7 @@ export const create = ownerMutation({
       lowStockThreshold: args.lowStockThreshold,
       imageStorageIds,
       imageUrls,
+      sortOrder: maxSortOrder + 1,
       status: "active",
       createdAt: Date.now(),
       updatedAt: Date.now(),
@@ -818,6 +829,92 @@ export const remove = ownerMutation({
     await ctx.db.delete(args.productId);
 
     return null;
+  },
+});
+
+// =============================================================================
+// Reorder & Duplicate
+// =============================================================================
+
+/**
+ * Reorder products by assigning sortOrder based on array index.
+ */
+export const reorder = ownerMutation({
+  args: {
+    productIds: v.array(v.id("products")),
+  },
+  returns: v.boolean(),
+  handler: async (ctx, args) => {
+    const updates = args.productIds.map(async (id, index) => {
+      const product = await ctx.db.get(id);
+      if (!product || product.organizationId !== ctx.organizationId) {
+        throw new ConvexError({
+          code: ErrorCode.NOT_FOUND,
+          message: "Product not found",
+        });
+      }
+      await ctx.db.patch(id, { sortOrder: index + 1 });
+    });
+
+    await Promise.all(updates);
+    return true;
+  },
+});
+
+/**
+ * Duplicate a product. Copies all details except SKU (must be unique)
+ * and resets stock to 0.
+ */
+export const duplicate = ownerMutation({
+  args: {
+    productId: v.id("products"),
+  },
+  returns: v.id("products"),
+  handler: async (ctx, args) => {
+    await rateLimiter.limit(ctx, "duplicateProduct", {
+      key: ctx.organizationId,
+    });
+
+    const product = await ctx.db.get(args.productId);
+    if (!product || product.organizationId !== ctx.organizationId) {
+      throw new ConvexError({
+        code: ErrorCode.NOT_FOUND,
+        message: "Product not found",
+      });
+    }
+
+    // Compute next sortOrder
+    const allProducts = await ctx.db
+      .query("products")
+      .withIndex("by_org", (q) => q.eq("organizationId", ctx.organizationId))
+      .collect();
+    const maxSortOrder = allProducts.reduce(
+      (max, p) => Math.max(max, p.sortOrder ?? 0),
+      0,
+    );
+
+    const now = Date.now();
+    const newProductId = await ctx.db.insert("products", {
+      organizationId: ctx.organizationId,
+      categoryId: product.categoryId,
+      name: `${product.name} (Copy)`,
+      description: product.description,
+      brand: product.brand,
+      costPrice: product.costPrice,
+      sellingPrice: product.sellingPrice,
+      supplierInfo: product.supplierInfo,
+      stockQuantity: 0,
+      lowStockThreshold: product.lowStockThreshold,
+      imageStorageIds: product.imageStorageIds,
+      imageUrls: product.imageUrls,
+      sortOrder: maxSortOrder + 1,
+      hasVariants: false,
+      status: "active",
+      createdAt: now,
+      updatedAt: now,
+    });
+
+    return newProductId;
   },
 });
 

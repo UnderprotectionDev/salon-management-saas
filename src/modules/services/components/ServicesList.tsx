@@ -26,7 +26,9 @@ import {
   Trash2,
 } from "lucide-react";
 import { useEffect, useState } from "react";
+import NiceAvatar, { genConfig } from "react-nice-avatar";
 import { toast } from "sonner";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -36,18 +38,10 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Skeleton } from "@/components/ui/skeleton";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
 import { api } from "../../../../convex/_generated/api";
 import type { Id } from "../../../../convex/_generated/dataModel";
 import { DeleteServiceDialog } from "./DeleteServiceDialog";
-import { EditServiceDialog } from "./EditServiceDialog";
+import { EditServiceSheet } from "./EditServiceSheet";
 import { PriceDisplay } from "./PriceDisplay";
 
 type ServicesListProps = {
@@ -68,28 +62,75 @@ type ServiceItem = {
   [key: string]: unknown;
 };
 
-function getStatusBadgeVariant(
-  status: string,
-): "default" | "secondary" | "destructive" | "outline" {
-  switch (status) {
-    case "active":
-      return "default";
-    case "inactive":
-      return "destructive";
-    default:
-      return "outline";
-  }
+type StaffInfo = {
+  _id: Id<"staff">;
+  name: string;
+  imageUrl?: string | null;
+  serviceIds?: Id<"services">[];
+  status: string;
+};
+
+function StaffAvatarStack({
+  serviceId,
+  allStaff,
+  avatarConfigMap,
+}: {
+  serviceId: Id<"services">;
+  allStaff: StaffInfo[];
+  avatarConfigMap: Map<Id<"staff">, Record<string, unknown> | null>;
+}) {
+  const assignedStaff = allStaff.filter(
+    (s) => s.status === "active" && s.serviceIds?.includes(serviceId),
+  );
+
+  if (assignedStaff.length === 0) return null;
+
+  const displayed = assignedStaff.slice(0, 3);
+  const remaining = assignedStaff.length - 3;
+
+  return (
+    <div className="flex items-center gap-1.5">
+      <div className="flex -space-x-1.5">
+        {displayed.map((staff) => {
+          const config = avatarConfigMap.get(staff._id);
+          return (
+            <Avatar
+              key={staff._id}
+              className="size-5 border-2 border-background"
+            >
+              <AvatarImage src={staff.imageUrl ?? undefined} />
+              <AvatarFallback className="text-[8px]">
+                <NiceAvatar
+                  style={{ width: "100%", height: "100%" }}
+                  shape="circle"
+                  {...(config ?? genConfig(staff._id))}
+                />
+              </AvatarFallback>
+            </Avatar>
+          );
+        })}
+      </div>
+      <span className="text-xs text-muted-foreground">
+        {assignedStaff.length} staff
+        {remaining > 0 && ` (+${remaining})`}
+      </span>
+    </div>
+  );
 }
 
-function SortableServiceRow({
+function SortableServiceCard({
   service,
   isOwner,
+  allStaff,
+  avatarConfigMap,
   onEdit,
   onDelete,
   onToggleStatus,
 }: {
   service: ServiceItem;
   isOwner: boolean;
+  allStaff: StaffInfo[];
+  avatarConfigMap: Map<Id<"staff">, Record<string, unknown> | null>;
   onEdit: () => void;
   onDelete: () => void;
   onToggleStatus: () => void;
@@ -110,88 +151,116 @@ function SortableServiceRow({
   };
 
   return (
-    <TableRow ref={setNodeRef} style={style}>
-      <TableCell>
-        <div className="flex items-center gap-2 min-w-0">
-          {isOwner && (
-            <span
-              {...attributes}
-              {...listeners}
-              className="cursor-grab shrink-0 text-muted-foreground hover:text-foreground"
-            >
-              <GripVertical className="size-4" />
-            </span>
-          )}
-          <div className="min-w-0">
-            <p className="text-sm font-medium truncate">{service.name}</p>
-            {service.description && (
-              <p className="text-xs text-muted-foreground truncate max-w-[200px]">
-                {service.description}
-              </p>
-            )}
-          </div>
-        </div>
-      </TableCell>
-      <TableCell className="hidden sm:table-cell">
-        {service.categoryName ? (
-          <Badge variant="outline">{service.categoryName}</Badge>
-        ) : (
-          <span className="text-xs text-muted-foreground">-</span>
+    <div
+      ref={setNodeRef}
+      style={style}
+      className="group rounded-lg border bg-card p-4 hover:shadow-sm transition-all"
+    >
+      {/* Row 1: Name + Duration */}
+      <div className="flex items-center gap-2">
+        {isOwner && (
+          <span
+            {...attributes}
+            {...listeners}
+            className="cursor-grab shrink-0 text-muted-foreground hover:text-foreground opacity-0 group-hover:opacity-100 transition-opacity"
+          >
+            <GripVertical className="size-4" />
+          </span>
         )}
-      </TableCell>
-      <TableCell>
-        <span className="flex items-center gap-1 text-sm">
-          <Clock className="size-3 text-muted-foreground" />
+        <p className="text-sm font-semibold truncate flex-1">{service.name}</p>
+        <span className="flex items-center gap-1 text-xs text-muted-foreground shrink-0">
+          <Clock className="size-3" />
           {service.duration}m
         </span>
-      </TableCell>
-      <TableCell className="text-sm">
-        <PriceDisplay price={service.price} priceType={service.priceType} />
-      </TableCell>
-      <TableCell className="hidden sm:table-cell">
-        {isOwner ? (
-          <button
-            type="button"
-            onClick={onToggleStatus}
-            className="appearance-none border-0 bg-transparent p-0"
-            aria-label={`Toggle status: currently ${service.status}`}
-          >
+      </div>
+
+      {/* Row 2: Description + Category + Price */}
+      <div className="flex items-center gap-2 mt-1.5">
+        {isOwner && <div className="w-4 shrink-0" />}
+        <div className="flex-1 min-w-0 flex items-center gap-2">
+          {service.description ? (
+            <p className="text-xs text-muted-foreground truncate">
+              {service.description}
+            </p>
+          ) : (
+            <span />
+          )}
+          {service.categoryName && (
+            <Badge variant="outline" className="text-[10px] shrink-0">
+              {service.categoryName}
+            </Badge>
+          )}
+        </div>
+        <span className="text-sm font-medium shrink-0">
+          <PriceDisplay price={service.price} priceType={service.priceType} />
+        </span>
+      </div>
+
+      {/* Row 3: Staff Avatars + Status + Actions */}
+      <div className="flex items-center gap-2 mt-2">
+        {isOwner && <div className="w-4 shrink-0" />}
+        <div className="flex-1 min-w-0">
+          <StaffAvatarStack
+            serviceId={service._id}
+            allStaff={allStaff}
+            avatarConfigMap={avatarConfigMap}
+          />
+        </div>
+        <div className="flex items-center gap-2 shrink-0">
+          {isOwner ? (
+            <button
+              type="button"
+              onClick={onToggleStatus}
+              className="appearance-none border-0 bg-transparent p-0"
+              aria-label={`Toggle status: currently ${service.status}`}
+            >
+              <Badge
+                variant={
+                  service.status === "active" ? "default" : "destructive"
+                }
+                className="cursor-pointer select-none text-[10px]"
+              >
+                {service.status}
+              </Badge>
+            </button>
+          ) : (
             <Badge
-              variant={getStatusBadgeVariant(service.status)}
-              className="cursor-pointer select-none"
+              variant={service.status === "active" ? "default" : "destructive"}
+              className="text-[10px]"
             >
               {service.status}
             </Badge>
-          </button>
-        ) : (
-          <Badge variant={getStatusBadgeVariant(service.status)}>
-            {service.status}
-          </Badge>
-        )}
-      </TableCell>
-      {isOwner && (
-        <TableCell>
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="ghost" size="icon" className="size-8">
-                <MoreHorizontal className="size-4" />
-                <span className="sr-only">Actions</span>
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
-              <DropdownMenuItem onClick={onEdit}>
-                <Edit2 className="mr-2 size-4" />
-                Edit
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={onDelete} className="text-destructive">
-                <Trash2 className="mr-2 size-4" />
-                Delete
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
-        </TableCell>
-      )}
-    </TableRow>
+          )}
+          {isOwner && (
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="size-7 opacity-0 group-hover:opacity-100 transition-opacity"
+                >
+                  <MoreHorizontal className="size-4" />
+                  <span className="sr-only">Actions</span>
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem onClick={onEdit}>
+                  <Edit2 className="mr-2 size-4" />
+                  Edit
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  onClick={onDelete}
+                  className="text-destructive"
+                >
+                  <Trash2 className="mr-2 size-4" />
+                  Delete
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          )}
+        </div>
+      </div>
+    </div>
   );
 }
 
@@ -206,10 +275,17 @@ export function ServicesList({
       ? (categoryId as Id<"serviceCategories">)
       : undefined,
   });
+  const allStaff = useQuery(api.staff.list, { organizationId });
+  const avatarConfigs = useQuery(api.staff.getAvatarConfigs, {
+    organizationId,
+  });
   const reorderServices = useMutation(api.services.reorder);
   const updateService = useMutation(api.services.update);
 
-  // Local state for optimistic drag-and-drop reordering
+  const avatarConfigMap = new Map(
+    avatarConfigs?.map((a) => [a.staffId, a.avatarConfig]) ?? [],
+  ) as Map<Id<"staff">, Record<string, unknown> | null>;
+
   const [localServices, setLocalServices] = useState(services);
   useEffect(() => {
     if (services) {
@@ -232,11 +308,11 @@ export function ServicesList({
     }),
   );
 
-  if (services === undefined) {
+  if (services === undefined || allStaff === undefined) {
     return (
       <div className="space-y-3">
         {[1, 2, 3].map((i) => (
-          <Skeleton key={i} className="h-14 w-full" />
+          <Skeleton key={i} className="h-24 w-full rounded-lg" />
         ))}
       </div>
     );
@@ -258,6 +334,7 @@ export function ServicesList({
   }
 
   const displayServices = localServices ?? services;
+  const staffList = (allStaff ?? []) as StaffInfo[];
 
   const handleToggleStatus = async (
     serviceId: Id<"services">,
@@ -307,46 +384,36 @@ export function ServicesList({
         collisionDetection={closestCenter}
         onDragEnd={handleDragEnd}
       >
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Service</TableHead>
-              <TableHead className="hidden sm:table-cell">Category</TableHead>
-              <TableHead>Duration</TableHead>
-              <TableHead>Price</TableHead>
-              <TableHead className="hidden sm:table-cell">Status</TableHead>
-              {isOwner && <TableHead className="w-12" />}
-            </TableRow>
-          </TableHeader>
-          <SortableContext
-            items={displayServices.map((s) => s._id)}
-            strategy={verticalListSortingStrategy}
-          >
-            <TableBody>
-              {displayServices.map((service) => (
-                <SortableServiceRow
-                  key={service._id}
-                  service={service}
-                  isOwner={isOwner}
-                  onEdit={() => setEditTarget(service)}
-                  onDelete={() =>
-                    setDeleteTarget({
-                      id: service._id,
-                      name: service.name,
-                    })
-                  }
-                  onToggleStatus={() =>
-                    handleToggleStatus(service._id, service.status)
-                  }
-                />
-              ))}
-            </TableBody>
-          </SortableContext>
-        </Table>
+        <SortableContext
+          items={displayServices.map((s) => s._id)}
+          strategy={verticalListSortingStrategy}
+        >
+          <div className="space-y-2">
+            {displayServices.map((service) => (
+              <SortableServiceCard
+                key={service._id}
+                service={service}
+                isOwner={isOwner}
+                allStaff={staffList}
+                avatarConfigMap={avatarConfigMap}
+                onEdit={() => setEditTarget(service)}
+                onDelete={() =>
+                  setDeleteTarget({
+                    id: service._id,
+                    name: service.name,
+                  })
+                }
+                onToggleStatus={() =>
+                  handleToggleStatus(service._id, service.status)
+                }
+              />
+            ))}
+          </div>
+        </SortableContext>
       </DndContext>
 
-      {/* Edit Dialog */}
-      <EditServiceDialog
+      {/* Edit Sheet */}
+      <EditServiceSheet
         key={editTarget?._id}
         open={!!editTarget}
         onOpenChange={(open) => !open && setEditTarget(null)}

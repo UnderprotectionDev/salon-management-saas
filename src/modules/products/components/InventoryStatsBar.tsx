@@ -6,7 +6,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { formatPrice } from "@/modules/services/lib/currency";
 import { api } from "../../../../convex/_generated/api";
 import type { Id } from "../../../../convex/_generated/dataModel";
-import type { StockFilter } from "./ProductGrid";
+import type { StockFilter } from "./ProductFilters";
 
 type InventoryStatsBarProps = {
   organizationId: Id<"organization">;

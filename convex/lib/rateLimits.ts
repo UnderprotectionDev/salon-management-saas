@@ -252,6 +252,13 @@ export const rateLimiter = new RateLimiter(components.rateLimiter, {
     period: HOUR,
   },
 
+  duplicateProduct: {
+    kind: "token bucket",
+    rate: 20,
+    period: HOUR,
+    capacity: 20,
+  },
+
   // ==========================================================================
   // SuperAdmin Limits
   // ==========================================================================
