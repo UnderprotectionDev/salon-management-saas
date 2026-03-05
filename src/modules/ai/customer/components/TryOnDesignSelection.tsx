@@ -185,7 +185,9 @@ export function TryOnDesignSelection({
                     {design.thumbnailUrl || design.imageUrl ? (
                       // biome-ignore lint/performance/noImgElement: dynamic storage URL
                       <img
-                        src={design.thumbnailUrl ?? design.imageUrl ?? undefined}
+                        src={
+                          design.thumbnailUrl ?? design.imageUrl ?? undefined
+                        }
                         alt={design.name}
                         className="aspect-square w-full object-cover"
                       />

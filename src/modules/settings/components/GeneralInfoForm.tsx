@@ -7,6 +7,7 @@ import { useState } from "react";
 import { toast } from "sonner";
 import { z } from "zod";
 import { LogoUpload } from "@/components/logo-upload";
+import { RichEditor, RichTextDisplay } from "@/components/rich-editor";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -16,7 +17,6 @@ import {
   FieldLabel,
 } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
 import { Toggle } from "@/components/ui/toggle";
 import { api } from "../../../../convex/_generated/api";
 import type { Id } from "../../../../convex/_generated/dataModel";
@@ -127,9 +127,14 @@ const nameSchema = z
   .max(100, "Name cannot exceed 100 characters");
 
 // Note: Form fields are always strings (even if empty), so don't use .optional()
-const descriptionSchema = z
-  .string()
-  .max(500, "Description cannot exceed 500 characters");
+function stripHtmlLength(html: string): number {
+  return html.replace(/<[^>]*>/g, "").trim().length;
+}
+
+const descriptionSchema = z.string().refine(
+  (val) => stripHtmlLength(val) <= 2000,
+  "Description cannot exceed 2000 characters",
+);
 
 // =============================================================================
 // Component
@@ -210,13 +215,16 @@ export function GeneralInfoForm({
           <div className="text-sm font-medium text-muted-foreground">
             Description
           </div>
-          <p className="mt-1 text-sm">
-            {organization.description || (
-              <span className="text-muted-foreground italic">
-                No description
-              </span>
-            )}
-          </p>
+          <div className="mt-1 text-sm">
+            <RichTextDisplay
+              html={organization.description}
+              emptyFallback={
+                <span className="text-muted-foreground italic">
+                  No description
+                </span>
+              }
+            />
+          </div>
         </div>
 
         {/* Salon Type */}
@@ -318,16 +326,12 @@ export function GeneralInfoForm({
               field.state.meta.isTouched && field.state.meta.errors.length > 0;
             return (
               <Field data-invalid={hasError || undefined}>
-                <FieldLabel htmlFor={field.name}>Description</FieldLabel>
-                <Textarea
-                  id={field.name}
-                  name={field.name}
+                <FieldLabel>Description</FieldLabel>
+                <RichEditor
                   value={field.state.value}
+                  onChange={(html) => field.handleChange(html)}
                   onBlur={field.handleBlur}
-                  onChange={(e) => field.handleChange(e.target.value)}
                   disabled={form.state.isSubmitting}
-                  aria-invalid={hasError}
-                  rows={3}
                   placeholder="Describe your salon..."
                 />
                 {hasError && <FieldError errors={field.state.meta.errors} />}

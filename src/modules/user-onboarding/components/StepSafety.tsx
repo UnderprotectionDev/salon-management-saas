@@ -5,8 +5,8 @@ import { useId } from "react";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { SectionDivider } from "@/modules/org-onboarding";
 import { COMMON_ALLERGENS } from "@/modules/onboarding/lib/constants";
+import { SectionDivider } from "@/modules/org-onboarding";
 import type { WizardFormData } from "../hooks/useUserOnboardingForm";
 
 export function StepSafety({

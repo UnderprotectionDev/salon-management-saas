@@ -1,22 +1,22 @@
 "use client";
 
 import { useState } from "react";
-import {
-  SKIN_TYPE_OPTIONS,
-  SKIN_CONDITIONS_OPTIONS,
-  DAILY_ROUTINE_OPTIONS,
-  SUNSCREEN_USAGE_OPTIONS,
-  ACTIVE_INGREDIENT_OPTIONS,
-} from "../../lib/salon-preferences-constants";
 import { useCategoryForm } from "../../hooks/useCategoryForm";
 import {
-  PillSelect,
+  ACTIVE_INGREDIENT_OPTIONS,
+  DAILY_ROUTINE_OPTIONS,
+  SKIN_CONDITIONS_OPTIONS,
+  SKIN_TYPE_OPTIONS,
+  SUNSCREEN_USAGE_OPTIONS,
+} from "../../lib/salon-preferences-constants";
+import { PhotoUploadGrid } from "./PhotoUploadGrid";
+import {
   CheckboxGroup,
+  DateField,
+  PillSelect,
   SaveButton,
   SwitchField,
-  DateField,
 } from "./shared";
-import { PhotoUploadGrid } from "./PhotoUploadGrid";
 
 type SkinData = {
   skinType?: string;

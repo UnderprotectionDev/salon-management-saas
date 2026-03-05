@@ -56,9 +56,7 @@ export default function BillingPage() {
       await triggerSync();
       toast.success("Products synced successfully");
     } catch (error) {
-      toast.error(
-        getConvexErrorMessage(error, "Failed to sync products."),
-      );
+      toast.error(getConvexErrorMessage(error, "Failed to sync products."));
     } finally {
       setIsSyncing(false);
     }

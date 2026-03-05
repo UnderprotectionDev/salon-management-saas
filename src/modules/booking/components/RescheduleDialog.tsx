@@ -75,7 +75,7 @@ export function RescheduleDialog({
   const handleSlotSelect = (
     startTime: number,
     endTime: number,
-    lockId: Id<"slotLocks"> | null,
+    _lockId: Id<"slotLocks"> | null,
   ) => {
     setSelectedStartTime(startTime);
     setSelectedEndTime(endTime);

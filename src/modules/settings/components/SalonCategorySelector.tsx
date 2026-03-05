@@ -6,8 +6,8 @@ import { useState } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
-import { USER_SALON_CATEGORIES } from "../lib/salon-preferences-constants";
 import { api } from "../../../../convex/_generated/api";
+import { USER_SALON_CATEGORIES } from "../lib/salon-preferences-constants";
 
 export function SalonCategorySelector({
   selectedCategories,

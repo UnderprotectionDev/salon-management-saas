@@ -5,9 +5,9 @@ import { PhoneInput } from "@/components/reui/phone-input";
 import { Field, FieldLabel } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 import { SearchableSelect } from "@/components/ui/searchable-select";
-import { CITY_NAMES, getDistricts } from "@/lib/data/turkey-cities";
-import { loadNeighbourhoods } from "@/lib/data/neighbourhood-loader";
 import { authClient } from "@/lib/auth-client";
+import { loadNeighbourhoods } from "@/lib/data/neighbourhood-loader";
+import { CITY_NAMES, getDistricts } from "@/lib/data/turkey-cities";
 import type { WizardFormData } from "../hooks/useOnboardingForm";
 import { ONBOARDING_INPUT } from "../lib/constants";
 import { SectionDivider } from "./SectionDivider";
@@ -41,9 +41,8 @@ export function StepContact({
       }
     };
     fetchEmail();
-    // Only run once on mount
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+    // biome-ignore lint/correctness/useExhaustiveDependencies: only run once on mount
+  }, [onPrefillEmail]);
 
   // Highlight district when city changes
   useEffect(() => {

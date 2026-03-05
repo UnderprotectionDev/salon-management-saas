@@ -2,8 +2,8 @@
 
 import { Clock, Info } from "lucide-react";
 import {
-  BusinessHoursEditor,
   type BusinessHours,
+  BusinessHoursEditor,
 } from "@/components/business-hours/BusinessHoursEditor";
 import type { WizardFormData } from "../hooks/useOnboardingForm";
 import { HOUR_PRESETS } from "../lib/constants";

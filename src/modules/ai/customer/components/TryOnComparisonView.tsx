@@ -329,7 +329,7 @@ export function TryOnComparisonView({
     return () => {
       cancelled = true;
     };
-  }, [mode, selectedIds, getFileUrl, completedSimulations]);
+  }, [mode, getFileUrl, selectedSimulations]);
 
   // ---------------------------------------------------------------------------
   // Handlers

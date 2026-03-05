@@ -4,9 +4,6 @@
  * Consolidates 1 individual skills
  */
 
-const fs = require("fs");
-const path = require("path");
-
 const args = process.argv.slice(2);
 if (args.includes("--help")) {
   console.log(`
@@ -26,7 +23,7 @@ Consolidated from: 1 skills
 
 if (args.includes("--list")) {
   console.log("Consolidated skills:");
-  ["code-quality-expert"].forEach((s) => console.log("  - " + s));
+  for (const s of ["code-quality-expert"]) console.log(`  - ${s}`);
   process.exit(0);
 }
 

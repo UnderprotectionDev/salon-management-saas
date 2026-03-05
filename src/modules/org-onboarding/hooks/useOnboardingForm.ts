@@ -1,11 +1,11 @@
 "use client";
 
-import { getDefaultBusinessHours } from "@/components/business-hours/BusinessHoursEditor";
-import type { BusinessHours } from "@/components/business-hours/BusinessHoursEditor";
-import { useOrganizations } from "@/modules/organization";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
+import type { BusinessHours } from "@/components/business-hours/BusinessHoursEditor";
+import { getDefaultBusinessHours } from "@/components/business-hours/BusinessHoursEditor";
+import { useOrganizations } from "@/modules/organization";
 import type { OrgSalonType } from "../lib/constants";
 import { computeHoursSummary, slugify } from "../lib/utils";
 import {

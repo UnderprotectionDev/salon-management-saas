@@ -1,6 +1,5 @@
 @import "tailwindcss";
 @import "./tw-animate.css";
-
 @custom-variant dark (&:is(.dark *));
 
 :root {
@@ -432,6 +431,588 @@ body {
   background: var(--sheet-active-ring);
   cursor: crosshair;
   z-index: 30;
+}
+
+/* =============================================
+   Rich Text Editor (Tiptap / ProseMirror)
+   ============================================= */
+
+/* Editor content area */
+.rich-editor-content {
+  min-height: 120px;
+  padding: 0.5rem 0.75rem;
+  font-size: 0.875rem;
+  line-height: 1.625;
+}
+
+.rich-editor-content:focus {
+  outline: none;
+}
+
+/* Placeholder */
+.rich-editor-content p.is-editor-empty:first-child::before {
+  content: attr(data-placeholder);
+  float: left;
+  color: var(--muted-foreground);
+  pointer-events: none;
+  height: 0;
+}
+
+/* Basic typography inside editor */
+.rich-editor-content p {
+  margin: 0.25em 0;
+}
+
+.rich-editor-content h2 {
+  font-size: 1.25rem;
+  font-weight: 600;
+  margin: 0.75em 0 0.25em;
+}
+
+.rich-editor-content h1 {
+  font-size: 1.5rem;
+  font-weight: 700;
+  margin: 1em 0 0.25em;
+}
+
+.rich-editor-content h3 {
+  font-size: 1.1rem;
+  font-weight: 600;
+  margin: 0.5em 0 0.25em;
+}
+
+.rich-editor-content h4 {
+  font-size: 1rem;
+  font-weight: 600;
+  margin: 0.5em 0 0.25em;
+}
+
+.rich-editor-content strong {
+  font-weight: 700;
+}
+
+.rich-editor-content em {
+  font-style: italic;
+}
+
+.rich-editor-content u {
+  text-decoration: underline;
+}
+
+.rich-editor-content s {
+  text-decoration: line-through;
+}
+
+.rich-editor-content ul {
+  list-style: disc;
+  padding-left: 1.5em;
+  margin: 0.25em 0;
+}
+
+.rich-editor-content ol {
+  list-style: decimal;
+  padding-left: 1.5em;
+  margin: 0.25em 0;
+}
+
+.rich-editor-content li {
+  margin: 0.125em 0;
+}
+
+.rich-editor-content ul[data-type="taskList"] {
+  list-style: none;
+  padding-left: 0.25em;
+}
+
+.rich-editor-content ul[data-type="taskList"] li {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.5em;
+}
+
+.rich-editor-content ul[data-type="taskList"] li label {
+  flex-shrink: 0;
+  padding-top: 0.2em;
+}
+
+.rich-editor-content ul[data-type="taskList"] li input[type="checkbox"] {
+  accent-color: var(--brand);
+  cursor: pointer;
+}
+
+.rich-editor-content ul[data-type="taskList"] li[data-checked="true"] > div {
+  text-decoration: line-through;
+  color: var(--muted-foreground);
+}
+
+.rich-editor-content a {
+  color: var(--brand);
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+.rich-editor-content blockquote {
+  border-left: 3px solid var(--border);
+  padding-left: 1em;
+  margin: 0.5em 0;
+  color: var(--muted-foreground);
+  font-style: italic;
+}
+
+.rich-editor-content hr {
+  border: none;
+  border-top: 1px solid var(--border);
+  margin: 1em 0;
+}
+
+.rich-editor-content mark {
+  border-radius: 2px;
+  padding: 0 2px;
+  box-decoration-break: clone;
+}
+
+.rich-editor-content img.rich-editor-image {
+  max-width: 100%;
+  height: auto;
+  border-radius: var(--radius);
+  margin: 0;
+}
+
+/* Image & YouTube NodeView — wrapper alignment (float layout)
+   DEPRECATED for images: left/right now creates imageWithText columns.
+   Kept for backward compat with saved HTML and YouTube float alignment. */
+.rich-editor-image-wrapper,
+.rich-editor-youtube-wrapper {
+  margin: 0.5em 0;
+}
+.rich-editor-youtube-wrapper {
+  padding: 0 1rem;
+}
+.rich-editor-image-wrapper[data-alignment="left"],
+.rich-editor-youtube-wrapper[data-alignment="left"] {
+  float: left;
+  margin: 0.5em 1em 0.5em 0;
+  width: fit-content;
+}
+.rich-editor-image-wrapper[data-alignment="center"],
+.rich-editor-youtube-wrapper[data-alignment="center"] {
+  display: flex;
+  justify-content: center;
+  clear: both;
+}
+.rich-editor-image-wrapper[data-alignment="right"],
+.rich-editor-youtube-wrapper[data-alignment="right"] {
+  float: right;
+  margin: 0.5em 0 0.5em 1em;
+  width: fit-content;
+}
+.rich-editor-image-wrapper[data-alignment="fit"],
+.rich-editor-youtube-wrapper[data-alignment="fit"] {
+  clear: both;
+  width: 100%;
+}
+.rich-editor-image-wrapper[data-alignment="fit"] img,
+.rich-editor-youtube-wrapper[data-alignment="fit"] iframe {
+  width: 100%;
+  height: auto;
+}
+
+/* Image NodeView — container */
+.rich-editor-image-container {
+  position: relative;
+  display: inline-block;
+  line-height: 0;
+}
+
+/* Selection ring */
+.rich-editor-image-container[data-selected="true"] img {
+  outline: 2px solid var(--ring);
+  outline-offset: 2px;
+  border-radius: var(--radius);
+}
+
+/* Delete button — visible on hover/selected */
+.rich-editor-image-delete {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  opacity: 0;
+  transition: opacity 150ms;
+}
+.rich-editor-image-container:hover .rich-editor-image-delete,
+.rich-editor-image-container[data-selected="true"] .rich-editor-image-delete {
+  opacity: 1;
+}
+
+/* Resize handles — 4 corners */
+.rich-editor-resize-handle {
+  position: absolute;
+  width: 8px;
+  height: 8px;
+  border-radius: 2px;
+  background: var(--background);
+  border: 1.5px solid var(--ring);
+  opacity: 0;
+  transition: opacity 150ms;
+  z-index: 10;
+}
+.rich-editor-image-container:hover .rich-editor-resize-handle,
+.rich-editor-image-container[data-selected="true"] .rich-editor-resize-handle,
+.rich-editor-youtube-container:hover .rich-editor-resize-handle,
+.rich-editor-youtube-container[data-selected="true"]
+  .rich-editor-resize-handle {
+  opacity: 1;
+}
+.rich-editor-resize-handle.top-left {
+  top: -4px;
+  left: -4px;
+  cursor: nw-resize;
+}
+.rich-editor-resize-handle.top-right {
+  top: -4px;
+  right: -4px;
+  cursor: ne-resize;
+}
+.rich-editor-resize-handle.bottom-left {
+  bottom: -4px;
+  left: -4px;
+  cursor: sw-resize;
+}
+.rich-editor-resize-handle.bottom-right {
+  bottom: -4px;
+  right: -4px;
+  cursor: se-resize;
+}
+
+/* Alignment bar + size presets — visible when selected */
+.rich-editor-image-alignment {
+  position: absolute;
+  bottom: -68px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 10;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+/* YouTube NodeView — container */
+.rich-editor-youtube-container {
+  position: relative;
+  display: block;
+  line-height: 0;
+}
+.rich-editor-youtube-container iframe {
+  border: 0;
+  border-radius: var(--radius);
+  display: block;
+}
+/* YouTube selection ring */
+.rich-editor-youtube-container[data-selected="true"] iframe {
+  outline: 2px solid var(--ring);
+  outline-offset: 2px;
+  border-radius: var(--radius);
+}
+/* YouTube delete button */
+.rich-editor-youtube-delete {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  opacity: 0;
+  transition: opacity 150ms;
+}
+.rich-editor-youtube-container:hover .rich-editor-youtube-delete,
+.rich-editor-youtube-container[data-selected="true"]
+  .rich-editor-youtube-delete {
+  opacity: 1;
+}
+/* YouTube alignment bar */
+.rich-editor-youtube-alignment {
+  position: absolute;
+  bottom: -36px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 10;
+}
+
+/* Clear float node — invisible block that clears floats */
+.rich-editor-content .clear-float,
+.rich-text-display .clear-float {
+  clear: both;
+  height: 0;
+  margin: 0;
+  line-height: 0;
+}
+
+/* Clearfix — prevent float overflow */
+.rich-editor-content::after,
+.rich-text-display::after {
+  content: "";
+  display: table;
+  clear: both;
+}
+
+/* ImageWithText NodeView — columns layout */
+.image-with-text-wrapper {
+  margin: 0.5em 0;
+  clear: both;
+}
+.image-with-text-grid {
+  display: grid;
+  gap: 1em;
+  align-items: start;
+}
+.image-with-text-image-col {
+  position: relative;
+}
+.image-with-text-image-col img {
+  width: 100%;
+  height: auto;
+  border-radius: var(--radius);
+  display: block;
+}
+.image-with-text-delete {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  opacity: 0;
+  transition: opacity 150ms;
+}
+.image-with-text-image-col:hover .image-with-text-delete,
+.image-with-text-wrapper.ProseMirror-selectednode .image-with-text-delete {
+  opacity: 1;
+}
+.image-with-text-text-col {
+  min-height: 2em;
+}
+.image-with-text-toolbar {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  margin-top: 4px;
+}
+
+/* Rich text display (read-only) — same styles */
+.rich-text-display p {
+  margin: 0.25em 0;
+}
+
+.rich-text-display h2 {
+  font-size: 1.25rem;
+  font-weight: 600;
+  margin: 0.75em 0 0.25em;
+}
+
+.rich-text-display h1 {
+  font-size: 1.5rem;
+  font-weight: 700;
+  margin: 1em 0 0.25em;
+}
+
+.rich-text-display h3 {
+  font-size: 1.1rem;
+  font-weight: 600;
+  margin: 0.5em 0 0.25em;
+}
+
+.rich-text-display h4 {
+  font-size: 1rem;
+  font-weight: 600;
+  margin: 0.5em 0 0.25em;
+}
+
+.rich-text-display strong {
+  font-weight: 700;
+}
+
+.rich-text-display em {
+  font-style: italic;
+}
+
+.rich-text-display u {
+  text-decoration: underline;
+}
+
+.rich-text-display s {
+  text-decoration: line-through;
+}
+
+.rich-text-display ul {
+  list-style: disc;
+  padding-left: 1.5em;
+  margin: 0.25em 0;
+}
+
+.rich-text-display ol {
+  list-style: decimal;
+  padding-left: 1.5em;
+  margin: 0.25em 0;
+}
+
+.rich-text-display li {
+  margin: 0.125em 0;
+}
+
+.rich-text-display ul[data-type="taskList"] {
+  list-style: none;
+  padding-left: 0.25em;
+}
+
+.rich-text-display ul[data-type="taskList"] li {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.5em;
+}
+
+.rich-text-display ul[data-type="taskList"] li label {
+  flex-shrink: 0;
+  padding-top: 0.2em;
+}
+
+.rich-text-display ul[data-type="taskList"] li input[type="checkbox"] {
+  accent-color: var(--brand);
+  pointer-events: none;
+  cursor: default;
+}
+
+.rich-text-display ul[data-type="taskList"] li[data-checked="true"] > div {
+  text-decoration: line-through;
+  color: var(--muted-foreground);
+}
+
+.rich-text-display a {
+  color: var(--brand);
+  text-decoration: underline;
+}
+
+.rich-text-display img {
+  max-width: 100%;
+  height: auto;
+  border-radius: var(--radius);
+  margin: 0.5em 0;
+}
+.rich-text-display img[data-alignment="left"] {
+  float: left;
+  margin: 0.5em 1em 0.5em 0;
+}
+.rich-text-display img[data-alignment="center"] {
+  display: block;
+  margin: 0.5em auto;
+  clear: both;
+}
+.rich-text-display img[data-alignment="right"] {
+  float: right;
+  margin: 0.5em 0 0.5em 1em;
+}
+.rich-text-display img[data-alignment="fit"] {
+  width: 100%;
+  height: auto;
+  clear: both;
+}
+
+.rich-text-display blockquote {
+  border-left: 3px solid var(--border);
+  padding-left: 1em;
+  margin: 0.5em 0;
+  color: var(--muted-foreground);
+  font-style: italic;
+}
+
+.rich-text-display hr {
+  border: none;
+  border-top: 1px solid var(--border);
+  margin: 1em 0;
+}
+
+.rich-text-display mark {
+  border-radius: 2px;
+  padding: 0 2px;
+  box-decoration-break: clone;
+}
+
+.rich-text-display div[data-youtube-video] {
+  margin: 0.5em 0;
+  padding: 0 1rem;
+}
+.rich-text-display div[data-youtube-video] iframe {
+  border: 0;
+  border-radius: var(--radius);
+  display: block;
+  width: 100%;
+  height: auto;
+  aspect-ratio: 16 / 9;
+}
+.rich-text-display div[data-youtube-video][data-alignment="left"] {
+  float: left;
+  margin: 0.5em 1em 0.5em 0;
+  width: fit-content;
+}
+.rich-text-display div[data-youtube-video][data-alignment="center"] {
+  display: flex;
+  justify-content: center;
+  clear: both;
+}
+.rich-text-display div[data-youtube-video][data-alignment="right"] {
+  float: right;
+  margin: 0.5em 0 0.5em 1em;
+  width: fit-content;
+}
+.rich-text-display div[data-youtube-video][data-alignment="fit"] {
+  clear: both;
+  width: 100%;
+}
+.rich-text-display div[data-youtube-video][data-alignment="fit"] iframe {
+  width: 100%;
+  height: auto;
+}
+
+/* ImageWithText display (read-only) — columns layout */
+.rich-text-display div[data-image-with-text] {
+  display: grid;
+  gap: 1em;
+  margin: 0.5em 0;
+  align-items: start;
+}
+.rich-text-display div[data-image-with-text][data-ratio="25"] {
+  grid-template-columns: 1fr 3fr;
+}
+.rich-text-display div[data-image-with-text][data-ratio="50"] {
+  grid-template-columns: 1fr 1fr;
+}
+.rich-text-display div[data-image-with-text][data-ratio="75"] {
+  grid-template-columns: 3fr 1fr;
+}
+.rich-text-display
+  div[data-image-with-text][data-image-position="right"]
+  > img {
+  order: 2;
+}
+.rich-text-display
+  div[data-image-with-text][data-image-position="right"]
+  > div[data-text-column] {
+  order: 1;
+}
+.rich-text-display div[data-image-with-text] > img {
+  width: 100%;
+  height: auto;
+  border-radius: var(--radius);
+}
+
+/* Text alignment (Tiptap TextAlign extension) */
+.rich-text-display [style*="text-align: center"] {
+  text-align: center;
+}
+.rich-text-display [style*="text-align: right"] {
+  text-align: right;
+}
+.rich-text-display [style*="text-align: justify"] {
+  text-align: justify;
+}
+
+/* Link hover */
+.rich-text-display a:hover {
+  opacity: 0.8;
 }
 
 .sheet-row-header {

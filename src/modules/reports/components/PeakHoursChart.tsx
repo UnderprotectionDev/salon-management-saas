@@ -34,7 +34,7 @@ export function PeakHoursChart({
   }
 
   // Find peak hour for highlighting
-  const maxCount = Math.max(...data.map((d) => d.count));
+  const _maxCount = Math.max(...data.map((d) => d.count));
 
   return (
     <ChartContainer config={chartConfig} className="h-[300px] w-full">

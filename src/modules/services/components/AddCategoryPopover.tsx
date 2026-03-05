@@ -66,9 +66,7 @@ export function AddCategoryPopover({
           return;
         }
       }
-      toast.error(
-        getConvexErrorMessage(error, "Failed to create category"),
-      );
+      toast.error(getConvexErrorMessage(error, "Failed to create category"));
     } finally {
       setIsSubmitting(false);
     }

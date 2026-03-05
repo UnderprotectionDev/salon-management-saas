@@ -53,7 +53,7 @@ function BanUserDialog({
       toast.success(`${userName} has been banned`);
       onOpenChange(false);
       setReason("");
-    } catch (error) {
+    } catch (_error) {
       toast.error("Failed to ban user");
     }
   };
@@ -102,7 +102,7 @@ export default function AdminUsersPage() {
     try {
       await unbanUser({ userId });
       toast.success(`${name} has been unbanned`);
-    } catch (error) {
+    } catch (_error) {
       toast.error("Failed to unban user");
     }
   };

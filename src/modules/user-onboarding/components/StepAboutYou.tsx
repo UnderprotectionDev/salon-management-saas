@@ -11,12 +11,12 @@ import {
 import { useId, useState } from "react";
 import NiceAvatar from "react-nice-avatar";
 import { Input } from "@/components/ui/input";
+import { GENDER_OPTIONS } from "@/modules/onboarding/lib/constants";
 import { SectionDivider } from "@/modules/org-onboarding";
 import { ONBOARDING_INPUT } from "@/modules/org-onboarding/lib/constants";
-import { GENDER_OPTIONS } from "@/modules/onboarding/lib/constants";
-import { generateAvatarSet } from "../lib/avatar";
-import type { AvatarConfig, Gender } from "../lib/avatar";
 import type { WizardFormData } from "../hooks/useUserOnboardingForm";
+import type { AvatarConfig, Gender } from "../lib/avatar";
+import { generateAvatarSet } from "../lib/avatar";
 
 const GENDER_ICONS: Record<string, typeof User> = {
   female: UserRound,

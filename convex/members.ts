@@ -18,8 +18,8 @@ import { memberDocValidator, memberRoleValidator } from "./lib/validators";
  *
  * @internal - Shared helper used by both members.remove/leave and users.deleteMyAccount
  */
-export async function revokeUserSessions(ctx: MutationCtx, userId: string) {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any -- Component API union type requires assertion
+export async function revokeUserSessions(_ctx: MutationCtx, userId: string) {
+  // biome-ignore lint/suspicious/noExplicitAny: Component API union type requires assertion
   const adapter = components.betterAuth.adapter as any;
 
   await adapter.deleteMany({

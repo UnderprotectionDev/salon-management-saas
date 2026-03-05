@@ -1,10 +1,10 @@
 "use client";
 
 import { useState } from "react";
-import { METAL_ALLERGY_OPTIONS } from "../../lib/salon-preferences-constants";
 import { useCategoryForm } from "../../hooks/useCategoryForm";
-import { CheckboxGroup, SaveButton, SwitchField } from "./shared";
+import { METAL_ALLERGY_OPTIONS } from "../../lib/salon-preferences-constants";
 import { PhotoUploadGrid } from "./PhotoUploadGrid";
+import { CheckboxGroup, SaveButton, SwitchField } from "./shared";
 
 type ArtData = {
   previousTattoos?: boolean;

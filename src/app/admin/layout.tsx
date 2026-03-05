@@ -64,7 +64,7 @@ function AdminLayoutContent({ children }: { children: React.ReactNode }) {
     return null;
   }
 
-  const handleSignOut = async () => {
+  const _handleSignOut = async () => {
     try {
       // Dispatch event BEFORE sign out to skip queries immediately
       window.dispatchEvent(new Event("auth:signing-out"));

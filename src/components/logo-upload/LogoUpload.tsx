@@ -141,6 +141,7 @@ export function LogoUpload({
   return (
     <div className="space-y-3">
       {/* Preview Area */}
+      {/* biome-ignore lint/a11y/useSemanticElements: complex upload target with drag/drop and preview */}
       <div
         role="button"
         tabIndex={disabled || isUploading ? -1 : 0}

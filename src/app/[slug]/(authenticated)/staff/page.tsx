@@ -13,7 +13,7 @@ import { useOrganization } from "@/modules/organization";
 import { AddStaffDialog } from "@/modules/staff";
 import { api } from "../../../../../convex/_generated/api";
 
-function getInitials(name: string): string {
+function _getInitials(name: string): string {
   return name
     .split(" ")
     .map((n) => n[0])

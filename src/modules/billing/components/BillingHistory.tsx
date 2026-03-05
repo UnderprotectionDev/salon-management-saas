@@ -84,7 +84,9 @@ export function BillingHistory() {
         const data = await getBillingHistory();
         setOrders(data);
       } catch (error) {
-        toast.error(getConvexErrorMessage(error, "Failed to load billing history."));
+        toast.error(
+          getConvexErrorMessage(error, "Failed to load billing history."),
+        );
       } finally {
         setIsLoading(false);
         setHasLoaded(true);

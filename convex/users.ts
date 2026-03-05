@@ -1,6 +1,5 @@
 import { ConvexError, v } from "convex/values";
 import { components } from "./_generated/api";
-import type { Doc } from "./_generated/dataModel";
 import { authedMutation, authedQuery, ErrorCode } from "./lib/functions";
 import { rateLimiter } from "./lib/rateLimits";
 import { cascadeDeleteStaffData, revokeUserSessions } from "./members";
@@ -85,21 +84,21 @@ export const deleteMyAccount = authedMutation({
     }
 
     // Delete Better Auth account records
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any -- Component API union type requires assertion
     await ctx.runMutation(components.betterAuth.adapter.deleteMany, {
       input: {
         model: "account",
         where: [{ field: "userId", operator: "eq", value: ctx.user._id }],
       },
+      // biome-ignore lint/suspicious/noExplicitAny: betterAuth adapter dynamic types
     } as any);
 
     // Delete Better Auth user record
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any -- Component API union type requires assertion
     await ctx.runMutation(components.betterAuth.adapter.deleteMany, {
       input: {
         model: "user",
         where: [{ field: "_id", operator: "eq", value: ctx.user._id }],
       },
+      // biome-ignore lint/suspicious/noExplicitAny: betterAuth adapter dynamic types
     } as any);
 
     return true;

@@ -14,8 +14,8 @@ import { Textarea } from "@/components/ui/textarea";
 import type { WizardFormData } from "../hooks/useOnboardingForm";
 import {
   ONBOARDING_INPUT,
-  SALON_TYPE_CATEGORIES,
   type OrgSalonType,
+  SALON_TYPE_CATEGORIES,
 } from "../lib/constants";
 import { slugify } from "../lib/utils";
 import { nameSchema, slugSchema } from "../lib/validators";

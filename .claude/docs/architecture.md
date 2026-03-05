@@ -34,6 +34,13 @@ src/
 │   ├── onboarding/      # New user org creation
 │   └── dashboard/       # Redirect to active org
 ├── components/ui/       # shadcn/ui components (56+)
+├── components/rich-editor/ # Tiptap rich text editor (20 files)
+│   ├── RichEditor.tsx      #   Main editor (toolbar, preview, char count)
+│   ├── RichTextDisplay.tsx  #   Read-only display (DOMPurify sanitized)
+│   ├── BubbleMenuBar.tsx    #   Context menu for text selection
+│   ├── extensions/          #   ResizableImage, ResizableYouTube, ImageWithText, ClearFloat
+│   ├── node-views/          #   ImageNodeView, YouTubeNodeView, ImageWithTextNodeView
+│   └── toolbars/            #   9 toolbar components (Heading, Link, Color, Highlight, etc.)
 ├── emails/              # React Email templates
 ├── lib/                 # Utilities (cn(), auth helpers)
 └── modules/             # Feature modules (domain-driven)
@@ -105,6 +112,7 @@ Use hooks from `@/modules/organization`:
 | `src/modules/org-onboarding/`     | Org creation wizard (3-step, fully modular)      |
 | `src/modules/user-onboarding/`    | User profile setup wizard (name, gender, avatar) |
 | `src/proxy.ts`                    | Auth proxy for protected routes                  |
+| `src/components/rich-editor/`     | Tiptap rich text editor (20 files, 4 extensions) |
 
 ## Documentation
 

@@ -37,7 +37,7 @@ function groupDatesByMonth(dates: string[]): MonthGroup[] {
       currentGroup = { label, dates: [] };
       groups.push(currentGroup);
     }
-    currentGroup!.dates.push(dateStr);
+    currentGroup?.dates.push(dateStr);
   }
 
   return groups;

@@ -64,7 +64,6 @@ export function StatusBar({ data }: { data: StatusBreakdown }) {
                   <div
                     className={`${APPOINTMENT_STATUS_BAR_COLORS[seg.statusKey]} transition-all`}
                     style={{ width: `${pct}%` }}
-                    tabIndex={0}
                     role="meter"
                     aria-label={`${seg.label}: ${count} (${Math.round(pct)}%)`}
                     aria-valuenow={count}

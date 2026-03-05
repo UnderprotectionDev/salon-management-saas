@@ -1,17 +1,17 @@
 "use client";
 
-import { createContext, ReactNode, useContext } from "react";
-import {
+import type {
   ColumnFiltersState,
   RowData,
   SortingState,
   Table,
 } from "@tanstack/react-table";
+import { createContext, type ReactNode, useContext } from "react";
 
 import { cn } from "@/lib/utils";
 
 declare module "@tanstack/react-table" {
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  // biome-ignore lint/correctness/noUnusedVariables: TValue required by @tanstack/react-table module augmentation
   interface ColumnMeta<TData extends RowData, TValue> {
     headerTitle?: string;
     headerClassName?: string;
@@ -92,7 +92,7 @@ export interface DataGridProps<TData extends object> {
 }
 
 const DataGridContext = createContext<
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  // biome-ignore lint/suspicious/noExplicitAny: generic context requires any
   DataGridContextProps<any> | undefined
 >(undefined);
 

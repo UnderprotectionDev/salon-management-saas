@@ -1,13 +1,13 @@
 "use client";
 
 import { Suspense } from "react";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useOrganization } from "@/modules/organization";
 import {
+  CustomerReport,
   RevenueReport,
   StaffPerformanceReport,
-  CustomerReport,
 } from "@/modules/reports";
 
 export default function ReportsPage() {

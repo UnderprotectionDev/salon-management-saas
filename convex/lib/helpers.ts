@@ -29,7 +29,8 @@ export function validatePhoneOrThrow(phone: string): void {
   if (!isValidTurkishPhone(phone)) {
     throw new ConvexError({
       code: ErrorCode.VALIDATION_ERROR,
-      message: "Invalid Turkish phone number. Expected format: +90 5XX XXX XX XX",
+      message:
+        "Invalid Turkish phone number. Expected format: +90 5XX XXX XX XX",
     });
   }
 }

@@ -3,8 +3,8 @@
 import { Building2, CalendarDays, Clock, MapPin, Users } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useActiveOrganization } from "@/modules/organization";
 import { cn } from "@/lib/utils";
+import { useActiveOrganization } from "@/modules/organization";
 
 const NAV_ITEMS = [
   { label: "Salon Info", icon: Building2, segment: "general" },

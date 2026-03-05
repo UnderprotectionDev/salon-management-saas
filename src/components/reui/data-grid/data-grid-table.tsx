@@ -1,20 +1,19 @@
 "use client";
 "use no memo";
 
-import { CSSProperties, Fragment, ReactNode } from "react";
-import { useDataGrid } from "@/components/reui/data-grid/data-grid";
 import {
-  Cell,
-  Column,
+  type Cell,
+  type Column,
   flexRender,
-  Header,
-  HeaderGroup,
-  Row,
+  type Header,
+  type HeaderGroup,
+  type Row,
 } from "@tanstack/react-table";
 import { cva } from "class-variance-authority";
-
-import { cn } from "@/lib/utils";
+import { type CSSProperties, Fragment, type ReactNode } from "react";
+import { useDataGrid } from "@/components/reui/data-grid/data-grid";
 import { Checkbox } from "@/components/ui/checkbox";
+import { cn } from "@/lib/utils";
 
 const headerCellSpacingVariants = cva("", {
   variants: {
@@ -308,7 +307,7 @@ function DataGridTableBodyRow<TData>({
           ? "selected"
           : undefined
       }
-      onClick={() => props.onRowClick && props.onRowClick(row.original)}
+      onClick={() => props.onRowClick?.(row.original)}
       className={cn(
         "hover:bg-muted/40 data-[state=selected]:bg-muted/50",
         props.onRowClick && "cursor-pointer",

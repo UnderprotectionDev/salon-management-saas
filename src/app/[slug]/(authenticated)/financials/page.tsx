@@ -6,7 +6,6 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { SpreadsheetShell } from "@/modules/financials/components/SpreadsheetShell";
 import { useFreeformCells } from "@/modules/financials/hooks/useFreeformCells";
 import type { MergedRegion } from "@/modules/financials/lib/merge-utils";
-import type { CondFormatRule } from "@/modules/financials/lib/conditional-format-types";
 import {
   type CellData,
   type CellMap,

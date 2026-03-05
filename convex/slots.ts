@@ -88,7 +88,7 @@ export const available = publicQuery({
     const slotDuration = roundUpTo15(effectiveDuration);
 
     // 2. Get eligible staff
-    let staffMembers;
+    let staffMembers: Doc<"staff">[];
     if (args.staffId) {
       const staff = await ctx.db.get(args.staffId);
       staffMembers =
@@ -358,7 +358,7 @@ export const availableDates = publicQuery({
     const slotDuration = roundUpTo15(totalDuration + totalBufferTime);
 
     // Get eligible staff
-    let staffMembers;
+    let staffMembers: Doc<"staff">[];
     if (args.staffId) {
       const staff = await ctx.db.get(args.staffId);
       staffMembers =
@@ -397,7 +397,7 @@ export const availableDates = publicQuery({
 
     const todayStr = getTodayDateString(timezone);
     const currentMinutes = getCurrentMinutes(timezone);
-    const now = Date.now();
+    const _now = Date.now();
 
     // Batch fetch all appointments in range
     const allAppointments = await ctx.db

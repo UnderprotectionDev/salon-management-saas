@@ -3,8 +3,8 @@
 import { Search } from "lucide-react";
 import { useState } from "react";
 import { Input } from "@/components/ui/input";
-import { useOrganization } from "@/modules/organization";
 import { AppointmentList, CreateAppointmentDialog } from "@/modules/booking";
+import { useOrganization } from "@/modules/organization";
 
 export default function AppointmentsPage() {
   const { activeOrganization } = useOrganization();

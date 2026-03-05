@@ -21,6 +21,10 @@ import {
 import { Skeleton } from "@/components/ui/skeleton";
 import { api } from "../../convex/_generated/api";
 
+function stripHtml(html: string): string {
+  return html.replace(/<[^>]*>/g, "").trim();
+}
+
 function SalonListSkeleton() {
   return (
     <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
@@ -105,7 +109,7 @@ export default function Home() {
               >
                 <CardHeader>
                   <Link
-                    href={`/${salon.slug}/book`}
+                    href={`/${salon.slug}`}
                     className="flex items-start gap-4 hover:opacity-80 transition-opacity"
                   >
                     <Avatar className="size-16 border-2">
@@ -130,7 +134,7 @@ export default function Home() {
                 <CardContent className="flex flex-1 flex-col justify-end space-y-3">
                   {salon.description && (
                     <p className="text-sm text-muted-foreground line-clamp-2">
-                      {salon.description}
+                      {stripHtml(salon.description)}
                     </p>
                   )}
                   <div className="flex gap-2">

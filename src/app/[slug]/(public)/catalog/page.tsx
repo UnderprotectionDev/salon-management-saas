@@ -1,7 +1,6 @@
 "use client";
 
 import { useQuery } from "convex/react";
-import type { FunctionReturnType } from "convex/server";
 import {
   Building2,
   MessageCircle,
@@ -13,8 +12,6 @@ import Link from "next/link";
 import { useParams, useSearchParams } from "next/navigation";
 import { useEffect, useState } from "react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
   Select,
@@ -26,9 +23,6 @@ import {
 import { Skeleton } from "@/components/ui/skeleton";
 import { PublicProductCard } from "@/modules/products/components/PublicProductCard";
 import { api } from "../../../../../convex/_generated/api";
-import type { Id } from "../../../../../convex/_generated/dataModel";
-
-type ProductPublic = FunctionReturnType<typeof api.products.listPublic>[number];
 
 type SortMode = "name_asc" | "name_desc" | "price_asc" | "price_desc";
 
