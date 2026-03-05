@@ -15,8 +15,8 @@ import {
 } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 import { SearchableSelect } from "@/components/ui/searchable-select";
-import { CITY_NAMES, getDistricts } from "@/lib/data/turkey-cities";
 import { loadNeighbourhoods } from "@/lib/data/neighbourhood-loader";
+import { CITY_NAMES, getDistricts } from "@/lib/data/turkey-cities";
 import { api } from "../../../../convex/_generated/api";
 import type { Doc, Id } from "../../../../convex/_generated/dataModel";
 

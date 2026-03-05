@@ -1,10 +1,20 @@
 "use client";
 
-import { HTMLAttributes, memo, ReactNode, useMemo } from "react";
+import type { Column } from "@tanstack/react-table";
+import {
+  ArrowDownIcon,
+  ArrowLeftIcon,
+  ArrowLeftToLineIcon,
+  ArrowRightIcon,
+  ArrowRightToLineIcon,
+  ArrowUpIcon,
+  CheckIcon,
+  ChevronsUpDownIcon,
+  PinOffIcon,
+  Settings2Icon,
+} from "lucide-react";
+import { type HTMLAttributes, memo, type ReactNode, useMemo } from "react";
 import { useDataGrid } from "@/components/reui/data-grid/data-grid";
-import { Column } from "@tanstack/react-table";
-
-import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -19,18 +29,7 @@ import {
   DropdownMenuSubTrigger,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import {
-  ArrowDownIcon,
-  ArrowUpIcon,
-  ChevronsUpDownIcon,
-  CheckIcon,
-  ArrowLeftToLineIcon,
-  ArrowRightToLineIcon,
-  ArrowLeftIcon,
-  ArrowRightIcon,
-  Settings2Icon,
-  PinOffIcon,
-} from "lucide-react";
+import { cn } from "@/lib/utils";
 
 interface DataGridColumnHeaderProps<TData, TValue>
   extends HTMLAttributes<HTMLDivElement> {
@@ -52,7 +51,9 @@ function DataGridColumnHeaderInner<TData, TValue>({
   const { isLoading, table, props, recordCount } = useDataGrid();
 
   const columnOrder = table.getState().columnOrder;
-  const columnVisibilityKey = JSON.stringify(table.getState().columnVisibility);
+  const _columnVisibilityKey = JSON.stringify(
+    table.getState().columnVisibility,
+  );
   const isSorted = column.getIsSorted();
   const isPinned = column.getIsPinned();
   const canSort = column.getCanSort();
@@ -99,6 +100,7 @@ function DataGridColumnHeaderInner<TData, TValue>({
     (props.tableLayout?.columnsPinnable && canPin) ||
     filter;
 
+  // biome-ignore lint/correctness/useExhaustiveDependencies: _columnVisibilityKey forces re-computation when visibility changes
   const menuItems = useMemo(() => {
     const items: ReactNode[] = [];
     let hasPreviousSection = false;
@@ -262,7 +264,6 @@ function DataGridColumnHeaderInner<TData, TValue>({
     }
 
     return items;
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
     filter,
     canSort,
@@ -279,7 +280,7 @@ function DataGridColumnHeaderInner<TData, TValue>({
     table,
     columnIndex,
     columnOrder,
-    columnVisibilityKey, // Needed to update checkbox states when visibility changes
+    _columnVisibilityKey,
   ]);
 
   if (hasControls) {

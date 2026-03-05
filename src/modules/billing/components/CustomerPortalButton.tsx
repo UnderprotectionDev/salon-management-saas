@@ -20,7 +20,9 @@ export function CustomerPortalButton() {
       const result = await generatePortalUrl();
       window.location.href = result.url;
     } catch (error) {
-      toast.error(getConvexErrorMessage(error, "Failed to open customer portal."));
+      toast.error(
+        getConvexErrorMessage(error, "Failed to open customer portal."),
+      );
     } finally {
       setIsLoading(false);
     }

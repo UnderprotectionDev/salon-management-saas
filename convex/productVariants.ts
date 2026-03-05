@@ -1,4 +1,6 @@
 import { ConvexError, v } from "convex/values";
+import type { Id } from "./_generated/dataModel";
+import type { MutationCtx } from "./_generated/server";
 import { ErrorCode, ownerMutation, ownerQuery } from "./lib/functions";
 import {
   inventoryTransactionTypeValidator,
@@ -556,16 +558,16 @@ function cartesianProduct<T>(arrays: T[][]): T[][] {
 /**
  * Sync parent product's stockQuantity from variant totals.
  */
-async function syncParentStock(ctx: { db: any }, productId: any) {
+async function syncParentStock(
+  ctx: { db: MutationCtx["db"] },
+  productId: Id<"products">,
+) {
   const variants = await ctx.db
     .query("productVariants")
-    .withIndex("by_product", (q: any) => q.eq("productId", productId))
+    .withIndex("by_product", (q) => q.eq("productId", productId))
     .collect();
 
-  const totalStock = variants.reduce(
-    (sum: number, v: any) => sum + v.stockQuantity,
-    0,
-  );
+  const totalStock = variants.reduce((sum, v) => sum + v.stockQuantity, 0);
 
   await ctx.db.patch(productId, {
     stockQuantity: totalStock,

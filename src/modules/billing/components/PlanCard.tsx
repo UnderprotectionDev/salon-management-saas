@@ -137,7 +137,9 @@ export function PlanCard({
       });
       toast.success("Subscription reactivated successfully");
     } catch (error) {
-      toast.error(getConvexErrorMessage(error, "Failed to reactivate subscription."));
+      toast.error(
+        getConvexErrorMessage(error, "Failed to reactivate subscription."),
+      );
     } finally {
       setIsLoading(false);
     }

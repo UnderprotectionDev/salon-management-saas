@@ -1,4 +1,5 @@
 import { v } from "convex/values";
+import type { Id } from "./_generated/dataModel";
 import { ownerQuery } from "./lib/functions";
 import { priceHistoryWithStaffValidator } from "./lib/validators";
 
@@ -33,10 +34,12 @@ export const listByProduct = ownerQuery({
 
     // Enrich with staff names (parallel fetch)
     const staffIds = [
-      ...new Set(entries.map((e) => e.changedBy).filter(Boolean)),
+      ...new Set(
+        entries.map((e) => e.changedBy).filter((id): id is Id<"staff"> => !!id),
+      ),
     ];
     const staffRecords = await Promise.all(
-      staffIds.map((id) => ctx.db.get(id!)),
+      staffIds.map((id) => ctx.db.get(id)),
     );
     const staffMap = new Map<string, string>();
     staffIds.forEach((id, i) => {

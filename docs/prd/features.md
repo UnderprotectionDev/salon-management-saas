@@ -11,6 +11,7 @@
 | Email Notifications | P1 | ✅ Implemented (M7) |
 | Reports & Analytics | P1 | ✅ Implemented (M8) |
 | Dashboard Appointment Management | P1 | ✅ Implemented (M9) |
+| Rich Text Editor | P2 | ✅ Implemented |
 | AI Features | P2 | 📋 Planned (M10A/B/C) |
 | Products & Inventory | P2 | ✅ Implemented (M11) |
 | Financial Management | P1 | ✅ Implemented (M12) |
@@ -155,6 +156,22 @@ Owner-only Excel-like spreadsheet at `/{slug}/financials`. Multi-sheet with full
 **Formula engine:** Client-side evaluation. Math, text, date, logical, financial, conditional, and lookup function categories.
 
 **Limits:** 52 columns (A–AZ) × 5,000 rows per sheet. Column widths/filters are local state only.
+
+---
+
+## Rich Text Editor
+
+WYSIWYG editor based on Tiptap v3.20.0. Used in rich content areas such as salon description and about page.
+
+**Usage locations:**
+- `/{slug}/settings/general` — Edit salon description (with character limit support)
+- `/{slug}` — Read-only display on public profile page
+
+**Features:** Headings (H1-H4), bold/italic/underline, text color, highlight, bullet/ordered/task lists, blockquote, horizontal rule, text alignment (4 directions), link insert/edit, image upload (2MB, Convex storage), YouTube embed, resizable image/video, image-with-text layout, character/word counter, preview mode, bubble menu (selection context).
+
+**Security:** XSS protection with DOMPurify — 25 whitelisted HTML tags, 22 whitelisted attributes. Sanitization happens on display (defense-in-depth). iframe restricted to YouTube domains. URL inputs validated for safe protocols (http/https only).
+
+**Custom extensions:** ResizableImage, ResizableYouTube, ImageWithText, ClearFloat.
 
 ---
 

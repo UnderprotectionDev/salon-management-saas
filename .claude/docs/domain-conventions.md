@@ -19,6 +19,7 @@
 - **Spreadsheet sub-fields:** `conditionalFormats` (on sheet) and `validationRule` (on cell) are JSON-serialized strings, not nested objects.
 - **Formula evaluation:** Client-side only — no server computation. Formulas evaluated from `CellMap` on render.
 - **Structural cell mutations:** Row/column insert/delete calls `replaceAllCells` (atomic delete + re-insert) to keep all refs consistent.
+- **Rich text content:** Stored as HTML string in DB. Write: `RichEditor` (Tiptap). Read: `RichTextDisplay` (sanitized via DOMPurify — 25 allowed tags, 22 allowed attributes). Image upload: Convex file storage (2MB limit, JPEG/PNG/WebP). Sanitization on display only (defense-in-depth).
 
 ## Scheduled Jobs (Crons)
 

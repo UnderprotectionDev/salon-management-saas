@@ -4,6 +4,11 @@ import { useConvexAuth, useMutation, useQuery } from "convex/react";
 import { useRouter } from "next/navigation";
 import { useEffect } from "react";
 import {
+  MobileStepIndicator,
+  StepHeading,
+  TopNav,
+} from "@/modules/org-onboarding";
+import {
   BottomNav,
   CompletionOverlay,
   LeftPanel,
@@ -11,13 +16,8 @@ import {
   useUserOnboardingForm,
 } from "@/modules/user-onboarding";
 import { StepAboutYou } from "@/modules/user-onboarding/components/StepAboutYou";
-import { StepSafety } from "@/modules/user-onboarding/components/StepSafety";
 import { StepNotifications } from "@/modules/user-onboarding/components/StepNotifications";
-import {
-  MobileStepIndicator,
-  StepHeading,
-  TopNav,
-} from "@/modules/org-onboarding";
+import { StepSafety } from "@/modules/user-onboarding/components/StepSafety";
 import { api } from "../../../convex/_generated/api";
 
 export default function WelcomePage() {

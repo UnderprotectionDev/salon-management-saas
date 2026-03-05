@@ -1,9 +1,9 @@
 "use client";
 
-import React, { ReactNode } from "react";
+import { ChevronLeftIcon, ChevronRightIcon } from "lucide-react";
+import type React from "react";
+import type { ReactNode } from "react";
 import { useDataGrid } from "@/components/reui/data-grid/data-grid";
-
-import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import {
   Select,
@@ -13,7 +13,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
-import { ChevronLeftIcon, ChevronRightIcon } from "lucide-react";
+import { cn } from "@/lib/utils";
 
 interface DataGridPaginationProps {
   sizes?: number[];
@@ -48,7 +48,7 @@ function DataGridPagination(props: DataGridPaginationProps): React.JSX.Element {
   const mergedProps: DataGridPaginationProps = { ...defaultProps, ...props };
 
   const btnBaseClasses = "size-7 p-0 text-sm";
-  const btnArrowClasses = btnBaseClasses + " rtl:transform rtl:rotate-180";
+  const btnArrowClasses = `${btnBaseClasses} rtl:transform rtl:rotate-180`;
   const pageIndex = table.getState().pagination.pageIndex;
   const pageSize = table.getState().pagination.pageSize;
   const from = recordCount > 0 ? pageIndex * pageSize + 1 : 0;

@@ -29,6 +29,7 @@ Multi-tenant salon management platform with real-time booking, staff scheduling,
 - **AI:** `@convex-dev/agent` (LLM threads), Vercel AI SDK gateway (GPT-4o), `@ai-sdk/fal` (fal.ai image generation)
 - **Charts:** recharts (via shadcn ChartContainer)
 - **Forms:** TanStack Form + Zod validation
+- **Rich Text:** Tiptap v3 (StarterKit + 4 custom extensions), DOMPurify (XSS sanitization)
 - **Avatars:** `react-nice-avatar@1.5.0` (client-side, no external API). Config stored as `avatarConfig: v.optional(v.any())` in `userProfile`.
 - **Tools:** Bun (package manager), Biome (linter/formatter)
 

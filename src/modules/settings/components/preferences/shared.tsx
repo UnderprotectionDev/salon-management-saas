@@ -1,7 +1,7 @@
 "use client";
 
-import { useId, useRef } from "react";
 import { Loader2, Save } from "lucide-react";
+import { useId, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";

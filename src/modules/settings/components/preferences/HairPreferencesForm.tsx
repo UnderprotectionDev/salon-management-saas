@@ -9,22 +9,22 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { HAIR_TYPE_OPTIONS, HAIR_LENGTH_OPTIONS } from "@/modules/onboarding";
-import {
-  HAIR_COLOR_OPTIONS,
-  SCALP_SENSITIVITY_OPTIONS,
-  WASH_FREQUENCY_OPTIONS,
-  HEAT_TOOL_USAGE_OPTIONS,
-} from "../../lib/salon-preferences-constants";
+import { HAIR_LENGTH_OPTIONS, HAIR_TYPE_OPTIONS } from "@/modules/onboarding";
 import { useCategoryForm } from "../../hooks/useCategoryForm";
 import {
+  HAIR_COLOR_OPTIONS,
+  HEAT_TOOL_USAGE_OPTIONS,
+  SCALP_SENSITIVITY_OPTIONS,
+  WASH_FREQUENCY_OPTIONS,
+} from "../../lib/salon-preferences-constants";
+import { PhotoUploadGrid } from "./PhotoUploadGrid";
+import {
+  DateField,
   PillSelect,
   SaveButton,
   SwitchField,
   TextareaField,
-  DateField,
 } from "./shared";
-import { PhotoUploadGrid } from "./PhotoUploadGrid";
 
 type HairData = {
   hairType?: string;

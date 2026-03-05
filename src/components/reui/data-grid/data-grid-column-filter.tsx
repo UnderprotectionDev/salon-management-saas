@@ -1,9 +1,8 @@
 "use client";
 
+import type { Column } from "@tanstack/react-table";
+import { CheckIcon, CirclePlusIcon } from "lucide-react";
 import { useMemo, useState } from "react";
-import { Column } from "@tanstack/react-table";
-
-import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -13,7 +12,7 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover";
 import { Separator } from "@/components/ui/separator";
-import { CirclePlusIcon, CheckIcon } from "lucide-react";
+import { cn } from "@/lib/utils";
 
 interface DataGridColumnFilterProps<TData, TValue> {
   column?: Column<TData, TValue>;
@@ -112,19 +111,12 @@ function DataGridColumnFilter<TData, TValue>({
                   );
                 };
                 return (
-                  <div
+                  <button
+                    type="button"
                     key={option.value}
-                    role="button"
-                    tabIndex={0}
                     onClick={toggleOption}
-                    onKeyDown={(e) => {
-                      if (e.key === "Enter" || e.key === " ") {
-                        e.preventDefault();
-                        toggleOption();
-                      }
-                    }}
                     className={cn(
-                      "relative flex cursor-pointer items-center gap-2 rounded-sm px-2 py-1.5 text-sm outline-hidden select-none",
+                      "relative flex w-full cursor-pointer items-center gap-2 rounded-sm border-0 bg-transparent px-2 py-1.5 text-sm outline-hidden select-none",
                       "hover:bg-accent hover:text-accent-foreground focus:bg-accent focus:text-accent-foreground",
                     )}
                   >
@@ -147,7 +139,7 @@ function DataGridColumnFilter<TData, TValue>({
                         {facets.get(option.value)}
                       </span>
                     )}
-                  </div>
+                  </button>
                 );
               })}
             </div>

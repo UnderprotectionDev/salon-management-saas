@@ -2,6 +2,7 @@
 
 import { useQuery } from "convex/react";
 import { Calendar } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
 import {
   Card,
   CardContent,
@@ -9,7 +10,6 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
   APPOINTMENT_STATUS_BADGE_CLASSES,

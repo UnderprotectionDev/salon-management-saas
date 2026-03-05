@@ -88,7 +88,7 @@ export function OrganizationProvider({ children }: { children: ReactNode }) {
   const { isAuthenticated } = useConvexAuth();
   const { data: session, isPending: isSessionPending } =
     authClient.useSession();
-  const [activeOrganization, setActiveOrgState] = useState<Organization | null>(
+  const [activeOrgId, setActiveOrgId] = useState<Id<"organization"> | null>(
     null,
   );
   const [isSigningOut, setIsSigningOut] = useState(false);
@@ -127,13 +127,15 @@ export function OrganizationProvider({ children }: { children: ReactNode }) {
 
   // Get current staff profile for the active organization
   // Skip if user is signing out or has no active organization
+  const isMemberOfActiveOrg =
+    activeOrgId &&
+    organizationsData &&
+    organizationsData.some((o) => o._id === activeOrgId);
+
   const currentStaff = useQuery(
     api.staff.getCurrentStaff,
-    !shouldSkipQuery &&
-      activeOrganization &&
-      organizationsData &&
-      organizationsData.length > 0
-      ? { organizationId: activeOrganization._id }
+    !shouldSkipQuery && isMemberOfActiveOrg
+      ? { organizationId: activeOrgId }
       : "skip",
   );
 
@@ -156,6 +158,12 @@ export function OrganizationProvider({ children }: { children: ReactNode }) {
     }),
   );
 
+  // Derive activeOrganization from ID + organizations array
+  // When Convex reactive query updates organizations, this automatically reflects fresh data
+  const activeOrganization = activeOrgId
+    ? (organizations.find((o) => o._id === activeOrgId) ?? null)
+    : null;
+
   // Clear active org and localStorage when user signs out
   // The isSigningOut guard prevents clearing during token refresh flickers
   useEffect(() => {
@@ -164,14 +172,14 @@ export function OrganizationProvider({ children }: { children: ReactNode }) {
       !isAuthenticated ||
       (!isSessionPending && session === null)
     ) {
-      setActiveOrgState(null);
+      setActiveOrgId(null);
       localStorage.removeItem("activeOrganizationId");
     }
   }, [isSigningOut, isAuthenticated, session, isSessionPending]);
 
   // Auto-set active organization if only one exists and none is set
   useEffect(() => {
-    if (!isLoading && organizations.length > 0 && !activeOrganization) {
+    if (!isLoading && organizations.length > 0 && !activeOrgId) {
       // Try to restore from localStorage
       const savedOrgId = localStorage.getItem("activeOrganizationId");
       const savedOrg = savedOrgId
@@ -179,16 +187,16 @@ export function OrganizationProvider({ children }: { children: ReactNode }) {
         : null;
 
       if (savedOrg) {
-        setActiveOrgState(savedOrg);
+        setActiveOrgId(savedOrg._id);
       } else if (organizations.length === 1) {
-        setActiveOrgState(organizations[0]);
+        setActiveOrgId(organizations[0]._id);
         localStorage.setItem("activeOrganizationId", organizations[0]._id);
       }
     }
-  }, [isLoading, organizations, activeOrganization]);
+  }, [isLoading, organizations, activeOrgId]);
 
   const setActiveOrganization = (org: Organization | null) => {
-    setActiveOrgState(org);
+    setActiveOrgId(org?._id ?? null);
     if (org) {
       localStorage.setItem("activeOrganizationId", org._id);
     } else {

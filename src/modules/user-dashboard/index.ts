@@ -1,4 +1,7 @@
-export { AppointmentCard, type UserAppointment } from "./components/AppointmentCard";
+export {
+  AppointmentCard,
+  type UserAppointment,
+} from "./components/AppointmentCard";
 export { BookAgainButton } from "./components/BookAgainButton";
 export { DashboardSkeleton } from "./components/DashboardSkeleton";
 export { FavoriteSalonsSection } from "./components/FavoriteSalonsSection";

@@ -1,7 +1,7 @@
 "use client";
 
 import { useQuery } from "convex/react";
-import { Building2, Calendar, Clock, User } from "lucide-react";
+import { Building2, Calendar, User } from "lucide-react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -10,7 +10,7 @@ import { Separator } from "@/components/ui/separator";
 import { Skeleton } from "@/components/ui/skeleton";
 import { AppointmentStatusBadge } from "@/modules/booking";
 import { formatMinutesAsTime } from "@/modules/booking/lib/constants";
-import { formatPrice } from "@/modules/services/lib/currency";
+import { formatPrice } from "@/lib/currency";
 import { api } from "../../../../../../convex/_generated/api";
 
 export default function AppointmentStatusPage() {

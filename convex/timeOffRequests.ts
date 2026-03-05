@@ -1,4 +1,5 @@
 import { ConvexError, v } from "convex/values";
+import type { Doc } from "./_generated/dataModel";
 import {
   ErrorCode,
   orgMutation,
@@ -48,13 +49,14 @@ export const listByOrg = orgQuery({
   handler: async (ctx, args) => {
     const isOwner = ctx.member.role === "owner";
 
-    let requests;
+    let requests: Doc<"timeOffRequests">[];
 
     if (args.status) {
+      const status = args.status;
       requests = await ctx.db
         .query("timeOffRequests")
         .withIndex("by_org_status", (q) =>
-          q.eq("organizationId", ctx.organizationId).eq("status", args.status!),
+          q.eq("organizationId", ctx.organizationId).eq("status", status),
         )
         .collect();
     } else {
@@ -110,9 +112,10 @@ export const getMyRequests = orgQuery({
       return [];
     }
 
+    const staffId = ctx.staff._id;
     return await ctx.db
       .query("timeOffRequests")
-      .withIndex("by_staff", (q) => q.eq("staffId", ctx.staff!._id))
+      .withIndex("by_staff", (q) => q.eq("staffId", staffId))
       .collect();
   },
 });

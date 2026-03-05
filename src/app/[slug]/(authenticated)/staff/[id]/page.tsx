@@ -45,7 +45,7 @@ import { DAY_LABELS, DAYS } from "@/modules/staff/lib/constants";
 import { api } from "../../../../../../convex/_generated/api";
 import type { Id } from "../../../../../../convex/_generated/dataModel";
 
-function getInitials(name: string): string {
+function _getInitials(name: string): string {
   if (!name.trim()) return "??";
   return name
     .split(" ")

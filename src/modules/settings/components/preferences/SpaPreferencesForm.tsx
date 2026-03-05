@@ -1,14 +1,14 @@
 "use client";
 
 import { useState } from "react";
-import {
-  CHRONIC_PAIN_OPTIONS,
-  PRESSURE_PREFERENCE_OPTIONS,
-  AROMATHERAPY_OPTIONS,
-  FOCUS_AREA_OPTIONS,
-} from "../../lib/salon-preferences-constants";
 import { useCategoryForm } from "../../hooks/useCategoryForm";
-import { PillSelect, CheckboxGroup, SaveButton, SwitchField } from "./shared";
+import {
+  AROMATHERAPY_OPTIONS,
+  CHRONIC_PAIN_OPTIONS,
+  FOCUS_AREA_OPTIONS,
+  PRESSURE_PREFERENCE_OPTIONS,
+} from "../../lib/salon-preferences-constants";
+import { CheckboxGroup, PillSelect, SaveButton, SwitchField } from "./shared";
 
 type SpaData = {
   pregnancy?: boolean;

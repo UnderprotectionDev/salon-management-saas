@@ -1,12 +1,12 @@
 import {
-  Scissors,
-  Paintbrush,
-  Sparkles,
   Flower2,
-  Zap,
-  Stethoscope,
+  Paintbrush,
   Palette,
   PawPrint,
+  Scissors,
+  Sparkles,
+  Stethoscope,
+  Zap,
 } from "lucide-react";
 
 export const USER_SALON_CATEGORIES = [

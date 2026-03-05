@@ -3,9 +3,11 @@
 import { useForm, useStore } from "@tanstack/react-form";
 import { useMutation } from "convex/react";
 import { Loader2 } from "lucide-react";
+import { useEffect } from "react";
 import { toast } from "sonner";
 import { z } from "zod";
 import { LogoUpload } from "@/components/logo-upload";
+import { RichEditor } from "@/components/rich-editor";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -27,14 +29,13 @@ import {
 } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Textarea } from "@/components/ui/textarea";
 import { useUnsavedChanges } from "@/hooks/use-unsaved-changes";
 import { cn } from "@/lib/utils";
-import { useOrganization } from "@/modules/organization";
 import {
-  SALON_TYPE_CATEGORIES,
   type OrgSalonType,
+  SALON_TYPE_CATEGORIES,
 } from "@/modules/org-onboarding/lib/constants";
+import { useOrganization } from "@/modules/organization";
 import { api } from "../../../../../../convex/_generated/api";
 
 const nameSchema = z
@@ -42,9 +43,28 @@ const nameSchema = z
   .min(2, "Name must be at least 2 characters")
   .max(100, "Name cannot exceed 100 characters");
 
+function stripHtmlLength(html: string): number {
+  if (typeof document !== "undefined") {
+    const doc = new DOMParser().parseFromString(html, "text/html");
+    return (doc.body.textContent || "").trim().length;
+  }
+  return html
+    .replace(/<[^>]*>/g, "")
+    .replace(/&nbsp;/gi, " ")
+    .replace(/&amp;/gi, "&")
+    .replace(/&lt;/gi, "<")
+    .replace(/&gt;/gi, ">")
+    .replace(/&quot;/gi, '"')
+    .replace(/&#39;/gi, "'")
+    .trim().length;
+}
+
 const descriptionSchema = z
   .string()
-  .max(500, "Description cannot exceed 500 characters");
+  .refine(
+    (val) => stripHtmlLength(val) <= 2000,
+    "Description cannot exceed 2000 characters",
+  );
 
 export default function GeneralSettingsPage() {
   const { activeOrganization } = useOrganization();
@@ -73,13 +93,24 @@ export default function GeneralSettingsPage() {
           salonType: value.salonType,
         });
 
-        form.reset();
         toast.success("Settings saved");
       } catch {
         toast.error("Failed to save settings");
       }
     },
   });
+
+  // Sync form when activeOrganization updates (e.g. after save)
+  useEffect(() => {
+    if (!activeOrganization) return;
+    form.reset({
+      name: activeOrganization.name,
+      description: activeOrganization.description ?? "",
+      salonType: [
+        ...(activeOrganization.salonType ?? []),
+      ].sort() as OrgSalonType[],
+    });
+  }, [activeOrganization, form]);
 
   const isDefaultValue = useStore(form.store, (s) => s.isDefaultValue);
   const { dialog } = useUnsavedChanges(!isDefaultValue);
@@ -173,15 +204,14 @@ export default function GeneralSettingsPage() {
                     field.state.meta.errors.length > 0;
                   return (
                     <Field data-invalid={hasError || undefined}>
-                      <FieldLabel htmlFor={field.name}>Description</FieldLabel>
-                      <Textarea
-                        id={field.name}
-                        name={field.name}
+                      <FieldLabel htmlFor="description-editor">
+                        Description
+                      </FieldLabel>
+                      <RichEditor
                         value={field.state.value}
+                        onChange={(html) => field.handleChange(html)}
                         onBlur={field.handleBlur}
-                        onChange={(e) => field.handleChange(e.target.value)}
                         disabled={form.state.isSubmitting}
-                        rows={3}
                         placeholder="Describe your salon..."
                       />
                       {hasError && (
@@ -238,6 +268,7 @@ export default function GeneralSettingsPage() {
                             </span>
                           </span>
                           <svg
+                            aria-hidden="true"
                             className="size-4 text-muted-foreground transition-transform"
                             xmlns="http://www.w3.org/2000/svg"
                             fill="none"

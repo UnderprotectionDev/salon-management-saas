@@ -1,9 +1,9 @@
 "use client";
 
 import { Check } from "lucide-react";
+import type { WizardFormData } from "../hooks/useUserOnboardingForm";
 import { STEPS } from "../lib/constants";
 import { ProfilePreviewCard } from "./ProfilePreviewCard";
-import type { WizardFormData } from "../hooks/useUserOnboardingForm";
 
 export function LeftPanel({
   currentStep,

@@ -1,20 +1,20 @@
 "use client";
 
 import { useState } from "react";
-import {
-  SKIN_SENSITIVITY_LEVEL_OPTIONS,
-  TANNING_HISTORY_OPTIONS,
-  HAIR_REMOVAL_METHOD_OPTIONS,
-  PAIN_TOLERANCE_OPTIONS,
-  TREATMENT_AREA_OPTIONS,
-} from "../../lib/salon-preferences-constants";
 import { useCategoryForm } from "../../hooks/useCategoryForm";
 import {
-  PillSelect,
+  HAIR_REMOVAL_METHOD_OPTIONS,
+  PAIN_TOLERANCE_OPTIONS,
+  SKIN_SENSITIVITY_LEVEL_OPTIONS,
+  TANNING_HISTORY_OPTIONS,
+  TREATMENT_AREA_OPTIONS,
+} from "../../lib/salon-preferences-constants";
+import {
   CheckboxGroup,
+  DateField,
+  PillSelect,
   SaveButton,
   SwitchField,
-  DateField,
 } from "./shared";
 
 type BodyData = {

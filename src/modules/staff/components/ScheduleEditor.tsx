@@ -47,7 +47,7 @@ const DEFAULT_DAY: DaySchedule = {
 export function validateSchedule(schedule: StaffSchedule): string | null {
   for (const day of DAYS) {
     const daySchedule = schedule[day];
-    if (daySchedule && daySchedule.available) {
+    if (daySchedule?.available) {
       const startMinutes = timeToMinutes(daySchedule.start);
       const endMinutes = timeToMinutes(daySchedule.end);
       if (startMinutes >= endMinutes) {

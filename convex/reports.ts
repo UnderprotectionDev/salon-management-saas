@@ -77,7 +77,7 @@ export const getRevenueReport = orgQuery({
         message: "Staff record not found for current user",
       });
     }
-    const staffFilter = isStaffOnly ? ctx.staff!._id : undefined;
+    const staffFilter = isStaffOnly ? ctx.staff?._id : undefined;
 
     const dates = validateDateRange(args.startDate, args.endDate);
     let appointments = await getAppointmentsForDateRange(
@@ -232,6 +232,7 @@ export const getRevenueReport = orgQuery({
               revenue: 0,
             });
           }
+          // biome-ignore lint/style/noNonNullAssertion: guaranteed by has() check above
           const staffEntry = staffMap.get(appt.staffId)!;
           staffEntry.appointments++;
           staffEntry.revenue += appt.total;
@@ -247,6 +248,7 @@ export const getRevenueReport = orgQuery({
               revenue: 0,
             });
           }
+          // biome-ignore lint/style/noNonNullAssertion: guaranteed by has() check above
           const svcEntry = serviceMap.get(svc.serviceId)!;
           svcEntry.appointments++;
           svcEntry.revenue += svc.price;
@@ -352,7 +354,7 @@ export const getStaffPerformanceReport = orgQuery({
         message: "Staff record not found for current user",
       });
     }
-    const staffFilter = isStaffOnly ? ctx.staff!._id : undefined;
+    const staffFilter = isStaffOnly ? ctx.staff?._id : undefined;
 
     const dates = validateDateRange(args.startDate, args.endDate);
 
@@ -383,7 +385,7 @@ export const getStaffPerformanceReport = orgQuery({
       if (!apptsByStaff.has(key)) {
         apptsByStaff.set(key, []);
       }
-      apptsByStaff.get(key)!.push(appt);
+      apptsByStaff.get(key)?.push(appt);
     }
 
     const result = [];
@@ -506,7 +508,7 @@ export const getCustomerReport = orgQuery({
         message: "Staff record not found for current user",
       });
     }
-    const staffFilter = isStaffOnly ? ctx.staff!._id : undefined;
+    const staffFilter = isStaffOnly ? ctx.staff?._id : undefined;
 
     validateDateRange(args.startDate, args.endDate);
 
@@ -579,6 +581,7 @@ export const getCustomerReport = orgQuery({
           lastDate: null,
         });
       }
+      // biome-ignore lint/style/noNonNullAssertion: guaranteed by has() check above
       const stats = customerStats.get(custId)!;
       stats.appointments++;
       stats.revenue += appt.total;
@@ -640,6 +643,7 @@ export const getCustomerReport = orgQuery({
           returningSet: new Set(),
         });
       }
+      // biome-ignore lint/style/noNonNullAssertion: guaranteed by has() check above
       const entry = monthlyUniqueMap.get(month)!;
       const custId = appt.customerId as string;
       if (existingCustomerIds.has(custId)) {

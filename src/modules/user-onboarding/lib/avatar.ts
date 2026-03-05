@@ -1,5 +1,5 @@
-import { genConfig } from "react-nice-avatar";
 import type { AvatarConfig } from "react-nice-avatar";
+import { genConfig } from "react-nice-avatar";
 
 export type Gender = "male" | "female" | "unspecified";
 

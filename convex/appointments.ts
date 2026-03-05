@@ -386,9 +386,7 @@ export const list = orgQuery({
       const statusAppts = await ctx.db
         .query("appointments")
         .withIndex("by_org_status", (q) =>
-          q
-            .eq("organizationId", ctx.organizationId)
-            .eq("status", statusFilter),
+          q.eq("organizationId", ctx.organizationId).eq("status", statusFilter),
         )
         .collect();
       appointments = statusAppts.filter(
@@ -1100,4 +1098,3 @@ export const reschedule = orgMutation({
     return { success: true };
   },
 });
-

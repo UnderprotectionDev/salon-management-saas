@@ -114,7 +114,9 @@ export function useUserOnboardingForm() {
       setIsSubmitting(false);
       setIsComplete(true);
     } catch (error: unknown) {
-      toast.error(getConvexErrorMessage(error, "Something went wrong. Please try again."));
+      toast.error(
+        getConvexErrorMessage(error, "Something went wrong. Please try again."),
+      );
       setIsSubmitting(false);
     }
   };

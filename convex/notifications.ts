@@ -25,12 +25,13 @@ export const list = orgQuery({
   handler: async (ctx) => {
     if (!ctx.staff) return [];
 
+    const staffId = ctx.staff._id;
     const notifications = await ctx.db
       .query("notifications")
       .withIndex("by_org_staff", (q) =>
         q
           .eq("organizationId", ctx.organizationId)
-          .eq("recipientStaffId", ctx.staff!._id),
+          .eq("recipientStaffId", staffId),
       )
       .collect();
 
@@ -49,12 +50,13 @@ export const getUnreadCount = orgQuery({
   handler: async (ctx) => {
     if (!ctx.staff) return 0;
 
+    const staffId = ctx.staff._id;
     const unread = await ctx.db
       .query("notifications")
       .withIndex("by_org_staff", (q) =>
         q
           .eq("organizationId", ctx.organizationId)
-          .eq("recipientStaffId", ctx.staff!._id),
+          .eq("recipientStaffId", staffId),
       )
       .filter((q) => q.eq(q.field("isRead"), false))
       .collect();
@@ -73,6 +75,7 @@ export const getLatest = orgQuery({
   handler: async (ctx) => {
     if (!ctx.staff) return null;
 
+    const staffId = ctx.staff._id;
     // Query by org+staff index, ordered desc by _creationTime (default),
     // and take the first (most recent) notification
     return await ctx.db
@@ -80,7 +83,7 @@ export const getLatest = orgQuery({
       .withIndex("by_org_staff", (q) =>
         q
           .eq("organizationId", ctx.organizationId)
-          .eq("recipientStaffId", ctx.staff!._id),
+          .eq("recipientStaffId", staffId),
       )
       .order("desc")
       .first();
@@ -102,7 +105,7 @@ export const markAsRead = orgMutation({
     if (
       !notification ||
       notification.organizationId !== ctx.organizationId ||
-      notification.recipientStaffId !== ctx.staff?._id
+      notification.recipientStaffId !== (ctx.staff?._id ?? "")
     ) {
       throw new ConvexError({
         code: ErrorCode.NOT_FOUND,
@@ -130,12 +133,13 @@ export const markAllAsRead = orgMutation({
   handler: async (ctx) => {
     if (!ctx.staff) return { success: true };
 
+    const staffId = ctx.staff._id;
     const unread = await ctx.db
       .query("notifications")
       .withIndex("by_org_staff", (q) =>
         q
           .eq("organizationId", ctx.organizationId)
-          .eq("recipientStaffId", ctx.staff!._id),
+          .eq("recipientStaffId", staffId),
       )
       .filter((q) => q.eq(q.field("isRead"), false))
       .collect();
@@ -158,12 +162,13 @@ export const deleteAll = orgMutation({
   handler: async (ctx) => {
     if (!ctx.staff) return { success: true };
 
+    const staffId = ctx.staff._id;
     const notifications = await ctx.db
       .query("notifications")
       .withIndex("by_org_staff", (q) =>
         q
           .eq("organizationId", ctx.organizationId)
-          .eq("recipientStaffId", ctx.staff!._id),
+          .eq("recipientStaffId", staffId),
       )
       .collect();
 

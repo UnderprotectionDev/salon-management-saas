@@ -21,10 +21,7 @@ import type { FunctionReference } from "convex/server";
 export function useMutationWithToast<
   // biome-ignore lint/suspicious/noExplicitAny: generic mutation reference
   T extends FunctionReference<"mutation", any, any, any>,
->(
-  mutation: T,
-  options?: { errorMessage?: string },
-) {
+>(mutation: T, options?: { errorMessage?: string }) {
   const mutate = useMutation(mutation);
 
   return async (

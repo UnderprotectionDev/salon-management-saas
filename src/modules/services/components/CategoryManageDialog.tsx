@@ -206,9 +206,7 @@ export function CategoryManageDialog({
       setEditingId(null);
       toast.success("Category updated");
     } catch (error) {
-      toast.error(
-        getConvexErrorMessage(error, "Failed to update category"),
-      );
+      toast.error(getConvexErrorMessage(error, "Failed to update category"));
     }
   };
 
@@ -222,9 +220,7 @@ export function CategoryManageDialog({
       setDeleteTarget(null);
       toast.success("Category deleted");
     } catch (error) {
-      toast.error(
-        getConvexErrorMessage(error, "Failed to delete category"),
-      );
+      toast.error(getConvexErrorMessage(error, "Failed to delete category"));
     }
   };
 
@@ -264,9 +260,7 @@ export function CategoryManageDialog({
       ) {
         toast.info("Category already exists");
       } else {
-        toast.error(
-          getConvexErrorMessage(error, "Failed to create category"),
-        );
+        toast.error(getConvexErrorMessage(error, "Failed to create category"));
       }
     } finally {
       setIsAdding(false);

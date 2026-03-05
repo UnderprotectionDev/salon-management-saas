@@ -1,8 +1,8 @@
 "use client";
 
-import { useState } from "react";
 import { useMutation } from "convex/react";
 import { Loader2 } from "lucide-react";
+import { useState } from "react";
 import { toast } from "sonner";
 import {
   AlertDialog,
@@ -14,8 +14,8 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import type { Id } from "../../../../convex/_generated/dataModel";
 import { api } from "../../../../convex/_generated/api";
+import type { Id } from "../../../../convex/_generated/dataModel";
 
 type DeleteServiceDialogProps = {
   open: boolean;

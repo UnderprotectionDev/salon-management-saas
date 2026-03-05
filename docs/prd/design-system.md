@@ -107,6 +107,8 @@ const { bg, text, border } = APPOINTMENT_STATUS_COLORS[status];
 | Chat interface | Message bubbles, streaming indicator, thread list |
 | Credit balance badge | Inline display with coin icon + count |
 | Skeleton → reveal | Blur-to-sharp animation (AI processing result reveal) |
+| RichEditor | Rich text editing (salon description, about pages) |
+| RichTextDisplay | Read-only rich text rendering with DOMPurify sanitization |
 
 **Button sizes:** default (h-10), sm (h-9), lg (h-11), icon (h-10 w-10)
 
@@ -115,6 +117,20 @@ const { bg, text, border } = APPOINTMENT_STATUS_COLORS[status];
 Staff members are assigned a unique border color from a 10-color palette (indigo, pink, amber, emerald, blue, violet, red, teal, orange, purple). Colors are index-based and wrap around. Defined in `src/modules/calendar/lib/constants.ts`.
 
 **Usage:** Appointment blocks show a 3px left border in the assigned staff color. Color map is built from the full (unfiltered) staff list so colors remain stable regardless of active filter.
+
+### Rich Text Editor
+
+Tiptap-based WYSIWYG editor at `src/components/rich-editor/`.
+
+**Props:** `value` (HTML string), `onChange`, `onBlur`, `placeholder`, `disabled`, `className`, `limit` (character limit).
+
+**Structure:** Toolbar (top) → Editor/Preview (middle) → Character counter (footer).
+
+**Toolbar groups:** Preview toggle | Headings | Bold, Italic, Underline, Link | Highlight, Color | Lists, Blockquote, HR | Alignment | Image upload, YouTube embed.
+
+**Display:** `<RichTextDisplay html={html} />` — sanitizes with DOMPurify, supports `emptyFallback` and `className` props.
+
+**Security model:** HTML is stored unsanitized (trusted owner-only input). Sanitization happens on display via DOMPurify as defense-in-depth. Image upload: JPEG/PNG/WebP only, 2MB max, stored in Convex file storage. YouTube embed: URL validated to allow only `youtube.com`/`youtu.be` domains. Link URLs: restricted to `http`/`https` protocols.
 
 ### Calendar Event Colors
 

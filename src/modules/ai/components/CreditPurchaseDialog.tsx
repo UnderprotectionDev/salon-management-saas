@@ -85,7 +85,10 @@ export function CreditPurchaseDialog({
       window.location.href = url;
     } catch (error) {
       toast.error(
-        getConvexErrorMessage(error, "Failed to initiate purchase. Please try again."),
+        getConvexErrorMessage(
+          error,
+          "Failed to initiate purchase. Please try again.",
+        ),
       );
       setLoadingPackageId(null);
     }

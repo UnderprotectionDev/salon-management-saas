@@ -3,10 +3,10 @@
 import { useState } from "react";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { PET_SIZE_OPTIONS } from "../../lib/salon-preferences-constants";
 import { useCategoryForm } from "../../hooks/useCategoryForm";
-import { PillSelect, SaveButton } from "./shared";
+import { PET_SIZE_OPTIONS } from "../../lib/salon-preferences-constants";
 import { PhotoUploadGrid } from "./PhotoUploadGrid";
+import { PillSelect, SaveButton } from "./shared";
 
 type SpecialtyData = {
   petType?: string;

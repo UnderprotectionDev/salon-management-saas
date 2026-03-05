@@ -409,7 +409,7 @@ export const update = ownerMutation({
     }
     if (args.description !== undefined) {
       updates.description = validateString(args.description, "Description", {
-        max: 500,
+        max: 50000,
       });
     }
     if (args.logo !== undefined) {

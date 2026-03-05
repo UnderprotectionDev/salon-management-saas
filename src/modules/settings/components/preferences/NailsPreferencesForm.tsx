@@ -1,11 +1,11 @@
 "use client";
 
 import { useState } from "react";
+import { useCategoryForm } from "../../hooks/useCategoryForm";
 import {
   NAIL_TYPE_OPTIONS,
   SKIN_TONE_OPTIONS,
 } from "../../lib/salon-preferences-constants";
-import { useCategoryForm } from "../../hooks/useCategoryForm";
 import { PillSelect, SaveButton, SwitchField } from "./shared";
 
 type NailsData = {

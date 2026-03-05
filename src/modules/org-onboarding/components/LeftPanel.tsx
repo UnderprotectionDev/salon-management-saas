@@ -1,6 +1,6 @@
 import { Check } from "lucide-react";
-import { STEPS } from "../lib/constants";
 import type { WizardFormData } from "../hooks/useOnboardingForm";
+import { STEPS } from "../lib/constants";
 import { SalonPreviewCard } from "./SalonPreviewCard";
 
 export function LeftPanel({

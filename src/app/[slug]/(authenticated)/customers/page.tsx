@@ -6,15 +6,14 @@ import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
-import { useOrganization } from "@/modules/organization";
 import {
   AddCustomerDialog,
   CustomerDataGrid,
   CustomerListStatsBar,
   CustomerSearch,
 } from "@/modules/customers";
+import { useOrganization } from "@/modules/organization";
 import { downloadCsv, sanitizeCsvValue } from "@/modules/reports/lib/csv";
-import { formatPrice } from "@/modules/services/lib/currency";
 import { api } from "../../../../../convex/_generated/api";
 
 export default function CustomersPage() {

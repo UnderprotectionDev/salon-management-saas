@@ -228,245 +228,36 @@ export function AddProductSheet({
             <ScrollArea className="flex-1 min-h-0">
               <div className="px-6 py-4">
                 <FieldGroup>
-            {/* Images */}
-            <ProductMultiImageUpload
-              organizationId={organizationId}
-              currentImageUrls={[]}
-              currentStorageIds={[]}
-              pendingImages={pendingImages}
-              onImagesChange={setPendingImages}
-            />
-
-            {/* Name */}
-            <form.Field
-              name="name"
-              validators={{
-                onBlur: ({ value }) => {
-                  const r = nameSchema.safeParse(value);
-                  return r.success ? undefined : r.error.issues[0]?.message;
-                },
-              }}
-            >
-              {(field) => (
-                <Field data-invalid={field.state.meta.errors.length > 0}>
-                  <FieldLabel htmlFor={field.name}>Name *</FieldLabel>
-                  <Input
-                    id={field.name}
-                    value={field.state.value}
-                    onChange={(e) => field.handleChange(e.target.value)}
-                    onBlur={field.handleBlur}
-                    placeholder="e.g. Kerastase Shampoo"
+                  {/* Images */}
+                  <ProductMultiImageUpload
+                    organizationId={organizationId}
+                    currentImageUrls={[]}
+                    currentStorageIds={[]}
+                    pendingImages={pendingImages}
+                    onImagesChange={setPendingImages}
                   />
-                  <FieldError
-                    errors={field.state.meta.errors.map((e) => ({
-                      message: String(e),
-                    }))}
-                  />
-                </Field>
-              )}
-            </form.Field>
 
-            {/* Description */}
-            <form.Field name="description">
-              {(field) => (
-                <Field>
-                  <FieldLabel htmlFor={field.name}>
-                    Description{" "}
-                    <span className="text-muted-foreground font-normal">
-                      (optional)
-                    </span>
-                  </FieldLabel>
-                  <Textarea
-                    id={field.name}
-                    value={field.state.value}
-                    onChange={(e) => field.handleChange(e.target.value)}
-                    rows={2}
-                    placeholder="Short product description"
-                  />
-                </Field>
-              )}
-            </form.Field>
-
-            {/* Brand + SKU */}
-            <div className="grid grid-cols-2 gap-4">
-              <form.Field name="brand">
-                {(field) => (
-                  <Field>
-                    <FieldLabel htmlFor={field.name}>Brand</FieldLabel>
-                    <Input
-                      id={field.name}
-                      value={field.state.value}
-                      onChange={(e) => field.handleChange(e.target.value)}
-                      placeholder="e.g. Kerastase"
-                    />
-                  </Field>
-                )}
-              </form.Field>
-
-              <form.Field name="sku">
-                {(field) => (
-                  <Field>
-                    <FieldLabel htmlFor={field.name}>SKU</FieldLabel>
-                    <Input
-                      id={field.name}
-                      value={field.state.value}
-                      onChange={(e) => field.handleChange(e.target.value)}
-                      placeholder="e.g. KER-SH-001"
-                    />
-                  </Field>
-                )}
-              </form.Field>
-            </div>
-
-            {/* Category */}
-            <form.Field name="categoryId">
-              {(field) => (
-                <Field>
-                  <FieldLabel>Category</FieldLabel>
-                  <div className="flex gap-2">
-                    <Select
-                      value={field.state.value || "none"}
-                      onValueChange={field.handleChange}
-                    >
-                      <SelectTrigger className="flex-1">
-                        <SelectValue placeholder="None" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="none">None</SelectItem>
-                        {activeCategories.map((cat) => (
-                          <SelectItem key={cat._id} value={cat._id}>
-                            {cat.name}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                    <AddProductCategoryPopover
-                      organizationId={organizationId}
-                      onCreated={(id) => form.setFieldValue("categoryId", id)}
-                    />
-                  </div>
-                </Field>
-              )}
-            </form.Field>
-
-            {/* Pricing */}
-            <div className="space-y-4 pt-2">
-              <div className="flex items-center gap-2">
-                <Separator className="flex-1" />
-                <span className="text-xs font-medium text-muted-foreground whitespace-nowrap">
-                  Pricing & Stock
-                </span>
-                <Separator className="flex-1" />
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
-                <form.Field name="costPrice">
-                  {(field) => (
-                    <Field>
-                      <FieldLabel htmlFor={field.name}>
-                        Cost Price (TL)
-                      </FieldLabel>
-                      <Input
-                        id={field.name}
-                        type="number"
-                        min="0"
-                        step="0.01"
-                        value={field.state.value}
-                        onChange={(e) => field.handleChange(e.target.value)}
-                        placeholder="0.00"
-                      />
-                    </Field>
-                  )}
-                </form.Field>
-
-                <form.Field
-                  name="sellingPrice"
-                  validators={{
-                    onBlur: ({ value }) => {
-                      if (!value) return "Selling price is required";
-                      const parsed = Number.parseFloat(value);
-                      if (Number.isNaN(parsed) || parsed < 0)
-                        return "Must be a valid non-negative number";
-                      return undefined;
-                    },
-                  }}
-                >
-                  {(field) => (
-                    <Field data-invalid={field.state.meta.errors.length > 0}>
-                      <FieldLabel htmlFor={field.name}>
-                        Selling Price (TL) *
-                      </FieldLabel>
-                      <Input
-                        id={field.name}
-                        type="number"
-                        min="0"
-                        step="0.01"
-                        value={field.state.value}
-                        onChange={(e) => field.handleChange(e.target.value)}
-                        onBlur={field.handleBlur}
-                        placeholder="0.00"
-                      />
-                      <FieldError
-                        errors={field.state.meta.errors.map((e) => ({
-                          message: String(e),
-                        }))}
-                      />
-                    </Field>
-                  )}
-                </form.Field>
-              </div>
-
-              {/* Variants */}
-              <div className="space-y-3">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <Label>Product Variants</Label>
-                    <p className="text-xs text-muted-foreground">
-                      Add size, color, or other options
-                    </p>
-                  </div>
-                  <Switch
-                    checked={hasVariants}
-                    onCheckedChange={setHasVariants}
-                  />
-                </div>
-                {hasVariants && (
-                  <VariantOptionsEditor
-                    options={variantOptions}
-                    onChange={setVariantOptions}
-                  />
-                )}
-              </div>
-
-              {/* Stock */}
-              <div
-                className={`grid gap-4 ${!hasVariants ? "grid-cols-2" : "grid-cols-1"}`}
-              >
-                {!hasVariants && (
+                  {/* Name */}
                   <form.Field
-                    name="stockQuantity"
+                    name="name"
                     validators={{
                       onBlur: ({ value }) => {
-                        const parsed = Number.parseInt(value, 10);
-                        if (Number.isNaN(parsed) || parsed < 0)
-                          return "Stock must be non-negative";
-                        return undefined;
+                        const r = nameSchema.safeParse(value);
+                        return r.success
+                          ? undefined
+                          : r.error.issues[0]?.message;
                       },
                     }}
                   >
                     {(field) => (
                       <Field data-invalid={field.state.meta.errors.length > 0}>
-                        <FieldLabel htmlFor={field.name}>
-                          Initial Stock *
-                        </FieldLabel>
+                        <FieldLabel htmlFor={field.name}>Name *</FieldLabel>
                         <Input
                           id={field.name}
-                          type="number"
-                          min="0"
-                          step="1"
                           value={field.state.value}
                           onChange={(e) => field.handleChange(e.target.value)}
                           onBlur={field.handleBlur}
+                          placeholder="e.g. Kerastase Shampoo"
                         />
                         <FieldError
                           errors={field.state.meta.errors.map((e) => ({
@@ -476,114 +267,354 @@ export function AddProductSheet({
                       </Field>
                     )}
                   </form.Field>
-                )}
 
-                <form.Field name="lowStockThreshold">
-                  {(field) => (
-                    <Field>
-                      <FieldLabel htmlFor={field.name}>
-                        Low Stock Alert
-                      </FieldLabel>
-                      <Input
-                        id={field.name}
-                        type="number"
-                        min="0"
-                        step="1"
-                        value={field.state.value}
-                        onChange={(e) => field.handleChange(e.target.value)}
-                        placeholder="e.g. 5"
-                      />
-                    </Field>
-                  )}
-                </form.Field>
-              </div>
-            </div>
+                  {/* Description */}
+                  <form.Field name="description">
+                    {(field) => (
+                      <Field>
+                        <FieldLabel htmlFor={field.name}>
+                          Description{" "}
+                          <span className="text-muted-foreground font-normal">
+                            (optional)
+                          </span>
+                        </FieldLabel>
+                        <Textarea
+                          id={field.name}
+                          value={field.state.value}
+                          onChange={(e) => field.handleChange(e.target.value)}
+                          rows={2}
+                          placeholder="Short product description"
+                        />
+                      </Field>
+                    )}
+                  </form.Field>
 
-            {/* Supplier (collapsible) */}
-            <div className="pt-2">
-              <Collapsible open={supplierOpen} onOpenChange={setSupplierOpen}>
-                <CollapsibleTrigger asChild>
-                  <button
-                    type="button"
-                    className="flex w-full items-center gap-2 py-2 text-sm text-muted-foreground hover:text-foreground transition-colors"
-                  >
-                    <ChevronRight
-                      className={`size-4 transition-transform ${supplierOpen ? "rotate-90" : ""}`}
-                    />
-                    <Separator className="flex-1" />
-                    <span className="whitespace-nowrap text-xs font-medium">
-                      Supplier Details (optional)
-                    </span>
-                    <Separator className="flex-1" />
-                  </button>
-                </CollapsibleTrigger>
-                <CollapsibleContent className="space-y-4 pt-2">
+                  {/* Brand + SKU */}
                   <div className="grid grid-cols-2 gap-4">
-                    <form.Field name="supplierName">
+                    <form.Field name="brand">
                       {(field) => (
                         <Field>
-                          <FieldLabel htmlFor={field.name}>
-                            Supplier Name
-                          </FieldLabel>
+                          <FieldLabel htmlFor={field.name}>Brand</FieldLabel>
                           <Input
                             id={field.name}
                             value={field.state.value}
                             onChange={(e) => field.handleChange(e.target.value)}
-                            placeholder="Company name"
+                            placeholder="e.g. Kerastase"
                           />
                         </Field>
                       )}
                     </form.Field>
 
-                    <form.Field name="supplierPhone">
+                    <form.Field name="sku">
                       {(field) => (
                         <Field>
-                          <FieldLabel htmlFor={field.name}>Phone</FieldLabel>
+                          <FieldLabel htmlFor={field.name}>SKU</FieldLabel>
                           <Input
                             id={field.name}
                             value={field.state.value}
                             onChange={(e) => field.handleChange(e.target.value)}
-                            placeholder="+90 5XX XXX XX XX"
+                            placeholder="e.g. KER-SH-001"
                           />
                         </Field>
                       )}
                     </form.Field>
                   </div>
 
-                  <form.Field name="supplierEmail">
+                  {/* Category */}
+                  <form.Field name="categoryId">
                     {(field) => (
                       <Field>
-                        <FieldLabel htmlFor={field.name}>
-                          Supplier Email
-                        </FieldLabel>
-                        <Input
-                          id={field.name}
-                          type="email"
-                          value={field.state.value}
-                          onChange={(e) => field.handleChange(e.target.value)}
-                          placeholder="supplier@example.com"
-                        />
+                        <FieldLabel>Category</FieldLabel>
+                        <div className="flex gap-2">
+                          <Select
+                            value={field.state.value || "none"}
+                            onValueChange={field.handleChange}
+                          >
+                            <SelectTrigger className="flex-1">
+                              <SelectValue placeholder="None" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="none">None</SelectItem>
+                              {activeCategories.map((cat) => (
+                                <SelectItem key={cat._id} value={cat._id}>
+                                  {cat.name}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                          <AddProductCategoryPopover
+                            organizationId={organizationId}
+                            onCreated={(id) =>
+                              form.setFieldValue("categoryId", id)
+                            }
+                          />
+                        </div>
                       </Field>
                     )}
                   </form.Field>
 
-                  <form.Field name="supplierNotes">
-                    {(field) => (
-                      <Field>
-                        <FieldLabel htmlFor={field.name}>Notes</FieldLabel>
-                        <Textarea
-                          id={field.name}
-                          value={field.state.value}
-                          onChange={(e) => field.handleChange(e.target.value)}
-                          rows={2}
-                          placeholder="Payment terms, contact notes, etc."
+                  {/* Pricing */}
+                  <div className="space-y-4 pt-2">
+                    <div className="flex items-center gap-2">
+                      <Separator className="flex-1" />
+                      <span className="text-xs font-medium text-muted-foreground whitespace-nowrap">
+                        Pricing & Stock
+                      </span>
+                      <Separator className="flex-1" />
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-4">
+                      <form.Field name="costPrice">
+                        {(field) => (
+                          <Field>
+                            <FieldLabel htmlFor={field.name}>
+                              Cost Price (TL)
+                            </FieldLabel>
+                            <Input
+                              id={field.name}
+                              type="number"
+                              min="0"
+                              step="0.01"
+                              value={field.state.value}
+                              onChange={(e) =>
+                                field.handleChange(e.target.value)
+                              }
+                              placeholder="0.00"
+                            />
+                          </Field>
+                        )}
+                      </form.Field>
+
+                      <form.Field
+                        name="sellingPrice"
+                        validators={{
+                          onBlur: ({ value }) => {
+                            if (!value) return "Selling price is required";
+                            const parsed = Number.parseFloat(value);
+                            if (Number.isNaN(parsed) || parsed < 0)
+                              return "Must be a valid non-negative number";
+                            return undefined;
+                          },
+                        }}
+                      >
+                        {(field) => (
+                          <Field
+                            data-invalid={field.state.meta.errors.length > 0}
+                          >
+                            <FieldLabel htmlFor={field.name}>
+                              Selling Price (TL) *
+                            </FieldLabel>
+                            <Input
+                              id={field.name}
+                              type="number"
+                              min="0"
+                              step="0.01"
+                              value={field.state.value}
+                              onChange={(e) =>
+                                field.handleChange(e.target.value)
+                              }
+                              onBlur={field.handleBlur}
+                              placeholder="0.00"
+                            />
+                            <FieldError
+                              errors={field.state.meta.errors.map((e) => ({
+                                message: String(e),
+                              }))}
+                            />
+                          </Field>
+                        )}
+                      </form.Field>
+                    </div>
+
+                    {/* Variants */}
+                    <div className="space-y-3">
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <Label>Product Variants</Label>
+                          <p className="text-xs text-muted-foreground">
+                            Add size, color, or other options
+                          </p>
+                        </div>
+                        <Switch
+                          checked={hasVariants}
+                          onCheckedChange={setHasVariants}
                         />
-                      </Field>
-                    )}
-                  </form.Field>
-                </CollapsibleContent>
-              </Collapsible>
-            </div>
+                      </div>
+                      {hasVariants && (
+                        <VariantOptionsEditor
+                          options={variantOptions}
+                          onChange={setVariantOptions}
+                        />
+                      )}
+                    </div>
+
+                    {/* Stock */}
+                    <div
+                      className={`grid gap-4 ${!hasVariants ? "grid-cols-2" : "grid-cols-1"}`}
+                    >
+                      {!hasVariants && (
+                        <form.Field
+                          name="stockQuantity"
+                          validators={{
+                            onBlur: ({ value }) => {
+                              const parsed = Number.parseInt(value, 10);
+                              if (Number.isNaN(parsed) || parsed < 0)
+                                return "Stock must be non-negative";
+                              return undefined;
+                            },
+                          }}
+                        >
+                          {(field) => (
+                            <Field
+                              data-invalid={field.state.meta.errors.length > 0}
+                            >
+                              <FieldLabel htmlFor={field.name}>
+                                Initial Stock *
+                              </FieldLabel>
+                              <Input
+                                id={field.name}
+                                type="number"
+                                min="0"
+                                step="1"
+                                value={field.state.value}
+                                onChange={(e) =>
+                                  field.handleChange(e.target.value)
+                                }
+                                onBlur={field.handleBlur}
+                              />
+                              <FieldError
+                                errors={field.state.meta.errors.map((e) => ({
+                                  message: String(e),
+                                }))}
+                              />
+                            </Field>
+                          )}
+                        </form.Field>
+                      )}
+
+                      <form.Field name="lowStockThreshold">
+                        {(field) => (
+                          <Field>
+                            <FieldLabel htmlFor={field.name}>
+                              Low Stock Alert
+                            </FieldLabel>
+                            <Input
+                              id={field.name}
+                              type="number"
+                              min="0"
+                              step="1"
+                              value={field.state.value}
+                              onChange={(e) =>
+                                field.handleChange(e.target.value)
+                              }
+                              placeholder="e.g. 5"
+                            />
+                          </Field>
+                        )}
+                      </form.Field>
+                    </div>
+                  </div>
+
+                  {/* Supplier (collapsible) */}
+                  <div className="pt-2">
+                    <Collapsible
+                      open={supplierOpen}
+                      onOpenChange={setSupplierOpen}
+                    >
+                      <CollapsibleTrigger asChild>
+                        <button
+                          type="button"
+                          className="flex w-full items-center gap-2 py-2 text-sm text-muted-foreground hover:text-foreground transition-colors"
+                        >
+                          <ChevronRight
+                            className={`size-4 transition-transform ${supplierOpen ? "rotate-90" : ""}`}
+                          />
+                          <Separator className="flex-1" />
+                          <span className="whitespace-nowrap text-xs font-medium">
+                            Supplier Details (optional)
+                          </span>
+                          <Separator className="flex-1" />
+                        </button>
+                      </CollapsibleTrigger>
+                      <CollapsibleContent className="space-y-4 pt-2">
+                        <div className="grid grid-cols-2 gap-4">
+                          <form.Field name="supplierName">
+                            {(field) => (
+                              <Field>
+                                <FieldLabel htmlFor={field.name}>
+                                  Supplier Name
+                                </FieldLabel>
+                                <Input
+                                  id={field.name}
+                                  value={field.state.value}
+                                  onChange={(e) =>
+                                    field.handleChange(e.target.value)
+                                  }
+                                  placeholder="Company name"
+                                />
+                              </Field>
+                            )}
+                          </form.Field>
+
+                          <form.Field name="supplierPhone">
+                            {(field) => (
+                              <Field>
+                                <FieldLabel htmlFor={field.name}>
+                                  Phone
+                                </FieldLabel>
+                                <Input
+                                  id={field.name}
+                                  value={field.state.value}
+                                  onChange={(e) =>
+                                    field.handleChange(e.target.value)
+                                  }
+                                  placeholder="+90 5XX XXX XX XX"
+                                />
+                              </Field>
+                            )}
+                          </form.Field>
+                        </div>
+
+                        <form.Field name="supplierEmail">
+                          {(field) => (
+                            <Field>
+                              <FieldLabel htmlFor={field.name}>
+                                Supplier Email
+                              </FieldLabel>
+                              <Input
+                                id={field.name}
+                                type="email"
+                                value={field.state.value}
+                                onChange={(e) =>
+                                  field.handleChange(e.target.value)
+                                }
+                                placeholder="supplier@example.com"
+                              />
+                            </Field>
+                          )}
+                        </form.Field>
+
+                        <form.Field name="supplierNotes">
+                          {(field) => (
+                            <Field>
+                              <FieldLabel htmlFor={field.name}>
+                                Notes
+                              </FieldLabel>
+                              <Textarea
+                                id={field.name}
+                                value={field.state.value}
+                                onChange={(e) =>
+                                  field.handleChange(e.target.value)
+                                }
+                                rows={2}
+                                placeholder="Payment terms, contact notes, etc."
+                              />
+                            </Field>
+                          )}
+                        </form.Field>
+                      </CollapsibleContent>
+                    </Collapsible>
+                  </div>
                 </FieldGroup>
               </div>
             </ScrollArea>
