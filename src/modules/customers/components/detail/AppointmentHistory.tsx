@@ -26,7 +26,7 @@ import {
   APPOINTMENT_STATUS_LABELS,
   type AppointmentStatus,
 } from "@/lib/status-colors";
-import { formatPrice } from "@/modules/services/lib/currency";
+import { formatPrice } from "@/lib/currency";
 import { api } from "../../../../../convex/_generated/api";
 import type { Id } from "../../../../../convex/_generated/dataModel";
 

@@ -1,7 +1,6 @@
 "use client";
 
 import { useMutation, useQuery } from "convex/react";
-import { ConvexError } from "convex/values";
 import {
   Check,
   Heart,
@@ -13,6 +12,7 @@ import {
 } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
+import { getConvexErrorMessage } from "@/lib/convex-error";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -287,14 +287,7 @@ export function MoodBoardView({ onNavigateToTryOn }: MoodBoardViewProps) {
       await updateNote({ itemId, note });
       toast.success("Note updated");
     } catch (error) {
-      if (error instanceof ConvexError) {
-        const message =
-          (error.data as { message?: string })?.message ??
-          "Failed to update note";
-        toast.error(message);
-      } else {
-        toast.error("Failed to update note");
-      }
+      toast.error(getConvexErrorMessage(error, "Failed to update note"));
     }
   }
 
@@ -303,14 +296,7 @@ export function MoodBoardView({ onNavigateToTryOn }: MoodBoardViewProps) {
       await removeFromMoodBoard({ itemId });
       toast.success("Removed from mood board");
     } catch (error) {
-      if (error instanceof ConvexError) {
-        const message =
-          (error.data as { message?: string })?.message ??
-          "Failed to remove item";
-        toast.error(message);
-      } else {
-        toast.error("Failed to remove item");
-      }
+      toast.error(getConvexErrorMessage(error, "Failed to remove item"));
     }
   }
 

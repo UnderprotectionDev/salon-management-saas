@@ -1,7 +1,7 @@
 import { ConvexError, v } from "convex/values";
 import { getAll } from "convex-helpers/server/relationships";
 import { internal } from "./_generated/api";
-import type { Id } from "./_generated/dataModel";
+import type { Doc, Id } from "./_generated/dataModel";
 import {
   ErrorCode,
   orgQuery,
@@ -9,6 +9,7 @@ import {
   ownerQuery,
   publicQuery,
 } from "./lib/functions";
+import { assertBelongsToOrg } from "./lib/helpers";
 import { rateLimiter } from "./lib/rateLimits";
 import {
   inventoryStatsValidator,
@@ -146,12 +147,7 @@ export const get = ownerQuery({
   returns: productWithCategoryValidator,
   handler: async (ctx, args) => {
     const product = await ctx.db.get(args.productId);
-    if (!product || product.organizationId !== ctx.organizationId) {
-      throw new ConvexError({
-        code: ErrorCode.NOT_FOUND,
-        message: "Product not found",
-      });
-    }
+    assertBelongsToOrg(product, ctx.organizationId, "Product");
 
     let categoryName: string | undefined;
     if (product.categoryId) {
@@ -188,12 +184,7 @@ export const getDetail = ownerQuery({
   returns: productDetailValidator,
   handler: async (ctx, args) => {
     const product = await ctx.db.get(args.productId);
-    if (!product || product.organizationId !== ctx.organizationId) {
-      throw new ConvexError({
-        code: ErrorCode.NOT_FOUND,
-        message: "Product not found",
-      });
-    }
+    assertBelongsToOrg(product, ctx.organizationId, "Product");
 
     let categoryName: string | undefined;
     if (product.categoryId) {
@@ -224,8 +215,8 @@ export const getDetail = ownerQuery({
     }));
 
     // Fetch variant data if product has variants
-    let variants: any[] | undefined;
-    let variantOptions: any[] | undefined;
+    let variants: Doc<"productVariants">[] | undefined;
+    let variantOptions: Doc<"productVariantOptions">[] | undefined;
 
     if (product.hasVariants) {
       variants = await ctx.db
@@ -371,6 +362,7 @@ export const listPublic = publicQuery({
         inStock: product.stockQuantity > 0,
         imageUrls: product.imageUrls,
         status: product.status,
+        sortOrder: product.sortOrder,
       }))
       .sort((a, b) => (a.sortOrder ?? 999999) - (b.sortOrder ?? 999999));
   },
@@ -409,12 +401,7 @@ export const create = ownerMutation({
     // Validate category belongs to this org
     if (args.categoryId) {
       const cat = await ctx.db.get(args.categoryId);
-      if (!cat || cat.organizationId !== ctx.organizationId) {
-        throw new ConvexError({
-          code: ErrorCode.NOT_FOUND,
-          message: "Category not found",
-        });
-      }
+      assertBelongsToOrg(cat, ctx.organizationId, "Category");
     }
 
     // Validate SKU uniqueness within org
@@ -546,22 +533,12 @@ export const update = ownerMutation({
   returns: v.boolean(),
   handler: async (ctx, args) => {
     const product = await ctx.db.get(args.productId);
-    if (!product || product.organizationId !== ctx.organizationId) {
-      throw new ConvexError({
-        code: ErrorCode.NOT_FOUND,
-        message: "Product not found",
-      });
-    }
+    assertBelongsToOrg(product, ctx.organizationId, "Product");
 
     // Validate category
     if (args.categoryId !== undefined && args.categoryId !== null) {
       const cat = await ctx.db.get(args.categoryId);
-      if (!cat || cat.organizationId !== ctx.organizationId) {
-        throw new ConvexError({
-          code: ErrorCode.NOT_FOUND,
-          message: "Category not found",
-        });
-      }
+      assertBelongsToOrg(cat, ctx.organizationId, "Category");
     }
 
     // SKU uniqueness check
@@ -678,12 +655,7 @@ export const adjustStock = ownerMutation({
   returns: v.number(), // new stock quantity
   handler: async (ctx, args) => {
     const product = await ctx.db.get(args.productId);
-    if (!product || product.organizationId !== ctx.organizationId) {
-      throw new ConvexError({
-        code: ErrorCode.NOT_FOUND,
-        message: "Product not found",
-      });
-    }
+    assertBelongsToOrg(product, ctx.organizationId, "Product");
 
     if (args.quantity === 0) {
       throw new ConvexError({
@@ -748,12 +720,7 @@ export const deactivate = ownerMutation({
   returns: v.boolean(),
   handler: async (ctx, args) => {
     const product = await ctx.db.get(args.productId);
-    if (!product || product.organizationId !== ctx.organizationId) {
-      throw new ConvexError({
-        code: ErrorCode.NOT_FOUND,
-        message: "Product not found",
-      });
-    }
+    assertBelongsToOrg(product, ctx.organizationId, "Product");
 
     await ctx.db.patch(args.productId, {
       status: "inactive",
@@ -775,12 +742,7 @@ export const remove = ownerMutation({
   returns: v.null(),
   handler: async (ctx, args) => {
     const product = await ctx.db.get(args.productId);
-    if (!product || product.organizationId !== ctx.organizationId) {
-      throw new ConvexError({
-        code: ErrorCode.NOT_FOUND,
-        message: "Product not found",
-      });
-    }
+    assertBelongsToOrg(product, ctx.organizationId, "Product");
 
     // 1. Delete all inventory transactions
     const transactions = await ctx.db
@@ -847,12 +809,7 @@ export const reorder = ownerMutation({
   handler: async (ctx, args) => {
     const updates = args.productIds.map(async (id, index) => {
       const product = await ctx.db.get(id);
-      if (!product || product.organizationId !== ctx.organizationId) {
-        throw new ConvexError({
-          code: ErrorCode.NOT_FOUND,
-          message: "Product not found",
-        });
-      }
+      assertBelongsToOrg(product, ctx.organizationId, "Product");
       await ctx.db.patch(id, { sortOrder: index + 1 });
     });
 
@@ -876,12 +833,7 @@ export const duplicate = ownerMutation({
     });
 
     const product = await ctx.db.get(args.productId);
-    if (!product || product.organizationId !== ctx.organizationId) {
-      throw new ConvexError({
-        code: ErrorCode.NOT_FOUND,
-        message: "Product not found",
-      });
-    }
+    assertBelongsToOrg(product, ctx.organizationId, "Product");
 
     // Compute next sortOrder
     const allProducts = await ctx.db
@@ -978,12 +930,7 @@ export const bulkUpdateCategory = ownerMutation({
     // Validate category if provided
     if (args.categoryId) {
       const cat = await ctx.db.get(args.categoryId);
-      if (!cat || cat.organizationId !== ctx.organizationId) {
-        throw new ConvexError({
-          code: ErrorCode.NOT_FOUND,
-          message: "Category not found",
-        });
-      }
+      assertBelongsToOrg(cat, ctx.organizationId, "Category");
     }
 
     let count = 0;

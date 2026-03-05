@@ -14,7 +14,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { formatPrice } from "@/modules/services/lib/currency";
+import { formatPrice, kurusToLiraString, liraToKurus } from "@/lib/currency";
 import { api } from "../../../../convex/_generated/api";
 import type { Id } from "../../../../convex/_generated/dataModel";
 import { StockIndicatorBar } from "./StockIndicatorBar";
@@ -23,15 +23,6 @@ type VariantMatrixTableProps = {
   productId: Id<"products">;
   organizationId: Id<"organization">;
 };
-
-function liraToKurus(lira: string): number {
-  const num = Number.parseFloat(lira);
-  return Number.isNaN(num) ? 0 : Math.round(num * 100);
-}
-
-function kurusToLira(kurus: number): string {
-  return (kurus / 100).toFixed(2);
-}
 
 export function VariantMatrixTable({
   productId,
@@ -211,7 +202,7 @@ export function VariantMatrixTable({
                         startEdit(
                           variant._id,
                           "costPrice",
-                          kurusToLira(variant.costPrice),
+                          kurusToLiraString(variant.costPrice),
                         )
                       }
                     >
@@ -244,7 +235,7 @@ export function VariantMatrixTable({
                         startEdit(
                           variant._id,
                           "sellingPrice",
-                          kurusToLira(variant.sellingPrice),
+                          kurusToLiraString(variant.sellingPrice),
                         )
                       }
                     >

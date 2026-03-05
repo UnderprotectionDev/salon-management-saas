@@ -1,9 +1,9 @@
 "use client";
 
 import { useConvexAuth, useMutation, useQuery } from "convex/react";
-import { ConvexError } from "convex/values";
 import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
+import { getConvexErrorMessage } from "@/lib/convex-error";
 import { api } from "../../../../convex/_generated/api";
 import type { AvatarConfig } from "../lib/avatar";
 
@@ -114,12 +114,7 @@ export function useUserOnboardingForm() {
       setIsSubmitting(false);
       setIsComplete(true);
     } catch (error: unknown) {
-      const message =
-        error instanceof ConvexError
-          ? ((error.data as { message?: string })?.message ??
-            "Something went wrong")
-          : "Something went wrong. Please try again.";
-      toast.error(message);
+      toast.error(getConvexErrorMessage(error, "Something went wrong. Please try again."));
       setIsSubmitting(false);
     }
   };

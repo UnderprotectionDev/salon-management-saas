@@ -2,11 +2,10 @@
 
 import { useForm, useStore } from "@tanstack/react-form";
 import { useMutation, useQuery } from "convex/react";
-import { ConvexError } from "convex/values";
 import { Loader2 } from "lucide-react";
 import { toast } from "sonner";
+import { getConvexErrorMessage } from "@/lib/convex-error";
 import { z } from "zod";
-import { useUnsavedChanges } from "@/hooks/use-unsaved-changes";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -26,6 +25,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Switch } from "@/components/ui/switch";
+import { useUnsavedChanges } from "@/hooks/use-unsaved-changes";
 import { useOrganization } from "@/modules/organization";
 import { api } from "../../../../../../convex/_generated/api";
 
@@ -92,11 +92,9 @@ export default function BookingSettingsPage() {
         form.reset();
         toast.success("Booking settings saved");
       } catch (error) {
-        const message =
-          error instanceof ConvexError
-            ? (error.data?.message ?? "Failed to save booking settings.")
-            : "Failed to save booking settings. Please try again.";
-        toast.error(message);
+        toast.error(
+          getConvexErrorMessage(error, "Failed to save booking settings."),
+        );
       }
     },
   });

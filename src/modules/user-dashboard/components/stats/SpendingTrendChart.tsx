@@ -16,7 +16,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { formatPrice } from "@/modules/services/lib/currency";
+import { formatPrice } from "@/lib/currency";
 
 function formatMonth(monthStr: string): string {
   const [year, month] = monthStr.split("-");

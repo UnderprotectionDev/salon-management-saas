@@ -1,7 +1,7 @@
 import { AlertTriangle, Package } from "lucide-react";
 import Image from "next/image";
 import { Badge } from "@/components/ui/badge";
-import { formatPrice } from "@/modules/services/lib/currency";
+import { formatPrice } from "@/lib/currency";
 import type { Id } from "../../../../convex/_generated/dataModel";
 import { PriceHistoryTimeline } from "./PriceHistoryTimeline";
 import type { ProductDetail } from "./ProductDetailTypes";

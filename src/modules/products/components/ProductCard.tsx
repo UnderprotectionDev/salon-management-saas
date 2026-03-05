@@ -21,7 +21,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { formatPrice } from "@/modules/services/lib/currency";
+import { formatPrice } from "@/lib/currency";
 import type { Id } from "../../../../convex/_generated/dataModel";
 import { StockIndicatorBar } from "./StockIndicatorBar";
 

@@ -1,7 +1,6 @@
 "use client";
 
 import { useMutation, useQuery } from "convex/react";
-import { ConvexError } from "convex/values";
 import {
   AlertCircle,
   ChevronDown,
@@ -16,6 +15,7 @@ import {
 } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
+import { getConvexErrorMessage } from "@/lib/convex-error";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -415,13 +415,7 @@ export function PhotoAnalysisView({
 
       toast.success("Analysis started! Results will appear shortly.");
     } catch (error) {
-      if (error instanceof ConvexError) {
-        const message =
-          (error.data as { message?: string })?.message ?? "Analysis failed";
-        toast.error(message);
-      } else {
-        toast.error("Failed to start analysis");
-      }
+      toast.error(getConvexErrorMessage(error, "Failed to start analysis"));
     } finally {
       setIsUploading(false);
     }

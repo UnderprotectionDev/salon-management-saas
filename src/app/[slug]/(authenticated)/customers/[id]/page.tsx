@@ -55,7 +55,7 @@ import {
   SOURCE_LABELS,
 } from "@/modules/customers/lib/constants";
 import { useOrganization } from "@/modules/organization";
-import { formatPrice } from "@/modules/services/lib/currency";
+import { formatPrice } from "@/lib/currency";
 import { api } from "../../../../../../convex/_generated/api";
 import type { Id } from "../../../../../../convex/_generated/dataModel";
 

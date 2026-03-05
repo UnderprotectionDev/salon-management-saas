@@ -1,5 +1,6 @@
-import { getDefaultBusinessHours } from "@/components/business-hours/BusinessHoursEditor";
 import type { BusinessHours } from "@/components/business-hours/BusinessHoursEditor";
+import { getDefaultBusinessHours } from "@/components/business-hours/BusinessHoursEditor";
+import { DAYS } from "@/lib/date-time-constants";
 
 export function slugify(text: string): string {
   return text
@@ -11,20 +12,11 @@ export function slugify(text: string): string {
 }
 
 export function computeHoursSummary(hours: BusinessHours): string {
-  const days = [
-    "monday",
-    "tuesday",
-    "wednesday",
-    "thursday",
-    "friday",
-    "saturday",
-    "sunday",
-  ] as const;
   const dayLabels = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 
   const openDays: { index: number; open: string; close: string }[] = [];
-  for (let i = 0; i < days.length; i++) {
-    const d = hours[days[i]];
+  for (let i = 0; i < DAYS.length; i++) {
+    const d = hours[DAYS[i]];
     if (d && !d.closed) {
       openDays.push({ index: i, open: d.open, close: d.close });
     }

@@ -1,6 +1,6 @@
 "use client";
 
-import { formatPrice } from "../lib/currency";
+import { formatPrice } from "@/lib/currency";
 
 type PriceDisplayProps = {
   price: number;

@@ -5,7 +5,7 @@ import { CalendarDays, Clock, MapPin, User } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { AppointmentStatusBadge } from "@/modules/booking";
 import { formatMinutesAsTime } from "@/modules/booking/lib/constants";
-import { formatPrice } from "@/modules/services/lib/currency";
+import { formatPrice } from "@/lib/currency";
 import { api } from "../../../../convex/_generated/api";
 import type { Id } from "../../../../convex/_generated/dataModel";
 import { canModifyAppointment, isPastStatus } from "../lib/appointment-helpers";

@@ -1,10 +1,10 @@
 "use client";
 
 import { useMutation } from "convex/react";
-import { ConvexError } from "convex/values";
 import { Loader2, Store } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
+import { getConvexErrorMessage } from "@/lib/convex-error";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -16,7 +16,7 @@ import {
 } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { formatPrice } from "@/modules/services/lib/currency";
+import { formatPrice } from "@/lib/currency";
 import { api } from "../../../../convex/_generated/api";
 import type { Id } from "../../../../convex/_generated/dataModel";
 
@@ -53,12 +53,7 @@ export function ProfileCard({ profile }: { profile: CustomerProfile }) {
       toast.success("Profile updated successfully");
       setIsEditing(false);
     } catch (error: unknown) {
-      toast.error(
-        error instanceof ConvexError
-          ? ((error.data as { message?: string })?.message ??
-              "An error occurred")
-          : "Unexpected error occurred",
-      );
+      toast.error(getConvexErrorMessage(error, "Unexpected error occurred"));
     } finally {
       setIsSubmitting(false);
     }

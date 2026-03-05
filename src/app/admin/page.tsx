@@ -16,11 +16,8 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
+import { formatCurrency } from "@/lib/currency";
 import { api } from "../../../convex/_generated/api";
-
-function formatCurrency(kurus: number): string {
-  return `₺${(kurus / 100).toLocaleString("tr-TR", { minimumFractionDigits: 2 })}`;
-}
 
 function StatCard({
   title,

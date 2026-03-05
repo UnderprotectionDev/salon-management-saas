@@ -6,4 +6,4 @@ export { EditServiceSheet } from "./components/EditServiceSheet";
 export { PriceDisplay } from "./components/PriceDisplay";
 export { ServicesList } from "./components/ServicesList";
 export { StaffAssignmentSelect } from "./components/StaffAssignmentSelect";
-export { formatPrice, kurusToLira, liraToKurus } from "./lib/currency";
+export { formatPrice, kurusToLira, liraToKurus } from "@/lib/currency";

@@ -44,7 +44,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { formatMinutesAsTime } from "@/modules/booking/lib/constants";
-import { formatPrice } from "@/modules/services/lib/currency";
+import { formatPrice } from "@/lib/currency";
 import { api } from "../../../../convex/_generated/api";
 
 // =============================================================================

@@ -28,7 +28,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Skeleton } from "@/components/ui/skeleton";
-import { formatPrice } from "@/modules/services/lib/currency";
+import { formatPrice } from "@/lib/currency";
 import type { Id } from "../../../../convex/_generated/dataModel";
 import { ACCOUNT_STATUS_LABELS } from "../lib/constants";
 import { DeleteCustomerDialog } from "./DeleteCustomerDialog";

@@ -2,7 +2,7 @@
 
 import { CalendarDays, DollarSign, Eye, XCircle } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
-import { formatPrice } from "@/modules/services/lib/currency";
+import { formatPrice } from "@/lib/currency";
 
 type CustomerStatsProps = {
   totalVisits: number;

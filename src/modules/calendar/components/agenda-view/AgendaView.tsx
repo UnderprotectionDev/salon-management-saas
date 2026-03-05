@@ -3,7 +3,7 @@
 import { format } from "date-fns";
 import { CalendarX2, Clock, Scissors, User } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
-import { formatPrice } from "@/modules/services/lib/currency";
+import { formatPrice } from "@/lib/currency";
 import {
   getStatusEventColor,
   STATUS_COLORS,

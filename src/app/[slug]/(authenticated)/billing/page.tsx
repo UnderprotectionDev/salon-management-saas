@@ -1,10 +1,10 @@
 "use client";
 
 import { useAction, useQuery } from "convex/react";
-import { ConvexError } from "convex/values";
 import { Loader2, RefreshCw } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
+import { getConvexErrorMessage } from "@/lib/convex-error";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
@@ -56,13 +56,9 @@ export default function BillingPage() {
       await triggerSync();
       toast.success("Products synced successfully");
     } catch (error) {
-      console.error("Failed to sync products:", error);
-      const message =
-        error instanceof ConvexError
-          ? (error.data as { message?: string })?.message ||
-            "Failed to sync products."
-          : "Failed to sync products. Please try again.";
-      toast.error(message);
+      toast.error(
+        getConvexErrorMessage(error, "Failed to sync products."),
+      );
     } finally {
       setIsSyncing(false);
     }

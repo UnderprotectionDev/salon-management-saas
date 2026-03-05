@@ -4,7 +4,7 @@ import { Ban, CalendarClock, Loader2 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
-import { formatPrice } from "@/modules/services/lib/currency";
+import { formatPrice } from "@/lib/currency";
 import type { Id } from "../../../../../convex/_generated/dataModel";
 import { STATUS_LABELS } from "../../lib/constants";
 import type { AppointmentWithDetails } from "../../lib/types";

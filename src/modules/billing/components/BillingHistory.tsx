@@ -1,10 +1,10 @@
 "use client";
 
 import { useAction } from "convex/react";
-import { ConvexError } from "convex/values";
 import { FileText, Loader2, Receipt } from "lucide-react";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
+import { getConvexErrorMessage } from "@/lib/convex-error";
 import { Badge } from "@/components/ui/badge";
 import {
   Card,
@@ -84,13 +84,7 @@ export function BillingHistory() {
         const data = await getBillingHistory();
         setOrders(data);
       } catch (error) {
-        console.error("Failed to fetch billing history:", error);
-        const message =
-          error instanceof ConvexError
-            ? (error.data as { message?: string })?.message ||
-              "Failed to load billing history."
-            : "Failed to load billing history.";
-        toast.error(message);
+        toast.error(getConvexErrorMessage(error, "Failed to load billing history."));
       } finally {
         setIsLoading(false);
         setHasLoaded(true);

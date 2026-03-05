@@ -7,6 +7,7 @@ import {
   ownerMutation,
   publicQuery,
 } from "./lib/functions";
+import { assertBelongsToOrg } from "./lib/helpers";
 import { rateLimiter } from "./lib/rateLimits";
 import {
   serviceDocValidator,
@@ -196,12 +197,7 @@ export const create = ownerMutation({
     // Validate category belongs to this org if provided
     if (args.categoryId) {
       const category = await ctx.db.get(args.categoryId);
-      if (!category || category.organizationId !== ctx.organizationId) {
-        throw new ConvexError({
-          code: ErrorCode.NOT_FOUND,
-          message: "Category not found",
-        });
-      }
+      assertBelongsToOrg(category, ctx.organizationId, "Category");
     }
 
     // Auto-set sortOrder to max + 1
@@ -258,12 +254,7 @@ export const update = orgMutation({
   returns: serviceDocValidator,
   handler: async (ctx, args) => {
     const service = await ctx.db.get(args.serviceId);
-    if (!service || service.organizationId !== ctx.organizationId) {
-      throw new ConvexError({
-        code: ErrorCode.NOT_FOUND,
-        message: "Service not found",
-      });
-    }
+    assertBelongsToOrg(service, ctx.organizationId, "Service");
 
     // Staff permission restrictions
     const isStaffOnly = ctx.member.role === "staff";
@@ -299,12 +290,7 @@ export const update = orgMutation({
     // Validate category if changing
     if (args.categoryId) {
       const category = await ctx.db.get(args.categoryId);
-      if (!category || category.organizationId !== ctx.organizationId) {
-        throw new ConvexError({
-          code: ErrorCode.NOT_FOUND,
-          message: "Category not found",
-        });
-      }
+      assertBelongsToOrg(category, ctx.organizationId, "Category");
     }
 
     const { serviceId, ...updates } = args;
@@ -333,12 +319,7 @@ export const remove = ownerMutation({
   returns: v.boolean(),
   handler: async (ctx, args) => {
     const service = await ctx.db.get(args.serviceId);
-    if (!service || service.organizationId !== ctx.organizationId) {
-      throw new ConvexError({
-        code: ErrorCode.NOT_FOUND,
-        message: "Service not found",
-      });
-    }
+    assertBelongsToOrg(service, ctx.organizationId, "Service");
 
     await ctx.db.patch(args.serviceId, {
       status: "inactive",
@@ -371,12 +352,7 @@ export const permanentDelete = ownerMutation({
   returns: v.boolean(),
   handler: async (ctx, args) => {
     const service = await ctx.db.get(args.serviceId);
-    if (!service || service.organizationId !== ctx.organizationId) {
-      throw new ConvexError({
-        code: ErrorCode.NOT_FOUND,
-        message: "Service not found",
-      });
-    }
+    assertBelongsToOrg(service, ctx.organizationId, "Service");
 
     // Check for existing appointment references using index
     const appointmentService = await ctx.db
@@ -426,12 +402,7 @@ export const reorder = ownerMutation({
   handler: async (ctx, args) => {
     const updates = args.serviceIds.map(async (id, index) => {
       const service = await ctx.db.get(id);
-      if (!service || service.organizationId !== ctx.organizationId) {
-        throw new ConvexError({
-          code: ErrorCode.NOT_FOUND,
-          message: "Service not found",
-        });
-      }
+      assertBelongsToOrg(service, ctx.organizationId, "Service");
       await ctx.db.patch(id, { sortOrder: index + 1 });
     });
 
@@ -453,20 +424,10 @@ export const assignStaff = ownerMutation({
   returns: v.boolean(),
   handler: async (ctx, args) => {
     const service = await ctx.db.get(args.serviceId);
-    if (!service || service.organizationId !== ctx.organizationId) {
-      throw new ConvexError({
-        code: ErrorCode.NOT_FOUND,
-        message: "Service not found",
-      });
-    }
+    assertBelongsToOrg(service, ctx.organizationId, "Service");
 
     const staff = await ctx.db.get(args.staffId);
-    if (!staff || staff.organizationId !== ctx.organizationId) {
-      throw new ConvexError({
-        code: ErrorCode.NOT_FOUND,
-        message: "Staff not found",
-      });
-    }
+    assertBelongsToOrg(staff, ctx.organizationId, "Staff");
 
     const currentServiceIds = staff.serviceIds ?? [];
 

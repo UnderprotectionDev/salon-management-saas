@@ -1,15 +1,15 @@
 "use client";
 
 import { useMutation, useQuery } from "convex/react";
-import { ConvexError } from "convex/values";
 import { Loader2, MessageCircleQuestion } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
+import { getConvexErrorMessage } from "@/lib/convex-error";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import type { SalonType } from "@/modules/ai/constants";
 import { api } from "../../../../../convex/_generated/api";
 import type { Id } from "../../../../../convex/_generated/dataModel";
-import type { SalonType } from "@/modules/ai/constants";
 import {
   CREDIT_COSTS,
   QUICK_QUESTIONS_BY_TYPE,
@@ -60,13 +60,7 @@ export function QuickQuestionsPanel({
         next.delete(questionKey);
         return next;
       });
-      if (error instanceof ConvexError) {
-        const message =
-          (error.data as { message?: string })?.message ?? "Question failed";
-        toast.error(message);
-      } else {
-        toast.error("Failed to ask question");
-      }
+      toast.error(getConvexErrorMessage(error, "Failed to ask question"));
     } finally {
       // Remove from pending once mutation settles (server state will take over)
       setPendingKeys((prev) => {

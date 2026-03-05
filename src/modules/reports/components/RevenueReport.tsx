@@ -12,7 +12,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useOrganization } from "@/modules/organization";
-import { formatPrice } from "@/modules/services/lib/currency";
+import { formatPrice } from "@/lib/currency";
 import { api } from "../../../../convex/_generated/api";
 import { useDateRange } from "../hooks/useDateRange";
 import { downloadCsv, reportFilename, sanitizeCsvValue } from "../lib/csv";

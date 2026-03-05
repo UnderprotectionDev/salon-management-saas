@@ -19,7 +19,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Separator } from "@/components/ui/separator";
-import { formatPrice } from "@/modules/services/lib/currency";
+import { formatPrice } from "@/lib/currency";
 import { generateGoogleCalendarURL, generateICS } from "../lib/calendar";
 import { formatMinutesAsTime } from "../lib/constants";
 

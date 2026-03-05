@@ -1,10 +1,10 @@
 "use client";
 
 import { useConvexAuth, useMutation, useQuery } from "convex/react";
-import { ConvexError } from "convex/values";
 import { Heart, Store } from "lucide-react";
 import Link from "next/link";
 import { toast } from "sonner";
+import { getConvexErrorMessage } from "@/lib/convex-error";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import {
@@ -75,12 +75,7 @@ export function FavoriteSalonsSection() {
       await toggleFavorite({ organizationId });
       toast.success("Removed from favorites");
     } catch (error: unknown) {
-      toast.error(
-        error instanceof ConvexError
-          ? ((error.data as { message?: string })?.message ??
-              "An error occurred")
-          : "Unexpected error occurred",
-      );
+      toast.error(getConvexErrorMessage(error, "Unexpected error occurred"));
     }
   };
 

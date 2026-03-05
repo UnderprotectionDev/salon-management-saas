@@ -3,7 +3,7 @@
 import { useQuery } from "convex/react";
 import { AlertTriangle, Package, PackageX, TrendingUp } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
-import { formatPrice } from "@/modules/services/lib/currency";
+import { formatPrice } from "@/lib/currency";
 import { api } from "../../../../convex/_generated/api";
 import type { Id } from "../../../../convex/_generated/dataModel";
 import type { StockFilter } from "./ProductFilters";

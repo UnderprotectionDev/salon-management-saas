@@ -30,6 +30,7 @@ import {
 import { Separator } from "@/components/ui/separator";
 import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
+import { liraToKurus } from "@/lib/currency";
 import { api } from "../../../../convex/_generated/api";
 import type { Id } from "../../../../convex/_generated/dataModel";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -62,12 +63,6 @@ const nameSchema = z
   .string()
   .min(2, "Name must be at least 2 characters")
   .max(100, "Name cannot exceed 100 characters");
-
-function liraToKurus(lira: string | number): number {
-  const parsed = typeof lira === "string" ? Number.parseFloat(lira) : lira;
-  if (Number.isNaN(parsed)) return 0;
-  return Math.round(parsed * 100);
-}
 
 export function AddProductSheet({
   organizationId,

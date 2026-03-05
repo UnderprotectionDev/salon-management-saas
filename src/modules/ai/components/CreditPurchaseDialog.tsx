@@ -1,10 +1,10 @@
 "use client";
 
 import { useAction } from "convex/react";
-import { ConvexError } from "convex/values";
 import { Coins, CreditCard, Loader2, Sparkles } from "lucide-react";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
+import { getConvexErrorMessage } from "@/lib/convex-error";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -84,12 +84,9 @@ export function CreditPurchaseDialog({
       // Redirect to Polar hosted checkout
       window.location.href = url;
     } catch (error) {
-      const message =
-        error instanceof ConvexError
-          ? (error.data as { message?: string })?.message ||
-            "Failed to initiate purchase."
-          : "Failed to initiate purchase. Please try again.";
-      toast.error(message);
+      toast.error(
+        getConvexErrorMessage(error, "Failed to initiate purchase. Please try again."),
+      );
       setLoadingPackageId(null);
     }
     // Don't reset loadingPackageId on success — page is navigating away

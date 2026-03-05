@@ -992,6 +992,7 @@ export const productPublicValidator = v.object({
   inStock: v.boolean(),
   imageUrls: v.optional(v.array(v.string())),
   status: literals("active", "inactive"),
+  sortOrder: v.optional(v.number()),
 });
 
 /** Inventory stats for dashboard overview */

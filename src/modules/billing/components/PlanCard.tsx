@@ -1,10 +1,10 @@
 "use client";
 
 import { useAction, useMutation } from "convex/react";
-import { ConvexError } from "convex/values";
 import { Check, Loader2 } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
+import { getConvexErrorMessage } from "@/lib/convex-error";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -137,13 +137,7 @@ export function PlanCard({
       });
       toast.success("Subscription reactivated successfully");
     } catch (error) {
-      console.error("Reactivate error:", error);
-      const message =
-        error instanceof ConvexError
-          ? (error.data as { message?: string })?.message ||
-            "Failed to reactivate subscription."
-          : "Failed to reactivate subscription. Please try again.";
-      toast.error(message);
+      toast.error(getConvexErrorMessage(error, "Failed to reactivate subscription."));
     } finally {
       setIsLoading(false);
     }
@@ -159,13 +153,7 @@ export function PlanCard({
       });
       window.location.href = url;
     } catch (error) {
-      console.error("Checkout error:", error);
-      const message =
-        error instanceof ConvexError
-          ? (error.data as { message?: string })?.message ||
-            "Failed to start checkout."
-          : "Failed to start checkout. Please try again.";
-      toast.error(message);
+      toast.error(getConvexErrorMessage(error, "Failed to start checkout."));
     } finally {
       setIsLoading(false);
     }
@@ -178,15 +166,7 @@ export function PlanCard({
       await changeSubscription({ productId: product.id });
       toast.success(`Plan changed to ${product.name}`);
     } catch (error) {
-      console.error("Plan change error:", error);
-      const message =
-        error instanceof ConvexError
-          ? (error.data as { message?: string })?.message ||
-            "Failed to change plan."
-          : error instanceof Error
-            ? error.message
-            : "Failed to change plan. Please try again.";
-      toast.error(message);
+      toast.error(getConvexErrorMessage(error, "Failed to change plan."));
     } finally {
       setIsLoading(false);
     }

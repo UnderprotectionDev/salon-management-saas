@@ -39,7 +39,7 @@ import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
 import { api } from "../../../../convex/_generated/api";
 import type { Id } from "../../../../convex/_generated/dataModel";
-import { kurusToLira, liraToKurus } from "../lib/currency";
+import { kurusToLira, liraToKurus } from "@/lib/currency";
 import { AddCategoryPopover } from "./AddCategoryPopover";
 import { StaffAssignmentSelect } from "./StaffAssignmentSelect";
 

@@ -1,10 +1,10 @@
 "use client";
 
 import { useMutation } from "convex/react";
-import { ConvexError } from "convex/values";
 import { Loader2 } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
+import { getConvexErrorMessage } from "@/lib/convex-error";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -76,12 +76,7 @@ export function UserRescheduleDialog({
       toast.success("Appointment rescheduled successfully");
       setOpen(false);
     } catch (error: unknown) {
-      toast.error(
-        error instanceof ConvexError
-          ? ((error.data as { message?: string })?.message ??
-              "An error occurred")
-          : "Unexpected error occurred",
-      );
+      toast.error(getConvexErrorMessage(error, "Unexpected error occurred"));
     } finally {
       setIsSubmitting(false);
     }

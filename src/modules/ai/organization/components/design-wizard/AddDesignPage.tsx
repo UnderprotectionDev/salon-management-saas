@@ -1,11 +1,11 @@
 "use client";
 
 import { useMutation } from "convex/react";
-import { ConvexError } from "convex/values";
 import { ArrowLeft, ArrowRight, Check, Loader2 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { toast } from "sonner";
+import { getConvexErrorMessage } from "@/lib/convex-error";
 import { Button } from "@/components/ui/button";
 import { useOrganization } from "@/modules/organization";
 import { api } from "../../../../../../convex/_generated/api";
@@ -285,11 +285,10 @@ export function AddDesignPage({ editMode }: AddDesignPageProps) {
       router.push(`/${slug}/ai`);
     } catch (error) {
       toast.error(
-        error instanceof ConvexError
-          ? ((error.data as { message?: string }).message ?? "Error")
-          : editMode
-            ? "Failed to update design"
-            : "Failed to create design",
+        getConvexErrorMessage(
+          error,
+          editMode ? "Failed to update design" : "Failed to create design",
+        ),
       );
     } finally {
       setSubmitting(false);

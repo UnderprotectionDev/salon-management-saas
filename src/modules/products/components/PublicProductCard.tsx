@@ -3,7 +3,7 @@
 import { Package } from "lucide-react";
 import Image from "next/image";
 import { Badge } from "@/components/ui/badge";
-import { formatPrice } from "@/modules/services/lib/currency";
+import { formatPrice } from "@/lib/currency";
 
 type PublicProduct = {
   _id: string;

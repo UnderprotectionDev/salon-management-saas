@@ -39,12 +39,9 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Textarea } from "@/components/ui/textarea";
+import { formatCurrency } from "@/lib/currency";
 import { api } from "../../../../convex/_generated/api";
 import type { Id } from "../../../../convex/_generated/dataModel";
-
-function formatCurrency(kurus: number): string {
-  return `₺${(kurus / 100).toLocaleString("tr-TR", { minimumFractionDigits: 2 })}`;
-}
 
 function StatusBadge({ status }: { status: string | null }) {
   if (!status) return <Badge variant="secondary">No status</Badge>;
@@ -82,7 +79,7 @@ function SuspendOrgDialog({
       toast.success(`${orgName} has been suspended`);
       onOpenChange(false);
       setReason("");
-    } catch (error) {
+    } catch (_error) {
       toast.error("Failed to suspend organization");
     }
   };
@@ -137,7 +134,7 @@ function DeleteOrgDialog({
       toast.success(`${orgName} has been deleted`);
       onOpenChange(false);
       setConfirmSlug("");
-    } catch (error) {
+    } catch (_error) {
       toast.error("Failed to delete organization. Check the slug.");
     }
   };
@@ -206,7 +203,7 @@ export default function AdminOrganizationsPage() {
     try {
       await unsuspendOrg({ organizationId: orgId });
       toast.success(`${orgName} has been unsuspended`);
-    } catch (error) {
+    } catch (_error) {
       toast.error("Failed to unsuspend organization");
     }
   };

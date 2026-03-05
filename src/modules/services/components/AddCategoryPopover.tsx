@@ -5,6 +5,7 @@ import { ConvexError } from "convex/values";
 import { Loader2, Plus } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
+import { getConvexErrorMessage } from "@/lib/convex-error";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -65,14 +66,9 @@ export function AddCategoryPopover({
           return;
         }
       }
-      const message =
-        error instanceof ConvexError
-          ? ((error.data as { message?: string })?.message ??
-            "Failed to create category")
-          : error instanceof Error
-            ? error.message
-            : "Failed to create category";
-      toast.error(message);
+      toast.error(
+        getConvexErrorMessage(error, "Failed to create category"),
+      );
     } finally {
       setIsSubmitting(false);
     }

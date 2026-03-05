@@ -22,6 +22,7 @@ import { ConvexError } from "convex/values";
 import { GripVertical, Loader2, Plus, Trash2 } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
+import { getConvexErrorMessage } from "@/lib/convex-error";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -210,9 +211,7 @@ export function ProductCategoryManageDialog({
       setEditingId(null);
       toast.success("Category updated");
     } catch (error) {
-      const message =
-        error instanceof Error ? error.message : "Failed to update category";
-      toast.error(message);
+      toast.error(getConvexErrorMessage(error, "Failed to update category"));
     }
   };
 
@@ -226,9 +225,7 @@ export function ProductCategoryManageDialog({
       setDeleteTarget(null);
       toast.success("Category deleted");
     } catch (error) {
-      const message =
-        error instanceof Error ? error.message : "Failed to delete category";
-      toast.error(message);
+      toast.error(getConvexErrorMessage(error, "Failed to delete category"));
     }
   };
 
@@ -268,9 +265,7 @@ export function ProductCategoryManageDialog({
       ) {
         toast.info("Category already exists");
       } else {
-        const message =
-          error instanceof Error ? error.message : "Failed to create category";
-        toast.error(message);
+        toast.error(getConvexErrorMessage(error, "Failed to create category"));
       }
     } finally {
       setIsAdding(false);

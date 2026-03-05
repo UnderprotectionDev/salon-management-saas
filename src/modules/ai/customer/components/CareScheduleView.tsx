@@ -1,7 +1,6 @@
 "use client";
 
 import { useMutation, useQuery } from "convex/react";
-import { ConvexError } from "convex/values";
 import {
   CalendarDays,
   CheckCircle2,
@@ -11,6 +10,7 @@ import {
 } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
+import { getConvexErrorMessage } from "@/lib/convex-error";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -84,9 +84,7 @@ export function CareScheduleView({ salonType }: CareScheduleViewProps) {
       toast.success("Care schedule generation started");
     } catch (error) {
       toast.error(
-        error instanceof ConvexError
-          ? ((error.data as { message?: string }).message ?? "Error")
-          : "Failed to generate care schedule",
+        getConvexErrorMessage(error, "Failed to generate care schedule"),
       );
     } finally {
       setIsGenerating(false);
