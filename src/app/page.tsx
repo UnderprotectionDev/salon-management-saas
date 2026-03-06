@@ -19,11 +19,8 @@ import {
   EmptyTitle,
 } from "@/components/ui/empty";
 import { Skeleton } from "@/components/ui/skeleton";
+import { stripHtml } from "@/lib/html";
 import { api } from "../../convex/_generated/api";
-
-function stripHtml(html: string): string {
-  return html.replace(/<[^>]*>/g, "").trim();
-}
 
 function SalonListSkeleton() {
   return (

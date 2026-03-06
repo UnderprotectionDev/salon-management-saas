@@ -51,6 +51,7 @@ import { UnderlineToolbar } from "./toolbars/UnderlineToolbar";
 import { YouTubeToolbar } from "./toolbars/YouTubeToolbar";
 
 interface RichEditorProps {
+  id?: string;
   value: string;
   onChange: (html: string) => void;
   onBlur?: () => void;
@@ -66,6 +67,7 @@ function normalizeEmpty(html: string): string {
 }
 
 export function RichEditor({
+  id,
   value,
   onChange,
   onBlur,
@@ -169,6 +171,7 @@ export function RichEditor({
   return (
     <TooltipProvider delayDuration={300}>
       <div
+        id={id}
         className={cn(
           "rounded-md border border-input bg-background",
           disabled && "opacity-50 cursor-not-allowed",

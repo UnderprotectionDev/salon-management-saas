@@ -4,6 +4,7 @@ import { Package } from "lucide-react";
 import Image from "next/image";
 import { Badge } from "@/components/ui/badge";
 import { formatPrice } from "@/lib/currency";
+import { stripHtml } from "@/lib/html";
 
 type PublicProduct = {
   _id: string;
@@ -56,7 +57,7 @@ export function PublicProductCard({ product }: { product: PublicProduct }) {
 
         {product.description && (
           <p className="line-clamp-2 text-sm text-muted-foreground">
-            {product.description}
+            {stripHtml(product.description)}
           </p>
         )}
 

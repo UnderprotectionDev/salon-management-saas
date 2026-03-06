@@ -30,6 +30,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useUnsavedChanges } from "@/hooks/use-unsaved-changes";
+import { stripHtmlLength } from "@/lib/html";
 import { cn } from "@/lib/utils";
 import {
   type OrgSalonType,
@@ -42,22 +43,6 @@ const nameSchema = z
   .string()
   .min(2, "Name must be at least 2 characters")
   .max(100, "Name cannot exceed 100 characters");
-
-function stripHtmlLength(html: string): number {
-  if (typeof document !== "undefined") {
-    const doc = new DOMParser().parseFromString(html, "text/html");
-    return (doc.body.textContent || "").trim().length;
-  }
-  return html
-    .replace(/<[^>]*>/g, "")
-    .replace(/&nbsp;/gi, " ")
-    .replace(/&amp;/gi, "&")
-    .replace(/&lt;/gi, "<")
-    .replace(/&gt;/gi, ">")
-    .replace(/&quot;/gi, '"')
-    .replace(/&#39;/gi, "'")
-    .trim().length;
-}
 
 const descriptionSchema = z
   .string()
@@ -208,6 +193,7 @@ export default function GeneralSettingsPage() {
                         Description
                       </FieldLabel>
                       <RichEditor
+                        id="description-editor"
                         value={field.state.value}
                         onChange={(html) => field.handleChange(html)}
                         onBlur={field.handleBlur}

@@ -1,5 +1,6 @@
 import { AlignLeft, Clock, Globe, MapPin } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { stripHtml } from "@/lib/html";
 import type { WizardFormData } from "../hooks/useOnboardingForm";
 import { SALON_TYPE_OPTIONS } from "../lib/constants";
 import { DEFAULT_HOURS_SUMMARY } from "../lib/utils";
@@ -104,11 +105,11 @@ export function SalonPreviewCard({
       </PreviewLine>
 
       {/* Description */}
-      <PreviewLine show={data.description.length > 0}>
+      <PreviewLine show={stripHtml(data.description).length > 0}>
         <div className="flex items-start gap-1.5 text-background/50">
           <AlignLeft className="size-3 shrink-0 mt-0.5" />
           <span className="text-xs leading-snug line-clamp-2">
-            {data.description}
+            {stripHtml(data.description)}
           </span>
         </div>
       </PreviewLine>

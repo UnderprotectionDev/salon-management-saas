@@ -4,6 +4,7 @@ import { useMutation } from "convex/react";
 import { AlertTriangle, Loader2, Save } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
+import { RichEditor } from "@/components/rich-editor";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -14,7 +15,6 @@ import {
 } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
 import { COMMON_ALLERGENS } from "@/modules/onboarding";
 import { api } from "../../../../convex/_generated/api";
 
@@ -90,11 +90,10 @@ export function AllergiesSection({
             </div>
           ))}
         </fieldset>
-        <Textarea
+        <RichEditor
           value={notes}
-          onChange={(e) => setNotes(e.target.value)}
+          onChange={setNotes}
           placeholder="List any other sensitivities..."
-          rows={2}
         />
         <Button
           onClick={handleSave}

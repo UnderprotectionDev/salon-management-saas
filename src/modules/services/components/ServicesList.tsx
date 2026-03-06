@@ -38,6 +38,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Skeleton } from "@/components/ui/skeleton";
+import { stripHtml } from "@/lib/html";
 import { api } from "../../../../convex/_generated/api";
 import type { Id } from "../../../../convex/_generated/dataModel";
 import { DeleteServiceDialog } from "./DeleteServiceDialog";
@@ -180,7 +181,7 @@ function SortableServiceCard({
         <div className="flex-1 min-w-0 flex items-center gap-2">
           {service.description ? (
             <p className="text-xs text-muted-foreground truncate">
-              {service.description}
+              {stripHtml(service.description)}
             </p>
           ) : (
             <span />

@@ -2,9 +2,9 @@
 
 import { AlertTriangle } from "lucide-react";
 import { useId } from "react";
+import { RichEditor } from "@/components/rich-editor";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
 import { COMMON_ALLERGENS } from "@/modules/onboarding/lib/constants";
 import { SectionDivider } from "@/modules/org-onboarding";
 import type { WizardFormData } from "../hooks/useUserOnboardingForm";
@@ -78,13 +78,11 @@ export function StepSafety({
         <Label htmlFor={notesId} className="sr-only">
           Additional allergy or sensitivity notes
         </Label>
-        <Textarea
+        <RichEditor
           id={notesId}
-          placeholder="List any other sensitivities..."
           value={data.allergyNotes}
-          onChange={(e) => onChange({ allergyNotes: e.target.value })}
-          rows={3}
-          className="resize-none"
+          onChange={(html) => onChange({ allergyNotes: html })}
+          placeholder="List any other sensitivities..."
         />
       </div>
     </div>

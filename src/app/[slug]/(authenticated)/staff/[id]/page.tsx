@@ -16,6 +16,7 @@ import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useState } from "react";
 import NiceAvatar, { genConfig } from "react-nice-avatar";
+import { RichTextDisplay } from "@/components/rich-editor";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
@@ -263,9 +264,10 @@ export default function StaffDetailPage() {
                 )}
               </div>
               {staff.bio && (
-                <p className="mt-3 text-sm text-muted-foreground">
-                  {staff.bio}
-                </p>
+                <RichTextDisplay
+                  html={staff.bio}
+                  className="mt-3 text-sm text-muted-foreground"
+                />
               )}
             </div>
           </div>

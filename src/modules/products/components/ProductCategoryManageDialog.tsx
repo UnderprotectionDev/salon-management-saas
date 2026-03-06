@@ -22,7 +22,7 @@ import { ConvexError } from "convex/values";
 import { GripVertical, Loader2, Plus, Trash2 } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
-import { getConvexErrorMessage } from "@/lib/convex-error";
+import { RichEditor } from "@/components/rich-editor";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -42,6 +42,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
+import { getConvexErrorMessage } from "@/lib/convex-error";
 import { api } from "../../../../convex/_generated/api";
 import type { Id } from "../../../../convex/_generated/dataModel";
 
@@ -56,6 +57,7 @@ type ProductCategoryManageDialogProps = {
 type CategoryItem = {
   _id: Id<"productCategories">;
   name: string;
+  description?: string;
   status: "active" | "inactive";
   productCount: number;
 };
@@ -64,8 +66,10 @@ function SortableCategoryRow({
   category,
   isEditing,
   editName,
+  editDescription,
   onEditStart,
   onEditNameChange,
+  onEditDescriptionChange,
   onEditSave,
   onEditCancel,
   onDelete,
@@ -73,8 +77,10 @@ function SortableCategoryRow({
   category: CategoryItem;
   isEditing: boolean;
   editName: string;
+  editDescription: string;
   onEditStart: () => void;
   onEditNameChange: (name: string) => void;
+  onEditDescriptionChange: (desc: string) => void;
   onEditSave: () => void;
   onEditCancel: () => void;
   onDelete: () => void;
@@ -98,62 +104,74 @@ function SortableCategoryRow({
     <div
       ref={setNodeRef}
       style={style}
-      className="flex items-center gap-2 rounded-md border bg-card px-3 py-2"
+      className="rounded-md border bg-card px-3 py-2"
     >
-      <span
-        {...attributes}
-        {...listeners}
-        className="cursor-grab text-muted-foreground hover:text-foreground"
-      >
-        <GripVertical className="size-4" />
-      </span>
-
-      {isEditing ? (
-        <Input
-          value={editName}
-          onChange={(e) => onEditNameChange(e.target.value)}
-          onKeyDown={(e) => {
-            if (e.key === "Enter") onEditSave();
-            if (e.key === "Escape") onEditCancel();
-          }}
-          className="h-7 text-sm flex-1"
-          autoFocus
-        />
-      ) : (
-        <button
-          type="button"
-          onClick={onEditStart}
-          className="flex-1 text-left text-sm truncate hover:text-primary transition-colors"
+      <div className="flex items-center gap-2">
+        <span
+          {...attributes}
+          {...listeners}
+          className="cursor-grab text-muted-foreground hover:text-foreground"
         >
-          {category.name}
-        </button>
-      )}
+          <GripVertical className="size-4" />
+        </span>
 
-      <span className="text-xs text-muted-foreground shrink-0">
-        {category.productCount}{" "}
-        {category.productCount === 1 ? "product" : "products"}
-      </span>
+        {isEditing ? (
+          <Input
+            value={editName}
+            onChange={(e) => onEditNameChange(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") onEditSave();
+              if (e.key === "Escape") onEditCancel();
+            }}
+            className="h-7 text-sm flex-1"
+            autoFocus
+          />
+        ) : (
+          <button
+            type="button"
+            onClick={onEditStart}
+            className="flex-1 text-left text-sm truncate hover:text-primary transition-colors"
+          >
+            {category.name}
+          </button>
+        )}
 
-      {isEditing ? (
-        <Button
-          variant="ghost"
-          size="icon"
-          className="size-7 shrink-0"
-          onClick={onEditSave}
-        >
-          <span className="sr-only">Save</span>
-          &#10003;
-        </Button>
-      ) : (
-        <Button
-          variant="ghost"
-          size="icon"
-          className="size-7 shrink-0 text-muted-foreground hover:text-destructive"
-          onClick={onDelete}
-        >
-          <Trash2 className="size-3.5" />
-          <span className="sr-only">Delete</span>
-        </Button>
+        <span className="text-xs text-muted-foreground shrink-0">
+          {category.productCount}{" "}
+          {category.productCount === 1 ? "product" : "products"}
+        </span>
+
+        {isEditing ? (
+          <Button
+            variant="ghost"
+            size="icon"
+            className="size-7 shrink-0"
+            onClick={onEditSave}
+          >
+            <span className="sr-only">Save</span>
+            &#10003;
+          </Button>
+        ) : (
+          <Button
+            variant="ghost"
+            size="icon"
+            className="size-7 shrink-0 text-muted-foreground hover:text-destructive"
+            onClick={onDelete}
+          >
+            <Trash2 className="size-3.5" />
+            <span className="sr-only">Delete</span>
+          </Button>
+        )}
+      </div>
+
+      {isEditing && (
+        <div className="mt-2">
+          <RichEditor
+            value={editDescription}
+            onChange={onEditDescriptionChange}
+            placeholder="Category description (optional)"
+          />
+        </div>
       )}
     </div>
   );
@@ -180,6 +198,7 @@ export function ProductCategoryManageDialog({
     null,
   );
   const [editName, setEditName] = useState("");
+  const [editDescription, setEditDescription] = useState("");
   const [deleteTarget, setDeleteTarget] =
     useState<Id<"productCategories"> | null>(null);
   const [newName, setNewName] = useState("");
@@ -192,12 +211,10 @@ export function ProductCategoryManageDialog({
     }),
   );
 
-  const handleEditStart = (
-    categoryId: Id<"productCategories">,
-    name: string,
-  ) => {
-    setEditingId(categoryId);
-    setEditName(name);
+  const handleEditStart = (category: CategoryItem) => {
+    setEditingId(category._id);
+    setEditName(category.name);
+    setEditDescription(category.description ?? "");
   };
 
   const handleEditSave = async () => {
@@ -207,6 +224,7 @@ export function ProductCategoryManageDialog({
         organizationId,
         categoryId: editingId,
         name: editName.trim(),
+        description: editDescription || undefined,
       });
       setEditingId(null);
       toast.success("Category updated");
@@ -275,7 +293,7 @@ export function ProductCategoryManageDialog({
   return (
     <>
       <Dialog open={open} onOpenChange={onOpenChange}>
-        <DialogContent className="sm:max-w-md">
+        <DialogContent className="sm:max-w-lg">
           <DialogHeader>
             <DialogTitle>Manage Categories</DialogTitle>
             <DialogDescription>
@@ -300,9 +318,9 @@ export function ProductCategoryManageDialog({
                       category={category}
                       isEditing={editingId === category._id}
                       editName={editName}
-                      onEditStart={() =>
-                        handleEditStart(category._id, category.name)
-                      }
+                      editDescription={editDescription}
+                      onEditDescriptionChange={setEditDescription}
+                      onEditStart={() => handleEditStart(category)}
                       onEditNameChange={setEditName}
                       onEditSave={handleEditSave}
                       onEditCancel={() => setEditingId(null)}

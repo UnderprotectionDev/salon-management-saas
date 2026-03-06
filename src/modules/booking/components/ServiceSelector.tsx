@@ -1,6 +1,7 @@
 "use client";
 
 import { formatPrice } from "@/lib/currency";
+import { stripHtml } from "@/lib/html";
 import type { Id } from "../../../../convex/_generated/dataModel";
 
 type Service = {
@@ -87,7 +88,7 @@ export function ServiceSelector({
                   </span>
                   {service.description && !isSelected && (
                     <p className="text-xs text-muted-foreground mt-0.5 truncate">
-                      {service.description}
+                      {stripHtml(service.description)}
                     </p>
                   )}
                 </div>
