@@ -2,8 +2,8 @@
 
 import { useQuery } from "convex/react";
 import { ArrowDown, ArrowUp, History, Minus } from "lucide-react";
-import { Skeleton } from "@/components/ui/skeleton";
 import { formatPrice } from "@/lib/currency";
+import { PriceHistorySkeleton } from "./skeletons/PriceHistorySkeleton";
 import { api } from "../../../../convex/_generated/api";
 import type { Id } from "../../../../convex/_generated/dataModel";
 
@@ -43,13 +43,7 @@ export function PriceHistoryTimeline({
   });
 
   if (history === undefined) {
-    return (
-      <div className="space-y-3">
-        {[1, 2, 3].map((i) => (
-          <Skeleton key={i} className="h-10 w-full" />
-        ))}
-      </div>
-    );
+    return <PriceHistorySkeleton />;
   }
 
   if (history.length === 0) {

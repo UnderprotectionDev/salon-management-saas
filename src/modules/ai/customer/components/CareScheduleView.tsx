@@ -19,10 +19,10 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { Skeleton } from "@/components/ui/skeleton";
 import { authClient } from "@/lib/auth-client";
 import type { SalonType } from "@/modules/ai/constants";
 import { api } from "../../../../../convex/_generated/api";
+import { CareScheduleSkeleton } from "./skeletons/CareScheduleSkeleton";
 
 // =============================================================================
 // Types
@@ -64,17 +64,7 @@ export function CareScheduleView({ salonType }: CareScheduleViewProps) {
 
   // Loading
   if (schedule === undefined) {
-    return (
-      <div className="flex flex-col gap-4">
-        <h3 className="font-semibold text-lg">My Care Schedule</h3>
-        <div className="space-y-3">
-          {Array.from({ length: 3 }).map((_, i) => (
-            // biome-ignore lint/suspicious/noArrayIndexKey: skeleton items
-            <Skeleton key={i} className="h-24 w-full rounded-lg" />
-          ))}
-        </div>
-      </div>
-    );
+    return <CareScheduleSkeleton />;
   }
 
   async function handleGenerate() {

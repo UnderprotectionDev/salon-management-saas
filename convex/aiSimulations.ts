@@ -126,9 +126,13 @@ export const createSimulation = authedMutation({
       updatedAt: now,
     });
 
-    await ctx.scheduler.runAfter(0, internal.aiActions.runVirtualTryOn, {
-      simulationId,
-    });
+    await ctx.scheduler.runAfter(
+      0,
+      internal.aiSimulationActions.runVirtualTryOn,
+      {
+        simulationId,
+      },
+    );
 
     return simulationId;
   },

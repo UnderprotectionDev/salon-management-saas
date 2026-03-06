@@ -21,8 +21,8 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { Skeleton } from "@/components/ui/skeleton";
 import { Textarea } from "@/components/ui/textarea";
+import { TimeOffApprovalSkeleton } from "./skeletons/TimeOffApprovalSkeleton";
 import { useActiveOrganization } from "@/modules/organization";
 import { api } from "../../../../convex/_generated/api";
 import type { Id } from "../../../../convex/_generated/dataModel";
@@ -115,25 +115,7 @@ export function TimeOffApprovalPanel() {
 
   // Loading state
   if (pendingRequests === undefined) {
-    return (
-      <Card>
-        <CardHeader>
-          <CardTitle>Pending Time-Off Requests</CardTitle>
-          <CardDescription>
-            Review and approve or reject staff time-off requests.
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          {Array.from({ length: 3 }).map((_, i) => (
-            <div key={`skeleton-${i}`} className="space-y-2">
-              <Skeleton className="h-5 w-48" />
-              <Skeleton className="h-4 w-32" />
-              <Skeleton className="h-4 w-24" />
-            </div>
-          ))}
-        </CardContent>
-      </Card>
-    );
+    return <TimeOffApprovalSkeleton />;
   }
 
   // Empty state

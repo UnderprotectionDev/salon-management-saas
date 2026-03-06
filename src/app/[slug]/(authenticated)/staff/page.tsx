@@ -8,9 +8,9 @@ import NiceAvatar, { genConfig } from "react-nice-avatar";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
-import { Skeleton } from "@/components/ui/skeleton";
 import { useOrganization } from "@/modules/organization";
 import { AddStaffDialog } from "@/modules/staff";
+import { StaffListSkeleton } from "@/modules/staff/components/skeletons/StaffListSkeleton";
 import { api } from "../../../../../convex/_generated/api";
 
 function _getInitials(name: string): string {
@@ -77,22 +77,7 @@ export default function StaffPage() {
       </div>
 
       {staffList === undefined ? (
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-          {[1, 2, 3].map((i) => (
-            <Card key={i}>
-              <CardContent className="p-6">
-                <div className="flex items-start gap-4">
-                  <Skeleton className="size-12 rounded-full" />
-                  <div className="flex-1 space-y-2">
-                    <Skeleton className="h-4 w-24" />
-                    <Skeleton className="h-3 w-32" />
-                    <Skeleton className="h-3 w-28" />
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          ))}
-        </div>
+        <StaffListSkeleton />
       ) : staffList.length === 0 ? (
         <Card>
           <CardContent className="flex flex-col items-center justify-center py-12">

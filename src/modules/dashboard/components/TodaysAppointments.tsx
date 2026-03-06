@@ -10,7 +10,6 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { Skeleton } from "@/components/ui/skeleton";
 import {
   APPOINTMENT_STATUS_BADGE_CLASSES,
   APPOINTMENT_STATUS_LABELS,
@@ -18,6 +17,7 @@ import {
 } from "@/lib/status-colors";
 import { useOrganization } from "@/modules/organization";
 import { api } from "../../../../convex/_generated/api";
+import { TodaysAppointmentsSkeleton } from "./skeletons/TodaysAppointmentsSkeleton";
 
 function getToday(): string {
   const now = new Date();
@@ -58,11 +58,7 @@ export function TodaysAppointments() {
       </CardHeader>
       <CardContent>
         {loading ? (
-          <div className="space-y-3">
-            {Array.from({ length: 3 }).map((_, i) => (
-              <Skeleton key={i} className="h-14 w-full" />
-            ))}
-          </div>
+          <TodaysAppointmentsSkeleton />
         ) : appointments && appointments.length > 0 ? (
           <div className="space-y-2">
             {appointments.map((appt) => (

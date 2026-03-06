@@ -41,7 +41,7 @@ export function MergeCustomerDialog({
   const [isMerging, setIsMerging] = useState(false);
   const [step, setStep] = useState<"select" | "confirm">("select");
 
-  const mergeCustomer = useMutation(api.customers.merge);
+  const mergeCustomer = useMutation(api.customerMerge.merge);
 
   const searchResults = useQuery(
     api.customers.list,

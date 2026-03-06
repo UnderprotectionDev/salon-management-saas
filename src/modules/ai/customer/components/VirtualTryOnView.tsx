@@ -8,11 +8,8 @@ import type { Id } from "../../../../../convex/_generated/dataModel";
 import { useVirtualTryOn, type TryOnSalonType } from "../hooks/useVirtualTryOn";
 import { TryOnDesignSelection } from "./TryOnDesignSelection";
 import { TryOnPhotoUpload } from "./TryOnPhotoUpload";
-import {
-  ProcessingSkeleton,
-  TryOnCompletedResult,
-  TryOnFailedResult,
-} from "./TryOnResultDisplay";
+import { TryOnCompletedResult, TryOnFailedResult } from "./TryOnResultDisplay";
+import { TryOnProcessingSkeleton } from "./skeletons/TryOnProcessingSkeleton";
 
 // =============================================================================
 // Types
@@ -112,7 +109,7 @@ export function VirtualTryOnView({
       {/* ================================================================= */}
       {/* Processing State */}
       {/* ================================================================= */}
-      {tryOn.isProcessing && <ProcessingSkeleton />}
+      {tryOn.isProcessing && <TryOnProcessingSkeleton />}
 
       {/* ================================================================= */}
       {/* Completed Result — Side-by-side comparison */}

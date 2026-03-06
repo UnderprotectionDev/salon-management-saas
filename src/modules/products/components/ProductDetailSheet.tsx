@@ -25,12 +25,12 @@ import {
   SheetHeader,
   SheetTitle,
 } from "@/components/ui/sheet";
-import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { formatPrice } from "@/lib/currency";
 import { api } from "../../../../convex/_generated/api";
 import type { Id } from "../../../../convex/_generated/dataModel";
 import { PriceHistoryTimeline } from "./PriceHistoryTimeline";
+import { ProductDetailSkeleton } from "./skeletons/ProductDetailSkeleton";
 import { StockIndicatorBar } from "./StockIndicatorBar";
 import { VariantMatrixTable } from "./VariantMatrixTable";
 
@@ -102,7 +102,7 @@ export function ProductDetailSheet({
               <SheetTitle>Product Details</SheetTitle>
               <SheetDescription>Loading product details</SheetDescription>
             </SheetHeader>
-            <DetailSkeleton />
+            <ProductDetailSkeleton />
           </div>
         ) : detail ? (
           <div className="flex flex-col h-full">
@@ -623,20 +623,5 @@ export function ProductDetailSheet({
         )}
       </SheetContent>
     </Sheet>
-  );
-}
-
-function DetailSkeleton() {
-  return (
-    <div className="px-6 pt-5 space-y-4">
-      <Skeleton className="h-6 w-48" />
-      <Skeleton className="h-4 w-32" />
-      <div className="flex gap-2">
-        <Skeleton className="h-8 w-20" />
-        <Skeleton className="h-8 w-28" />
-      </div>
-      <Skeleton className="aspect-[16/10] w-full rounded-lg" />
-      <Skeleton className="h-32 w-full rounded-lg" />
-    </div>
   );
 }

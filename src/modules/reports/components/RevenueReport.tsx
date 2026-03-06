@@ -10,7 +10,6 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Skeleton } from "@/components/ui/skeleton";
 import { useOrganization } from "@/modules/organization";
 import { formatPrice } from "@/lib/currency";
 import { api } from "../../../../convex/_generated/api";
@@ -23,6 +22,7 @@ import { RevenueByServiceTable } from "./RevenueByServiceTable";
 import { RevenueByStaffTable } from "./RevenueByStaffTable";
 import { RevenueChart } from "./RevenueChart";
 import { ServicePopularityChart } from "./ServicePopularityChart";
+import { RevenueReportSkeleton } from "./skeletons/RevenueReportSkeleton";
 import { StatusBar } from "./StatusBar";
 
 export function RevenueReport() {
@@ -103,11 +103,7 @@ export function RevenueReport() {
       </div>
 
       {loading ? (
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-          {Array.from({ length: 6 }).map((_, i) => (
-            <Skeleton key={i} className="h-[100px]" />
-          ))}
-        </div>
+        <RevenueReportSkeleton />
       ) : report ? (
         <>
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">

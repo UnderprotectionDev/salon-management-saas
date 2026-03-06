@@ -25,9 +25,9 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { Skeleton } from "@/components/ui/skeleton";
 import { api } from "../../../../convex/_generated/api";
 import type { Id } from "../../../../convex/_generated/dataModel";
+import { PlanCardSkeleton } from "./skeletons/PlanCardSkeleton";
 
 interface PolarPrice {
   priceAmount?: number;
@@ -96,14 +96,7 @@ export function PlanCard({
   const [showConfirm, setShowConfirm] = useState(false);
 
   if (!product) {
-    return (
-      <Card className="opacity-50">
-        <CardHeader>
-          <Skeleton className="h-6 w-32" />
-          <Skeleton className="h-8 w-24 mt-2" />
-        </CardHeader>
-      </Card>
-    );
+    return <PlanCardSkeleton />;
   }
 
   const activePrice = product.prices.find((p) => p.priceAmount != null);

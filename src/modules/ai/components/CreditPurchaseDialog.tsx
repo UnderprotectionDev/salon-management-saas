@@ -16,8 +16,8 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { Skeleton } from "@/components/ui/skeleton";
 import { api } from "../../../../convex/_generated/api";
+import { CreditPurchaseSkeleton } from "./skeletons/CreditPurchaseSkeleton";
 
 // =============================================================================
 // Types
@@ -111,11 +111,7 @@ export function CreditPurchaseDialog({
 
         <div className="grid gap-3 py-4">
           {packagesLoading ? (
-            <>
-              <Skeleton className="h-[88px] w-full" />
-              <Skeleton className="h-[88px] w-full" />
-              <Skeleton className="h-[88px] w-full" />
-            </>
+            <CreditPurchaseSkeleton />
           ) : packages.length === 0 ? (
             <p className="text-center text-sm text-muted-foreground py-4">
               No credit packages available. Please try again later.

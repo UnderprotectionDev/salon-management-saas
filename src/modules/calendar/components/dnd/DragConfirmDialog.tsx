@@ -73,7 +73,7 @@ export function DragConfirmDialog({
   endHour = DEFAULT_END_HOUR,
 }: DragConfirmDialogProps) {
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const reschedule = useMutation(api.appointments.reschedule);
+  const reschedule = useMutation(api.appointmentReschedule.reschedule);
 
   // Editable new start time — initialized from drag calculation
   const [selectedStart, setSelectedStart] = useState<number | null>(null);

@@ -37,13 +37,13 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Skeleton } from "@/components/ui/skeleton";
 import { stripHtml } from "@/lib/html";
 import { api } from "../../../../convex/_generated/api";
 import type { Id } from "../../../../convex/_generated/dataModel";
 import { DeleteServiceDialog } from "./DeleteServiceDialog";
 import { EditServiceSheet } from "./EditServiceSheet";
 import { PriceDisplay } from "./PriceDisplay";
+import { ServicesListSkeleton } from "./skeletons/ServicesListSkeleton";
 
 type ServicesListProps = {
   organizationId: Id<"organization">;
@@ -310,13 +310,7 @@ export function ServicesList({
   );
 
   if (services === undefined || allStaff === undefined) {
-    return (
-      <div className="space-y-3">
-        {[1, 2, 3].map((i) => (
-          <Skeleton key={i} className="h-24 w-full rounded-lg" />
-        ))}
-      </div>
-    );
+    return <ServicesListSkeleton />;
   }
 
   if (services.length === 0) {

@@ -2,7 +2,6 @@
 
 import { useQuery } from "convex/react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Skeleton } from "@/components/ui/skeleton";
 import { useOrganization } from "@/modules/organization";
 import { formatPrice } from "@/lib/currency";
 import { api } from "../../../../convex/_generated/api";
@@ -11,6 +10,7 @@ import { downloadCsv, reportFilename, sanitizeCsvValue } from "../lib/csv";
 import { DateRangePicker } from "./DateRangePicker";
 import { ExportCsvButton } from "./ExportCsvButton";
 import { ReportCard } from "./ReportCard";
+import { StaffPerformanceSkeleton } from "./skeletons/StaffPerformanceSkeleton";
 import { StaffPerformanceTable } from "./StaffPerformanceTable";
 import { StaffUtilizationChart } from "./StaffUtilizationChart";
 
@@ -86,14 +86,7 @@ export function StaffPerformanceReport() {
       </div>
 
       {loading ? (
-        <>
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-            {Array.from({ length: 4 }).map((_, i) => (
-              <Skeleton key={i} className="h-[100px]" />
-            ))}
-          </div>
-          <Skeleton className="h-[300px]" />
-        </>
+        <StaffPerformanceSkeleton />
       ) : report && aggregates ? (
         <>
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">

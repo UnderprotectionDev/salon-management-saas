@@ -2,7 +2,7 @@
 
 import { useQuery } from "convex/react";
 import { Badge } from "@/components/ui/badge";
-import { Skeleton } from "@/components/ui/skeleton";
+import { AdminLogsSkeleton } from "@/modules/admin/components/skeletons/AdminLogsSkeleton";
 import {
   Table,
   TableBody,
@@ -50,11 +50,7 @@ export default function AdminLogsPage() {
       <h1 className="text-2xl font-bold">Action Log</h1>
 
       {!actions ? (
-        <div className="space-y-2">
-          {Array.from({ length: 5 }).map((_, i) => (
-            <Skeleton key={i} className="h-12 w-full" />
-          ))}
-        </div>
+        <AdminLogsSkeleton />
       ) : (
         <div className="rounded-md border">
           <Table>

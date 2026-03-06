@@ -19,7 +19,9 @@ export function LowStockBanner({
   onViewLowStock,
 }: LowStockBannerProps) {
   const [dismissed, setDismissed] = useState(false);
-  const stats = useQuery(api.products.getInventoryStats, { organizationId });
+  const stats = useQuery(api.productQueries.getInventoryStats, {
+    organizationId,
+  });
 
   const totalAlerts =
     (stats?.lowStockCount ?? 0) + (stats?.outOfStockCount ?? 0);

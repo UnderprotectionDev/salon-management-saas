@@ -38,7 +38,7 @@ export function BulkCategoryDialog({
   organizationId,
   onSuccess,
 }: BulkCategoryDialogProps) {
-  const bulkUpdateCategory = useMutation(api.products.bulkUpdateCategory);
+  const bulkUpdateCategory = useMutation(api.productBulk.bulkUpdateCategory);
   const categories = useQuery(api.productCategories.list, { organizationId });
   const activeCategories =
     categories?.filter((c: { status: string }) => c.status === "active") ?? [];

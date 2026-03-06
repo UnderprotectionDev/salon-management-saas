@@ -4,10 +4,10 @@ import { useQuery } from "convex/react";
 import { LayoutGrid, Settings } from "lucide-react";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
-import { Skeleton } from "@/components/ui/skeleton";
 import { api } from "../../../../convex/_generated/api";
 import type { Id } from "../../../../convex/_generated/dataModel";
 import { CategoryManageDialog } from "./CategoryManageDialog";
+import { CategoryFilterChipsSkeleton } from "./skeletons/CategoryFilterChipsSkeleton";
 
 type CategoryFilterChipsProps = {
   organizationId: Id<"organization">;
@@ -26,13 +26,7 @@ export function CategoryFilterChips({
   const [manageOpen, setManageOpen] = useState(false);
 
   if (categories === undefined) {
-    return (
-      <div className="flex items-center gap-2">
-        {[1, 2, 3, 4].map((i) => (
-          <Skeleton key={i} className="h-8 w-20 rounded-full" />
-        ))}
-      </div>
-    );
+    return <CategoryFilterChipsSkeleton />;
   }
 
   const totalServiceCount = categories.reduce(

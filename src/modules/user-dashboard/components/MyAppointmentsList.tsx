@@ -9,8 +9,8 @@ import {
   EmptyMedia,
   EmptyTitle,
 } from "@/components/ui/empty";
-import { Skeleton } from "@/components/ui/skeleton";
 import { AppointmentCard, type UserAppointment } from "./AppointmentCard";
+import { MyAppointmentsListSkeleton } from "./skeletons/MyAppointmentsListSkeleton";
 
 export function MyAppointmentsList({
   appointments,
@@ -20,13 +20,7 @@ export function MyAppointmentsList({
   filter: "upcoming" | "past";
 }) {
   if (appointments === undefined) {
-    return (
-      <div className="space-y-3">
-        {[1, 2].map((i) => (
-          <Skeleton key={i} className="h-20 w-full rounded-lg" />
-        ))}
-      </div>
-    );
+    return <MyAppointmentsListSkeleton />;
   }
 
   const now = new Date();

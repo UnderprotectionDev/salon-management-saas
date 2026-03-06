@@ -2,7 +2,6 @@
 
 import { useQuery } from "convex/react";
 import { useState } from "react";
-import { Skeleton } from "@/components/ui/skeleton";
 import { CreateAppointmentDialog } from "@/modules/booking";
 import { useOrganization } from "@/modules/organization";
 import { api } from "../../../../convex/_generated/api";
@@ -11,6 +10,7 @@ import { useCalendarState } from "../hooks/useCalendarState";
 import { getStaffColor } from "../lib/constants";
 import type { AppointmentWithDetails, DragRescheduleData } from "../lib/types";
 import { computeCalendarHourRange } from "../lib/utils";
+import { CalendarViewSkeleton } from "./skeletons/CalendarViewSkeleton";
 import { AgendaView } from "./agenda-view/AgendaView";
 import { DayView } from "./day-view/DayView";
 import { AppointmentDetailModal } from "./dialogs/AppointmentDetailModal";
@@ -220,7 +220,7 @@ export function CalendarView() {
       />
 
       {loading ? (
-        <Skeleton className="h-[600px] w-full rounded-lg" />
+        <CalendarViewSkeleton />
       ) : calendar.viewMode === "day" ? (
         <DayView
           staffList={filteredStaffList ?? []}

@@ -10,9 +10,9 @@ import {
   SheetHeader,
   SheetTitle,
 } from "@/components/ui/sheet";
-import { Skeleton } from "@/components/ui/skeleton";
 import { api } from "../../../../convex/_generated/api";
 import type { Id } from "../../../../convex/_generated/dataModel";
+import { InventoryHistorySkeleton } from "./skeletons/InventoryHistorySkeleton";
 
 type InventoryHistorySheetProps = {
   open: boolean;
@@ -107,21 +107,7 @@ export function InventoryHistorySheet({
         <ScrollArea className="flex-1">
           <div className="px-8 pb-8">
             {transactions === undefined ? (
-              <div className="space-y-6 py-2">
-                {[1, 2, 3, 4].map((i) => (
-                  <div
-                    key={i}
-                    className="grid grid-cols-[3.5rem_1fr_auto] gap-x-5"
-                  >
-                    <Skeleton className="h-4 w-10" />
-                    <div className="space-y-2">
-                      <Skeleton className="h-5 w-28" />
-                      <Skeleton className="h-3 w-40" />
-                    </div>
-                    <Skeleton className="h-5 w-16" />
-                  </div>
-                ))}
-              </div>
+              <InventoryHistorySkeleton />
             ) : transactions.length === 0 ? (
               <div className="flex flex-col items-center justify-center py-20 text-center">
                 <div className="rounded-full bg-muted p-4 mb-4">

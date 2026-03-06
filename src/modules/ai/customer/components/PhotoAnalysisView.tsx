@@ -20,7 +20,6 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
-import { Skeleton } from "@/components/ui/skeleton";
 import { authClient } from "@/lib/auth-client";
 import { api } from "../../../../../convex/_generated/api";
 import type { Doc, Id } from "../../../../../convex/_generated/dataModel";
@@ -31,6 +30,7 @@ import {
 } from "../../../../../convex/lib/aiConstants";
 import { type SalonType, TRYON_ENABLED_TYPES } from "../../constants";
 import { QuickQuestionsPanel } from "./QuickQuestionsPanel";
+import { AnalysisLoadingSkeleton } from "./skeletons/AnalysisLoadingSkeleton";
 
 interface AnalysisFeature {
   name: string;
@@ -64,28 +64,6 @@ interface AnalysisResult {
 // =============================================================================
 // Subcomponents
 // =============================================================================
-
-function AnalysisLoadingSkeleton() {
-  return (
-    <div className="space-y-4">
-      <div className="flex items-center gap-2 text-muted-foreground text-sm">
-        <Loader2 className="h-4 w-4 animate-spin" />
-        <span>Analyzing your photo...</span>
-      </div>
-      <div className="space-y-3">
-        <Skeleton className="h-6 w-3/4" />
-        <Skeleton className="h-4 w-full" />
-        <Skeleton className="h-4 w-5/6" />
-        <div className="grid grid-cols-2 gap-3 pt-2">
-          <Skeleton className="h-24" />
-          <Skeleton className="h-24" />
-          <Skeleton className="h-24" />
-          <Skeleton className="h-24" />
-        </div>
-      </div>
-    </div>
-  );
-}
 
 function AnalysisResultCard({ result }: { result: AnalysisResult }) {
   const [showProducts, setShowProducts] = useState(false);

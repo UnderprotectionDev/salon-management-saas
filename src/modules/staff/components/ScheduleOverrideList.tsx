@@ -12,8 +12,8 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { Skeleton } from "@/components/ui/skeleton";
 import { useActiveOrganization } from "@/modules/organization";
+import { ScheduleOverrideListSkeleton } from "./skeletons/ScheduleOverrideListSkeleton";
 import { api } from "../../../../convex/_generated/api";
 import type { Id } from "../../../../convex/_generated/dataModel";
 
@@ -72,21 +72,7 @@ export function ScheduleOverrideList({
 
   // Loading state
   if (overrides === undefined) {
-    return (
-      <Card>
-        <CardHeader>
-          <CardTitle>Schedule Overrides</CardTitle>
-          <CardDescription>
-            One-time changes to the regular schedule
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-3">
-          <Skeleton className="h-12 w-full" />
-          <Skeleton className="h-12 w-full" />
-          <Skeleton className="h-12 w-full" />
-        </CardContent>
-      </Card>
-    );
+    return <ScheduleOverrideListSkeleton />;
   }
 
   return (

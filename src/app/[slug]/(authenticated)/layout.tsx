@@ -152,7 +152,7 @@ function AuthenticatedLayoutContent({
   // Show toast when a new notification arrives (reactive subscription)
   useNotificationToast();
   const lowStockCount = useQuery(
-    api.products.countLowStock,
+    api.productQueries.countLowStock,
     activeOrganization ? { organizationId: activeOrganization._id } : "skip",
   );
   const isSuperAdmin = useQuery(

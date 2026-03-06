@@ -16,7 +16,6 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Skeleton } from "@/components/ui/skeleton";
 import {
   Table,
   TableBody,
@@ -29,6 +28,7 @@ import { useOrganization } from "@/modules/organization";
 import { AddStaffDialog } from "@/modules/staff";
 import { api } from "../../../../convex/_generated/api";
 import type { Id } from "../../../../convex/_generated/dataModel";
+import { InvitationsListSkeleton } from "./skeletons/InvitationsListSkeleton";
 
 type InvitationsListProps = {
   organizationId: Id<"organization">;
@@ -69,13 +69,7 @@ export function InvitationsList({ organizationId }: InvitationsListProps) {
   );
 
   if (invitations === undefined) {
-    return (
-      <div className="space-y-3">
-        {[1, 2].map((i) => (
-          <Skeleton key={i} className="h-14 w-full" />
-        ))}
-      </div>
-    );
+    return <InvitationsListSkeleton />;
   }
 
   const isOwner = currentRole === "owner";

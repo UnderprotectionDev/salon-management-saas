@@ -5,9 +5,9 @@ import NiceAvatar, { genConfig } from "react-nice-avatar";
 import { toast } from "sonner";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Skeleton } from "@/components/ui/skeleton";
 import { api } from "../../../../convex/_generated/api";
 import type { Id } from "../../../../convex/_generated/dataModel";
+import { StaffAssignmentSkeleton } from "./skeletons/StaffAssignmentSkeleton";
 
 type StaffAssignmentSelectProps = {
   organizationId: Id<"organization">;
@@ -29,13 +29,7 @@ export function StaffAssignmentSelect({
   );
 
   if (allStaff === undefined) {
-    return (
-      <div className="space-y-2">
-        {[1, 2].map((i) => (
-          <Skeleton key={i} className="h-10 w-full" />
-        ))}
-      </div>
-    );
+    return <StaffAssignmentSkeleton />;
   }
 
   const activeStaff = allStaff.filter((s) => s.status === "active");

@@ -39,7 +39,7 @@ export function BulkPriceAdjustDialog({
   organizationId,
   onSuccess,
 }: BulkPriceAdjustDialogProps) {
-  const bulkAdjustPrices = useMutation(api.products.bulkAdjustPrices);
+  const bulkAdjustPrices = useMutation(api.productBulk.bulkAdjustPrices);
   const [adjustmentType, setAdjustmentType] = useState<"percentage" | "fixed">(
     "percentage",
   );

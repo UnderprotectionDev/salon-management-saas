@@ -8,8 +8,8 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { Skeleton } from "@/components/ui/skeleton";
 import { api } from "../../../../convex/_generated/api";
+import { ProfilesSectionSkeleton } from "./skeletons/ProfilesSectionSkeleton";
 import { ProfileCard } from "./ProfileCard";
 
 export function ProfilesSection() {
@@ -20,17 +20,7 @@ export function ProfilesSection() {
   );
 
   if (profiles === undefined) {
-    return (
-      <Card>
-        <CardHeader>
-          <Skeleton className="h-6 w-32" />
-          <Skeleton className="h-4 w-48" />
-        </CardHeader>
-        <CardContent>
-          <Skeleton className="h-32 w-full" />
-        </CardContent>
-      </Card>
-    );
+    return <ProfilesSectionSkeleton />;
   }
 
   if (profiles.length === 0) {

@@ -4,10 +4,10 @@ import { useQuery } from "convex/react";
 import { Settings, Tag } from "lucide-react";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
-import { Skeleton } from "@/components/ui/skeleton";
 import { api } from "../../../../convex/_generated/api";
 import type { Id } from "../../../../convex/_generated/dataModel";
 import { ProductCategoryManageDialog } from "./ProductCategoryManageDialog";
+import { ProductCategoryChipsSkeleton } from "./skeletons/ProductCategoryChipsSkeleton";
 
 type ProductCategoryFilterChipsProps = {
   organizationId: Id<"organization">;
@@ -35,13 +35,7 @@ export function ProductCategoryFilterChips({
   const [manageOpen, setManageOpen] = useState(false);
 
   if (categories === undefined) {
-    return (
-      <div className="flex items-center gap-2">
-        {[1, 2, 3, 4].map((i) => (
-          <Skeleton key={i} className="h-8 w-20 rounded-full" />
-        ))}
-      </div>
-    );
+    return <ProductCategoryChipsSkeleton />;
   }
 
   const activeCategories = categories.filter((c) => c.status === "active");

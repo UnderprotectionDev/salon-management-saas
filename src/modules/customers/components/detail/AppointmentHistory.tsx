@@ -27,6 +27,7 @@ import {
   type AppointmentStatus,
 } from "@/lib/status-colors";
 import { formatPrice } from "@/lib/currency";
+import { AppointmentHistoryListSkeleton } from "../skeletons/AppointmentHistoryListSkeleton";
 import { api } from "../../../../../convex/_generated/api";
 import type { Id } from "../../../../../convex/_generated/dataModel";
 
@@ -200,15 +201,7 @@ export function AppointmentHistory({
   });
 
   if (appointments === undefined) {
-    return (
-      <Card>
-        <CardContent className="space-y-4 py-6">
-          {Array.from({ length: 3 }).map((_, i) => (
-            <Skeleton key={i} className="h-12 w-full" />
-          ))}
-        </CardContent>
-      </Card>
-    );
+    return <AppointmentHistoryListSkeleton />;
   }
 
   if (appointments.length === 0) {

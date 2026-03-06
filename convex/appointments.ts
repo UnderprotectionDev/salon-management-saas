@@ -21,7 +21,6 @@ import {
   getTodayDateString,
   validateDateString,
 } from "./lib/dateTime";
-import { assertBelongsToOrg } from "./lib/helpers";
 import {
   authedMutation,
   ErrorCode,
@@ -29,6 +28,7 @@ import {
   orgQuery,
   publicQuery,
 } from "./lib/functions";
+import { assertBelongsToOrg } from "./lib/helpers";
 import { isValidTurkishPhone } from "./lib/phone";
 import { rateLimiter } from "./lib/rateLimits";
 import {
@@ -977,123 +977,6 @@ export const cancel = orgMutation({
     });
 
     // Notifications & emails are handled automatically by triggers (convex/lib/triggers.ts)
-
-    return { success: true };
-  },
-});
-
-// =============================================================================
-// Staff Reschedule
-// =============================================================================
-
-/**
- * Reschedule an appointment (staff action).
- * Changes date/time, optionally changes staff.
- * Keeps same confirmation code.
- */
-export const reschedule = orgMutation({
-  args: {
-    appointmentId: v.id("appointments"),
-    newDate: v.string(),
-    newStartTime: v.number(),
-    newEndTime: v.number(),
-    newStaffId: v.optional(v.id("staff")),
-  },
-  returns: v.object({ success: v.boolean() }),
-  handler: async (ctx, args) => {
-    const appointment = await ctx.db.get(args.appointmentId);
-    assertBelongsToOrg(appointment, ctx.organizationId, "Appointment");
-
-    // Staff can only reschedule their own appointments
-    const isStaffOnly = ctx.member.role === "staff";
-    if (isStaffOnly && ctx.staff?._id !== appointment.staffId) {
-      throw new ConvexError({
-        code: ErrorCode.FORBIDDEN,
-        message: "You can only reschedule your own appointments",
-      });
-    }
-
-    // Only pending/confirmed can be rescheduled
-    if (
-      appointment.status !== "pending" &&
-      appointment.status !== "confirmed"
-    ) {
-      throw new ConvexError({
-        code: ErrorCode.VALIDATION_ERROR,
-        message: `Cannot reschedule a ${appointment.status} appointment`,
-      });
-    }
-
-    const targetStaffId = args.newStaffId ?? appointment.staffId;
-    if (!targetStaffId) {
-      throw new ConvexError({
-        code: ErrorCode.VALIDATION_ERROR,
-        message:
-          "Cannot reschedule: no staff assigned. Please select a new staff member.",
-      });
-    }
-
-    // Validate slot availability (exclude self from conflict check)
-    const staff = await validateSlotAvailability(ctx, {
-      staffId: targetStaffId,
-      date: args.newDate,
-      startTime: args.newStartTime,
-      endTime: args.newEndTime,
-      excludeAppointmentId: appointment._id,
-    });
-
-    // If changing staff, verify new staff can perform all services
-    if (args.newStaffId && args.newStaffId !== appointment.staffId) {
-      const apptServices = await ctx.db
-        .query("appointmentServices")
-        .withIndex("by_appointment", (q) =>
-          q.eq("appointmentId", appointment._id),
-        )
-        .collect();
-
-      const staffServiceIds = staff.serviceIds ?? [];
-      for (const as of apptServices) {
-        if (!staffServiceIds.includes(as.serviceId)) {
-          throw new ConvexError({
-            code: ErrorCode.VALIDATION_ERROR,
-            message: "New staff member cannot perform all booked services",
-          });
-        }
-      }
-
-      // Update appointment service records with new staffId
-      for (const as of apptServices) {
-        await ctx.db.patch(as._id, { staffId: args.newStaffId });
-      }
-    }
-
-    const now = Date.now();
-    const historyEntry = {
-      fromDate: appointment.date,
-      fromStartTime: appointment.startTime,
-      fromEndTime: appointment.endTime,
-      toDate: args.newDate,
-      toStartTime: args.newStartTime,
-      toEndTime: args.newEndTime,
-      rescheduledBy: "staff" as const,
-      rescheduledAt: now,
-    };
-
-    await ctx.db.patch(appointment._id, {
-      date: args.newDate,
-      startTime: args.newStartTime,
-      endTime: args.newEndTime,
-      staffId: targetStaffId,
-      rescheduledAt: now,
-      rescheduleCount: (appointment.rescheduleCount ?? 0) + 1,
-      rescheduleHistory: [
-        ...(appointment.rescheduleHistory ?? []),
-        historyEntry,
-      ],
-      updatedAt: now,
-    });
-
-    // Notifications are handled automatically by triggers (convex/lib/triggers.ts)
 
     return { success: true };
   },

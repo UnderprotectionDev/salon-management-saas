@@ -2,12 +2,12 @@
 
 import { Check, Image as ImageIcon, X } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
-import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
 import type { Id } from "../../../../../convex/_generated/dataModel";
 import { DesignBrowser, type SelectedDesign } from "./DesignBrowser";
 import type { TryOnSalonType } from "../hooks/useVirtualTryOn";
+import { TryOnDesignSkeleton } from "./skeletons/TryOnDesignSkeleton";
 
 // =============================================================================
 // Types
@@ -148,14 +148,7 @@ export function TryOnDesignSelection({
 
             {/* Thumbnail Grid */}
             {designs === undefined ? (
-              <div className="grid grid-cols-3 gap-3 sm:grid-cols-4">
-                {["a", "b", "c", "d", "e", "f", "g", "h"].map((key) => (
-                  <Skeleton
-                    key={`design-skeleton-${key}`}
-                    className="aspect-square rounded-md"
-                  />
-                ))}
-              </div>
+              <TryOnDesignSkeleton />
             ) : filteredDesigns.length === 0 ? (
               <div className="flex flex-col items-center gap-2 py-8 text-muted-foreground">
                 <ImageIcon className="h-8 w-8" />

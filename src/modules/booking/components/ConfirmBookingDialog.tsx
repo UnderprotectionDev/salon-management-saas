@@ -77,7 +77,7 @@ export function ConfirmBookingDialog({
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const createAppointment = useMutation(api.appointments.create);
-  const linkCustomer = useMutation(api.customers.linkToCurrentUser);
+  const linkCustomer = useMutation(api.customerAuth.linkToCurrentUser);
   const savePhoneToProfile = useMutation(api.userProfile.savePhoneFromBooking);
 
   const totalPrice = services.reduce((sum, s) => sum + s.price, 0);

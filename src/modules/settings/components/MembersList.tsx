@@ -24,7 +24,6 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Skeleton } from "@/components/ui/skeleton";
 import {
   Table,
   TableBody,
@@ -36,6 +35,7 @@ import {
 import { useOrganization } from "@/modules/organization";
 import { api } from "../../../../convex/_generated/api";
 import type { Id } from "../../../../convex/_generated/dataModel";
+import { MembersListSkeleton } from "./skeletons/MembersListSkeleton";
 import { TransferOwnershipDialog } from "./TransferOwnershipDialog";
 
 type MembersListProps = {
@@ -76,13 +76,7 @@ export function MembersList({ organizationId }: MembersListProps) {
   const [showLeaveDialog, setShowLeaveDialog] = useState(false);
 
   if (members === undefined || staffList === undefined) {
-    return (
-      <div className="space-y-3">
-        {[1, 2, 3].map((i) => (
-          <Skeleton key={i} className="h-14 w-full" />
-        ))}
-      </div>
-    );
+    return <MembersListSkeleton />;
   }
 
   // Build a lookup from memberId to staff info

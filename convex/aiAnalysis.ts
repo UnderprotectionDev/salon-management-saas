@@ -116,9 +116,13 @@ export const createAnalysis = authedMutation({
       updatedAt: now,
     });
 
-    await ctx.scheduler.runAfter(0, internal.aiActions.runPhotoAnalysis, {
-      analysisId,
-    });
+    await ctx.scheduler.runAfter(
+      0,
+      internal.aiAnalysisActions.runPhotoAnalysis,
+      {
+        analysisId,
+      },
+    );
 
     return analysisId;
   },
@@ -179,13 +183,17 @@ export const askQuickQuestion = authedMutation({
       updatedAt: Date.now(),
     });
 
-    await ctx.scheduler.runAfter(0, internal.aiActions.runQuickQuestion, {
-      analysisId: args.analysisId,
-      organizationId: args.organizationId ?? undefined,
-      userId,
-      questionKey: args.questionKey,
-      questionText: args.questionText,
-    });
+    await ctx.scheduler.runAfter(
+      0,
+      internal.aiAnalysisActions.runQuickQuestion,
+      {
+        analysisId: args.analysisId,
+        organizationId: args.organizationId ?? undefined,
+        userId,
+        questionKey: args.questionKey,
+        questionText: args.questionText,
+      },
+    );
 
     return null;
   },

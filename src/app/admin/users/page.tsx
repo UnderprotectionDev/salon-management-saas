@@ -21,7 +21,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
-import { Skeleton } from "@/components/ui/skeleton";
+import { AdminUsersSkeleton } from "@/modules/admin/components/skeletons/AdminUsersSkeleton";
 import {
   Table,
   TableBody,
@@ -122,11 +122,7 @@ export default function AdminUsersPage() {
       </div>
 
       {!users ? (
-        <div className="space-y-2">
-          {Array.from({ length: 5 }).map((_, i) => (
-            <Skeleton key={i} className="h-12 w-full" />
-          ))}
-        </div>
+        <AdminUsersSkeleton />
       ) : (
         <div className="rounded-md border">
           <Table>

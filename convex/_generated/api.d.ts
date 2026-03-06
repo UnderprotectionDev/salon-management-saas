@@ -9,7 +9,6 @@
  */
 
 import type * as admin from "../admin.js";
-import type * as aiActions from "../aiActions.js";
 import type * as aiAnalysis from "../aiAnalysis.js";
 import type * as aiAnalysisActions from "../aiAnalysisActions.js";
 import type * as aiCareActions from "../aiCareActions.js";
@@ -65,9 +64,9 @@ import type * as polar from "../polar.js";
 import type * as polarActions from "../polarActions.js";
 import type * as polarSync from "../polarSync.js";
 import type * as priceHistory from "../priceHistory.js";
-import type * as productBulkOps from "../productBulkOps.js";
+import type * as productBulk from "../productBulk.js";
 import type * as productCategories from "../productCategories.js";
-import type * as productStats from "../productStats.js";
+import type * as productQueries from "../productQueries.js";
 import type * as productVariants from "../productVariants.js";
 import type * as products from "../products.js";
 import type * as reports from "../reports.js";
@@ -94,7 +93,6 @@ import type {
 
 declare const fullApi: ApiFromModules<{
   admin: typeof admin;
-  aiActions: typeof aiActions;
   aiAnalysis: typeof aiAnalysis;
   aiAnalysisActions: typeof aiAnalysisActions;
   aiCareActions: typeof aiCareActions;
@@ -150,9 +148,9 @@ declare const fullApi: ApiFromModules<{
   polarActions: typeof polarActions;
   polarSync: typeof polarSync;
   priceHistory: typeof priceHistory;
-  productBulkOps: typeof productBulkOps;
+  productBulk: typeof productBulk;
   productCategories: typeof productCategories;
-  productStats: typeof productStats;
+  productQueries: typeof productQueries;
   productVariants: typeof productVariants;
   products: typeof products;
   reports: typeof reports;

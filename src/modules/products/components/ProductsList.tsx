@@ -52,8 +52,8 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Skeleton } from "@/components/ui/skeleton";
 import { formatPrice } from "@/lib/currency";
+import { ProductsListSkeleton } from "./skeletons/ProductsListSkeleton";
 import { api } from "../../../../convex/_generated/api";
 import type { Id } from "../../../../convex/_generated/dataModel";
 import { AdjustStockDialog } from "./AdjustStockDialog";
@@ -473,13 +473,7 @@ export function ProductsList({
   };
 
   if (products === undefined) {
-    return (
-      <div className="space-y-2">
-        {[1, 2, 3, 4, 5].map((i) => (
-          <Skeleton key={i} className="h-16 w-full rounded-lg" />
-        ))}
-      </div>
-    );
+    return <ProductsListSkeleton />;
   }
 
   const displayProducts = localProducts ?? products;

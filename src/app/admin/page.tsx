@@ -16,6 +16,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
+import { AdminDashboardSkeleton } from "@/modules/admin/components/skeletons/AdminDashboardSkeleton";
 import { formatCurrency } from "@/lib/currency";
 import { api } from "../../../convex/_generated/api";
 
@@ -87,16 +88,7 @@ export default function AdminDashboardPage() {
   const stats = useQuery(api.admin.getPlatformStats);
 
   if (!stats) {
-    return (
-      <div className="space-y-6">
-        <h1 className="text-2xl font-bold">Platform Dashboard</h1>
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-          {Array.from({ length: 5 }).map((_, i) => (
-            <Skeleton key={i} className="h-32" />
-          ))}
-        </div>
-      </div>
-    );
+    return <AdminDashboardSkeleton />;
   }
 
   return (

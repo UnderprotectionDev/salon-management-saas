@@ -8,6 +8,7 @@ import {
 } from "./lib/functions";
 import { resolveScheduleRange } from "./lib/scheduleResolver";
 import {
+  avatarConfigValidator,
   staffDocValidator,
   staffScheduleValidator,
   staffStatusValidator,
@@ -49,7 +50,7 @@ export const listPublicActive = publicQuery({
       _id: v.id("staff"),
       name: v.string(),
       imageUrl: v.optional(v.string()),
-      avatarConfig: v.optional(v.any()),
+      avatarConfig: v.optional(avatarConfigValidator),
       bio: v.optional(v.string()),
       serviceIds: v.optional(v.array(v.id("services"))),
     }),
@@ -126,7 +127,7 @@ export const listActive = orgQuery({
  */
 export const getAvatarConfig = orgQuery({
   args: { staffId: v.id("staff") },
-  returns: v.optional(v.any()),
+  returns: v.optional(avatarConfigValidator),
   handler: async (ctx, args) => {
     const staff = await ctx.db.get(args.staffId);
     if (!staff || staff.organizationId !== ctx.organizationId) return undefined;
@@ -148,7 +149,7 @@ export const getAvatarConfigs = orgQuery({
   returns: v.array(
     v.object({
       staffId: v.id("staff"),
-      avatarConfig: v.optional(v.any()),
+      avatarConfig: v.optional(avatarConfigValidator),
     }),
   ),
   handler: async (ctx) => {

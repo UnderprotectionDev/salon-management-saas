@@ -81,7 +81,7 @@ export const generateSchedule = authedMutation({
 
     await ctx.scheduler.runAfter(
       0,
-      internal.aiActions.runCareScheduleGeneration,
+      internal.aiCareActions.runCareScheduleGeneration,
       { scheduleId },
     );
 

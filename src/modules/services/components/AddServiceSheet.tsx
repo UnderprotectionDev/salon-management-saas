@@ -41,12 +41,12 @@ import {
   SheetTitle,
   SheetTrigger,
 } from "@/components/ui/sheet";
-import { Skeleton } from "@/components/ui/skeleton";
 import { Switch } from "@/components/ui/switch";
 import { liraToKurus } from "@/lib/currency";
 import { api } from "../../../../convex/_generated/api";
 import type { Id } from "../../../../convex/_generated/dataModel";
 import { AddCategoryPopover } from "./AddCategoryPopover";
+import { StaffAssignmentSkeleton } from "./skeletons/StaffAssignmentSkeleton";
 
 type AddServiceSheetProps = {
   organizationId: Id<"organization">;
@@ -378,11 +378,7 @@ export function AddServiceSheet({
                 <div className="space-y-2">
                   <Label>Assign Staff</Label>
                   {allStaff === undefined ? (
-                    <div className="space-y-2">
-                      {[1, 2].map((i) => (
-                        <Skeleton key={i} className="h-10 w-full" />
-                      ))}
-                    </div>
+                    <StaffAssignmentSkeleton />
                   ) : activeStaff && activeStaff.length > 0 ? (
                     <div className="space-y-1">
                       {activeStaff.map((staff) => {

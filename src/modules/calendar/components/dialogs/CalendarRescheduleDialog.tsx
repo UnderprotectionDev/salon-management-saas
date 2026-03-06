@@ -53,7 +53,7 @@ export function CalendarRescheduleDialog({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [sessionId, setSessionId] = useState(generateSessionId);
 
-  const reschedule = useMutation(api.appointments.reschedule);
+  const reschedule = useMutation(api.appointmentReschedule.reschedule);
 
   const staffMembers = useQuery(
     api.staff.listActive,

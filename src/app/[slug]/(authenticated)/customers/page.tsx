@@ -44,7 +44,7 @@ export default function CustomersPage() {
   );
 
   const advancedResults = useQuery(
-    api.customers.advancedSearch,
+    api.customerSearch.advancedSearch,
     activeOrganization && hasAdvancedFilters
       ? {
           organizationId: activeOrganization._id,

@@ -5,7 +5,6 @@ import { Calendar, Clock, Copy } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { Skeleton } from "@/components/ui/skeleton";
 import {
   Table,
   TableBody,
@@ -20,6 +19,7 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { formatPrice } from "@/lib/currency";
+import { AppointmentListSkeleton } from "./skeletons/AppointmentListSkeleton";
 import { api } from "../../../../convex/_generated/api";
 import type { Id } from "../../../../convex/_generated/dataModel";
 import { formatMinutesAsTime } from "../lib/constants";
@@ -58,13 +58,7 @@ export function AppointmentList({
   const appointments = useQuery(api.appointments.list, { organizationId });
 
   if (appointments === undefined) {
-    return (
-      <div className="space-y-3">
-        {[1, 2, 3].map((i) => (
-          <Skeleton key={i} className="h-16 w-full" />
-        ))}
-      </div>
-    );
+    return <AppointmentListSkeleton />;
   }
 
   // Filter by confirmation code if searching

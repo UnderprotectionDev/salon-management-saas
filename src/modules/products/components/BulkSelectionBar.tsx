@@ -21,7 +21,7 @@ export function BulkSelectionBar({
   organizationId,
   onClearSelection,
 }: BulkSelectionBarProps) {
-  const bulkUpdateStatus = useMutation(api.products.bulkUpdateStatus);
+  const bulkUpdateStatus = useMutation(api.productBulk.bulkUpdateStatus);
   const [priceDialogOpen, setPriceDialogOpen] = useState(false);
   const [categoryDialogOpen, setCategoryDialogOpen] = useState(false);
   const [isDeactivating, setIsDeactivating] = useState(false);

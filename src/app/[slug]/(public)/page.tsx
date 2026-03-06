@@ -31,8 +31,8 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
-import { Skeleton } from "@/components/ui/skeleton";
 import { formatPrice } from "@/lib/currency";
+import { PublicProfileSkeleton } from "@/modules/booking/components/skeletons/PublicProfileSkeleton";
 import { api } from "../../../../convex/_generated/api";
 
 type BusinessHoursDay = {
@@ -150,7 +150,7 @@ export default function SalonProfilePage() {
       <div className="min-h-screen bg-background">
         <ProfileHeader slug={slug} />
         <main className="container mx-auto px-4 py-8">
-          <ProfileSkeleton />
+          <PublicProfileSkeleton />
         </main>
         <ProfileFooter />
       </div>
@@ -623,26 +623,5 @@ function ProfileFooter() {
         </Link>
       </p>
     </footer>
-  );
-}
-
-function ProfileSkeleton() {
-  return (
-    <div className="space-y-8">
-      <div className="flex flex-col items-center gap-4">
-        <Skeleton className="size-24 rounded-full" />
-        <Skeleton className="h-8 w-48" />
-        <Skeleton className="h-4 w-64" />
-        <div className="flex gap-3">
-          <Skeleton className="h-10 w-32" />
-          <Skeleton className="h-10 w-32" />
-        </div>
-      </div>
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-        {[1, 2, 3].map((i) => (
-          <Skeleton key={i} className="h-28 rounded-lg" />
-        ))}
-      </div>
-    </div>
   );
 }

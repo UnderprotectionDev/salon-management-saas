@@ -15,8 +15,8 @@ import {
   ChartTooltip,
   ChartTooltipContent,
 } from "@/components/ui/chart";
-import { Skeleton } from "@/components/ui/skeleton";
 import { useOrganization } from "@/modules/organization";
+import { RevenueChartSkeleton } from "./skeletons/RevenueChartSkeleton";
 import { formatPrice } from "@/lib/currency";
 import { api } from "../../../../convex/_generated/api";
 
@@ -103,7 +103,7 @@ export function RevenueChart() {
       </CardHeader>
       <CardContent>
         {loading ? (
-          <Skeleton className="h-[200px] w-full" />
+          <RevenueChartSkeleton />
         ) : (
           <ChartContainer config={chartConfig} className="h-[200px] w-full">
             <AreaChart data={chartData}>

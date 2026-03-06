@@ -21,6 +21,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { api } from "../../../../../convex/_generated/api";
 import type { Id } from "../../../../../convex/_generated/dataModel";
+import { DesignBrowserSkeleton } from "./skeletons/DesignBrowserSkeleton";
 
 // =============================================================================
 // Types
@@ -180,23 +181,14 @@ export function DesignBrowser({
   const [categoryFilter, setCategoryFilter] = useState("all");
 
   // All customer profiles (cross-org)
-  const profiles = useQuery(api.customers.getMyProfiles, {});
+  const profiles = useQuery(api.customerAuth.getMyProfiles, {});
 
   // Resolved selected org
   const activeOrgId = selectedOrgId ?? profiles?.[0]?.organizationId ?? null;
 
   // Loading state
   if (profiles === undefined) {
-    return (
-      <div className="space-y-4">
-        <Skeleton className="h-10 w-48" />
-        <div className="grid grid-cols-3 gap-3 sm:grid-cols-4">
-          {["a", "b", "c", "d", "e", "f"].map((k) => (
-            <Skeleton key={k} className="aspect-square rounded-md" />
-          ))}
-        </div>
-      </div>
-    );
+    return <DesignBrowserSkeleton />;
   }
 
   // No profiles — user hasn't booked at any salon

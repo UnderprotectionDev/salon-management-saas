@@ -44,7 +44,6 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
-import { Skeleton } from "@/components/ui/skeleton";
 import { Switch } from "@/components/ui/switch";
 import { cn } from "@/lib/utils";
 import { GENDER_OPTIONS } from "@/modules/onboarding";
@@ -59,6 +58,7 @@ import { SpaPreferencesForm } from "@/modules/settings/components/preferences/Sp
 import { SpecialtyPreferencesForm } from "@/modules/settings/components/preferences/SpecialtyPreferencesForm";
 import { SalonCategorySelector } from "@/modules/settings/components/SalonCategorySelector";
 import { USER_SALON_CATEGORIES } from "@/modules/settings/lib/salon-preferences-constants";
+import { SettingsSkeleton } from "@/modules/user-settings/components/skeletons/SettingsSkeleton";
 import { api } from "../../../convex/_generated/api";
 
 // Date of birth max: 13 years ago (local date)
@@ -656,36 +656,5 @@ function DeleteAccountSection() {
         </Dialog>
       </CardContent>
     </Card>
-  );
-}
-
-// =============================================================================
-// Skeleton
-// =============================================================================
-
-function SettingsSkeleton() {
-  return (
-    <div className="min-h-screen bg-muted/30">
-      <div className="container mx-auto max-w-2xl p-4 lg:p-6 space-y-6">
-        <div className="flex items-center gap-3">
-          <Skeleton className="size-9" />
-          <div className="space-y-2">
-            <Skeleton className="h-6 w-40" />
-            <Skeleton className="h-4 w-56" />
-          </div>
-        </div>
-        {[1, 2, 3].map((i) => (
-          <Card key={i}>
-            <CardHeader>
-              <Skeleton className="h-5 w-32" />
-              <Skeleton className="h-4 w-48" />
-            </CardHeader>
-            <CardContent>
-              <Skeleton className="h-32 w-full" />
-            </CardContent>
-          </Card>
-        ))}
-      </div>
-    </div>
   );
 }

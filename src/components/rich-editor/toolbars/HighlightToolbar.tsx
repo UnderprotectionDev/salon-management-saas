@@ -105,7 +105,9 @@ export function HighlightToolbar({ editor }: HighlightToolbarProps) {
                 type="button"
                 className={cn(
                   "size-6 rounded border hover:scale-110 transition-transform",
-                  isActive ? "border-foreground ring-1 ring-foreground" : "border-border",
+                  isActive
+                    ? "border-foreground ring-1 ring-foreground"
+                    : "border-border",
                 )}
                 style={{
                   backgroundColor: color.value || "transparent",

@@ -20,9 +20,9 @@ import {
   EmptyMedia,
   EmptyTitle,
 } from "@/components/ui/empty";
-import { Skeleton } from "@/components/ui/skeleton";
 import { api } from "../../../../convex/_generated/api";
 import type { Id } from "../../../../convex/_generated/dataModel";
+import { FavoriteSalonsSkeleton } from "./skeletons/FavoriteSalonsSkeleton";
 
 export function FavoriteSalonsSection() {
   const { isAuthenticated } = useConvexAuth();
@@ -35,17 +35,7 @@ export function FavoriteSalonsSection() {
   if (!isAuthenticated) return null;
 
   if (favorites === undefined) {
-    return (
-      <Card>
-        <CardHeader>
-          <Skeleton className="h-6 w-40" />
-          <Skeleton className="h-4 w-48" />
-        </CardHeader>
-        <CardContent>
-          <Skeleton className="h-20 w-full" />
-        </CardContent>
-      </Card>
-    );
+    return <FavoriteSalonsSkeleton />;
   }
 
   if (favorites.length === 0) {
