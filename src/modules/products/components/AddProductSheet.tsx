@@ -6,6 +6,7 @@ import { ChevronRight, Loader2, Plus } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
 import { z } from "zod";
+import { RichEditor } from "@/components/rich-editor";
 import { Button } from "@/components/ui/button";
 import {
   Collapsible,
@@ -20,6 +21,7 @@ import {
 } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { ScrollArea } from "@/components/ui/scroll-area";
 import {
   Select,
   SelectContent,
@@ -28,12 +30,6 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
-import { Switch } from "@/components/ui/switch";
-import { Textarea } from "@/components/ui/textarea";
-import { liraToKurus } from "@/lib/currency";
-import { api } from "../../../../convex/_generated/api";
-import type { Id } from "../../../../convex/_generated/dataModel";
-import { ScrollArea } from "@/components/ui/scroll-area";
 import {
   Sheet,
   SheetContent,
@@ -41,6 +37,11 @@ import {
   SheetHeader,
   SheetTitle,
 } from "@/components/ui/sheet";
+import { Switch } from "@/components/ui/switch";
+import { Textarea } from "@/components/ui/textarea";
+import { liraToKurus } from "@/lib/currency";
+import { api } from "../../../../convex/_generated/api";
+import type { Id } from "../../../../convex/_generated/dataModel";
 import { AddProductCategoryPopover } from "./AddProductCategoryPopover";
 import { ProductMultiImageUpload } from "./ProductMultiImageUpload";
 import {
@@ -278,11 +279,10 @@ export function AddProductSheet({
                             (optional)
                           </span>
                         </FieldLabel>
-                        <Textarea
+                        <RichEditor
                           id={field.name}
                           value={field.state.value}
-                          onChange={(e) => field.handleChange(e.target.value)}
-                          rows={2}
+                          onChange={field.handleChange}
                           placeholder="Short product description"
                         />
                       </Field>

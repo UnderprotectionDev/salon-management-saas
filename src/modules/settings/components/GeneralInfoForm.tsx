@@ -18,6 +18,7 @@ import {
 } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 import { Toggle } from "@/components/ui/toggle";
+import { stripHtmlLength } from "@/lib/html";
 import { api } from "../../../../convex/_generated/api";
 import type { Id } from "../../../../convex/_generated/dataModel";
 
@@ -127,14 +128,13 @@ const nameSchema = z
   .max(100, "Name cannot exceed 100 characters");
 
 // Note: Form fields are always strings (even if empty), so don't use .optional()
-function stripHtmlLength(html: string): number {
-  return html.replace(/<[^>]*>/g, "").trim().length;
-}
 
-const descriptionSchema = z.string().refine(
-  (val) => stripHtmlLength(val) <= 2000,
-  "Description cannot exceed 2000 characters",
-);
+const descriptionSchema = z
+  .string()
+  .refine(
+    (val) => stripHtmlLength(val) <= 2000,
+    "Description cannot exceed 2000 characters",
+  );
 
 // =============================================================================
 // Component
@@ -328,6 +328,7 @@ export function GeneralInfoForm({
               <Field data-invalid={hasError || undefined}>
                 <FieldLabel>Description</FieldLabel>
                 <RichEditor
+                  id={field.name}
                   value={field.state.value}
                   onChange={(html) => field.handleChange(html)}
                   onBlur={field.handleBlur}

@@ -7,6 +7,7 @@ import { useState } from "react";
 import NiceAvatar, { genConfig } from "react-nice-avatar";
 import { toast } from "sonner";
 import { z } from "zod";
+import { RichEditor } from "@/components/rich-editor";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -42,10 +43,9 @@ import {
 } from "@/components/ui/sheet";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Switch } from "@/components/ui/switch";
-import { Textarea } from "@/components/ui/textarea";
+import { liraToKurus } from "@/lib/currency";
 import { api } from "../../../../convex/_generated/api";
 import type { Id } from "../../../../convex/_generated/dataModel";
-import { liraToKurus } from "@/lib/currency";
 import { AddCategoryPopover } from "./AddCategoryPopover";
 
 type AddServiceSheetProps = {
@@ -245,15 +245,13 @@ export function AddServiceSheet({
                       <FieldLabel htmlFor={field.name}>
                         Description (optional)
                       </FieldLabel>
-                      <Textarea
+                      <RichEditor
                         id={field.name}
-                        name={field.name}
-                        placeholder="Brief description of the service"
                         value={field.state.value}
+                        onChange={field.handleChange}
                         onBlur={field.handleBlur}
-                        onChange={(e) => field.handleChange(e.target.value)}
+                        placeholder="Brief description of the service"
                         disabled={form.state.isSubmitting}
-                        rows={2}
                       />
                     </Field>
                   )}

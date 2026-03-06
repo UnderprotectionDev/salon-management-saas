@@ -21,6 +21,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
+import { stripHtml } from "@/lib/html";
 import { PublicProductCard } from "@/modules/products/components/PublicProductCard";
 import { api } from "../../../../../convex/_generated/api";
 
@@ -119,7 +120,9 @@ export default function ProductCatalogPage() {
       (p) =>
         p.name.toLowerCase().includes(q) ||
         p.brand?.toLowerCase().includes(q) ||
-        p.description?.toLowerCase().includes(q),
+        stripHtml(p.description ?? "")
+          .toLowerCase()
+          .includes(q),
     );
   }
 

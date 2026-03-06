@@ -5,6 +5,7 @@ import { useMutation, useQuery } from "convex/react";
 import { ChevronsUpDown, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { z } from "zod";
+import { RichEditor } from "@/components/rich-editor";
 import { Button } from "@/components/ui/button";
 import {
   Collapsible,
@@ -36,10 +37,9 @@ import {
   SheetTitle,
 } from "@/components/ui/sheet";
 import { Switch } from "@/components/ui/switch";
-import { Textarea } from "@/components/ui/textarea";
+import { kurusToLira, liraToKurus } from "@/lib/currency";
 import { api } from "../../../../convex/_generated/api";
 import type { Id } from "../../../../convex/_generated/dataModel";
-import { kurusToLira, liraToKurus } from "@/lib/currency";
 import { AddCategoryPopover } from "./AddCategoryPopover";
 import { StaffAssignmentSelect } from "./StaffAssignmentSelect";
 
@@ -194,14 +194,13 @@ export function EditServiceSheet({
                       <FieldLabel htmlFor={field.name}>
                         Description (optional)
                       </FieldLabel>
-                      <Textarea
+                      <RichEditor
                         id={field.name}
-                        name={field.name}
                         value={field.state.value}
+                        onChange={field.handleChange}
                         onBlur={field.handleBlur}
-                        onChange={(e) => field.handleChange(e.target.value)}
+                        placeholder="Brief description of the service"
                         disabled={form.state.isSubmitting}
-                        rows={2}
                       />
                     </Field>
                   )}

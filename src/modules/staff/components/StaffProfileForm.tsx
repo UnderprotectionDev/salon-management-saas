@@ -5,6 +5,7 @@ import { useMutation } from "convex/react";
 import { Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { z } from "zod";
+import { RichEditor } from "@/components/rich-editor";
 import { Button } from "@/components/ui/button";
 import {
   Field,
@@ -20,7 +21,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Textarea } from "@/components/ui/textarea";
+import { stripHtmlLength } from "@/lib/html";
 import { api } from "../../../../convex/_generated/api";
 import type { Doc } from "../../../../convex/_generated/dataModel";
 
@@ -35,7 +36,12 @@ const nameSchema = z
   .min(2, "Name must be at least 2 characters")
   .max(100, "Name cannot exceed 100 characters");
 
-const bioSchema = z.string().max(500, "Bio cannot exceed 500 characters");
+const bioSchema = z
+  .string()
+  .refine(
+    (val) => stripHtmlLength(val) <= 500,
+    "Bio cannot exceed 500 characters",
+  );
 
 export function StaffProfileForm({
   staff,
@@ -136,16 +142,14 @@ export function StaffProfileForm({
             return (
               <Field data-invalid={hasError || undefined}>
                 <FieldLabel htmlFor={field.name}>Bio (optional)</FieldLabel>
-                <Textarea
+                <RichEditor
                   id={field.name}
-                  name={field.name}
                   value={field.state.value}
+                  onChange={field.handleChange}
                   onBlur={field.handleBlur}
-                  onChange={(e) => field.handleChange(e.target.value)}
-                  disabled={form.state.isSubmitting}
-                  aria-invalid={hasError}
-                  rows={3}
                   placeholder="A short bio..."
+                  disabled={form.state.isSubmitting}
+                  limit={500}
                 />
                 {hasError && <FieldError errors={field.state.meta.errors} />}
               </Field>

@@ -3,6 +3,7 @@
 import { Check, ImagePlus, Loader2, X } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
+import { RichEditor } from "@/components/rich-editor";
 import {
   Field,
   FieldDescription,
@@ -10,7 +11,7 @@ import {
   FieldLabel,
 } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
+import { stripHtmlLength } from "@/lib/html";
 import type { WizardFormData } from "../hooks/useOnboardingForm";
 import {
   ONBOARDING_INPUT,
@@ -286,15 +287,12 @@ export function StepBasics({
 
       <Field>
         <FieldLabel htmlFor="description">Description</FieldLabel>
-        <Textarea
+        <RichEditor
           id="description"
-          placeholder="Tell customers about your salon..."
           value={data.description}
-          onChange={(e) =>
-            onChange({ description: e.target.value.slice(0, 500) })
-          }
-          rows={3}
-          className="border-0 border-b border-border rounded-none bg-transparent shadow-none px-0 text-base focus-visible:ring-0 focus-visible:border-brand resize-none"
+          onChange={(html) => onChange({ description: html })}
+          placeholder="Tell customers about your salon..."
+          limit={500}
         />
         <div className="flex items-center justify-between mt-1">
           <span className="text-[11px] text-muted-foreground/60">
@@ -302,7 +300,7 @@ export function StepBasics({
             unique.
           </span>
           <span className="text-[11px] text-muted-foreground tabular-nums shrink-0 ml-4">
-            {data.description.length}/500
+            {stripHtmlLength(data.description)}/500
           </span>
         </div>
       </Field>
