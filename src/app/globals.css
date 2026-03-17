@@ -1015,6 +1015,56 @@ body {
   opacity: 0.8;
 }
 
+/* ── Public About section — relaxed spacing for readability ── */
+.about-content .rich-text-display {
+  line-height: 1.7;
+}
+.about-content .rich-text-display p {
+  margin: 0.6em 0;
+}
+.about-content .rich-text-display h1 {
+  margin: 1.4em 0 0.5em;
+}
+.about-content .rich-text-display h2 {
+  margin: 1.2em 0 0.4em;
+}
+.about-content .rich-text-display h3,
+.about-content .rich-text-display h4 {
+  margin: 1em 0 0.3em;
+}
+.about-content .rich-text-display ul,
+.about-content .rich-text-display ol {
+  margin: 0.6em 0;
+}
+.about-content .rich-text-display li {
+  margin: 0.3em 0;
+}
+.about-content .rich-text-display img {
+  margin: 1em 0;
+}
+.about-content .rich-text-display img[data-alignment="left"] {
+  margin: 0.75em 1.25em 0.75em 0;
+}
+.about-content .rich-text-display img[data-alignment="right"] {
+  margin: 0.75em 0 0.75em 1.25em;
+}
+.about-content .rich-text-display blockquote {
+  margin: 0.8em 0;
+  padding: 0.4em 1.2em;
+  border-left-width: 3px;
+  border-color: var(--brand);
+}
+.about-content .rich-text-display hr {
+  margin: 1.5em 0;
+}
+.about-content .rich-text-display div[data-youtube-video] {
+  margin: 1em 0;
+}
+.about-content .rich-text-display div[data-image-with-text] {
+  margin: 1em 0;
+  gap: 1.25em;
+}
+
 .sheet-row-header {
   position: sticky;
   left: 0;
