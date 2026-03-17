@@ -2,8 +2,11 @@
 
 import { useQuery } from "convex/react";
 import {
+  ArrowRight,
   Building2,
   Calendar,
+  ChevronDown,
+  ChevronUp,
   Clock,
   Globe,
   Info,
@@ -13,11 +16,12 @@ import {
   Package,
   Palette,
   Phone,
+  Sparkles,
   Users,
 } from "lucide-react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import NiceAvatar, { genConfig } from "react-nice-avatar";
 import { RichTextDisplay } from "@/components/rich-editor/RichTextDisplay";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -30,7 +34,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { Separator } from "@/components/ui/separator";
+import { cn } from "@/lib/utils";
 import { formatPrice } from "@/lib/currency";
 import { PublicProfileSkeleton } from "@/modules/booking/components/skeletons/PublicProfileSkeleton";
 import { api } from "../../../../convex/_generated/api";
@@ -129,6 +133,9 @@ export default function SalonProfilePage() {
     hours?: string;
   }>({ isOpen: false });
   const [todayKey, setTodayKey] = useState("");
+  const [isAboutExpanded, setIsAboutExpanded] = useState(false);
+  const [aboutOverflows, setAboutOverflows] = useState(false);
+  const aboutRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     const updateStatus = () => {
@@ -143,6 +150,12 @@ export default function SalonProfilePage() {
     const interval = setInterval(updateStatus, 60_000);
     return () => clearInterval(interval);
   }, [settings?.businessHours]);
+
+  useEffect(() => {
+    if (aboutRef.current) {
+      setAboutOverflows(aboutRef.current.scrollHeight > 200);
+    }
+  }, [organization?.description]);
 
   // Loading state
   if (organization === undefined) {
@@ -198,43 +211,79 @@ export default function SalonProfilePage() {
       />
 
       {/* Hero Section */}
-      <section className="border-b bg-gradient-to-b from-muted/50 to-background">
-        <div className="container mx-auto px-4 py-12 lg:py-16">
-          <div className="flex flex-col items-center text-center gap-4">
-            <Avatar className="size-24 border-4 border-background shadow-lg">
-              {organization.logo ? (
-                <AvatarImage src={organization.logo} alt={organization.name} />
-              ) : (
-                <AvatarFallback className="text-2xl">
-                  <Building2 className="size-10" />
-                </AvatarFallback>
-              )}
-            </Avatar>
+      <section className="relative overflow-hidden border-b bg-gradient-to-b from-muted/60 via-muted/30 to-background">
+        <div className="container mx-auto px-4 py-16 lg:py-20">
+          <div className="flex flex-col items-center text-center gap-5">
+            {/* Avatar with brand ring */}
+            <div className="relative">
+              <div className="absolute -inset-1 rounded-full bg-gradient-to-br from-brand/30 to-brand/10 blur-sm" />
+              <Avatar className="relative size-28 border-4 border-background shadow-xl">
+                {organization.logo ? (
+                  <AvatarImage
+                    src={organization.logo}
+                    alt={organization.name}
+                  />
+                ) : (
+                  <AvatarFallback className="text-2xl bg-muted">
+                    <Building2 className="size-12 text-muted-foreground" />
+                  </AvatarFallback>
+                )}
+              </Avatar>
+            </div>
 
-            <div className="space-y-2">
+            {/* Name + Status */}
+            <div className="space-y-3">
               <h1 className="text-3xl font-bold tracking-tight lg:text-4xl">
                 {organization.name}
               </h1>
 
+              {/* Location snippet in hero */}
+              {locationParts.length > 0 && (
+                <p className="flex items-center justify-center gap-1.5 text-sm text-muted-foreground">
+                  <MapPin className="size-3.5" />
+                  {locationParts.join(", ")}
+                </p>
+              )}
+
+              {/* Badges row */}
               <div className="flex items-center justify-center gap-2 flex-wrap">
                 {organization.salonType && (
                   <SalonTypeBadges salonType={organization.salonType} />
                 )}
-                <Badge variant={todayStatus.isOpen ? "default" : "secondary"}>
+                <Badge
+                  variant="outline"
+                  className={cn(
+                    "gap-1.5",
+                    todayStatus.isOpen
+                      ? "border-green-500/40 text-green-600 dark:text-green-400"
+                      : "border-red-500/40 text-red-600 dark:text-red-400",
+                  )}
+                >
+                  <span
+                    className={cn(
+                      "size-1.5 rounded-full",
+                      todayStatus.isOpen ? "bg-green-500" : "bg-red-500",
+                    )}
+                  />
                   {todayStatus.isOpen ? "Open" : "Closed"}
-                  {todayStatus.hours && ` · ${todayStatus.hours}`}
+                  {todayStatus.hours && (
+                    <span className="text-muted-foreground">
+                      {todayStatus.hours}
+                    </span>
+                  )}
                 </Badge>
               </div>
             </div>
 
-            <div className="flex gap-3 mt-2">
-              <Button asChild size="lg">
+            {/* CTA Buttons */}
+            <div className="flex gap-3 mt-1">
+              <Button asChild size="lg" className="shadow-sm">
                 <Link href={`/${slug}/book`}>
                   <Calendar className="mr-2 size-4" />
                   Book Now
                 </Link>
               </Button>
-              <Button asChild variant="outline" size="lg">
+              <Button asChild variant="outline" size="lg" className="shadow-sm">
                 <Link href={`/${slug}/catalog`}>
                   <Package className="mr-2 size-4" />
                   Products
@@ -245,17 +294,49 @@ export default function SalonProfilePage() {
         </div>
       </section>
 
-      <main className="container mx-auto px-4 py-12 space-y-16">
+      <main className="container mx-auto px-4 py-14 space-y-20">
         {/* About */}
         {organization.description && (
           <section>
             <SectionHeader icon={<Info className="size-5" />} title="About" />
-            <div className="mt-6 max-w-2xl">
-              <RichTextDisplay
-                html={organization.description}
-                className="text-muted-foreground"
-              />
-            </div>
+            <Card className="mt-6">
+              <CardContent className="relative px-6 pt-6 pb-2 sm:px-8 sm:pt-8">
+                <div
+                  ref={aboutRef}
+                  className={cn(
+                    "about-content overflow-hidden transition-[max-height] duration-300 ease-in-out",
+                    !isAboutExpanded && aboutOverflows && "max-h-[240px]",
+                  )}
+                >
+                  <RichTextDisplay
+                    html={organization.description}
+                    className="text-muted-foreground"
+                  />
+                </div>
+                {aboutOverflows && !isAboutExpanded && (
+                  <div className="absolute bottom-12 left-0 right-0 h-24 bg-gradient-to-t from-card via-card/80 to-transparent pointer-events-none" />
+                )}
+                {aboutOverflows && (
+                  <div className="relative flex justify-center pt-3">
+                    <button
+                      type="button"
+                      onClick={() => setIsAboutExpanded(!isAboutExpanded)}
+                      className="inline-flex items-center gap-1.5 rounded-full border border-border bg-background px-4 py-1.5 text-xs font-medium text-muted-foreground shadow-sm transition-colors hover:bg-muted hover:text-foreground"
+                    >
+                      {isAboutExpanded ? (
+                        <>
+                          Show less <ChevronUp className="size-3.5" />
+                        </>
+                      ) : (
+                        <>
+                          Read more <ChevronDown className="size-3.5" />
+                        </>
+                      )}
+                    </button>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
           </section>
         )}
 
@@ -263,28 +344,30 @@ export default function SalonProfilePage() {
         {popularServices.length > 0 && (
           <section>
             <SectionHeader
-              icon={<Calendar className="size-5" />}
+              icon={<Sparkles className="size-5" />}
               title="Popular Services"
             />
             <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 mt-6">
               {popularServices.map((service) => (
                 <Card
                   key={service._id}
-                  className="hover:border-primary/50 transition-colors"
+                  className="group transition-all duration-200 hover:shadow-md hover:border-brand/30"
                 >
                   <CardHeader className="pb-2">
-                    <CardTitle className="text-base">{service.name}</CardTitle>
+                    <CardTitle className="text-base flex items-center justify-between">
+                      {service.name}
+                    </CardTitle>
                     {service.categoryName && (
                       <CardDescription>{service.categoryName}</CardDescription>
                     )}
                   </CardHeader>
                   <CardContent>
                     <div className="flex items-center justify-between text-sm">
-                      <span className="font-semibold text-primary">
+                      <span className="font-semibold text-brand">
                         {formatPrice(service.price)}
                       </span>
-                      <span className="text-muted-foreground">
-                        <Clock className="mr-1 inline size-3.5" />
+                      <span className="text-muted-foreground flex items-center gap-1">
+                        <Clock className="size-3.5" />
                         {service.duration} min
                       </span>
                     </div>
@@ -292,9 +375,12 @@ export default function SalonProfilePage() {
                 </Card>
               ))}
             </div>
-            <div className="mt-6 text-center">
-              <Button asChild variant="outline">
-                <Link href={`/${slug}/book`}>View All Services & Book</Link>
+            <div className="mt-8 text-center">
+              <Button asChild variant="outline" className="group">
+                <Link href={`/${slug}/book`}>
+                  View All Services & Book
+                  <ArrowRight className="ml-2 size-4 transition-transform group-hover:translate-x-0.5" />
+                </Link>
               </Button>
             </div>
           </section>
@@ -307,31 +393,46 @@ export default function SalonProfilePage() {
               icon={<Users className="size-5" />}
               title="Our Team"
             />
-            <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 mt-6">
+            <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 mt-6">
               {staff.map((member) => (
-                <Card key={member._id} className="text-center">
-                  <CardContent className="pt-6">
-                    <div className="flex justify-center mb-3">
-                      {member.imageUrl ? (
-                        <Avatar className="size-20 border-2">
-                          <AvatarImage
-                            src={member.imageUrl}
-                            alt={member.name}
-                          />
-                          <AvatarFallback>
-                            {member.name.charAt(0)}
-                          </AvatarFallback>
-                        </Avatar>
-                      ) : (
-                        <NiceAvatar
-                          className="size-20"
-                          {...(member.avatarConfig ?? genConfig(member._id))}
-                        />
-                      )}
+                <Card
+                  key={member._id}
+                  className="group text-center transition-all duration-200 hover:shadow-md hover:border-brand/30"
+                >
+                  <CardContent className="pt-8 pb-6">
+                    <div className="flex justify-center mb-4">
+                      <div className="relative">
+                        <div className="absolute -inset-0.5 rounded-full bg-gradient-to-br from-brand/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
+                        {member.imageUrl ? (
+                          <Avatar className="relative size-24 border-2 border-border group-hover:border-brand/30 transition-colors">
+                            <AvatarImage
+                              src={member.imageUrl}
+                              alt={member.name}
+                            />
+                            <AvatarFallback>
+                              {member.name.charAt(0)}
+                            </AvatarFallback>
+                          </Avatar>
+                        ) : (
+                          <div className="relative">
+                            <NiceAvatar
+                              className="size-24"
+                              {...(member.avatarConfig ??
+                                genConfig(member._id))}
+                            />
+                          </div>
+                        )}
+                      </div>
                     </div>
-                    <h3 className="font-semibold">{member.name}</h3>
+                    <h3 className="font-semibold text-base">{member.name}</h3>
+                    {member.serviceIds && member.serviceIds.length > 0 && (
+                      <p className="mt-1 text-xs text-muted-foreground">
+                        {member.serviceIds.length} service
+                        {member.serviceIds.length !== 1 && "s"}
+                      </p>
+                    )}
                     {member.bio && (
-                      <p className="mt-1 text-sm text-muted-foreground line-clamp-2">
+                      <p className="mt-2 text-sm text-muted-foreground line-clamp-2">
                         {member.bio}
                       </p>
                     )}
@@ -359,7 +460,7 @@ export default function SalonProfilePage() {
                   />
                   <Card className="mt-6">
                     <CardContent className="pt-6">
-                      <div className="space-y-2">
+                      <div className="space-y-1">
                         {ORDERED_DAYS.map((day) => {
                           const hours = (
                             businessHours as Record<
@@ -371,20 +472,26 @@ export default function SalonProfilePage() {
                           return (
                             <div
                               key={day}
-                              className={`flex items-center justify-between rounded-md px-3 py-2 text-sm ${
-                                isToday ? "bg-primary/10 font-medium" : ""
-                              }`}
+                              className={cn(
+                                "flex items-center justify-between rounded-lg px-3 py-2.5 text-sm transition-colors",
+                                isToday &&
+                                  "bg-brand/8 ring-1 ring-brand/20 font-medium",
+                              )}
                             >
                               <span className="flex items-center gap-2">
                                 {isToday && (
-                                  <span className="size-2 rounded-full bg-primary" />
+                                  <span className="size-2 rounded-full bg-brand animate-pulse" />
                                 )}
                                 {DAY_LABELS[day]}
                               </span>
                               <span
-                                className={
-                                  hours?.closed ? "text-muted-foreground" : ""
-                                }
+                                className={cn(
+                                  hours?.closed
+                                    ? "text-muted-foreground"
+                                    : isToday
+                                      ? "text-brand font-semibold"
+                                      : "",
+                                )}
                               >
                                 {hours && !hours.closed
                                   ? `${hours.open} - ${hours.close}`
@@ -410,54 +517,64 @@ export default function SalonProfilePage() {
                     title="Contact & Location"
                   />
                   <Card className="mt-6">
-                    <CardContent className="pt-6 space-y-4">
+                    <CardContent className="pt-6 space-y-1">
                       {locationParts.length > 0 && (
-                        <div className="flex items-start gap-3">
-                          <MapPin className="mt-0.5 size-4 shrink-0 text-muted-foreground" />
-                          <span className="text-sm">
-                            {locationParts.join(", ")}
-                          </span>
+                        <div className="flex items-start gap-3 rounded-lg px-3 py-2.5 hover:bg-muted/50 transition-colors">
+                          <div className="flex size-8 shrink-0 items-center justify-center rounded-full bg-muted">
+                            <MapPin className="size-4 text-muted-foreground" />
+                          </div>
+                          <div className="pt-1">
+                            <span className="text-sm">
+                              {locationParts.join(", ")}
+                            </span>
+                          </div>
                         </div>
                       )}
                       {phone && (
-                        <div className="flex items-center gap-3">
-                          <Phone className="size-4 shrink-0 text-muted-foreground" />
-                          <a
-                            href={`tel:${cleanPhone}`}
-                            className="text-sm text-primary hover:underline"
-                          >
+                        <a
+                          href={`tel:${cleanPhone}`}
+                          className="flex items-center gap-3 rounded-lg px-3 py-2.5 hover:bg-muted/50 transition-colors"
+                        >
+                          <div className="flex size-8 shrink-0 items-center justify-center rounded-full bg-muted">
+                            <Phone className="size-4 text-muted-foreground" />
+                          </div>
+                          <span className="text-sm hover:underline">
                             {phone}
-                          </a>
-                        </div>
+                          </span>
+                        </a>
                       )}
                       {settings?.email && (
-                        <div className="flex items-center gap-3">
-                          <Mail className="size-4 shrink-0 text-muted-foreground" />
-                          <a
-                            href={`mailto:${settings.email}`}
-                            className="text-sm text-primary hover:underline"
-                          >
+                        <a
+                          href={`mailto:${settings.email}`}
+                          className="flex items-center gap-3 rounded-lg px-3 py-2.5 hover:bg-muted/50 transition-colors"
+                        >
+                          <div className="flex size-8 shrink-0 items-center justify-center rounded-full bg-muted">
+                            <Mail className="size-4 text-muted-foreground" />
+                          </div>
+                          <span className="text-sm hover:underline">
                             {settings.email}
-                          </a>
-                        </div>
+                          </span>
+                        </a>
                       )}
                       {settings?.website && (
-                        <div className="flex items-center gap-3">
-                          <Globe className="size-4 shrink-0 text-muted-foreground" />
-                          <a
-                            href={
-                              settings.website.startsWith("http://") ||
-                              settings.website.startsWith("https://")
-                                ? settings.website
-                                : `https://${settings.website}`
-                            }
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="text-sm text-primary hover:underline"
-                          >
+                        <a
+                          href={
+                            settings.website.startsWith("http://") ||
+                            settings.website.startsWith("https://")
+                              ? settings.website
+                              : `https://${settings.website}`
+                          }
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="flex items-center gap-3 rounded-lg px-3 py-2.5 hover:bg-muted/50 transition-colors"
+                        >
+                          <div className="flex size-8 shrink-0 items-center justify-center rounded-full bg-muted">
+                            <Globe className="size-4 text-muted-foreground" />
+                          </div>
+                          <span className="text-sm hover:underline">
                             {settings.website}
-                          </a>
-                        </div>
+                          </span>
+                        </a>
                       )}
                     </CardContent>
                   </Card>
@@ -466,30 +583,33 @@ export default function SalonProfilePage() {
             </div>
           </section>
         )}
+      </main>
 
-        {/* Bottom CTA */}
-        <Separator />
-        <section className="text-center space-y-4 pb-4">
-          <h2 className="text-2xl font-semibold">Ready to book?</h2>
-          <p className="text-muted-foreground">
+      {/* Bottom CTA */}
+      <section className="border-t bg-muted/30">
+        <div className="container mx-auto px-4 py-16 text-center space-y-5">
+          <h2 className="text-2xl font-bold tracking-tight lg:text-3xl">
+            Ready to book?
+          </h2>
+          <p className="text-muted-foreground max-w-md mx-auto">
             Book your appointment at {organization.name} today.
           </p>
-          <div className="flex justify-center gap-3">
-            <Button asChild size="lg">
+          <div className="flex justify-center gap-3 pt-1">
+            <Button asChild size="lg" className="shadow-sm">
               <Link href={`/${slug}/book`}>
                 <Calendar className="mr-2 size-4" />
                 Book Now
               </Link>
             </Button>
-            <Button asChild variant="outline" size="lg">
+            <Button asChild variant="outline" size="lg" className="shadow-sm">
               <Link href={`/${slug}/catalog`}>
                 <Package className="mr-2 size-4" />
                 Browse Products
               </Link>
             </Button>
           </div>
-        </section>
-      </main>
+        </div>
+      </section>
 
       <ProfileFooter />
 
@@ -530,8 +650,10 @@ function SectionHeader({
   title: string;
 }) {
   return (
-    <div className="flex items-center gap-2">
-      <span className="text-primary">{icon}</span>
+    <div className="flex items-center gap-2.5">
+      <span className="flex size-9 items-center justify-center rounded-lg bg-brand/10 text-brand">
+        {icon}
+      </span>
       <h2 className="text-xl font-semibold tracking-tight">{title}</h2>
     </div>
   );
@@ -547,12 +669,16 @@ function SalonTypeBadges({ salonType }: { salonType: string | string[] }) {
   return (
     <>
       {visible.map((type) => (
-        <Badge key={type} variant="secondary" className="capitalize">
+        <Badge
+          key={type}
+          variant="secondary"
+          className="capitalize font-normal"
+        >
           {type.replace(/_/g, " ")}
         </Badge>
       ))}
       {remaining > 0 && (
-        <Badge variant="outline" className="text-muted-foreground">
+        <Badge variant="outline" className="text-muted-foreground font-normal">
           +{remaining} more
         </Badge>
       )}
@@ -615,10 +741,10 @@ function ProfileHeader({
 
 function ProfileFooter() {
   return (
-    <footer className="border-t py-6 text-center text-sm text-muted-foreground">
+    <footer className="border-t py-8 text-center text-sm text-muted-foreground">
       <p>
         Powered by{" "}
-        <Link href="/" className="text-primary hover:underline">
+        <Link href="/" className="text-brand hover:underline">
           Salon Management
         </Link>
       </p>
