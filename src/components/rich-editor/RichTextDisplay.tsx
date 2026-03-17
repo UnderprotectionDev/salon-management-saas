@@ -76,22 +76,23 @@ function setupDOMPurifyHooks() {
 
   // Restrict iframe src to YouTube domains only
   DOMPurify.addHook("uponSanitizeElement", (node, data) => {
+    const el = node as Element;
     if (data.tagName === "iframe") {
-      const src = node.getAttribute("src") || "";
+      const src = el.getAttribute("src") || "";
       try {
         const url = new URL(src);
         if (!ALLOWED_IFRAME_HOSTS.includes(url.hostname)) {
-          node.remove();
+          el.remove();
         }
       } catch {
-        node.remove();
+        el.remove();
       }
     }
     // Restrict input to checkbox only (for task lists)
     if (data.tagName === "input") {
-      const type = node.getAttribute("type");
+      const type = el.getAttribute("type");
       if (type !== "checkbox") {
-        node.remove();
+        el.remove();
       }
     }
   });

@@ -131,7 +131,7 @@ export function BookingPageHeader({
     <header className="border-b">
       <div className="flex items-center justify-between px-6 py-4">
         <h1 className="text-2xl font-bold tracking-tight uppercase">
-          {salonName}
+          <Link href={`/${slug}`}>{salonName}</Link>
         </h1>
         <div className="hidden sm:flex items-center gap-6 text-xs uppercase tracking-widest">
           {dateStr && (

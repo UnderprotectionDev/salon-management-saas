@@ -153,7 +153,7 @@ export function RichEditor({
     // Skip if this value is what we last emitted — it came from the editor itself
     if (value === lastEmittedHtml.current) return;
     lastEmittedHtml.current = value;
-    editor.commands.setContent(value || "", false);
+    editor.commands.setContent(value || "", { emitUpdate: false });
     setCharCount({
       characters: editor.storage.characterCount.characters(),
       words: editor.storage.characterCount.words(),
