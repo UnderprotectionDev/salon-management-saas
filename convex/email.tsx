@@ -26,11 +26,15 @@ function createResendClient(): Resend {
 }
 
 function getFromEmail(): string {
-  return process.env.RESEND_FROM_EMAIL || "onboarding@resend.dev";
+  const email = process.env.RESEND_FROM_EMAIL;
+  if (!email) throw new Error("RESEND_FROM_EMAIL environment variable is required");
+  return email;
 }
 
 function getSiteUrl(): string {
-  return process.env.SITE_URL || "http://localhost:3000";
+  const url = process.env.SITE_URL;
+  if (!url) throw new Error("SITE_URL environment variable is required");
+  return url;
 }
 
 async function sendEmailWithRetry(
